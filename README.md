@@ -6,5 +6,24 @@ Le projet LittoSim vise à construire un jeu sérieux qui se présente sous la f
 
 ## Matériel et methodes 
 
-Le modèle est developpé sous [GAMA plateforme](https://code.google.com/p/gama-platform/)
+Le modèle est developpé sous [GAMA plateforme](https://code.google.com/p/gama-platform/).
 
+## Contenu du dossier
+
+Le dépot contient 4 dossier. La documentation est rassembler dans le dossier doc
+	.
+	├── doc
+	│   ├── oleronV1.html
+	│   └── snapshots
+	├── images
+	├── includes
+	│   ├── batiindiferentie.dbf
+	│   ├── batiindiferentie.prj
+	│   ├── batiindiferentie.sbn
+	│   ├── batiindiferentie.sbx
+	│   ├── batiindiferentie.shp
+	│   ├── batiindiferentie.shp.xml
+	│   ├── ...
+	├── models
+	│   └── oleronV1.gaml
+	└── README.md
