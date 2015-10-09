@@ -6,7 +6,16 @@ Le projet LittoSim vise à construire un jeu sérieux qui se présente sous la f
 
 ## Matériel et methodes 
 
-Le modèle est developpé sous [GAMA plateforme](https://code.google.com/p/gama-platform/).
+Le modèle est developpé sous [GAMA plateforme](https://code.google.com/p/gama-platform/). Une fois que le téléchargement de GAMA effectué. Lancez Gama une première fois pour que le dossier `gama_workspace` se matérialise dans votre dossier utilisteur.
+
+Une fois que vous disposez du dossier `gama_workspace` vous pouvez cloner le repo github à l'intérieur : 
+
+```
+cd gama_workspace
+git clone git@github.com:LittoSim/LittoSim_model.git
+```
+
+Normalement le dossier doit maintenant apparaitre dans le dossier `User modèle` dans l'interface de GAMA.
 
 ## Contenu du dossier
 
