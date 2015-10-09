@@ -10,7 +10,7 @@ Le modèle est developpé sous [GAMA plateforme](https://code.google.com/p/gama-
 
 ## Contenu du dossier
 
-Le dépot contient 4 dossier. La documentation est rassembler dans le dossier doc
+Le dépot contient 4 dossier. La documentation est rassembler dans le dossier `doc`. Toutes les données nécessaire aux fonctionnement du modèle sont dans le dossier `includes`.
 
 ```
     .
