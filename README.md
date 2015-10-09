@@ -11,12 +11,14 @@ Le modèle est developpé sous [GAMA plateforme](https://code.google.com/p/gama-
 ## Contenu du dossier
 
 Le dépot contient 4 dossier. La documentation est rassembler dans le dossier doc
-	.
-	├── doc
-	│   ├── oleronV1.html
-	│   └── snapshots
-	├── images
-	├── includes
+
+```
+    .
+    ├── doc
+    │   ├── oleronV1.html
+    │   └── snapshots
+    ├── images
+    ├── includes
 	│   ├── batiindiferentie.dbf
 	│   ├── batiindiferentie.prj
 	│   ├── batiindiferentie.sbn
@@ -27,3 +29,4 @@ Le dépot contient 4 dossier. La documentation est rassembler dans le dossier do
 	├── models
 	│   └── oleronV1.gaml
 	└── README.md
+```
