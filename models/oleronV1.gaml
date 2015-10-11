@@ -1,13 +1,23 @@
 /**
  *  oleronV1
  *  Author: Brice, Etienne, Nico B et Nico M pour l'instant
- *  Description: 
+ * 
+ *  Description: Le projet LittoSim vise à construire un jeu sérieux 
+ *  qui se présente sous la forme d’une simulation intégrant à la fois 
+ *  un modèle de submersion marine, la modélisation de différents rôles 
+ *  d’acteurs agissant sur le territoire (collectivité territoriale, 
+ *  association de défense, élu, services de l’Etat...) et la possibilité 
+ *  de mettre en place différents scénarios de prévention des submersions
+ *  qui seront contrôlés par les utilisateurs de la simulation en 
+ *  fonction de leur rôle. 
  */
 
 model oleronV1
 
 global {
-	/** Insert the global definitions, variables and actions here */
+	/*
+	 * Chargements des données SIG
+	 */
 	//file emprise <- file("../includes/rectangleempriset.shp");
 		file emprise <- file("../includes/cadre.shp");
 		file communes_shape <- file("../includes/communes.shp");
@@ -16,7 +26,9 @@ global {
 		file measure_station <- file("../includes/water_height_station.shp");
 		file ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
 		file mnt_file <- file("../includes/MNT20m_cadre.asc") ;
+	/*Chargement des données de hauteur d'eau dans un variable de type matrice */
 		matrix<float> hauteur_eau <- matrix<float>(csv_file("../includes/Hauteur_Eau.csv",";"));
+	/* Definition de l'enveloppe SIG de travail */
 		geometry shape <- envelope(emprise);
 	
 		float water_height_mesure_step <- 10#mn;
@@ -24,17 +36,30 @@ global {
 	
 	init
 	{
+		/*Les actions contenu dans le bloque init sonr exécuter 
+		 * à l'initialisation du modele
+		 */
+		 
+		/*Definiton de la durée d'une itération simulé*/
 		step <- 10#mn;
+		/*Initialisationd de l'eau de départ */
 		time <- 11#h;
 		mesure_id <- compute_measure_id();
 		write "index " + mesure_id;
-		//do load_test_data;
+		
+		/*Creation des agents a partir des données SIG */
 		create ouvrage_defenses from:ouvrage_defenses2014lienss;
 		create commune from:communes_shape; 
 		create water_height_measure from:measure_station with:[point_id::int(read("id"))];
 		
 		
+		// On appel la fonction load_costline
 		do load_coastline;
+		
+		/*On travail à partir du trait de côte. L'espace est représenté par une grille, 
+		 * On demande à toutes les cellules qui ne sont pas de type = 2 et qui se 
+		 * superpose avec le polygone mer de de colorer en bleu et de prendre le type 1 
+		 */
 		ask cell where (each.cell_type !=2) overlapping sea_area   
 		{
 			write "coucou " + self;
@@ -42,14 +67,22 @@ global {
 			color <- #blue;
 		}
 		
-		
+		//On appel la fonction load_hauteur_eau
 		do load_hauteur_eau;
 	}
  	
+ 	/*La fonction load_costline va identifier les cellules de la grilles qui sont 
+ 	 * sous l'isoline 0 pour definir la zone d'ou vont partir les vagues 
+ 	 * Ces celulles sont definit comme étant de type 2. 
+ 	 * On charge ensuite les données de hauteurs d'eau dans les celllules pour
+ 	 * pouvoir être près à propager la vague. 
+ 	 */
  	action load_coastline
  	{
+ 		//variables tmp pour la ligne de cote
  		geometry tmp <- first(coastline_shape);
  		
+ 		//definition des attributes des celulles sous la ligne
  		ask (cell overlapping tmp)
  		{
  			cell_type <- 2;
@@ -61,6 +94,7 @@ global {
  				
  			}
  		}
+ 		
  		ask coastline_cell
  		{
  			
@@ -84,6 +118,11 @@ global {
 
  		}
  	}
+ 	
+ 	/*
+ 	 * le blocke load_hauteru_eau va peupler la matrice ligne par ligne 
+ 	 * à partir des données du csv charger en init{}
+ 	 */
 	action load_hauteur_eau
 	{
 		list<list<float>> col_read <- rows_list(hauteur_eau);
@@ -132,69 +171,95 @@ global {
 		return time div ( water_height_mesure_step );
 	}
 	
-	action load_test_data
-	{
-		emprise <- file("../includes/cadre.shp");
-		communes_shape <- file("../includes/communes.shp");
-		ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
-		mnt_file <- file("../includes/MNT20m_cadre.asc") ;
-		shape <- envelope(emprise);
-	}
+//	action load_test_data
+//	{
+//		emprise <- file("../includes/cadre.shp");
+//		communes_shape <- file("../includes/communes.shp");
+//		ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
+//		mnt_file <- file("../includes/MNT20m_cadre.asc") ;
+//		shape <- envelope(emprise);
+//	}
+//	
+//	action load_large_scale_data
+//	{
+//		emprise <- file("../includes/rectangleempriset.shp");
+//		communes_shape <- file("../includes/communes.shp");
+//		ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
+//		mnt_file <- file("../includes/DEM_20.asc") ;
+//		shape <- envelope(emprise);
+//		
+//	}
 	
-	action load_large_scale_data
-	{
-		emprise <- file("../includes/rectangleempriset.shp");
-		communes_shape <- file("../includes/communes.shp");
-		ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
-		mnt_file <- file("../includes/DEM_20.asc") ;
-		shape <- envelope(emprise);
-		
-	}
-	
-	
+	/*
+	 * Le blocke refelex qui va permettre la diffusion de la vague. La diffusion se fait
+	 * pour chaque cellules sur une dynamique de moore. La celulles centrale va évaluer 
+	 * les hauteurs d'eau qu'elle peut deverser dans ses voisine, puis partager sa propre
+	 * charge en eau dans celles-ci.
+	 */
 	reflex diffuse_water
 	{
 		list<cell> cell_to_diffuse <- cell where(each.cell_type = 2 or each.cell_type=0); 
 		ask cell_to_diffuse
 		{
+			//On fait une liste des celulles voisine de 1 et qui ne sont pas ni le large, ni la la ligne de cote.
 			list<cell> neighbours_cells <- self neighbours_at 1 where (each.cell_type = 2 or each.cell_type=0);
+			//On récupère la hauteur du MNT + de l'eau s'il y en a
 			list<float> neighbours_height <- neighbours_cells collect (each.water_height+ each.soil_height );
+			//MAJ de la hauteur total : hauteur du MNT et hauteur d'eau
 			float my_height <- water_height + soil_height;
 			
+			//on regarde le min dans mon environnement de moore
 			float neighbours_minimum <- min(neighbours_height);
 			
+			//La hauteur qui sera diffusé représentera le delta entre ma hauteur (sol+eau) et la hauteur (sol+eau)
+			//de ma plus petite voisine.
 			float height_to_diffuse <- my_height - neighbours_minimum;
 			
+			//s'il y a quelque chose à diffusé
 			if( height_to_diffuse > 0)
 			{
+				//fait la liste des cellules dont la hauteur est inf a moi même
 				list<cell> neighbours_below <- neighbours_cells where(each.water_height+ each.soil_height < my_height);
+				//calcule la différence de hauteur pour chaque cellules 
 				list<float> neighbours_below_diff <- neighbours_below collect( my_height - (each.water_height+ each.soil_height));
+				//sommes des différences
 				float sum_diff <- sum(neighbours_below_diff);
 				
+				//initialisation vide
 				cell current_cell <- nil;
 				int i <- 0; 
+				
+				//On boucle sur la liste des cellules autours de la cellule actuelle
 				loop current_cell over:neighbours_below
 				{
+					//On recupère la plus base des cellules
 					float min_diffuse <- min([height_to_diffuse,water_height]);
+					//On recupère la différence de hauteur minimal sur la celluls voisine i qu'on divise par la somme des différence   
 					current_cell.temp_received <- current_cell.temp_received + (min_diffuse * (neighbours_below_diff at i) / sum_diff);
+					//on ajouter au la variable temp_received la contribution de la cellule i
 					temp_received <- temp_received - min_diffuse;
+					//on incremente à la cellules d'après
 					i <- i + 1;
 				}
 			}
 		}
 		ask cell_to_diffuse 
 		{
+			//en envoie la vague préparer dans le block précédent
 			water_height <- water_height + temp_received;
+			//on remet à 0 temp_received
 			temp_received <- 0.0;
 		}
-		
-		
-		
-		
 		
 	}
 
 }
+
+/*
+ * ***********************************************************************************************
+ *                        ZONE de dexcription des species
+ *  **********************************************************************************************
+ */
 
 grid cell file: mnt_file schedules:[]{
 		int cell_type <- 0 ; // 0 -> terre, 1 -> mer, 2 -> front de mer
