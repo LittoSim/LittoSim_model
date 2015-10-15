@@ -12,10 +12,20 @@ global
 	file communes_shape <- file("../../includes/communes.shp");
 	file communes_UnAm_shape <- file("../../includes/le_chateau/chatok.shp");
 	string UNAM_ACTIVE_COMMAND_GROUP <- "UnAm";
-	string SLOAP_ACTIVE_COMMAND_GROUP <- "sloap";
+	string DYKE_ACTIVE_COMMAND_GROUP <- "sloap";
 	geometry shape <- envelope(emprise);
-	string active_display <- ""; //UNAM_ACTIVE_COMMAND_GROUP;
+	string active_display <- UNAM_ACTIVE_COMMAND_GROUP;
 	int current_action <- -1;
+	
+	int ACTION_REPAIR_DYKE <- 5;
+	int ACTION_CREATE_DYKE <- 6;
+	int ACTION_DESTROY_DYKE <- 7;
+
+	int ACTION_MODIFY_LAND_COVER_AU <- 1;
+	int ACTION_MODIFY_LAND_COVER_A <- 2;
+	int ACTION_MODIFY_LAND_COVER_U <- 3;
+	int ACTION_MODIFY_LAND_COVER_N <- 4;
+	
 	
 	init
 	{
@@ -61,7 +71,7 @@ global
 		}
 		create information_agent number:1
 		{
-			display_command_group <- SLOAP_ACTIVE_COMMAND_GROUP;
+			display_command_group <- DYKE_ACTIVE_COMMAND_GROUP;
 			
 		}
 	}
@@ -75,7 +85,7 @@ global
 		create buttons number: 1
 		{
 			color <- # brown;
-			command <- 2;
+			command <- ACTION_MODIFY_LAND_COVER_A;
 			label <- "Agriculture";
 			shape <- square(button_size);
 			display_name <- UNAM_ACTIVE_COMMAND_GROUP;
@@ -86,7 +96,7 @@ global
 		create buttons number: 1
 		{
 			color <- # orange;
-			command <- 1;
+			command <- ACTION_MODIFY_LAND_COVER_AU;
 			label <- "Urbanisation";
 			shape <- square(button_size);
 			display_name <- UNAM_ACTIVE_COMMAND_GROUP;
@@ -97,7 +107,7 @@ global
 		create buttons number: 1
 		{
 			color <- # green;
-			command <- 4;
+			command <- ACTION_MODIFY_LAND_COVER_N;
 			label <- "Naturelle";
 			shape <- square(button_size);
 			display_name <- UNAM_ACTIVE_COMMAND_GROUP;
@@ -109,10 +119,10 @@ global
 		create buttons number: 1
 		{
 			color <- # brown;
-			command <- 5;
+			command <- ACTION_CREATE_DYKE;
 			label <- "Construire";
 			shape <- square(button_size);
-			display_name <- SLOAP_ACTIVE_COMMAND_GROUP;
+			display_name <- DYKE_ACTIVE_COMMAND_GROUP;
 			location <- { start_x, world.shape.width / 2 - button_size / 2 };
 			text_location <- { shape.location.x - shape.width / 4, shape.location.y };
 		}
@@ -120,10 +130,10 @@ global
 		create buttons number: 1
 		{
 			color <- # orange;
-			command <- 6;
+			command <- ACTION_REPAIR_DYKE;
 			label <- "Reparer";
 			shape <- square(button_size);
-			display_name <- SLOAP_ACTIVE_COMMAND_GROUP;
+			display_name <- DYKE_ACTIVE_COMMAND_GROUP;
 			location <- { start_x + world.shape.width / 3, world.shape.width / 2 - button_size / 2 };
 			text_location <- { shape.location.x - shape.width / 4, shape.location.y };
 		}
@@ -131,10 +141,10 @@ global
 		create buttons number: 1
 		{
 			color <- # green;
-			command <- 7;
-			label <- "Démentler";
+			command <- ACTION_DESTROY_DYKE;
+			label <- "Démenteler";
 			shape <- square(button_size);
-			display_name <- SLOAP_ACTIVE_COMMAND_GROUP;
+			display_name <- DYKE_ACTIVE_COMMAND_GROUP;
 			location <- { start_x + 2 * world.shape.width / 3, world.shape.width / 2 - button_size / 2 };
 			text_location <- { shape.location.x - shape.width / 4, shape.location.y };
 		}
@@ -142,17 +152,16 @@ global
 	}
 
 
-	action change_sloap (point loc, list selected_agents)
+	action change_dyke (point loc, list selected_agents)
 	{
-		if(active_display != SLOAP_ACTIVE_COMMAND_GROUP)
+		if(active_display != DYKE_ACTIVE_COMMAND_GROUP)
 		{
-			active_display <- SLOAP_ACTIVE_COMMAND_GROUP;
+			active_display <- DYKE_ACTIVE_COMMAND_GROUP;
 			world.current_action <- -1;
 		}
 		do clear_information_agents;
-		
-		
 	}
+
 
 	action change_plu (point loc, list selected_agents)
 	{
@@ -198,6 +207,19 @@ species action_done
 	int command <- -1;
 	string label <- "no name";
 	float cost <- 0;
+	action apply;
+}
+
+species action_Dyke parent:action_done
+{
+	action apply
+	{
+		//creer une digue
+	}
+}
+species action_land_cover parent:action_done
+{
+	
 }
 
 species information_agent
@@ -218,9 +240,9 @@ species information_agent
 			draw world.shape color:°gray at: world.shape.location ;
 		}
 	}
-	aspect base_SLOAP
+	aspect base_DYKE
 	{
-		if(length(label) != 0  and display_command_group =  SLOAP_ACTIVE_COMMAND_GROUP)
+		if(length(label) != 0  and display_command_group =  DYKE_ACTIVE_COMMAND_GROUP)
 		{
 			draw string(label) font: "times" size: shape.width / 10 color: °white at:{ shape.width / 6, world.shape.location.y};
 			draw world.shape color:°gray at: world.shape.location ;
@@ -327,7 +349,6 @@ species cell_UnAm
 
 experiment lechateau type: gui
 {
-/** Insert here the definition of the input and output of the model */
 	output
 	{
 		display UnAm
@@ -338,13 +359,18 @@ experiment lechateau type: gui
 			event [mouse_down] action: change_plu;
 		}
 		
-		display Sloap
+		display "Dyke managment"
 		{
 			species commune aspect: base;
-			species information_agent aspect:base_SLOAP transparency: 0.5;
-			event [mouse_down] action: change_sloap;
+			species information_agent aspect:base_DYKE transparency: 0.5;
+			event [mouse_down] action: change_dyke;
 		}
 		
+		display Basket
+		{
+
+
+		}
 		
 		display commands
 		{
