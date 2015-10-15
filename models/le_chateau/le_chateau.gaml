@@ -10,12 +10,13 @@ global
 {
 	file emprise <- file("../../includes/cadre.shp");
 	file communes_shape <- file("../../includes/communes.shp");
-	file communes_UnAm_shape <- file("../../includes/le_chateau/chatok.shp");
+	file communes_UnAm_shape <- file("../../includes/le_chateau/chatok.shp");	
 	string UNAM_ACTIVE_COMMAND_GROUP <- "UnAm";
 	string DYKE_ACTIVE_COMMAND_GROUP <- "sloap";
 	geometry shape <- envelope(emprise);
 	string active_display <- UNAM_ACTIVE_COMMAND_GROUP;
 	int current_action <- -1;
+	
 	
 	int ACTION_REPAIR_DYKE <- 5;
 	int ACTION_CREATE_DYKE <- 6;
@@ -248,7 +249,6 @@ species information_agent
 			draw world.shape color:°gray at: world.shape.location ;
 		}
 	}
-	
 }
 
 species buttons
@@ -260,6 +260,7 @@ species buttons
 	bool is_selected <- false;
 	geometry shape <- world.shape;
 	point text_location <- { 0, world.shape.location.y };
+	file my_icon;
 	aspect base
 	{
 		if( display_name = active_display)
@@ -269,7 +270,21 @@ species buttons
 			
 		}
 	}
+}
 
+species agri_button parent: buttons
+{
+	file my_icon <- file("../../includes/icones/agriculture.png");
+}
+
+species nature_icon parent: buttons
+{
+	file my_icon <- file("../../includes/icones/tree_nature.png");
+}
+
+species urban_icon parent: buttons
+{
+	file my_icon <- file("../../includes/icones/urban.png");
 }
 
 species commune
@@ -375,6 +390,8 @@ experiment lechateau type: gui
 		display commands
 		{
 			species buttons aspect: base transparency: 0.5;
+			species agri_button aspect: base ;
+			
 			event [mouse_down] action: button_click;
 			
 		}
