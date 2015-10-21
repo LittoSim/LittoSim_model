@@ -33,7 +33,10 @@ global {
 	
 		float water_height_mesure_step <- 10#mn;
 		int mesure_id <- compute_measure_id() update:compute_measure_id();	
-	
+		
+		/* NB-> varaiable test */
+		int tmp1Int <-0; 
+		int tmp2Int <-0; 
 	init
 	{
 		/*Les actions contenu dans le bloque init sonr exécuter 
@@ -42,7 +45,7 @@ global {
 		 
 		/*Definiton de la durée d'une itération simulé*/
 		step <- 10#mn;
-		/*Initialisationd de l'eau de départ */
+		/*Initialisation de l'eau de départ */
 		time <- 11#h;
 		mesure_id <- compute_measure_id();
 		write "index " + mesure_id;
@@ -198,11 +201,15 @@ global {
 	 */
 	reflex diffuse_water
 	{
-		list<cell> cell_to_diffuse <- cell where(each.cell_type = 2 or each.cell_type=0); 
+		ask cell
+		{//NB-> on remet à 0 temp_received
+			temp_received <- 0.0;}
+		list<cell> cell_to_diffuse <- cell where((each.cell_type = 2 or each.cell_type = 0) and each.water_height > 0); 
 		ask cell_to_diffuse
 		{
-			//On fait une liste des celulles voisine de 1 et qui ne sont pas ni le large, ni la la ligne de cote.
+			//On fait une liste des celulles voisine de 1 et qui ne sont pas ni le large, ni la ligne de cote.	
 			list<cell> neighbours_cells <- self neighbours_at 1 where (each.cell_type = 2 or each.cell_type=0);
+
 			//On récupère la hauteur du MNT + de l'eau s'il y en a
 			list<float> neighbours_height <- neighbours_cells collect (each.water_height+ each.soil_height );
 			//MAJ de la hauteur total : hauteur du MNT et hauteur d'eau
@@ -214,54 +221,69 @@ global {
 			//La hauteur qui sera diffusé représentera le delta entre ma hauteur (sol+eau) et la hauteur (sol+eau)
 			//de ma plus petite voisine.
 			float height_to_diffuse <- my_height - neighbours_minimum;
-			
-			//s'il y a quelque chose à diffusé
+			/* NB-> cptage cells */
+			if( height_to_diffuse <= 0)
+			{tmp1Int<- tmp1Int + 1;} 
+			//s'il y a quelque chose à diffuser
 			if( height_to_diffuse > 0)
-			{
+			{tmp2Int<- tmp2Int + 1;
+			/*NB-> */color <- #green;
 				//fait la liste des cellules dont la hauteur est inf a moi même
 				list<cell> neighbours_below <- neighbours_cells where(each.water_height+ each.soil_height < my_height);
 				//calcule la différence de hauteur pour chaque cellules 
 				list<float> neighbours_below_diff <- neighbours_below collect( my_height - (each.water_height+ each.soil_height));
 				//sommes des différences
+				/*NB-> suivi calcul*/ // write "neighbours_below_diff : " + neighbours_below_diff;
 				float sum_diff <- sum(neighbours_below_diff);
+				/*NB-> suivi calcul*/ //write "sum_diff : " + sum_diff;
 				
 				//initialisation vide
 				cell current_cell <- nil;
 				int i <- 0; 
-				
+				//On recupère la plus base des cellules
+				float min_diffuse <- min([height_to_diffuse,water_height]);
+				/*NB-> suivi calcul*/
+			//	write "min_diffuse : " + min_diffuse;
 				//On boucle sur la liste des cellules autours de la cellule actuelle
 				loop current_cell over:neighbours_below
 				{
-					//On recupère la plus base des cellules
-					float min_diffuse <- min([height_to_diffuse,water_height]);
 					//On recupère la différence de hauteur minimal sur la celluls voisine i qu'on divise par la somme des différence   
-					current_cell.temp_received <- current_cell.temp_received + (min_diffuse * (neighbours_below_diff at i) / sum_diff);
+					// NB-> Débogage Nico
+					float height_diffused <- (min_diffuse * (neighbours_below_diff at i) / sum_diff);
+					/*NB-> suivi calcul*/  // write "height_diffused-" + i + " : " + height_diffused;
+					current_cell.temp_received <- current_cell.temp_received + height_diffused;
 					//on ajouter au la variable temp_received la contribution de la cellule i
-					temp_received <- temp_received - min_diffuse;
+					temp_received <- temp_received - height_diffused;
 					//on incremente à la cellules d'après
 					i <- i + 1;
 				}
 			}
 		}
-		ask cell_to_diffuse 
+		ask cell // NB>on remet à jour sur toutes les cells. on puorrra optimiser plus tard
 		{
 			//en envoie la vague préparer dans le block précédent
 			water_height <- water_height + temp_received;
 			//on remet à 0 temp_received
-			temp_received <- 0.0;
+			/*NB-> placé en haut de la méthode pour pouvoir suivre les étapes de calcul
+			temp_received <- 0.0;*/
 		}
-		
+		/* print le nb de cellule qui ne diffuse car il n'y a pas de voisins plus bas */
+		write "nb cells qui diffusent pas : " + tmp1Int;
+		tmp1Int <- 0;
+		write "nb cells qui diffusent  : " + tmp2Int;
+		tmp2Int <- 0;
 	}
 
 }
 
 /*
  * ***********************************************************************************************
- *                        ZONE de dexcription des species
+ *                        ZONE de description des species
  *  **********************************************************************************************
  */
 
-grid cell file: mnt_file schedules:[]{
+grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
+
 		int cell_type <- 0 ; // 0 -> terre, 1 -> mer, 2 -> front de mer
 		float water_height <- 0;
 		float soil_height <- grid_value;
@@ -313,7 +335,7 @@ species commune
 	
 	aspect base
 	{
-		draw shape color:#blue;
+		draw shape color:#lightgrey;
 	}
 }
 
