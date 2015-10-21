@@ -164,8 +164,6 @@ global {
 		}
 		
 		//list<measure> tmp_mesure <- first(water_height_measure).measures;
-		
-		
 	}
 	
 	int compute_measure_id
@@ -273,7 +271,11 @@ global {
 		write "nb cells qui diffusent  : " + tmp2Int;
 		tmp2Int <- 0;
 	}
-
+	reflex update_cell_color {
+      ask cell {
+         do update_color;
+      }
+   }
 }
 
 /*
@@ -294,6 +296,13 @@ grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
 			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');
 		
 		}
+		
+	 action update_color { 
+         int val_water <- 0;
+         val_water <- max([0, min([255, int(255 * (1 - (water_height / 12.0)))])]) ;  
+         color <- rgb([val_water, val_water, 255]);
+         grid_value <- water_height + soil_height;
+      }
 	}
 
 species measure schedules:[]
@@ -367,7 +376,7 @@ experiment oleronV1 type: gui {
 		display carte_oleron
 		{
 			grid cell ;
-			species commune aspect:base;
+			//species commune aspect:base;
 			species ouvrage_defenses aspect:base;
 			species coastline_cell aspect:base;
 			
