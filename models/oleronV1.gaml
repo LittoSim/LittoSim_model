@@ -65,7 +65,7 @@ global {
 		 */
 		ask cell where (each.cell_type !=2) overlapping sea_area   
 		{
-			write "coucou " + self;
+		//	write "coucou " + self;
 			cell_type <- 1;
 			color <- #blue;
 		}
@@ -160,10 +160,12 @@ global {
 		{
 			measures <- measures sort_by (each.date);
 			current_height <-( measures at mesure_id).height;
-			write "pan " + point_id + " "+time + " "+ current_height;
+			//write "pan " + point_id + " "+time + " "+ current_height;
 		}
 		
 		//list<measure> tmp_mesure <- first(water_height_measure).measures;
+		
+		
 	}
 	
 	int compute_measure_id
@@ -225,7 +227,7 @@ global {
 			//s'il y a quelque chose à diffuser
 			if( height_to_diffuse > 0)
 			{tmp2Int<- tmp2Int + 1;
-			/*NB-> */color <- #green;
+			//NB-> color <- #green;
 				//fait la liste des cellules dont la hauteur est inf a moi même
 				list<cell> neighbours_below <- neighbours_cells where(each.water_height+ each.soil_height < my_height);
 				//calcule la différence de hauteur pour chaque cellules 
@@ -247,7 +249,7 @@ global {
 				{
 					//On recupère la différence de hauteur minimal sur la celluls voisine i qu'on divise par la somme des différence   
 					// NB-> Débogage Nico
-					float height_diffused <- (min_diffuse * (neighbours_below_diff at i) / sum_diff);
+					float height_diffused <- (min_diffuse * (neighbours_below_diff at i) / sum_diff) with_precision 3;
 					/*NB-> suivi calcul*/  // write "height_diffused-" + i + " : " + height_diffused;
 					current_cell.temp_received <- current_cell.temp_received + height_diffused;
 					//on ajouter au la variable temp_received la contribution de la cellule i
@@ -260,7 +262,9 @@ global {
 		ask cell // NB>on remet à jour sur toutes les cells. on puorrra optimiser plus tard
 		{
 			//en envoie la vague préparer dans le block précédent
-			water_height <- water_height + temp_received;
+			water_height <- (water_height + temp_received) with_precision 3; //NB-> on est obligé de refaire un arrondi sinon on se retourve avec des valeurs bizarre comme -0.001000000033
+			 //NB-> on s'assure pour les cells de terres que water height ne va pas etre -0.001
+			if (cell_type = 0 and (water_height = -0.001 or water_height = -0.002)) {water_height <- 0;}
 			//on remet à 0 temp_received
 			/*NB-> placé en haut de la méthode pour pouvoir suivre les étapes de calcul
 			temp_received <- 0.0;*/
@@ -271,11 +275,7 @@ global {
 		write "nb cells qui diffusent  : " + tmp2Int;
 		tmp2Int <- 0;
 	}
-	reflex update_cell_color {
-      ask cell {
-         do update_color;
-      }
-   }
+
 }
 
 /*
@@ -287,7 +287,7 @@ global {
 grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
 
 		int cell_type <- 0 ; // 0 -> terre, 1 -> mer, 2 -> front de mer
-		float water_height <- 0;
+		float water_height  <- 0;
 		float soil_height <- grid_value;
 		
 		float temp_received;
@@ -296,13 +296,27 @@ grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
 			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');
 		
 		}
-		
-	 action update_color { 
-         int val_water <- 0;
-         val_water <- max([0, min([255, int(255 * (1 - (water_height / 12.0)))])]) ;  
-         color <- rgb([val_water, val_water, 255]);
-         grid_value <- water_height + soil_height;
-      }
+		aspect niveau_eau
+		{
+			if water_height < 0
+			 {color<-#red;}
+			if water_height >= 0 and water_height <= 0.01
+			 {color<-#white;}
+			if water_height > 0.01
+			 { color<- rgb( 0, 0 , 255 - ( ((water_height  / 8) with_precision 1) * 255)) /* hsb(0.66,1.0,((water_height +1) / 8)) */;}
+			 //
+		}
+		aspect elevation_eau
+		{	float my_height <- water_height + soil_height;
+			if cell_type = 1 
+				{color<-#white;}
+			 else{
+			if water_height = 0
+			{ color<- rgb( 0, 255 - ( ((my_height  / 10) with_precision 1) * 255) , 0) ;}
+			else
+			 { color<- rgb( 0, 0 , 255 - ( ((my_height  / 10) with_precision 1) * 255)) /* hsb(0.66,1.0,((water_height +1) / 8)) */;}
+			 //
+		}}
 	}
 
 species measure schedules:[]
@@ -327,7 +341,7 @@ species land_cover
 {
 	aspect base
 	{
-		draw shape color:#yellow;
+		draw shape /*color:#yellow*/;
 	}
 }
 
@@ -335,7 +349,7 @@ species ouvrage_defenses
 {
 	aspect base
 	{
-		draw shape color:#yellow;
+		draw shape /*color:#yellow*/;
 	}
 }
 
@@ -362,7 +376,7 @@ species coastline_cell
 	}
 	float current_water_height
 	{
-		return sum(mesure_station_rate collect(each.key.current_height * each.value));	
+		return ((sum(mesure_station_rate collect(each.key.current_height * each.value))) with_precision 3);	
 	}
 	aspect base
 	{
@@ -373,12 +387,13 @@ species coastline_cell
 experiment oleronV1 type: gui {
 	output {
 		
-		display carte_oleron
+		display carte_oleron //autosave : true
 		{
 			grid cell ;
+			species cell aspect:elevation_eau;
 			//species commune aspect:base;
 			species ouvrage_defenses aspect:base;
-			species coastline_cell aspect:base;
+		//	species coastline_cell aspect:base;
 			
 		}
 		
