@@ -19,13 +19,13 @@ global {
 	 * Chargements des données SIG
 	 */
 	//file emprise <- file("../includes/rectangleempriset.shp");
-		file emprise <- file("../includes/cadre.shp");
+		file emprise <- file("../includes/datafred/cadrefred.shp");
 		file communes_shape <- file("../includes/communes.shp");
-		file sea_area <- file("../includes/la_mer_cadree.shp");
-		file coastline_shape <- file("../includes/contour.shp");
+		file sea_area <- file("../includes/datafred/lamercadreefred.shp");
+		file coastline_shape <- file("../includes/datafred/contourfred.shp");
 		file measure_station <- file("../includes/water_height_station.shp");
 		file ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
-		file mnt_file <- file("../includes/MNT20m_cadre.asc") ;
+		file mnt_file <- file("../includes/datafred/mntfred.asc") ;
 	/*Chargement des données de hauteur d'eau dans un variable de type matrice */
 		matrix<float> hauteur_eau <- matrix<float>(csv_file("../includes/Hauteur_Eau.csv",";"));
 	/* Definition de l'enveloppe SIG de travail */
@@ -201,7 +201,8 @@ global {
 	 */
 	reflex diffuse_water
 	{
-		ask cell
+	 loop times: 15   /// this is parameter beta
+	   {ask cell
 		{//NB-> on remet à 0 temp_received
 			temp_received <- 0.0;}
 		list<cell> cell_to_diffuse <- cell where((each.cell_type = 2 or each.cell_type = 0) and each.water_height > 0); 
@@ -240,7 +241,7 @@ global {
 				//initialisation vide
 				cell current_cell <- nil;
 				int i <- 0; 
-				//On recupère la plus base des cellules
+				//On recupère la plus basse des cellules
 				float min_diffuse <- min([height_to_diffuse,water_height]);
 				/*NB-> suivi calcul*/
 			//	write "min_diffuse : " + min_diffuse;
@@ -249,7 +250,8 @@ global {
 				{
 					//On recupère la différence de hauteur minimal sur la celluls voisine i qu'on divise par la somme des différence   
 					// NB-> Débogage Nico
-					float height_diffused <- (min_diffuse * (neighbours_below_diff at i) / sum_diff) with_precision 3;
+					// NB-BA -> Paramètre Alpha : multiplicateur de min_diffuse
+					float height_diffused <- (0.75 * min_diffuse * (neighbours_below_diff at i) / sum_diff) with_precision 3;
 					/*NB-> suivi calcul*/  // write "height_diffused-" + i + " : " + height_diffused;
 					current_cell.temp_received <- current_cell.temp_received + height_diffused;
 					//on ajouter au la variable temp_received la contribution de la cellule i
@@ -258,8 +260,8 @@ global {
 					i <- i + 1;
 				}
 			}
-		}
-		ask cell // NB>on remet à jour sur toutes les cells. on puorrra optimiser plus tard
+		}}
+		ask cell // NB>on remet à jour sur toutes les cells. on pourra optimiser plus tard
 		{
 			//en envoie la vague préparer dans le block précédent
 			water_height <- (water_height + temp_received) with_precision 3; //NB-> on est obligé de refaire un arrondi sinon on se retourve avec des valeurs bizarre comme -0.001000000033
@@ -312,7 +314,7 @@ grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
 				{color<-#white;}
 			 else{
 			if water_height = 0
-			{ color<- rgb( 0, 255 - ( ((my_height  / 10) with_precision 1) * 255) , 0) ;}
+			{ color<- rgb( 255 - ( ((my_height  / 10) with_precision 1) * 255), 180 - ( ((my_height  / 10) with_precision 1) * 255) , 0) ;}
 			else
 			 { color<- rgb( 0, 0 , 255 - ( ((my_height  / 10) with_precision 1) * 255)) /* hsb(0.66,1.0,((water_height +1) / 8)) */;}
 			 //
