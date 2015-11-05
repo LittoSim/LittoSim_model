@@ -212,7 +212,7 @@ global {
 	reflex diffuse_water
 	{
 	 loop times: 15   /// this is parameter beta
-	   {ask cell
+	   {ask cell 
 		{//NB-> on remet à 0 temp_received
 			temp_received <- 0.0;}
 		list<cell> cell_to_diffuse <- cell where((each.cell_type = 2 or each.cell_type = 0) and each.water_height > 0); 
