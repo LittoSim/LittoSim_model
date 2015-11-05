@@ -14,7 +14,7 @@
    viewBox="0 0 627.46045 453.03367"
    id="svg4607"
    version="1.1"
-   inkscape:version="0.91 r13725"
+   inkscape:version="0.48.4 r9939"
    sodipodi:docname="digue_suppression.svg">
   <defs
      id="defs4609" />
@@ -25,9 +25,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.35"
-     inkscape:cx="911.58739"
-     inkscape:cy="220.80255"
+     inkscape:zoom="0.49497475"
+     inkscape:cx="381.83102"
+     inkscape:cy="253.20416"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -35,10 +35,10 @@
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0"
-     inkscape:window-width="1366"
-     inkscape:window-height="706"
-     inkscape:window-x="0"
-     inkscape:window-y="25"
+     inkscape:window-width="1920"
+     inkscape:window-height="1018"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
      inkscape:window-maximized="1" />
   <metadata
      id="metadata4612">
@@ -48,7 +48,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -58,7 +58,7 @@
      id="layer1"
      transform="translate(1025.1588,-300.13108)">
     <g
-       transform="matrix(6.3450983,0,0,6.3450983,-1025.2413,216.52172)"
+       transform="matrix(6.3450983,0,0,6.3450983,-1020.1167,215.89572)"
        id="g3561">
       <path
          style="fill:#000000"
@@ -78,20 +78,20 @@
       <polygon
          style="fill:#000000"
          id="polygon3510"
-         points="23.568,84.366 23.568,77.273 23.568,76.802 23.568,69.708 0.013,69.708 0.013,76.802 0.013,77.273 0.013,84.366 " />
+         points="23.568,76.802 23.568,69.708 0.013,69.708 0.013,76.802 0.013,77.273 0.013,84.366 23.568,84.366 23.568,77.273 " />
       <polygon
          style="fill:#000000"
          id="polygon3512"
-         points="23.568,65.854 23.568,58.76 23.568,58.288 23.568,51.195 0.013,51.195 0.013,58.288 0.013,58.76 0.013,65.854 " />
+         points="23.568,58.288 23.568,51.195 0.013,51.195 0.013,58.288 0.013,58.76 0.013,65.854 23.568,65.854 23.568,58.76 " />
       <polygon
          style="fill:#000000"
          id="polygon3514"
-         points="23.568,47.339 23.568,40.248 23.568,39.774 23.568,32.682 0.013,32.682 0.013,39.774 0.013,40.248 0.013,47.339 " />
+         points="23.568,39.774 23.568,32.682 0.013,32.682 0.013,39.774 0.013,40.248 0.013,47.339 23.568,47.339 23.568,40.248 " />
     </g>
     <polygon
-       transform="matrix(1.6198079,1.6198079,-1.6198079,1.6198079,-507.73254,261.18398)"
-       points="95,31.435 68.565,31.435 68.565,5 31.435,5 31.435,31.435 5,31.435 5,68.565 31.435,68.565 31.435,95 68.565,95 68.565,68.565 95,68.565 "
+       transform="matrix(2.3803515,1.9533421,-2.3803515,1.9533421,-706.30397,330.68771)"
+       points="31.435,5 31.435,31.435 5,31.435 5,68.565 31.435,68.565 31.435,95 68.565,95 68.565,68.565 95,68.565 95,31.435 68.565,31.435 68.565,5 "
        id="polygon5308"
-       style="fill:#d80000;fill-opacity:1;stroke:#000000;stroke-width:4.36537409;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+       style="fill:#d80000;fill-opacity:1;stroke:#000000;stroke-width:4.36537409;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
 </svg>
