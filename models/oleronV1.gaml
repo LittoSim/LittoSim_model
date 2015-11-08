@@ -14,7 +14,7 @@
 
 model oleronV1
 
-global {
+global  {
 	
 		/*
 	 * sauvegarde des données. j'ai rajouté un reflex plus bas - Fred
@@ -23,19 +23,44 @@ global {
 	bool sauver_shp <- true ; // si vrai on sauvegarde le resultat dans un shapefile
 	string resultats <- "resultats.shp"; //	on sauvegarde les résultats dans ce fichier (attention, cela ecrase a chaque fois le resultat precedent)
 	int cycle_sauver <- 100; //cycle à laquelle il faut sauver les resultats
-	
+	string timestamp <- "0";
 	
 	/*
 	 * Chargements des données SIG
 	 */
-	//file emprise <- file("../includes/rectangleempriset.shp");
-		file emprise <- file("../includes/datafred/cadrefred.shp");
 		file communes_shape <- file("../includes/communes.shp");
-		file sea_area <- file("../includes/datafred/lamercadreefred.shp");
-		file coastline_shape <- file("../includes/datafred/contourfred.shp");
 		file measure_station <- file("../includes/water_height_station.shp");
 		file ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
-		file mnt_file <- file("../includes/datafred/MNTfred.asc") ;
+		// OPTION 1 Fichiers SIG Grande Carte
+		/*file emprise <- file("../includes/datafred/cadrefred.shp");
+		file sea_area <- file("../includes/datafred/lamercadreefred.shp");
+		file coastline_shape <- file("../includes/datafred/contourfred.shp");
+		file mnt_file <- file("../includes/datafred/MNTfred.asc") ;	
+		string  xllcorner <-"364927,14666668";
+		string yllcorner <- "6531972,5655556";		*/
+/*
+ncols         631
+nrows         906
+xllcorner     364927,14666668
+yllcorner     6531972,5655556
+cellsize      20
+NODATA_value  -9999
+*/
+		// OPTION 2 Fichiers SIG Petite Carte
+		file emprise <- file("../includes/zone_restreinte/cadre.shp");
+		file sea_area <- file("../includes/zone_restreinte/lamercadree.shp");
+		file coastline_shape <- file("../includes/zone_restreinte/contour.shp");
+		file mnt_file <- file("../includes/zone_restreinte/mnt.asc") ;
+/*ncols        250
+nrows        175
+xllcorner    368987.146666680000
+yllcorner    6545012.565555600400
+cellsize     20.000000000000
+NODATA_value  -9999 */
+		int nb_cols <- 250;
+		int nb_rows <- 175;
+		string  xllcorner <-'368987.146666680000';
+		string yllcorner <- '6545012.565555600400';
 	/*Chargement des données de hauteur d'eau dans un variable de type matrice */
 		matrix<float> hauteur_eau <- matrix<float>(csv_file("../includes/Hauteur_Eau.csv",";"));
 	/* Definition de l'enveloppe SIG de travail */
@@ -49,9 +74,7 @@ global {
 		int tmp2Int <-0; 
 	init
 	{
-		/*Les actions contenu dans le bloque init sonr exécuter 
-		 * à l'initialisation du modele
-		 */
+		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		 
 		/*Definiton de la durée d'une itération simulé*/
 		step <- 10#mn;
@@ -82,6 +105,8 @@ global {
 		
 		//On appel la fonction load_hauteur_eau
 		do load_hauteur_eau;
+		
+//		do readLisflood_file("buscot.dem.ascii"); A SUPPRIMER
 	}
  	
  	/*La fonction load_costline va identifier les cellules de la grilles qui sont 
@@ -209,9 +234,9 @@ global {
 	 * les hauteurs d'eau qu'elle peut deverser dans ses voisine, puis partager sa propre
 	 * charge en eau dans celles-ci.
 	 */
-	reflex diffuse_water
+	reflex diffuse_water when: false
 	{
-	 loop times: 15   /// this is parameter beta
+	 loop times: 1   /// this is parameter beta
 	   {ask cell 
 		{//NB-> on remet à 0 temp_received
 			temp_received <- 0.0;}
@@ -290,10 +315,69 @@ global {
 
 /* pour la sauvegarde des données en format shape */
 
-reflex sauvegarder_resultat when: sauver_shp and cycle = cycle_sauver {											 
+reflex sauvegarder_resultat when: sauver_shp and cycle = cycle_sauver
+	{										 
 		save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
 	}
+	
+	
+action runLisflood
+	{
+//       save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
+		timestamp <- machine_time ;
+		do save_mnt;
+		save ("lisflood -dir output_"+ timestamp +" buscot.par") rewrite: true  to: "../includes/lisflood-fp/lisflood.bat" type: "text"  ;  
+		map values <- user_input(["Flood simulation "+timestamp+" is ready.
+Launch '../includes/lisflood-fp/lisflood.bat' to generate outputs" :: 100]);
+ 		}
+       
 
+action save_mnt {
+		string filename <- "../includes/lisflood-fp/mnt_"+timestamp+".dem.ascii";
+		save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;
+		//save "ncols        " + nb_cols	+ "\nnrows        " + nb_rows + "\nxllcorner    " + xllcorner + "\nxllcorner    " + yllcorner + "\ncellsize     " + "20.000000000000" + "\nNODATA_value  " + "-9999" to:filename;
+		string text <- "";
+		loop j from: 0 to: nb_rows- 1 {
+			loop i from: 0 to: nb_cols - 1 {
+				text <- text + " "+ cell[i,j].soil_height;}
+			text <- text + "\n ";	
+			}
+		save text to:filename;
+		}  
+			     
+reflex readLisflood
+	{ if cycle = 1 {do runLisflood;}
+	  if cycle >= 5
+		{int compteurLisflood <- cycle - 5 ;
+		string nb <- compteurLisflood;
+		switch compteurLisflood {
+				match_between [0,9] {nb <- "000"+compteurLisflood;}
+				match_between [10,99] {nb <- "00"+compteurLisflood;}
+				match_between [100,999] {nb <- "0"+compteurLisflood;}
+				}
+		 point  origin <-  {10,20};  
+		 int ncols  <-76;
+		 int nrows <- 48;
+		 int i <- 0;
+		 int icol <- 1 ;
+		 int irow <- 1; 
+		 file my_file <- grid_file(("../includes/lisflood-fp/output_"+timestamp+"/res-"+ nb +".wd") /*+lisfloodOutputFilename */);
+		 if my_file.exists
+			{loop el over: my_file  {
+						i <- i +1;
+						if i > ncols {irow <- irow + 1; icol<- 1;i<-1;} else{icol<-icol+1;}
+	    		     	ask cell grid_at {(origin.x + icol),(origin.y + irow)} 
+	    		    		{	water_height <- el get "grid_value";
+	    		    		}
+	                }}
+	     else {loop times: (ncols * nrows) {
+	     				i <- i +1;
+						if i > ncols {irow <- irow + 1; icol<- 1;i<- 1;} else{icol<-icol+1;}
+	    		     	ask cell grid_at {(origin.x + icol),(origin.y + irow)} 
+	    		    		{water_height <- 0.0;}
+	                }}
+	   
+	}}
 
 }
 
@@ -306,7 +390,6 @@ reflex sauvegarder_resultat when: sauver_shp and cycle = cycle_sauver {
  */
 
 grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
-
 		int cell_type <- 0 ; // 0 -> terre, 1 -> mer, 2 -> front de mer
 		float water_height  <- 0;
 		float soil_height <- grid_value;
@@ -328,17 +411,17 @@ grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
 			 //
 		}
 		aspect elevation_eau
-		{if cell_type = 1 
-			{color<-#white;}
-		 else{
-			if water_height = 0			
-			{float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
-				color<- rgb( 255 - tmp, 180 - tmp , 0) ; }
-			else
-			 {float tmp <-  min([(water_height  / 5) * 255,200]);
-			 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
-			 }
-		}
+			{if cell_type = 1 
+				{color<-#white;}
+			 else{
+				if water_height = 0			
+				{float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
+					color<- rgb( 255 - tmp, 180 - tmp , 0) ; }
+				else
+				 {float tmp <-  min([(water_height  / 5) * 255,200]);
+				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
+				 }
+			}	
 	}
 
 species measure schedules:[]
@@ -380,7 +463,7 @@ species commune
 	
 	aspect base
 	{
-		draw shape color:#lightgrey;
+		draw shape color:#red;
 	}
 }
 
@@ -407,6 +490,18 @@ species coastline_cell
 }
 
 experiment oleronV1 type: gui {
+	output {
+		
+		display carte_oleron //autosave : true
+		{
+			grid cell ;
+			species cell aspect:elevation_eau;
+			//species commune aspect:base;
+			species ouvrage_defenses aspect:base;
+		//	species coastline_cell aspect:base;
+		}}}
+		
+experiment testlisFlood type: gui {
 	output {
 		
 		display carte_oleron //autosave : true
