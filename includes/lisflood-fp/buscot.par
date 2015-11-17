@@ -1,0 +1,30 @@
+# Classic Buscot reach test case
+# single channel kinematic
+#
+DEMfile         buscot.dem.ascii
+resroot         res
+dirroot         results
+sim_time        100000.0
+initial_tstep   1.0
+massint         100.0
+saveint         10000.0
+#checkpoint     0.00001
+overpass        100000.0
+fpfric          0.06
+#infiltration   0.000001
+#overpassfile   buscot.opts
+#manningfile    buscot.n.ascii
+riverfile       buscot.river
+bcifile         buscot.bci
+#bdyfile        buscot.bdy
+weirfile        buscot.weir
+#startfile      res.old
+#stagefile      buscot.stage
+elevoff
+#depthoff
+adaptoff
+#qoutput
+chainageoff
+
+
+

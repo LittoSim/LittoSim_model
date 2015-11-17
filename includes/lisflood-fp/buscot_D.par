@@ -1,0 +1,34 @@
+# Classic Buscot reach test case
+# single channel with floodplain
+# this run uses the diffusive river channel solver
+#
+# Mark Trigg 1/7/2008
+#
+DEMfile         buscot.dem.ascii
+resroot         res_D
+dirroot         results_D
+sim_time        100000.0
+initial_tstep   1.0
+massint         100.0
+saveint         10000.0
+#checkpoint     0.00001
+overpass        100000.0
+fpfric          0.06
+#infiltration   0.000001
+#overpassfile   buscot.opts
+#manningfile    buscot.n.ascii
+riverfile       buscot_D.river
+bcifile         buscot.bci
+#bdyfile        buscot.bdy
+weirfile        buscot.weir
+#startfile      res.old
+#stagefile      buscot.stage
+elevoff
+#depthoff
+diffusive
+adaptoff
+#qoutput
+chainageoff
+
+
+
