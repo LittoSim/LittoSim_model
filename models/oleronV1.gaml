@@ -15,29 +15,25 @@
 model oleronV1
 
 global  {
-	
-		/*
-	 * sauvegarde des données. j'ai rajouté un reflex plus bas - Fred
-	 */
-	
-	bool sauver_shp <- true ; // si vrai on sauvegarde le resultat dans un shapefile
+	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile
 	string resultats <- "resultats.shp"; //	on sauvegarde les résultats dans ce fichier (attention, cela ecrase a chaque fois le resultat precedent)
-	int cycle_sauver <- 100; //cycle à laquelle il faut sauver les resultats
-	string timestamp <- "0";
+	int cycle_sauver <- 100; //cycle à laquelle les resultats sont sauvegardés au format shp
+	int cycle_launchLisflood <- 5; // cycle_launchLisflood specifies the cycle at which lisflood is launched
+	/* lisfloodReadingStep is used to indicate to which step of lisflood results, the current cycle corresponds */
+	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle 
+	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	
 	/*
 	 * Chargements des données SIG
 	 */
-		file communes_shape <- file("../includes/communes.shp");
-		file measure_station <- file("../includes/water_height_station.shp");
-		file ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
+		file communes_shape <- file("../includes/zone_etude/communes.shp");
+		file ouvrage_defenses2014lienss <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
-		/*file emprise <- file("../includes/datafred/cadrefred.shp");
-		file sea_area <- file("../includes/datafred/lamercadreefred.shp");
-		file coastline_shape <- file("../includes/datafred/contourfred.shp");
-		file mnt_file <- file("../includes/datafred/MNTfred.asc") ;	
-		string  xllcorner <-"364927,14666668";
-		string yllcorner <- "6531972,5655556";		*/
+		file emprise <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp");
+		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;	
+		int nb_cols <- 631;
+		int nb_rows <- 906;
+
 /*
 ncols         631
 nrows         906
@@ -47,295 +43,70 @@ cellsize      20
 NODATA_value  -9999
 */
 		// OPTION 2 Fichiers SIG Petite Carte
-		file emprise <- file("../includes/zone_restreinte/cadre.shp");
-		file sea_area <- file("../includes/zone_restreinte/lamercadree.shp");
+		/*file emprise <- file("../includes/zone_restreinte/cadre.shp");
 		file coastline_shape <- file("../includes/zone_restreinte/contour.shp");
-		file mnt_file <- file("../includes/zone_restreinte/mnt.asc") ;
-/*ncols        250
+		file dem_file <- file("../includes/zone_restreinte/mnt.asc") ;
+		int nb_cols <- 250;
+		int nb_rows <- 175;	*/
+/*
+ * ncols        250
 nrows        175
 xllcorner    368987.146666680000
 yllcorner    6545012.565555600400
 cellsize     20.000000000000
 NODATA_value  -9999 */
-		int nb_cols <- 250;
-		int nb_rows <- 175;
-		string  xllcorner <-'368987.146666680000';
-		string yllcorner <- '6545012.565555600400';
-	/*Chargement des données de hauteur d'eau dans un variable de type matrice */
-		matrix<float> hauteur_eau <- matrix<float>(csv_file("../includes/Hauteur_Eau.csv",";"));
+
+		
+
+
 	/* Definition de l'enveloppe SIG de travail */
 		geometry shape <- envelope(emprise);
 	
-		float water_height_mesure_step <- 10#mn;
-		int mesure_id <- compute_measure_id() update:compute_measure_id();	
-		
-		/* NB-> varaiable test */
-		int tmp1Int <-0; 
-		int tmp2Int <-0; 
+
+
 	init
 	{
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
-		 
-		/*Definiton de la durée d'une itération simulé*/
-		step <- 10#mn;
-		/*Initialisation de l'eau de départ */
-		time <- 11#h;
-		mesure_id <- compute_measure_id();
-		write "index " + mesure_id;
 		
 		/*Creation des agents a partir des données SIG */
 		create ouvrage_defenses from:ouvrage_defenses2014lienss;
 		create commune from:communes_shape; 
-		create water_height_measure from:measure_station with:[point_id::int(read("id"))];
-		
-		
-		// On appel la fonction load_costline
-		do load_coastline;
-		
-		/*On travail à partir du trait de côte. L'espace est représenté par une grille, 
-		 * On demande à toutes les cellules qui ne sont pas de type = 2 et qui se 
-		 * superpose avec le polygone mer de de colorer en bleu et de prendre le type 1 
-		 */
-		ask cell where (each.cell_type !=2) overlapping sea_area   
-		{
-		//	write "coucou " + self;
-			cell_type <- 1;
-			color <- #blue;
-		}
-		
-		//On appel la fonction load_hauteur_eau
-		do load_hauteur_eau;
-		
-//		do readLisflood_file("buscot.dem.ascii"); A SUPPRIMER
+	
 	}
  	
- 	/*La fonction load_costline va identifier les cellules de la grilles qui sont 
- 	 * sous l'isoline 0 pour definir la zone d'ou vont partir les vagues 
- 	 * Ces celulles sont definit comme étant de type 2. 
- 	 * On charge ensuite les données de hauteurs d'eau dans les celllules pour
- 	 * pouvoir être près à propager la vague. 
- 	 */
- 	action load_coastline
- 	{
- 		//variables tmp pour la ligne de cote
- 		geometry tmp <- first(coastline_shape);
- 		
- 		//definition des attributes des celulles sous la ligne
- 		ask (cell overlapping tmp)
- 		{
- 			cell_type <- 2;
- 			create coastline_cell number:1
- 			{
- 				my_cell <- myself;
- 				shape <- myself.shape;
- 				location <- myself.location;
- 				
- 			}
- 		}
- 		
- 		ask coastline_cell
- 		{
- 			
- 			list<water_height_measure> tmpList<- water_height_measure;
- 			list<float> distance_tmpList <- []; 
- 			water_height_measure found1<- nil;
- 			water_height_measure found2<- nil;
- 		//	int i <- 0;
- 			tmpList <- tmpList sort_by(each.location distance_to self);
-			found1 <- tmpList at 0;
-			found2 <- tmpList at 1;
-			float dfound1 <- found1 distance_to self;
-			float dfound2 <- found2 distance_to self;
-			
-			pair<water_height_measure,float> p1 <- found1::dfound1/(dfound1 + dfound2 ); // point de mesure associé à sa pondération
-			pair<water_height_measure,float> p2 <- found2::dfound2/(dfound1 + dfound2 );
-			
-			mesure_station_rate <- [p1,p2];
-			//put (found1 distance_to self) at:(tmpList at 0) to:distance_matrix
-			
-
- 		}
- 	}
- 	
- 	/*
- 	 * le blocke load_hauteru_eau va peupler la matrice ligne par ligne 
- 	 * à partir des données du csv charger en init{}
- 	 */
-	action load_hauteur_eau
-	{
-		list<list<float>> col_read <- rows_list(hauteur_eau);
-		
-		int nb_lines <- length(col_read);
-		int it <- 0;
-		list<float> current_line  <- nil;
-		create measure number:nb_lines returns:mesureList;
-
-		loop while:it<nb_lines
-		{
-			current_line <- col_read at it;
-			int day <-int( current_line at 0);
-			int hour <-int( current_line at 1);
-			int minute <-int( current_line at 2);
-			int id <-int( current_line at 3);
-			float water_height <-current_line at 4;
-			measure current_measure <- mesureList at it;
-			ask current_measure
-			{
-				date <- (day - 1) * °day + hour * °h + minute * °mn;
-				height <- water_height;
-			}
-			
-			ask water_height_measure where(each.point_id = id)
-			{
-				measures <- measures + current_measure;
-			} 
-			it <- it + 1;
-		}
-		ask water_height_measure
-		{
-			measures <- measures sort_by (each.date);
-			current_height <-( measures at mesure_id).height;
-			//write "pan " + point_id + " "+time + " "+ current_height;
-		}
-		
-		//list<measure> tmp_mesure <- first(water_height_measure).measures;
-		
-		
-	}
-	
-	int compute_measure_id
-	{
-		
-		return time div ( water_height_mesure_step );
-	}
-	
-//	action load_test_data
-//	{
-//		emprise <- file("../includes/cadre.shp");
-//		communes_shape <- file("../includes/communes.shp");
-//		ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
-//		mnt_file <- file("../includes/MNT20m_cadre.asc") ;
-//		shape <- envelope(emprise);
-//	}
-//	
-//	action load_large_scale_data
-//	{
-//		emprise <- file("../includes/rectangleempriset.shp");
-//		communes_shape <- file("../includes/communes.shp");
-//		ouvrage_defenses2014lienss <- file("../includes/ouvragedefenses2014lienss.shp");
-//		mnt_file <- file("../includes/DEM_20.asc") ;
-//		shape <- envelope(emprise);
-//		
-//	}
-	
-	/*
-	 * Le blocke refelex qui va permettre la diffusion de la vague. La diffusion se fait
-	 * pour chaque cellules sur une dynamique de moore. La celulles centrale va évaluer 
-	 * les hauteurs d'eau qu'elle peut deverser dans ses voisine, puis partager sa propre
-	 * charge en eau dans celles-ci.
-	 */
-	reflex diffuse_water when: false
-	{
-	 loop times: 1   /// this is parameter beta
-	   {ask cell 
-		{//NB-> on remet à 0 temp_received
-			temp_received <- 0.0;}
-		list<cell> cell_to_diffuse <- cell where((each.cell_type = 2 or each.cell_type = 0) and each.water_height > 0); 
-		ask cell_to_diffuse
-		{
-			//On fait une liste des celulles voisine de 1 et qui ne sont pas ni le large, ni la ligne de cote.	
-			list<cell> neighbours_cells <- self neighbours_at 1 where (each.cell_type = 2 or each.cell_type=0);
-
-			//On récupère la hauteur du MNT + de l'eau s'il y en a
-			list<float> neighbours_height <- neighbours_cells collect (each.water_height+ each.soil_height );
-			//MAJ de la hauteur total : hauteur du MNT et hauteur d'eau
-			float my_height <- water_height + soil_height;
-			
-			//on regarde le min dans mon environnement de moore
-			float neighbours_minimum <- min(neighbours_height);
-			
-			//La hauteur qui sera diffusé représentera le delta entre ma hauteur (sol+eau) et la hauteur (sol+eau)
-			//de ma plus petite voisine.
-			float height_to_diffuse <- my_height - neighbours_minimum;
-			/* NB-> cptage cells */
-			if( height_to_diffuse <= 0)
-			{tmp1Int<- tmp1Int + 1;} 
-			//s'il y a quelque chose à diffuser
-			if( height_to_diffuse > 0)
-			{tmp2Int<- tmp2Int + 1;
-			//NB-> color <- #green;
-				//fait la liste des cellules dont la hauteur est inf a moi même
-				list<cell> neighbours_below <- neighbours_cells where(each.water_height+ each.soil_height < my_height);
-				//calcule la différence de hauteur pour chaque cellules 
-				list<float> neighbours_below_diff <- neighbours_below collect( my_height - (each.water_height+ each.soil_height));
-				//sommes des différences
-				/*NB-> suivi calcul*/ // write "neighbours_below_diff : " + neighbours_below_diff;
-				float sum_diff <- sum(neighbours_below_diff);
-				/*NB-> suivi calcul*/ //write "sum_diff : " + sum_diff;
-				
-				//initialisation vide
-				cell current_cell <- nil;
-				int i <- 0; 
-				//On recupère la plus basse des cellules
-				float min_diffuse <- min([height_to_diffuse,water_height]);
-				/*NB-> suivi calcul*/
-			//	write "min_diffuse : " + min_diffuse;
-				//On boucle sur la liste des cellules autours de la cellule actuelle
-				loop current_cell over:neighbours_below
-				{
-					//On recupère la différence de hauteur minimal sur la celluls voisine i qu'on divise par la somme des différence   
-					// NB-> Débogage Nico
-					// NB-BA -> Paramètre Alpha : multiplicateur de min_diffuse
-					float height_diffused <- (0.75 * min_diffuse * (neighbours_below_diff at i) / sum_diff) with_precision 3;
-					/*NB-> suivi calcul*/  // write "height_diffused-" + i + " : " + height_diffused;
-					current_cell.temp_received <- current_cell.temp_received + height_diffused;
-					//on ajouter au la variable temp_received la contribution de la cellule i
-					temp_received <- temp_received - height_diffused;
-					//on incremente à la cellules d'après      
-					i <- i + 1;
-				}
-			}
-		}
-		ask cell // NB>on remet à jour sur toutes les cells. on pourra optimiser plus tard
-		{
-			//en envoie la vague préparer dans le block précédent
-			water_height <- (water_height + temp_received) with_precision 3; //NB-> on est obligé de refaire un arrondi sinon on se retourve avec des valeurs bizarre comme -0.001000000033
-			 //NB-> on s'assure pour les cells de terres que water height ne va pas etre -0.001
-			if (cell_type = 0 and (water_height = -0.001 or water_height = -0.002)) {water_height <- 0;}
-			//on remet à 0 temp_received
-			/*NB-> placé en haut de la méthode pour pouvoir suivre les étapes de calcul
-			temp_received <- 0.0;*/
-		}
-		/* print le nb de cellule qui ne diffuse car il n'y a pas de voisins plus bas */
-		write "nb cells qui diffusent pas : " + tmp1Int;
-		tmp1Int <- 0;
-		write "nb cells qui diffusent  : " + tmp2Int;
-		tmp2Int <- 0;
-	}}
-
+ 
 /* pour la sauvegarde des données en format shape */
-
 reflex sauvegarder_resultat when: sauver_shp and cycle = cycle_sauver
 	{										 
 		save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
 	}
 	
-	
-action runLisflood
-	{
-//       save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
-		timestamp <- machine_time ;
-		do save_mnt;
-		save ("lisflood -dir output_"+ timestamp +" buscot.par") rewrite: true  to: "../includes/lisflood-fp/lisflood.bat" type: "text"  ;  
+reflex runLisflood
+	{ 
+	  //if cycle = cycle_launchLisflood {do launchLisflood;} // comment this line if you only want to read already existing results
+	  if cycle = cycle_launchLisflood {lisfloodReadingStep <- 0;}
+	  if lisfloodReadingStep !=  9999999
+	   {do readLisfloodInRep("results"+timestamp);}}
+	   
+	   	
+action launchLisflood
+	{	timestamp <- machine_time ;
+		do save_dem;  
+		do save_lf_launch_files;
 		map values <- user_input(["Flood simulation "+timestamp+" is ready.
-Launch '../includes/lisflood-fp/lisflood.bat' to generate outputs" :: 100]);
+Launch '../includes/lisflood-fp-604/lisflood_oleron_current.bat' to generate outputs" :: 100]);
  		}
-       
+action save_lf_launch_files {
+		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron.n.ascii\n#riverfile      buscot.river\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
+		save ("lisflood -dir results_"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
+		}       
 
-action save_mnt {
-		string filename <- "../includes/lisflood-fp/mnt_"+timestamp+".dem.ascii";
-		save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;
-		//save "ncols        " + nb_cols	+ "\nnrows        " + nb_rows + "\nxllcorner    " + xllcorner + "\nxllcorner    " + yllcorner + "\ncellsize     " + "20.000000000000" + "\nNODATA_value  " + "-9999" to:filename;
+action save_dem {
+		string filename <- "../includes/lisflood-fp-604/oleron_dem_t" + timestamp + ".asc";
+		//OPTION 1 Big map
+		save 'ncols         631\nnrows         906\nxllcorner     364927,14666668\nyllcorner     6531972,5655556\ncellsize      20\nNODATA_value  -9999' to: filename;
+		//OPTION 2 Small map
+		//save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;			
 		string text <- "";
 		loop j from: 0 to: nb_rows- 1 {
 			loop i from: 0 to: nb_cols - 1 {
@@ -344,40 +115,27 @@ action save_mnt {
 			}
 		save text to:filename;
 		}  
-			     
-reflex readLisflood
-	{ if cycle = 1 {do runLisflood;}
-	  if cycle >= 5
-		{int compteurLisflood <- cycle - 5 ;
-		string nb <- compteurLisflood;
-		switch compteurLisflood {
-				match_between [0,9] {nb <- "000"+compteurLisflood;}
-				match_between [10,99] {nb <- "00"+compteurLisflood;}
-				match_between [100,999] {nb <- "0"+compteurLisflood;}
-				}
-		 point  origin <-  {10,20};  
-		 int ncols  <-76;
-		 int nrows <- 48;
-		 int i <- 0;
-		 int icol <- 1 ;
-		 int irow <- 1; 
-		 file my_file <- grid_file(("../includes/lisflood-fp/output_"+timestamp+"/res-"+ nb +".wd") /*+lisfloodOutputFilename */);
-		 if my_file.exists
-			{loop el over: my_file  {
-						i <- i +1;
-						if i > ncols {irow <- irow + 1; icol<- 1;i<-1;} else{icol<-icol+1;}
-	    		     	ask cell grid_at {(origin.x + icol),(origin.y + irow)} 
-	    		    		{	water_height <- el get "grid_value";
-	    		    		}
-	                }}
-	     else {loop times: (ncols * nrows) {
-	     				i <- i +1;
-						if i > ncols {irow <- irow + 1; icol<- 1;i<- 1;} else{icol<-icol+1;}
-	    		     	ask cell grid_at {(origin.x + icol),(origin.y + irow)} 
-	    		    		{water_height <- 0.0;}
-	                }}
+		
 	   
-	}}
+action readLisfloodInRep (string rep)
+	 {  string nb <- lisfloodReadingStep;
+		loop i from: 0 to: 3-length(nb) { nb <- "0"+nb; }
+		 file lfdata <- text_file("../includes/lisflood-fp-604/"+rep+"/res-"+ nb +".wd") ;
+		 if lfdata.exists
+			{
+			loop r from: 6 to: length(lfdata) -1 {
+				string l <- lfdata[r];
+				list<string> res <- l split_with "\t";
+				loop c from: 0 to: length(res) - 1{
+					cell[c,r-6].water_height <- float(res[c]);}}	
+	        lisfloodReadingStep <- lisfloodReadingStep +1;
+	        }
+	     else { lisfloodReadingStep <-  9999999;
+	     		if nb = "0000" {map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);}
+	     		else{map values <- user_input(["L'innondation est terminée. Au prochain pas de temps les hauteurs d'eau seront remise à zéro" :: 100]);
+					 loop r from: 0 to: nb_rows -1  {
+						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;}  }}   }	   
+	}
 
 }
 
@@ -389,7 +147,7 @@ reflex readLisflood
  *  **********************************************************************************************
  */
 
-grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
+grid cell file: dem_file schedules:[] neighbours: 8 {	
 		int cell_type <- 0 ; // 0 -> terre, 1 -> mer, 2 -> front de mer
 		float water_height  <- 0;
 		float soil_height <- grid_value;
@@ -397,8 +155,7 @@ grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
 		float temp_received;
 	
 		init {
-			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');
-		
+			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');	
 		}
 		aspect niveau_eau
 		{
@@ -424,23 +181,7 @@ grid cell file: mnt_file schedules:[] neighbours: 8 {	 /* NB-> voisinage 8  */
 			}	
 	}
 
-species measure schedules:[]
-{
-	float date;
-	float height;
-}
 
-species water_height_measure 
-{
-	int point_id;
-	float current_height;
-	list<measure> measures <- [];
-	
-	reflex change_height
-	{
-		current_height <- (measures at mesure_id).height;
-	}
-}
 
 species land_cover
 {
@@ -467,27 +208,7 @@ species commune
 	}
 }
 
-species coastline_cell
-{
-	cell my_cell;
-	float current_height;
-	list<pair<water_height_measure,float>> mesure_station_rate;
-	
-	reflex remplir
-	{
-		current_height <- current_water_height();
-		my_cell.water_height <- current_height;
-	//	write "current Water height" + my_cell neighbours_at 1 where(each.cell_type = 0);
-	}
-	float current_water_height
-	{
-		return ((sum(mesure_station_rate collect(each.key.current_height * each.value))) with_precision 3);	
-	}
-	aspect base
-	{
-		draw shape color:#red;
-	}
-}
+
 
 experiment oleronV1 type: gui {
 	output {
@@ -498,22 +219,5 @@ experiment oleronV1 type: gui {
 			species cell aspect:elevation_eau;
 			//species commune aspect:base;
 			species ouvrage_defenses aspect:base;
-		//	species coastline_cell aspect:base;
 		}}}
 		
-experiment testlisFlood type: gui {
-	output {
-		
-		display carte_oleron //autosave : true
-		{
-			grid cell ;
-			species cell aspect:elevation_eau;
-			//species commune aspect:base;
-			species ouvrage_defenses aspect:base;
-		//	species coastline_cell aspect:base;
-			
-		}
-		
-				
-	}
-}
