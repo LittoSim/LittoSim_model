@@ -27,41 +27,26 @@ global  {
 	 * Chargements des données SIG
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
-		file defenses_cote <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
+		file rivers_shape <- file("../includes/zone_etude/hydrozoneshp.shp");
+		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
-		file emprise <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
+		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
 	//	file dem_file <- file("../includes/lisflood-fp-604/oleron_dem_t0.asc") ;	bizarrement le chargement de ce fichier là est beaucoup plus long que le chargement de celui du dessus
 		int nb_cols <- 631;
 		int nb_rows <- 906;
-
-/*
-ncols         631
-nrows         906
-xllcorner     364927,14666668
-yllcorner     6531972,5655556
-cellsize      20
-NODATA_value  -9999
-*/
 		// OPTION 2 Fichiers SIG Petite Carte
-		/*file emprise <- file("../includes/zone_restreinte/cadre.shp");
+		/*file emprise_shape <- file("../includes/zone_restreinte/cadre.shp");
 		file coastline_shape <- file("../includes/zone_restreinte/contour.shp");
 		file dem_file <- file("../includes/zone_restreinte/mnt.asc") ;
 		int nb_cols <- 250;
 		int nb_rows <- 175;	*/
-/*
- * ncols        250
-nrows        175
-xllcorner    368987.146666680000
-yllcorner    6545012.565555600400
-cellsize     20.000000000000
-NODATA_value  -9999 */
-
 		
-
+	//couches joueurs
+		file unAm_shape <- file("../includes/le_chateau/chatok.shp");	
 
 	/* Definition de l'enveloppe SIG de travail */
-		geometry shape <- envelope(emprise);
+		geometry shape <- envelope(emprise_shape);
 	
 
 
@@ -70,9 +55,21 @@ NODATA_value  -9999 */
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		
 		/*Creation des agents a partir des données SIG */
-		create defense_cote from:defenses_cote;
-		create commune from:communes_shape; 
-	
+		create defense_cote from:defenses_cote_shape;
+		create commune from:communes_shape;
+		create river from: rivers_shape;
+		create cell_UnAm from: unAm_shape with: [ua_name::string(read("TYPEZONE"))]
+		{
+			switch (ua_name)
+			{
+				match "AU" {ua_code <- 1;}
+				match "A" {ua_code <- 2;}
+				match "U" {ua_code <- 3;}
+				match "N" {ua_code <- 4;}
+			}
+			my_color <- cell_color();
+		}
+		do load_rugosity;
 	}
  	
  
@@ -93,6 +90,7 @@ reflex runLisflood
 action launchLisflood
 	{	timestamp <- machine_time ;
 		do save_dem;  
+		do save_rugosityGrid;
 		do save_lf_launch_files;
 		map values <- user_input(["Input files for flood simulation "+timestamp+" are ready.
 
@@ -102,7 +100,7 @@ BEFORE TO CLICK OK
 WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: 100]);
  		}
 action save_lf_launch_files {
-		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron.n.ascii\n#riverfile      buscot.river\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
+		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_dem_t"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
 		save ("lisflood -dir results_"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
 		}       
 
@@ -116,6 +114,20 @@ action save_dem {
 			string text <- "";
 			loop i from: 0 to: nb_cols - 1 {
 				text <- text + " "+ cell[i,j].soil_height;}
+			save text to:filename;
+			}
+		}  
+		
+action save_rugosityGrid {
+		string filename <- "../includes/lisflood-fp-604/oleron_n_t" + timestamp + ".asc";
+		//OPTION 1 Big map
+		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
+		//OPTION 2 Small map
+		//save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;			
+		loop j from: 0 to: nb_rows- 1 {
+			string text <- "";
+			loop i from: 0 to: nb_cols - 1 {
+				text <- text + " "+ cell[i,j].rugosity;}
 			save text to:filename;
 			}
 		}  
@@ -140,7 +152,15 @@ action readLisfloodInRep (string rep)
 					 loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;}  }}   }	   
 	}
-
+	
+action load_rugosity
+     { file rug_data <- text_file("../includes/lisflood-fp-604/oleron.n.ascii") ;
+			loop r from: 6 to: length(rug_data) -1 {
+				string l <- rug_data[r];
+				list<string> res <- l split_with " ";
+				loop c from: 0 to: length(res) - 1{
+					cell[c,r-6].rugosity <- float(res[c]);}}	
+	}
 }
 
 
@@ -155,12 +175,13 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 		int cell_type <- 0 ; // 0 -> terre
 		float water_height  <- 0.0;
 		float soil_height <- grid_value;
-		float temp_received;
+		float rugosity;
 	
 		init {
 			if soil_height <= 0 {cell_type <-1;}  //  1 -> mer
 			if soil_height = 0 {soil_height <- -5.0;}
 			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');	
+			
 		}
 		aspect niveau_eau
 		{
@@ -188,13 +209,13 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 
 
 
-species land_cover
-{
-	aspect base
-	{
-		draw shape /*color:#yellow*/;
-	}
-}
+//species land_cover
+//{
+//	aspect base
+//	{
+//		draw shape /*color:#yellow*/;
+//	}
+//}
 
 species defense_cote
 {
@@ -206,14 +227,61 @@ species defense_cote
 
 species commune
 {
-	
 	aspect base
 	{
-		draw shape color:#red;
+		draw shape color:#lightgrey;
+	}
+}
+
+species river
+{
+	aspect base
+	{
+		draw shape color:#lightblue;
 	}
 }
 
 
+species cell_UnAm
+{
+	string ua_name <- "";
+	int ua_code <- 0;
+	rgb my_color <- cell_color() update: cell_color();
+	action modify_land_cover
+	{
+		switch (ua_name)
+		{
+			match "AU" {ua_code <- 1;}
+			match "A" {ua_code <- 2;}
+			match "U" {ua_code <- 3;}
+			match "N" {ua_code <- 4;}
+		}
+	}
+
+	rgb cell_color
+	{
+		rgb res <- nil;
+		switch (ua_code)
+		{
+			match 1 {res <- # orange;} // à urbaniser
+			match 2 {res <- # brown;} // agricole
+			match 3 {res <- # red;} // urbanisé
+			match 4 {res <- # green;} // naturel
+		}
+		return res;
+	}
+
+	aspect base
+	{
+		draw shape color: my_color;
+	}
+}
+
+/*
+ * ***********************************************************************************************
+ *                        EXPERIMENT DEFINITION
+ *  **********************************************************************************************
+ */
 
 experiment oleronV1 type: gui {
 	output {
@@ -223,6 +291,14 @@ experiment oleronV1 type: gui {
 			grid cell ;
 			species cell aspect:elevation_eau;
 			//species commune aspect:base;
+			species river aspect:base;
 			species defense_cote aspect:base;
+		}
+		display Amenagement
+		{
+			species commune aspect: base;
+			species cell_UnAm aspect: base;
+			species river aspect:base;
+			
 		}}}
 		
