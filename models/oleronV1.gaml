@@ -87,15 +87,19 @@ reflex runLisflood
 	  if cycle = cycle_launchLisflood {do launchLisflood;} // comment this line if you only want to read already existing results
 	  if cycle = cycle_launchLisflood {lisfloodReadingStep <- 0;}
 	  if lisfloodReadingStep !=  9999999
-	   {do readLisfloodInRep("results"+timestamp);}}
+	   {do readLisfloodInRep("results_"+timestamp);}}
 	   
 	   	
 action launchLisflood
 	{	timestamp <- machine_time ;
 		do save_dem;  
 		do save_lf_launch_files;
-		map values <- user_input(["Flood simulation "+timestamp+" is ready.
-Launch '../includes/lisflood-fp-604/lisflood_oleron_current.bat' to generate outputs" :: 100]);
+		map values <- user_input(["Input files for flood simulation "+timestamp+" are ready.
+
+BEFORE TO CLICK OK
+-Launch '../includes/lisflood-fp-604/lisflood_oleron_current.bat' to generate outputs
+
+WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: 100]);
  		}
 action save_lf_launch_files {
 		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron.n.ascii\n#riverfile      buscot.river\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
