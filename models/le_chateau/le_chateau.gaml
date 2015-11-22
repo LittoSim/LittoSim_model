@@ -8,8 +8,8 @@ model lechateau
 
 global
 {
-	file emprise <- file("../../includes/cadre.shp");
-	file communes_shape <- file("../../includes/communes.shp");
+	file emprise <- file("../../includes/zone_etude/emprise_ZE_littoSIM.shp");
+	file communes_shape <- file("../../includes/zone_etude/communes.shp");
 	file communes_UnAm_shape <- file("../../includes/le_chateau/chatok.shp");	
 	string UNAM_ACTIVE_COMMAND_GROUP <- "UnAm";
 	string DYKE_ACTIVE_COMMAND_GROUP <- "sloap";
