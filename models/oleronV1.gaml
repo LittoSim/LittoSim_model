@@ -161,6 +161,45 @@ action load_rugosity
 				loop c from: 0 to: length(res) - 1{
 					cell[c,r-6].rugosity <- float(res[c]);}}	
 	}
+
+
+/*
+ * ***********************************************************************************************
+ *                        RECEPTION ET APPLICATION DES ACTIONS DES JOUEURS 
+ *  **********************************************************************************************
+ */
+
+////////     Méthode utilisée pour appliquer les actions des joueurs coté "modèle Joueur"
+//action button_click (point loc, list selected_agents)
+//	{
+//		list<buttons> selected_UnAm <- (selected_agents of_species buttons) where(each.display_name=active_display );
+//		ask (first(selected_UnAm))
+//		{
+//			current_action <- command;
+//		}
+//	}
+////////    On par donc du principer que le modèle joueur va envoyer au modèle Central 3 éléments : selected_UnAm, current_action et command
+
+
+action changeUA (cell_UnAm a_cell_UA, int a_ua_code)
+	{
+		ask a_cell_UA {ua_code <- a_ua_code;}
+		//on affecte la rugosité correspondant aux différentes UA
+		ask cell overlapping a_cell_UA {rugosity <-  world rugosityValueOfUA (a_ua_code);} 
+	}
+
+float rugosityValueOfUA (int a_ua_code) 
+	{float val <- 0.0;
+	 switch (a_ua_code)
+			{	// Valeur rugosiét à fournir par Brice
+				match 1 {val <- 0.1;}
+				match 2 {val <- 0.1;}
+				match 3 {val <- 0.1;}
+				match 4 {val <- 0.1;}
+			}
+		return val;}
+
+	
 }
 
 
@@ -207,15 +246,6 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 			}	
 	}
 
-
-
-//species land_cover
-//{
-//	aspect base
-//	{
-//		draw shape /*color:#yellow*/;
-//	}
-//}
 
 species defense_cote
 {
