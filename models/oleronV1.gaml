@@ -27,10 +27,11 @@ global  {
 	 * Chargements des données SIG
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
-		file ouvrage_defenses2014lienss <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
+		file defenses_cote <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
-		file emprise <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp");
-		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;	
+		file emprise <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
+		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
+	//	file dem_file <- file("../includes/lisflood-fp-604/oleron_dem_t0.asc") ;	bizarrement le chargement de ce fichier là est beaucoup plus long que le chargement de celui du dessus
 		int nb_cols <- 631;
 		int nb_rows <- 906;
 
@@ -69,7 +70,7 @@ NODATA_value  -9999 */
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		
 		/*Creation des agents a partir des données SIG */
-		create ouvrage_defenses from:ouvrage_defenses2014lienss;
+		create defense_cote from:defenses_cote;
 		create commune from:communes_shape; 
 	
 	}
@@ -83,7 +84,7 @@ reflex sauvegarder_resultat when: sauver_shp and cycle = cycle_sauver
 	
 reflex runLisflood
 	{ 
-	  //if cycle = cycle_launchLisflood {do launchLisflood;} // comment this line if you only want to read already existing results
+	  if cycle = cycle_launchLisflood {do launchLisflood;} // comment this line if you only want to read already existing results
 	  if cycle = cycle_launchLisflood {lisfloodReadingStep <- 0;}
 	  if lisfloodReadingStep !=  9999999
 	   {do readLisfloodInRep("results"+timestamp);}}
@@ -104,16 +105,15 @@ action save_lf_launch_files {
 action save_dem {
 		string filename <- "../includes/lisflood-fp-604/oleron_dem_t" + timestamp + ".asc";
 		//OPTION 1 Big map
-		save 'ncols         631\nnrows         906\nxllcorner     364927,14666668\nyllcorner     6531972,5655556\ncellsize      20\nNODATA_value  -9999' to: filename;
+		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
 		//OPTION 2 Small map
 		//save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;			
-		string text <- "";
 		loop j from: 0 to: nb_rows- 1 {
+			string text <- "";
 			loop i from: 0 to: nb_cols - 1 {
 				text <- text + " "+ cell[i,j].soil_height;}
-			text <- text + "\n ";	
+			save text to:filename;
 			}
-		save text to:filename;
 		}  
 		
 	   
@@ -148,13 +148,14 @@ action readLisfloodInRep (string rep)
  */
 
 grid cell file: dem_file schedules:[] neighbours: 8 {	
-		int cell_type <- 0 ; // 0 -> terre, 1 -> mer, 2 -> front de mer
-		float water_height  <- 0;
+		int cell_type <- 0 ; // 0 -> terre
+		float water_height  <- 0.0;
 		float soil_height <- grid_value;
-		
 		float temp_received;
 	
 		init {
+			if soil_height <= 0 {cell_type <-1;}  //  1 -> mer
+			if soil_height = 0 {soil_height <- -5.0;}
 			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');	
 		}
 		aspect niveau_eau
@@ -191,7 +192,7 @@ species land_cover
 	}
 }
 
-species ouvrage_defenses
+species defense_cote
 {
 	aspect base
 	{
@@ -218,6 +219,6 @@ experiment oleronV1 type: gui {
 			grid cell ;
 			species cell aspect:elevation_eau;
 			//species commune aspect:base;
-			species ouvrage_defenses aspect:base;
+			species defense_cote aspect:base;
 		}}}
 		
