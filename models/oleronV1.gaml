@@ -27,7 +27,7 @@ global  {
 	 * Chargements des données SIG
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
-		file rivers_shape <- file("../includes/zone_etude/hydrozoneshp.shp");
+		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
@@ -43,7 +43,8 @@ global  {
 		int nb_rows <- 175;	*/
 		
 	//couches joueurs
-		file unAm_shape <- file("../includes/le_chateau/chatok.shp");	
+		file unAm_shape <- file("../includes/zone_etude/zones211115.shp"
+		);	
 
 	/* Definition de l'enveloppe SIG de travail */
 		geometry shape <- envelope(emprise_shape);
@@ -57,15 +58,15 @@ global  {
 		/*Creation des agents a partir des données SIG */
 		create defense_cote from:defenses_cote_shape;
 		create commune from:communes_shape;
-		create river from: rivers_shape;
-		create cell_UnAm from: unAm_shape with: [ua_name::string(read("TYPEZONE"))]
+		create road from: road_shape;
+		create cell_UnAm from: unAm_shape with: [ua_code::int(read("grid_code"))]
 		{
-			switch (ua_name)
+			switch (ua_code)
 			{
-				match "AU" {ua_code <- 1;}
-				match "A" {ua_code <- 2;}
-				match "U" {ua_code <- 3;}
-				match "N" {ua_code <- 4;}
+				match 1 {ua_name <- "N";}
+				match 2 {ua_name <- "U";}
+				match 4 {ua_name <- "AU";}
+				match 5 {ua_name <- "A";}
 			}
 			my_color <- cell_color();
 		}
@@ -100,7 +101,7 @@ BEFORE TO CLICK OK
 WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: 100]);
  		}
 action save_lf_launch_files {
-		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_dem_t"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
+		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_dem_t"+timestamp+".asc\n#roadfile      buscot.road\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
 		save ("lisflood -dir results_"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
 		}       
 
@@ -259,15 +260,15 @@ species commune
 {
 	aspect base
 	{
-		draw shape color:#lightgrey;
+		draw shape color:#whitesmoke;
 	}
 }
 
-species river
+species road
 {
 	aspect base
 	{
-		draw shape color:#lightblue;
+		draw shape color:#fuchsia;
 	}
 }
 
@@ -293,10 +294,10 @@ species cell_UnAm
 		rgb res <- nil;
 		switch (ua_code)
 		{
-			match 1 {res <- # orange;} // à urbaniser
-			match 2 {res <- # brown;} // agricole
-			match 3 {res <- # red;} // urbanisé
-			match 4 {res <- # green;} // naturel
+			match 1 {res <- # palegreen;} // naturel
+			match 2 {res <- rgb (110, 100,100);} //  urbanisé
+			match 4 {res <- # lightgoldenrodyellow;} // à urbaniser
+			match 5 {res <- rgb (225, 165,0);} // agricole
 		}
 		return res;
 	}
@@ -321,14 +322,14 @@ experiment oleronV1 type: gui {
 			grid cell ;
 			species cell aspect:elevation_eau;
 			//species commune aspect:base;
-			species river aspect:base;
+			species road aspect:base;
 			species defense_cote aspect:base;
 		}
 		display Amenagement
 		{
 			species commune aspect: base;
 			species cell_UnAm aspect: base;
-			species river aspect:base;
+			species road aspect:base;
 			
 		}}}
 		
