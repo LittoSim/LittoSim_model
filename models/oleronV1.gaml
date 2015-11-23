@@ -296,7 +296,7 @@ species cell_UnAm
 		{
 			match 1 {res <- # palegreen;} // naturel
 			match 2 {res <- rgb (110, 100,100);} //  urbanisé
-			match 4 {res <- # lightgoldenrodyellow;} // à urbaniser
+			match 4 {res <- # yellow;} // à urbaniser
 			match 5 {res <- rgb (225, 165,0);} // agricole
 		}
 		return res;
