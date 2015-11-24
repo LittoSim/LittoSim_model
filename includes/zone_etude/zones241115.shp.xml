@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="fr"><Esri><CreaDate>20151124</CreaDate><CreaTime>12431300</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.1\ArcToolbox\Toolboxes\Data Management Tools.tbx\CalculateField" Date="20151124" Time="123541">CalculateField Join_Output_7 coutexpr "[prix_m2] * [Sum_aire]" VB #</Process></lineage></DataProperties></Esri></metadata>
