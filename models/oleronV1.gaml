@@ -18,7 +18,7 @@ global  {
 	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile
 	string resultats <- "resultats.shp"; //	on sauvegarde les résultats dans ce fichier (attention, cela ecrase a chaque fois le resultat precedent)
 	int cycle_sauver <- 100; //cycle à laquelle les resultats sont sauvegardés au format shp
-	int cycle_launchLisflood <- 5; // cycle_launchLisflood specifies the cycle at which lisflood is launched
+	int cycle_launchLisflood <- 10; // cycle_launchLisflood specifies the cycle at which lisflood is launched
 	/* lisfloodReadingStep is used to indicate to which step of lisflood results, the current cycle corresponds */
 	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle 
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
@@ -43,7 +43,7 @@ global  {
 		int nb_rows <- 175;	*/
 		
 	//couches joueurs
-		file unAm_shape <- file("../includes/zone_etude/zones211115.shp"
+		file unAm_shape <- file("../includes/zone_etude/zones241115.shp"
 		);	
 
 	/* Definition de l'enveloppe SIG de travail */
@@ -57,9 +57,9 @@ global  {
 		
 		/*Creation des agents a partir des données SIG */
 		create defense_cote from:defenses_cote_shape;
-		create commune from:communes_shape;
+		create commune from:communes_shape with: [id::int(get("id_jeu"))];
 		create road from: road_shape;
-		create cell_UnAm from: unAm_shape with: [ua_code::int(read("grid_code"))]
+		create cell_UnAm from: unAm_shape with: [ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
 		{
 			switch (ua_code)
 			{
@@ -70,6 +70,7 @@ global  {
 			}
 			my_color <- cell_color();
 		}
+
 		do load_rugosity;
 	}
  	
@@ -179,31 +180,25 @@ action load_rugosity
 //			current_action <- command;
 //		}
 //	}
-////////    On par donc du principer que le modèle joueur va envoyer au modèle Central 3 éléments : selected_UnAm, current_action et command
-
-
-action changeUA (cell_UnAm a_cell_UA, int a_ua_code)
-	{
-		ask a_cell_UA {ua_code <- a_ua_code;}
-		//on affecte la rugosité correspondant aux différentes UA
-		ask cell overlapping a_cell_UA {rugosity <-  world rugosityValueOfUA (a_ua_code);} 
+////////    On part donc du principe que le modèle joueur va envoyer au modèle Central 4 éléments : a_joueur_id selected_UnAm, current_action et command
+reflex simJoueurs
+	{	
+		do changeUA (1 , one_of(cell_UnAm) , 1 );//1->N
+		do changeUA (1 , cell_UnAm first_with (each.ua_code = 2) , 1 );//1->N
+		do changeUA (2 , one_of(cell_UnAm), 2 );//2->U
+		do changeUA (3 , one_of(cell_UnAm), 4 );//4->AU
+		do changeUA (4 , one_of(cell_UnAm), 4 );//4->AU
+		do changeUA (1 , one_of(cell_UnAm), 4 );//4->AU
+		do changeUA (2 , one_of(cell_UnAm), 5 );//5->A
 	}
 
-float rugosityValueOfUA (int a_ua_code) 
-	{float val <- 0.0;
-	 switch (a_ua_code)
-			{	// Valeur rugosiét à fournir par Brice
-				match 1 {val <- 0.1;}
-				match 2 {val <- 0.1;}
-				match 3 {val <- 0.1;}
-				match 4 {val <- 0.1;}
-			}
-		return val;}
+action changeUA (int a_commune_id, cell_UnAm a_cell_UA, int a_ua_code)
+	{
+		ask a_cell_UA {
+			do modify_UA (a_commune_id, a_ua_code);}
+	}
 
-	
 }
-
-
 
 /*
  * ***********************************************************************************************
@@ -221,8 +216,7 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 			if soil_height <= 0 {cell_type <-1;}  //  1 -> mer
 			if soil_height = 0 {soil_height <- -5.0;}
 			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');	
-			
-		}
+			}
 		aspect niveau_eau
 		{
 			if water_height < 0
@@ -257,11 +251,16 @@ species defense_cote
 }
 
 species commune
-{
+{	int id<-0;
+	int budget <-1000;
 	aspect base
 	{
 		draw shape color:#whitesmoke;
 	}
+	action payerExpropriationPour (cell_UnAm a_UA)
+			{
+				budget <- budget - a_UA.cout_expro;
+			}
 }
 
 species road
@@ -275,19 +274,93 @@ species road
 
 species cell_UnAm
 {
-	string ua_name <- "";
-	int ua_code <- 0;
+	string ua_name;
+	int ua_code;
 	rgb my_color <- cell_color() update: cell_color();
-	action modify_land_cover
+	int nb_stepsForAU_toU <-3;
+	int AU_to_U_counter <- 0;
+	int population ;
+	int cout_expro ;
+	
+	init {cout_expro <- (round (cout_expro /2000))*1000;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
+	
+	
+	action modify_UA (int a_id_commune, int a_ua_code)
 	{
-		switch (ua_name)
-		{
-			match "AU" {ua_code <- 1;}
-			match "A" {ua_code <- 2;}
-			match "U" {ua_code <- 3;}
-			match "N" {ua_code <- 4;}
-		}
+		if  ua_name = "U" and nameOfUAcode(a_ua_code) = "N" /*expropriation */
+				{ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}}
+		ua_code <- a_ua_code;
+		ua_name <- nameOfUAcode(a_ua_code);
+		//on affecte la rugosité correspondant aux cells
+		float rug <- rugosityValueOfUA (a_ua_code);
+		ask cell overlapping self {rugosity <- rug;} 	
 	}
+	
+	
+	reflex evolveUA
+		{if ua_name ="AU"
+			{AU_to_U_counter<-AU_to_U_counter+1;
+			if AU_to_U_counter = (nb_stepsForAU_toU +1)
+				{AU_to_U_counter<-0;
+				ua_name <- "U";
+				ua_code<-codeOfUAname("U");}
+			}	
+		}
+		
+//	reflex bidon
+//	{if rnd (1) / 1 < 0.1 {write "c"+ cout_expro;
+//		write "p" + population;
+//	}}
+		
+		
+	string nameOfUAcode (int a_ua_code) 
+		{ string val <- "" ;
+			switch (a_ua_code)
+			{
+				match 1 {val <- "N";}
+				match 2 {val <- "U";}
+				match 4 {val <- "AU";}
+				match 5 {val <- "A";}
+					}
+		return val;}
+		
+		
+	int codeOfUAname (string a_ua_name) 
+		{ int val <- 0 ;
+			switch (a_ua_name)
+			{
+				match "N" {val <- 1;}
+				match "U" {val <- 2;}
+				match "AU" {val <- 4;}
+				match "A" {val <- 5;}
+					}
+		return val;}
+	
+	float rugosityValueOfUA (int a_ua_code) 
+		{float val <- 0.0;
+		 switch (a_ua_code)
+			{
+/* Valeur rugosité fournies par Brice
+Urbain (codes CLC 112,123,142) : 			0.12	->U
+Vignes (code CLC 221) : 					0.07	->A
+Prairies (code CLC 241) : 					0.04	->N
+Parcelles agricoles (codes CLC 211,242,243):0.06	->A
+Forêt feuillus (code CLC 311) : 			0.15
+Forêt conifères (code CLC 312) : 			0.16
+Forêt mixte (code CLC 313) : 				0.17
+Landes (code CLC 322) : 					0.07	->N
+Forêt + arbustes (code CLC 324) : 			0.14
+Plage - dune (code CLC 331) : 				0.03
+Marais intérieur (code CLC 411) : 			0.055
+Marais maritime (code CLC 421) : 			0.05
+Zone intertidale (code CLC 423) : 			0.025
+Mer (code CLC 523) : 						0.02				*/
+				match 1 {val <- 0.05;}//N (entre 0.04 et 0.07 -> 0.05)
+				match 2 {val <- 0.12;}//U
+				match 4 {val <- 0.1;}//AU
+				match 5 {val <- 0.06;}//A
+			}
+		return val;}
 
 	rgb cell_color
 	{
