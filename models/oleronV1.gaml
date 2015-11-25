@@ -28,7 +28,7 @@ global  {
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
-		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
+		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-nb-24-11-15.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
@@ -56,10 +56,10 @@ global  {
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		
 		/*Creation des agents a partir des données SIG */
-		create defense_cote from:defenses_cote_shape;
+		create defense_cote from:defenses_cote_shape  with:[type::string(read("TYPE")), etat::string(read("Etat_Ouvra"))];
 		create commune from:communes_shape with: [id::int(get("id_jeu"))];
 		create road from: road_shape;
-		create cell_UnAm from: unAm_shape with: [ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
+		create UA from: unAm_shape with: [ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
 		{
 			switch (ua_code)
 			{
@@ -70,8 +70,9 @@ global  {
 			}
 			my_color <- cell_color();
 		}
-
 		do load_rugosity;
+		ask UA {cells <- cell overlapping self;}
+		ask commune {UAs <- UA overlapping self;}
 	}
  	
  
@@ -183,16 +184,16 @@ action load_rugosity
 ////////    On part donc du principe que le modèle joueur va envoyer au modèle Central 4 éléments : a_joueur_id selected_UnAm, current_action et command
 reflex simJoueurs
 	{	
-		do changeUA (1 , one_of(cell_UnAm) , 1 );//1->N
-		do changeUA (1 , cell_UnAm first_with (each.ua_code = 2) , 1 );//1->N
-		do changeUA (2 , one_of(cell_UnAm), 2 );//2->U
-		do changeUA (3 , one_of(cell_UnAm), 4 );//4->AU
-		do changeUA (4 , one_of(cell_UnAm), 4 );//4->AU
-		do changeUA (1 , one_of(cell_UnAm), 4 );//4->AU
-		do changeUA (2 , one_of(cell_UnAm), 5 );//5->A
+		do changeUA (1 , one_of(UA) , 1 );//1->N
+		do changeUA (1 , UA first_with (each.ua_code = 2) , 1 );//1->N
+		do changeUA (2 , one_of(UA), 2 );//2->U
+		do changeUA (3 , one_of(UA), 4 );//4->AU
+		do changeUA (4 , one_of(UA), 4 );//4->AU
+		do changeUA (1 , one_of(UA), 4 );//4->AU
+		do changeUA (2 , one_of(UA), 5 );//5->A
 	}
 
-action changeUA (int a_commune_id, cell_UnAm a_cell_UA, int a_ua_code)
+action changeUA (int a_commune_id, UA a_cell_UA, int a_ua_code)
 	{
 		ask a_cell_UA {
 			do modify_UA (a_commune_id, a_ua_code);}
@@ -243,25 +244,15 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 
 
 species defense_cote
-{
+{	string type;
+	string etat;
 	aspect base
 	{
 		draw shape /*color:#yellow*/;
 	}
 }
 
-species commune
-{	int id<-0;
-	int budget <-1000;
-	aspect base
-	{
-		draw shape color:#whitesmoke;
-	}
-	action payerExpropriationPour (cell_UnAm a_UA)
-			{
-				budget <- budget - a_UA.cout_expro;
-			}
-}
+
 
 species road
 {
@@ -272,13 +263,14 @@ species road
 }
 
 
-species cell_UnAm
+species UA
 {
 	string ua_name;
 	int ua_code;
 	rgb my_color <- cell_color() update: cell_color();
 	int nb_stepsForAU_toU <-3;
 	int AU_to_U_counter <- 0;
+	list<cell> cells ;
 	int population ;
 	int cout_expro ;
 	
@@ -293,7 +285,7 @@ species cell_UnAm
 		ua_name <- nameOfUAcode(a_ua_code);
 		//on affecte la rugosité correspondant aux cells
 		float rug <- rugosityValueOfUA (a_ua_code);
-		ask cell overlapping self {rugosity <- rug;} 	
+		ask cells {rugosity <- rug;} 	
 	}
 	
 	
@@ -305,6 +297,8 @@ species cell_UnAm
 				ua_name <- "U";
 				ua_code<-codeOfUAname("U");}
 			}	
+		if (ua_name = "U" and population < 1000){
+			population <- population + 10;}
 		}
 		
 //	reflex bidon
@@ -379,6 +373,36 @@ Mer (code CLC 523) : 						0.02				*/
 	{
 		draw shape color: my_color;
 	}
+	aspect population {
+		rgb acolor <- nil;
+		if population = 0 {acolor <- # white; }
+		 else {acolor <- rgb(255-(population),0,0);}
+		draw shape color: acolor;
+		
+		}
+}
+
+
+species commune
+{	int id<-0;
+	int budget <-10000;
+	list<UA> UAs ;
+	int impot_unit <- 1000;
+	aspect base
+	{
+		draw shape color:#whitesmoke;
+	}
+	
+	reflex recevoirImpots {
+		int nb_impose <- sum(UAs accumulate (each.population));
+		int impotRecus <- nb_impose * impot_unit;
+		budget <- budget + impotRecus;
+		}
+		
+	action payerExpropriationPour (UA a_UA)
+			{
+				budget <- budget - a_UA.cout_expro;
+			}
 }
 
 /*
@@ -401,8 +425,20 @@ experiment oleronV1 type: gui {
 		display Amenagement
 		{
 			species commune aspect: base;
-			species cell_UnAm aspect: base;
+			species UA aspect: base;
 			species road aspect:base;
 			
-		}}}
+		}		display Population
+		{
+			species commune aspect: base;
+			species UA aspect: population;
+			species road aspect:base;
+			
+		}
+		display graph_budget {
+				chart "Series" type: series {
+					data "budget" value: (commune collect each.budget)  color: #red;				
+				}
+			}
+			}}
 		
