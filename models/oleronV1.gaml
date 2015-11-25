@@ -28,7 +28,7 @@ global  {
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
-		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-nb-24-11-15.shp");
+		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-nb-25-11-15.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
@@ -50,13 +50,12 @@ global  {
 		geometry shape <- envelope(emprise_shape);
 	
 
-
 	init
 	{
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		
 		/*Creation des agents a partir des données SIG */
-		create defense_cote from:defenses_cote_shape  with:[type::string(read("TYPE")), etat::string(read("Etat_Ouvra"))];
+		create ouvrage from:defenses_cote_shape  with:[type::string(read("TYPE")), etat::string(read("Etat_Ouvra")), height::float(get("hauteur")) ];
 		create commune from:communes_shape with: [id::int(get("id_jeu"))];
 		create road from: road_shape;
 		create UA from: unAm_shape with: [ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
@@ -73,22 +72,29 @@ global  {
 		do load_rugosity;
 		ask UA {cells <- cell overlapping self;}
 		ask commune {UAs <- UA overlapping self;}
+		ask ouvrage {cells <- cell overlapping self;}
 	}
  	
- 
-/* pour la sauvegarde des données en format shape */
+	
+reflex runLisflood
+	{ // déclenchement innondation
+	  if cycle = cycle_launchLisflood {
+	  		do launchLisflood; // comment this line if you only want to read already existing results
+	  		set lisfloodReadingStep <- 0;
+	  		ask ouvrage {do calcRupture;} }
+	  // en cours d'innondation
+	  if lisfloodReadingStep !=  9999999
+		{ do readLisfloodInRep("results_"+timestamp);}
+	  // fin innondation
+	  else {ask ouvrage {if rupture = 1 {do removeRupture;}}
+	  }}
+
+ /* pour la sauvegarde des données en format shape */
 reflex sauvegarder_resultat when: sauver_shp and cycle = cycle_sauver
 	{										 
 		save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
 	}
-	
-reflex runLisflood
-	{ 
-	  if cycle = cycle_launchLisflood {do launchLisflood;} // comment this line if you only want to read already existing results
-	  if cycle = cycle_launchLisflood {lisfloodReadingStep <- 0;}
-	  if lisfloodReadingStep !=  9999999
-	   {do readLisfloodInRep("results_"+timestamp);}}
-	   
+ 	   
 	   	
 action launchLisflood
 	{	timestamp <- machine_time ;
@@ -182,8 +188,8 @@ action load_rugosity
 //		}
 //	}
 ////////    On part donc du principe que le modèle joueur va envoyer au modèle Central 4 éléments : a_joueur_id selected_UnAm, current_action et command
-reflex simJoueurs
-	{	
+reflex simJoueurs //////désactiver lorsque c'est le moment de la submersion // au moment de l'innondation -> lisfloodReadingStep !=  9999999
+	{
 		do changeUA (1 , one_of(UA) , 1 );//1->N
 		do changeUA (1 , UA first_with (each.ua_code = 2) , 1 );//1->N
 		do changeUA (2 , one_of(UA), 2 );//2->U
@@ -191,14 +197,30 @@ reflex simJoueurs
 		do changeUA (4 , one_of(UA), 4 );//4->AU
 		do changeUA (1 , one_of(UA), 4 );//4->AU
 		do changeUA (2 , one_of(UA), 5 );//5->A
+		do changeUA (2 , one_of(UA), 5 );//5->A
+		
+		do repairOuvrage(1,ouvrage first_with(each.etat = "mauvais"));
+		do increaseHeightOuvrage(4,ouvrage first_with(each.height > 1));
+		do destroyOuvrage(3,ouvrage first_with(each.etat = "tres mauvais"));
+		write ""+length(commune) + " " + length(ouvrage);
 	}
 
 action changeUA (int a_commune_id, UA a_cell_UA, int a_ua_code)
-	{
-		ask a_cell_UA {
-			do modify_UA (a_commune_id, a_ua_code);}
+	{ask a_cell_UA {do modify_UA (a_commune_id, a_ua_code);}
 	}
 
+action repairOuvrage (int a_commune_id, ouvrage a_ouvrage) {
+	ask a_ouvrage {do repair_by_commune (a_commune_id) ;}
+	}
+	
+action increaseHeightOuvrage (int a_commune_id, ouvrage a_ouvrage) {
+	ask a_ouvrage {do increase_height_by_commune (a_commune_id) ;}
+	}
+
+action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
+	ask a_ouvrage {do destroy_by_commune (a_commune_id) ;}
+	}
+	
 }
 
 /*
@@ -211,12 +233,13 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 		int cell_type <- 0 ; // 0 -> terre
 		float water_height  <- 0.0;
 		float soil_height <- grid_value;
+		float soil_height_before_broken <- 0.0;
 		float rugosity;
 	
 		init {
 			if soil_height <= 0 {cell_type <-1;}  //  1 -> mer
 			if soil_height = 0 {soil_height <- -5.0;}
-			//color<- int(grid_value*10) = 0 ? rgb('black'): rgb('white');	
+			soil_height_before_broken <- soil_height;
 			}
 		aspect niveau_eau
 		{
@@ -243,12 +266,88 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 	}
 
 
-species defense_cote
+species ouvrage
 {	string type;
-	string etat;
+	string etat;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
+	float height;  // height au pied en mètre
+	int length <- 0; // longueur de l'ouvrage en mètre 
+	list<cell> cells ;
+	int cptEtat <-0;
+	int nb_stepsForDegradEtat <-4;
+	int rupture<-0;
+	
+	init {
+		if etat = 'inconnu' {etat <- "bon";}
+		if height = 0.0 {height  <- 1.0;}
+		else {height <- height / 100;} // CONVERSION: la table du shp est en centimètre, alors que dans lisflood ainsi que dans le modèle gama on est en mètre.
+		if length = 0 {length <- (max([1,(length(cells) - 1)]) * 20);} // ESTIMATION Longueur : 20 mètre fois le nb de cells traversés moins une.
+		///  vérifier que length renvoie bien le nb de cells
+	}
+	
+	reflex evolEtat { ////  ne pas déclencher lorsqu'on est en innondation
+		cptEtat <- cptEtat +1;
+		if cptEtat = (nb_stepsForDegradEtat+1) {
+			cptEtat <-0;
+
+			if etat = "mauvais" {etat <- "tres mauvais";}
+			if etat = "moyen" {etat <- "mauvais";}
+			if etat = "bon" {etat <- "moyen";}
+			if etat = "tres bon" {etat <- "bon";}
+		}
+	}
+	
+	action calcRupture {
+		float p <- 0.0;
+		if etat = "tres mauvais" {p <- 0.5;}
+		if etat = "mauvais" {p <- 0.3;}
+		if etat = "moyen" {p <- 0.2;}
+		if etat = "bon" {p <- 0.1;}
+		if etat = "tres bon" {p <- 0.0;}
+		if rnd (1) / 1 < p {
+				set rupture <- 1;
+				// apply Rupture On Cells
+				ask cells  {/// todo : a changer: ne pas appliquer sur toutes les cells de l'ouvrage mais que sur une portion
+							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
+				}
+		}
+	}
+	
+	action removeRupture {
+		set rupture <- 0;
+		ask cells  {if soil_height >= 0 {soil_height <-   soil_height_before_broken;}}
+	}
+
+	action repair_by_commune (int a_commune_id) {
+		set etat <- "tres bon";
+		set cptEtat <- 0;
+		ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage_longueur (myself.length);}
+	}
+
+	action increase_height_by_commune (int a_commune_id) {
+		set etat <- "tres bon";
+		set cptEtat <- 0;
+		height <- height + 0.5; // le réhaussement d'ouvrage est forcément de 50 centimètres
+		ask cells {	soil_height <- soil_height + 0.5;
+					soil_height_before_broken <- soil_height ;
+		}
+		ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage_longueur (myself.length);}
+	}
+	
+	action destroy_by_commune (int a_commune_id) {
+		ask cells {	soil_height <- soil_height - myself.height ;}
+		ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage_longueur (myself.length);}
+		do die;
+	}
+	
 	aspect base
-	{
-		draw shape /*color:#yellow*/;
+	{	rgb color <- # pink;
+		if etat = "tres bon" {color <- rgb (0,175,0);} 
+		if etat = "bon" {color <- rgb (0,216,100);} 
+		if etat = "moyen " {color <-  rgb (206,213,0);} 
+		if etat = "mauvais" {color <- rgb(255,51,102);} 
+		if etat = "tres mauvais" {color <- # red;}
+		if etat = "casse" {color <- # red;} 
+		draw shape color: color ;
 	}
 }
 
@@ -258,7 +357,7 @@ species road
 {
 	aspect base
 	{
-		draw shape color:#fuchsia;
+		draw shape color: rgb (125,113,53);
 	}
 }
 
@@ -403,6 +502,22 @@ species commune
 			{
 				budget <- budget - a_UA.cout_expro;
 			}
+			
+	action payerReparationOuvrage_longueur (int length)
+			{
+				budget <- budget - (length * 100); // mettre les bonnes valeurs
+			}
+			
+	action payerRehaussementOuvrage_longueur (int length)
+			{
+				budget <- budget - (length * 500); // mettre les bonnes valeurs
+			}
+
+	action payerDestructionOuvrage_longueur (int length)
+			{
+				budget <- budget - (length * 600); // mettre les bonnes valeurs
+			}			
+			
 }
 
 /*
@@ -420,13 +535,14 @@ experiment oleronV1 type: gui {
 			species cell aspect:elevation_eau;
 			//species commune aspect:base;
 			species road aspect:base;
-			species defense_cote aspect:base;
+			species ouvrage aspect:base;
 		}
 		display Amenagement
 		{
 			species commune aspect: base;
 			species UA aspect: base;
 			species road aspect:base;
+			species ouvrage aspect:base;
 			
 		}		display Population
 		{
