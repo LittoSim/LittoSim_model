@@ -49,6 +49,10 @@ global  {
 	/* Definition de l'enveloppe SIG de travail */
 		geometry shape <- envelope(emprise_shape);
 	
+	
+	
+	list<UA> agents_to_inspect update: 10 among UA;
+
 
 	init
 	{
@@ -79,7 +83,7 @@ global  {
 reflex runLisflood
 	{ // déclenchement innondation
 	  if cycle = cycle_launchLisflood {
-	  		do launchLisflood; // comment this line if you only want to read already existing results
+	  		//do launchLisflood; // comment this line if you only want to read already existing results
 	  		set lisfloodReadingStep <- 0;
 	  		ask ouvrage {do calcRupture;} }
 	  // en cours d'innondation
@@ -528,6 +532,7 @@ species commune
 
 experiment oleronV1 type: gui {
 	output {
+		inspect world;
 		
 		display carte_oleron //autosave : true
 		{
