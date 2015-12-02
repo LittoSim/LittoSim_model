@@ -20,10 +20,12 @@ global  {
 	/* Definition de l'enveloppe SIG de travail */
 		geometry shape <- envelope(plu_shp);
 	
-
-
+	int step_button <- 1;
+	float button_size <- 2000#m;
+	
 	init
-	{
+	{	
+		do init_buttons;
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		
 		/*Creation des agents a partir des données SIG */
@@ -39,6 +41,25 @@ global  {
 	
 	}
 	
+	action init_buttons
+	{
+		create buttons number: 1
+		{
+			command <- step_button;
+			label <- "One step";
+			shape <- square(button_size);
+			location <- { world.shape.width - 1000#m, 1000#m };
+			my_icon <- image_file("../images/icones/one_step.png");
+		}
+	}
+	
+	action run_one_step (point loc, list selected_agents)
+    {
+       ask selected_agents {
+      	write "plop";
+      }
+    }
+	
  	
  }
 	
@@ -50,6 +71,22 @@ global  {
  *  **********************************************************************************************
  */
 
+species buttons
+{
+	int command <- -1;
+	string display_name <- "no name";
+	string label <- "no name";
+	float action_cost<-0;
+	bool is_selected <- false;
+	geometry shape <- square(500#m);
+	file my_icon;
+	aspect base
+	{
+			draw shape color:#white border: is_selected ? # red : # white;
+			draw my_icon size:button_size-50#m ;
+			
+	}
+}
 
 species defense_cote
 {
@@ -111,10 +148,13 @@ experiment oleronV1 type: gui {
 	output {
 			display carte_oleron type: opengl {
 				//species commune aspect:base;
+				species buttons aspect:base;
 				species player_commune aspect:base;
 				species defense_cote aspect:base;
 				species generic_plu aspect:base;
 				//species player_commune aspect:base;
+				event [mouse_down] action: run_one_step;
+				
 				}
 			display graph_budjet {
 				chart "Series" type: series {
