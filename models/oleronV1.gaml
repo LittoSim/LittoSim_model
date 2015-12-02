@@ -23,6 +23,11 @@ global  {
 	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle 
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	
+	
+	//bottum size
+	float button_size <- 2000#m;
+	int step_button <- 1;
+	
 	/*
 	 * Chargements des données SIG
 	 */
@@ -53,6 +58,8 @@ global  {
 	init
 	{
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
+		/* initialisation du bouton */
+		do init_buttons;
 		
 		/*Creation des agents a partir des données SIG */
 		create ouvrage from:defenses_cote_shape  with:[type::string(read("TYPE")), etat::string(read("Etat_Ouvra")), height::float(get("hauteur")) ];
@@ -220,6 +227,31 @@ action increaseHeightOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 	ask a_ouvrage {do destroy_by_commune (a_commune_id) ;}
 	}
+	
+/*
+ * ***********************************************************************************************
+ *                                       LE BOUTON STEP 
+ *  **********************************************************************************************
+ */
+ action init_buttons
+	{
+		create buttons number: 1
+		{
+			command <- step_button;
+			label <- "One step";
+			shape <- square(button_size);
+			location <- { world.shape.width - 1000#m, 1000#m };
+			my_icon <- image_file("../images/icones/one_step.png");
+		}
+	}
+	
+	// action bouton 
+	action run_one_step (point loc, list selected_agents)
+    {
+       ask selected_agents {
+      	write "plop";
+      }
+    }
 	
 }
 
@@ -520,6 +552,23 @@ species commune
 			
 }
 
+// Definition des boutons générique
+species buttons
+{
+	int command <- -1;
+	string display_name <- "no name";
+	string label <- "no name";
+	bool is_selected <- false;
+	geometry shape <- square(500#m);
+	file my_icon;
+	aspect base
+	{
+			draw shape color:#white border: is_selected ? # red : # white;
+			draw my_icon size:button_size-50#m ;
+			
+	}
+}
+
 /*
  * ***********************************************************************************************
  *                        EXPERIMENT DEFINITION
@@ -546,9 +595,13 @@ experiment oleronV1 type: gui {
 			
 		}		display Population
 		{
+			// Les boutons et le clique
+			species buttons aspect:base;
+			event [mouse_down] action: run_one_step;
 			species commune aspect: base;
 			species UA aspect: population;
 			species road aspect:base;
+			
 			
 		}
 		display graph_budget {
