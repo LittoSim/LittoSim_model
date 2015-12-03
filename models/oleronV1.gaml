@@ -40,10 +40,10 @@ global  {
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
-		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-nb-25-11-15.shp");
+		file defenses_cote_shape <- file("../includes/zone_etude/digues_brice_corriges_03122015.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
-		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
+		file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
 	//	file dem_file <- file("../includes/lisflood-fp-604/oleron_dem_t0.asc") ;	bizarrement le chargement de ce fichier là est beaucoup plus long que le chargement de celui du dessus
 		int nb_cols <- 631;
 		int nb_rows <- 906;
