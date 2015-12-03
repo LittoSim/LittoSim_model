@@ -27,6 +27,13 @@ global  {
 	//bottum size
 	float button_size <- 2000#m;
 	int step_button <- 1;
+	int subvention_b <- 1;
+	int taxe_b <- 1;
+	string UNAM_DISPLAY_c <- "UnAm";
+	string active_display <- nil;
+	point previous_clicked_point <- nil;
+	
+	action_done current_action <- nil;
 	
 	/*
 	 * Chargements des données SIG
@@ -238,20 +245,87 @@ action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 		create buttons number: 1
 		{
 			command <- step_button;
+			nb_button <- 0;
 			label <- "One step";
 			shape <- square(button_size);
 			location <- { world.shape.width - 1000#m, 1000#m };
 			my_icon <- image_file("../images/icones/one_step.png");
+			display_name <- UNAM_DISPLAY_c;
+		}
+		create buttons number: 1
+		{
+			command <- subvention_b;
+			nb_button <- 1;
+			label <- "subvention";
+			shape <- square(button_size);
+			location <- { world.shape.width - 1000#m, 1000#m + 2200#m };
+			my_icon <- image_file("../images/icones/subvention.png");
+			display_name <- UNAM_DISPLAY_c;
+			
+		}
+		create buttons number: 1
+		{
+			command <- taxe_b;
+			nb_button <- 2;
+			label <- "taxe";
+			shape <- square(button_size);
+			location <- { world.shape.width - 1000#m, 1000#m + 4200#m };
+			my_icon <- image_file("../images/icones/taxe.png");
+			display_name <- UNAM_DISPLAY_c;
+			
 		}
 	}
 	
-	// action bouton 
-	action run_one_step (point loc, list selected_agents)
-    {
-       ask selected_agents {
-      	write "plop";
-      }
-    }
+	
+    //Action Général appel action particulière 
+    action button_click_C (point loc, list selected_agents)
+	{
+		
+		if(active_display != UNAM_DISPLAY_c)
+		{
+			current_action <- nil;
+			active_display <- UNAM_DISPLAY_c;
+			do clear_selected_button;
+			//return;
+		}
+		
+		list<buttons> selected_UnAm_c <- (selected_agents of_species buttons) where(each.display_name=active_display );
+		ask (selected_agents of_species buttons) where(each.display_name=active_display ){
+			if (nb_button = 0){
+				write "step";
+			}
+			
+			if (nb_button = 1){
+				write "Subvention";
+			}
+			
+			if (nb_button = 2){
+				write "taxe";
+			}
+		}
+		
+		if(length(selected_UnAm_c)>0)
+		{
+			do clear_selected_button;
+			ask (first(selected_UnAm_c))
+			{
+				is_selected <- true;
+			}
+			return;
+		}
+		
+	}
+	
+    
+    //destruction de la selrction
+    action clear_selected_button
+	{
+		previous_clicked_point <- nil;
+		ask buttons
+		{
+			self.is_selected <- false;
+		}
+	}
 	
 }
 
@@ -556,6 +630,7 @@ species commune
 species buttons
 {
 	int command <- -1;
+	int nb_button <- nil;
 	string display_name <- "no name";
 	string label <- "no name";
 	bool is_selected <- false;
@@ -563,10 +638,27 @@ species buttons
 	file my_icon;
 	aspect base
 	{
+			//draw shape color:#white border: is_selected ? # red : # white;
+			//draw my_icon size:button_size-50#m ;
+		if( display_name = UNAM_DISPLAY_c)
+		{
 			draw shape color:#white border: is_selected ? # red : # white;
 			draw my_icon size:button_size-50#m ;
 			
+		}
 	}
+}
+
+species action_done
+{
+	int id;
+	//string command_group <- "";
+	int command <- -1;
+	string label <- "no name";
+	float cost <- 0.0;
+	action apply;
+	
+	
 }
 
 /*
@@ -597,7 +689,9 @@ experiment oleronV1 type: gui {
 		{
 			// Les boutons et le clique
 			species buttons aspect:base;
-			event [mouse_down] action: run_one_step;
+			event [mouse_down] action: button_click_C;
+			//event [mouse_down] action: subvention_action;
+			//event [mouse_down] action: taxe_action;
 			species commune aspect: base;
 			species UA aspect: population;
 			species road aspect:base;
