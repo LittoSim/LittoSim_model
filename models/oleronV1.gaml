@@ -22,7 +22,7 @@ global  {
 	/* lisfloodReadingStep is used to indicate to which step of lisflood results, the current cycle corresponds */
 	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle 
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
-	
+	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
 	
 	//bottum size
 	float button_size <- 2000#m;
@@ -93,8 +93,16 @@ global  {
 		ask ouvrage {cells <- cell overlapping self;}
 	}
  	
+action tourDeJeu{
+	do runLisflood;
+	//do sauvegarder_resultat;
+	do simJoueurs ;
+	ask ouvrage {do evolEtat;}
+	ask UA {do evolveUA;}
+	ask commune {do recevoirImpots;}
+	} 	
 	
-reflex runLisflood
+action runLisflood
 	{ // déclenchement innondation
 	  if cycle = cycle_launchLisflood {
 	  		//do launchLisflood; // comment this line if you only want to read already existing results
@@ -108,7 +116,7 @@ reflex runLisflood
 	  }}
 
  /* pour la sauvegarde des données en format shape */
-reflex sauvegarder_resultat when: sauver_shp and cycle = cycle_sauver
+action sauvegarder_resultat //when: sauver_shp and cycle = cycle_sauver
 	{										 
 		save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
 	}
@@ -206,7 +214,7 @@ action load_rugosity
 //		}
 //	}
 ////////    On part donc du principe que le modèle joueur va envoyer au modèle Central 4 éléments : a_joueur_id selected_UnAm, current_action et command
-reflex simJoueurs //////désactiver lorsque c'est le moment de la submersion // au moment de l'innondation -> lisfloodReadingStep !=  9999999
+action simJoueurs //////désactiver lorsque c'est le moment de la submersion // au moment de l'innondation -> lisfloodReadingStep !=  9999999
 	{
 		do changeUA (1 , one_of(UA) , 1 );//1->N
 		do changeUA (1 , UA first_with (each.ua_code = 2) , 1 );//1->N
@@ -241,7 +249,7 @@ action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 	
 /*
  * ***********************************************************************************************
- *                                       LE BOUTON STEP 
+ *                                       LES BOUTONS  
  *  **********************************************************************************************
  */
  action init_buttons
@@ -297,14 +305,17 @@ action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 		ask (selected_agents of_species buttons) where(each.display_name=active_display ){
 			if (nb_button = 0){
 				write "step";
+				ask world {do tourDeJeu;}
 			}
 			
 			if (nb_button = 1){
 				write "Subvention";
+				//  TO DO
 			}
 			
 			if (nb_button = 2){
 				write "taxe";
+				// TO DO
 			}
 		}
 		
@@ -394,7 +405,7 @@ species ouvrage
 		///  vérifier que length renvoie bien le nb de cells
 	}
 	
-	reflex evolEtat { ////  ne pas déclencher lorsqu'on est en innondation
+	action evolEtat { ////  ne pas déclencher lorsqu'on est en innondation
 		cptEtat <- cptEtat +1;
 		if cptEtat = (nb_stepsForDegradEtat+1) {
 			cptEtat <-0;
@@ -432,7 +443,8 @@ species ouvrage
 		set cptEtat <- 0;
 		ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage_longueur (myself.length);}
 	}
-
+	
+	//La commune relève la digue
 	action increase_height_by_commune (int a_commune_id) {
 		set etat <- "tres bon";
 		set cptEtat <- 0;
@@ -443,10 +455,19 @@ species ouvrage
 		ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage_longueur (myself.length);}
 	}
 	
+	//la commune détruit la digue
 	action destroy_by_commune (int a_commune_id) {
 		ask cells {	soil_height <- soil_height - myself.height ;}
 		ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage_longueur (myself.length);}
 		do die;
+	}
+	
+	//La commune construit une digue
+	action new_by_commune (int a_commune_id) {
+		ask cells  {
+			soil_height <- soil_height + myself.height; ///  Une nouvelle digue fait 1 mètre 
+		}
+		ask commune first_with(each.id = a_commune_id) {do payerConstruction_longueur (myself.length);}
 	}
 	
 	aspect base
@@ -498,7 +519,7 @@ species UA
 	}
 	
 	
-	reflex evolveUA
+	action evolveUA
 		{if ua_name ="AU"
 			{AU_to_U_counter<-AU_to_U_counter+1;
 			if AU_to_U_counter = (nb_stepsForAU_toU +1)
@@ -510,11 +531,7 @@ species UA
 			population <- population + 10;}
 		}
 		
-//	reflex bidon
-//	{if rnd (1) / 1 < 0.1 {write "c"+ cout_expro;
-//		write "p" + population;
-//	}}
-		
+	
 		
 	string nameOfUAcode (int a_ua_code) 
 		{ string val <- "" ;
@@ -602,7 +619,7 @@ species commune
 		draw shape color:#whitesmoke;
 	}
 	
-	reflex recevoirImpots {
+	action recevoirImpots {
 		int nb_impose <- sum(UAs accumulate (each.population));
 		int impotRecus <- nb_impose * impot_unit;
 		budget <- budget + impotRecus;
@@ -626,8 +643,12 @@ species commune
 	action payerDestructionOuvrage_longueur (int length)
 			{
 				budget <- budget - (length * 600); // mettre les bonnes valeurs
-			}			
-			
+			}	
+					
+	action payerConstruction_longueur (int length)
+			{
+				budget <- budget - (length * 1600); // mettre les bonnes valeurs
+			}				
 }
 
 // Definition des boutons générique

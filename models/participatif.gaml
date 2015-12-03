@@ -14,7 +14,7 @@ global
 	file communes_UnAm_shape <- file("../includes/zone_etude/zones241115.shp");	
 	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
 	file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");
-	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/participatif/cout_action.csv",";"));
+	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 	
 	list<float> basket_location <- [];
 	list<del_basket_button> del_buttons <-[];
@@ -130,7 +130,7 @@ global
 		{
 			command <- ACTION_MODIFY_LAND_COVER_N;
 			label <- "Transformer en zone naturelle";
-			action_cost <- float(all_action_cost at {2,3});
+			action_cost <- float(all_action_cost at {2,3}); // ce cout correspond au passage de AU à N  (pour le passage de A à N le cout est différent)  
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.shape.width - 500#m, 350#m + 2*600#m };
@@ -330,7 +330,7 @@ global
 			list<cell_UnAm> selected_UnAm <- selected_agents of_species cell_UnAm;
 			ask (selected_UnAm closest_to loc)
 			{
-				if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (land_cover_code= 2 or land_cover_code= 4)  )
+				if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (land_cover_code= 2)  )
 				{
 					bool res <- false;
 					write "fdsfdsfdsgfd";
@@ -346,7 +346,9 @@ global
 				{
 					id <- world.get_action_id();
 					self.command <- selected_button.command;
-					cost <- selected_button.action_cost; 
+					if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.land_cover_code= 5)) 
+						{cost <- float(all_action_cost at {2,8});} 
+					else {cost <- selected_button.action_cost;}
 					self.label <- selected_button.label;
 					shape <- myself.shape;
 				}
