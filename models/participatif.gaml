@@ -20,7 +20,7 @@ global
 	file communes_UnAm_shape <- file("../includes/zone_etude/zones241115.shp");	
 	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
 	file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");
-	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/participatif/cout_action.csv",";"));
+	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 	
 	
 	geometry shape <- envelope(emprise);// 1000#m around envelope(communes_UnAm_shape)  ;
