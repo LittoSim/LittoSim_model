@@ -370,7 +370,7 @@ global
 			cell_UnAm cell_tmp <- selected_UnAm closest_to loc;
 			ask (cell_tmp)
 			{
-				if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (land_cover_code= 2 or land_cover_code= 4)  )
+				if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (land_cover_code= 2)  )
 				{
 					bool res <- false;
 					string chain <- "Vous êtes sur le point d'exproprier des habitants. Souhaitez vous continuer ?";
