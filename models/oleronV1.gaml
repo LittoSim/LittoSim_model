@@ -98,7 +98,7 @@ global  {
 		geometry shape <- envelope(emprise_shape);
 	
 	
-	
+	int round <- 0;
 	list<UA> agents_to_inspect update: 10 among UA;
 	game_controller network_agent <- nil;
 
@@ -141,10 +141,14 @@ global  {
 action tourDeJeu{
 	do runLisflood;
 	//do sauvegarder_resultat;
-	do simJoueurs ;
+
 	ask ouvrage {do evolEtat;}
 	ask UA {do evolveUA;}
-	ask commune {do recevoirImpots;}
+	ask commune {
+		do recevoirImpots; not_updated<-true;
+		}
+		round <- round + 1;
+		write "new round "+ round;
 	} 	
 	
 action runLisflood
@@ -316,8 +320,7 @@ species game_controller skills:[network]
 		loop while:!emptyMessageBox()
 		{
 			map msg <- fetchMessage();
-			write msg;
-			if(msg["sender"]!=MANAGER_NAME)
+			if(msg["sender"]!=MANAGER_NAME and round>0)
 			{
 				do read_action(msg["content"],msg["sender"]);
 			}
@@ -353,7 +356,7 @@ species game_controller skills:[network]
 					ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
 					{
 						do repair_by_commune(idCom);
-						is_updated <- true;
+						not_updated <- true;
 					}		
 				}
 			 	match ACTION_DESTROY_DYKE 
@@ -367,7 +370,7 @@ species game_controller skills:[network]
 							do send_destroy_dyke_message(myself);
 						}
 						do destroy_by_commune (idCom) ;
-						is_updated <- true;
+						not_updated <- true;
 					}		
 				}
 			 	match ACTION_RAISE_DYKE {
@@ -376,7 +379,7 @@ species game_controller skills:[network]
 			 		ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
 					{
 						do increase_height_by_commune (idCom) ;
-						is_updated <- true;
+						not_updated <- true;
 					}
 				}
 			 	match ACTION_MODIFY_LAND_COVER_A {
@@ -385,7 +388,7 @@ species game_controller skills:[network]
 			 		ask UA first_with(each.id=chosen_element_id)
 			 		 {
 			 		  do modify_UA (idCom, 5);
-			 		  is_updated <- true;
+			 		  not_updated <- true;
 			 		 }
 			 	}
 			 	match ACTION_MODIFY_LAND_COVER_AU {
@@ -394,7 +397,7 @@ species game_controller skills:[network]
 			 		ask UA first_with(each.id=chosen_element_id)
 			 		 {
 			 		 	do modify_UA (idCom, 4);
-			 		 	is_updated <- true;
+			 		 	not_updated <- true;
 			 		 }
 			 	}
 				match ACTION_MODIFY_LAND_COVER_N {
@@ -403,7 +406,7 @@ species game_controller skills:[network]
 					ask UA first_with(each.id=chosen_element_id)
 			 		 {
 			 		 	do modify_UA (idCom, 1);
-			 		 	is_updated <- true;
+			 		 	not_updated <- true;
 			 		 }
 			 	}
 
@@ -458,11 +461,11 @@ species game_controller skills:[network]
 	action update_UA
 	{
 		list<string> update_messages <-[]; 
-		ask UA where(each.is_updated)
+		ask UA where(each.not_updated)
 		{
 			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code;
 			update_messages <- update_messages + msg;	
-			is_updated <- false;
+			not_updated <- false;
 		}
 		loop mm over:update_messages
 		{
@@ -489,10 +492,10 @@ species game_controller skills:[network]
 	action update_dyke
 	{
 		list<string> update_messages <-[]; 
-		ask ouvrage where(each.is_updated)
+		ask ouvrage where(each.not_updated)
 		{
 			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id_ouvrage+COMMAND_SEPARATOR+  self.etat+COMMAND_SEPARATOR+height;
-			is_updated <- false;
+			not_updated <- false;
 		}
 		loop mm over:update_messages
 		{
@@ -504,10 +507,10 @@ species game_controller skills:[network]
 	action update_commune
 	{
 		list<string> update_messages <-[]; 
-		ask commune where(each.is_updated)
+		ask commune where(each.not_updated)
 		{
 			string msg <- ""+UPDATE_BUDGET+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ budget+COMMAND_SEPARATOR+impot_unit;
-			is_updated <- false;
+			not_updated <- false;
 			ask first(game_controller)
 			{
 				do sendMessage  dest:"all" content:msg;
@@ -728,7 +731,7 @@ species ouvrage
 	int cptEtat <-0;
 	int nb_stepsForDegradEtat <-4;
 	int rupture<-0;
-	bool is_updated <- false;
+	bool not_updated <- false;
 	
 	init {
 		if etat = 'inconnu' {etat <- "bon";}
@@ -837,7 +840,7 @@ species UA
 	list<cell> cells ;
 	int population ;
 	int cout_expro ;
-	bool is_updated <- false;
+	bool not_updated <- false;
 	
 	init {cout_expro <- (round (cout_expro /2000))*1000;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
 	
@@ -948,7 +951,7 @@ Mer (code CLC 523) : 						0.02				*/
 species commune
 {	
 	int id<-0;
-	bool is_updated<- true;
+	bool not_updated<- true;
 	string nom_raccourci;
 	int budget <-10000;
 	list<UA> UAs ;

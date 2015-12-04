@@ -722,7 +722,6 @@ species action_dyke parent:action_done
 	{
 		//creer une digue
 	}
-	
 }
 
 
@@ -734,7 +733,7 @@ species action_land_cover parent:action_done
 		switch(command)
 		{
 			 match ACTION_MODIFY_LAND_COVER_A { return #brown;}
-			 match ACTION_MODIFY_LAND_COVER_AU {return #orange;}
+			 match ACTION_MODIFY_LAND_COVER_AU {return #black;}
 			 match ACTION_MODIFY_LAND_COVER_N {return #green;}
 		} 
 		return #grey;
