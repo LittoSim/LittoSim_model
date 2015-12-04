@@ -418,7 +418,6 @@ species game_controller skills:[network]
 	
 	action read_action(string act, string sender)
 	{
-		write "sender   " + sender;
 		list<string> data <- act split_with COMMAND_SEPARATOR;
 		if(! (ACTION_LIST contains int(data[0])) )
 		{
@@ -970,26 +969,33 @@ species commune
 	action payerExpropriationPour (UA a_UA)
 			{
 				budget <- budget - a_UA.cout_expro;
+				not_updated <- true;
 			}
 			
 	action payerReparationOuvrage_longueur (int length)
 			{
 				budget <- budget - (length * 100); // mettre les bonnes valeurs
+				not_updated <- true;
+				
 			}
 			
 	action payerRehaussementOuvrage_longueur (int length)
 			{
 				budget <- budget - (length * 500); // mettre les bonnes valeurs
+				not_updated <- true;
 			}
 
 	action payerDestructionOuvrage_longueur (int length)
 			{
 				budget <- budget - (length * 600); // mettre les bonnes valeurs
+				not_updated <- true;
+				
 			}	
 					
 	action payerConstruction_longueur (int length)
 			{
 				budget <- budget - (length * 1600); // mettre les bonnes valeurs
+				not_updated <- true;
 			}				
 }
 
