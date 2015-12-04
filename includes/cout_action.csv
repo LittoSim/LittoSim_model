@@ -1,9 +1,1 @@
-identifiant;action;cost
-1;Transformer en zone agricole;100
-2;Transformer en zone ˆ urbaniser;750
-3;Transformer une AU en zone naturelle;200
-4;Construire une digue;20
-5;RŽparer une digue;2
-6;DŽmenteler une digue;4
-7;Rehausser une digue;2
-8;Transformer une A en zone naturelle;100
+identifiant;action;cost1;Transformer en zone agricole;1002;Transformer en zone ˆ urbaniser;7503;Transformer une AU en zone naturelle;2004;Construire une digue;205;RŽparer une digue;26;DŽmenteler une digue;47;Rehausser une digue;28;Transformer une A en zone naturelle;100
