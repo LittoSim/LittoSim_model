@@ -10,6 +10,8 @@ model lechateau
 global
 {
 	string commune_name <- "lechateau";
+	string MANAGER_NAME <- "model_manager";
+	
 	//file emprise <- file("../includes/participatif/emprise/"+commune_name+".shp");
 	file emprise <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		
@@ -20,14 +22,13 @@ global
 	file communes_UnAm_shape <- file("../includes/zone_etude/zones241115.shp");	
 	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
 	file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");
-	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/participatif/cout_action.csv",";"));
+	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 	
 	
 	geometry shape <- envelope(emprise);// 1000#m around envelope(communes_UnAm_shape)  ;
 	geometry local_shape <- nil; // envelope(emprise_local);
 	
 	string COMMAND_SEPARATOR <- ":";
-	string MANAGER_NAME <- "model_manager";
 	string GROUP_NAME <- "Oleron";
 	
 	list<float> basket_location <- [];
@@ -58,23 +59,27 @@ global
 	int ACTION_MODIFY_LAND_COVER_U <- 3;
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
 	
+	int ACTION_LAND_COVER_UPDATE<-9;
+	int ACTION_DYKE_UPDATE<-9;
+
 	//action to acknwoledge client requests.
-	int ACTION_DYKE_REPAIRED <- 15;
+//	int ACTION_DYKE_REPAIRED <- 15;
 	int ACTION_DYKE_CREATED <- 16;
 	int ACTION_DYKE_DROPPED <- 17;
-	int ACTION_DYKE_RAISED <- 18;
+//	int ACTION_DYKE_RAISED <- 18;
 	int UPDATE_BUDGET <- 19;
 
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
+/*	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_U <- 13;
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;
-	
+	 */
 	
 	float widX;
 	float widY;
 	
 	float budget <- 3000.0;
+	float impot <- impot;
 	list<action_done> my_basket<-[];
 	commune my_commune <- nil;
 	Network_agent game_manager <-nil;
@@ -86,6 +91,7 @@ global
 		create commune from: communes_shape with:[nom_raccourci::string(read("NOM_RAC"))];
 		my_commune <- commune first_with(each.nom_raccourci = commune_name);
 		local_shape <-envelope(my_commune);
+		write "commune "+ my_commune;
 		ask(commune where(each != my_commune))
 		{
 			do die;
@@ -500,12 +506,8 @@ species action_done
 		switch(command)
 		{
 			match ACTION_CREATE_DYKE  {
-				//int origin <- (cell_mnt closest_to first(shape.points)).cell_id;
-				//int end <- (cell_mnt closest_to last(shape.points)).cell_id;
 				point end <- last(shape.points);
 				point origin <- first(shape.points);
-		//		write "dsqfd"+location;
-		//		result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+origin+COMMAND_SEPARATOR+end;
 				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+( origin.x)+COMMAND_SEPARATOR+(origin.y) +COMMAND_SEPARATOR+(end.x)+COMMAND_SEPARATOR+(end.y)+COMMAND_SEPARATOR+location.x+COMMAND_SEPARATOR+location.y;
 			}
 			
@@ -547,100 +549,89 @@ species Network_agent skills:[network]
 		loop while:!emptyMessageBox()
 		{
 			map<string,string> msg <- fetchMessage();
-			//do read_action(msg["content"],msg["sender"]);	
-			string my_msg <- msg["content"]; 
-			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
+			string dest <- msg["dest"]; 
 			
-			int command <- int(data[0]);
-			int action_id <- int(data[1]);
-			switch(int(data[0]))
-				{
-					match ACTION_DYKE_CREATED
-					 {
-						do dyke_create_action(data);
-					}
-					match ACTION_DYKE_REPAIRED {
-						int d_id <- int(data[2]);
-						ask dyke where(each.dyke_id =d_id )
+			if(dest= "all" or dest contains world.commune_name)
+			{
+				//do read_action(msg["content"],msg["sender"]);	
+				string my_msg <- msg["content"]; 
+				list<string> data <- my_msg split_with COMMAND_SEPARATOR;
+				
+				int command <- int(data[0]);
+				int action_id <- int(data[1]);
+				switch(int(data[0]))
+					{
+						match UPDATE_BUDGET
 						{
-							status <-"tres bon";
+							budget <- float(data[2]);
+							impot <- float(data[3]);
+							
+						}
+						match ACTION_DYKE_CREATED
+						 {
+							do dyke_create_action(data);
+						}
+						match ACTION_DYKE_UPDATE {
+							int d_id <- int(data[2]);
+							ask dyke where(each.dyke_id =d_id )
+							{
+								status <-data[3];
+								height <-float(data[4]);
+							}
+						}
+						match ACTION_DYKE_DROPPED {
+							int d_id <- int(data[2]);
+							ask dyke where(each.dyke_id =d_id )
+							{
+								do die;
+							}
+						}
+						match UPDATE_BUDGET {
+							float mbudget <- float(data[2]);
+								budget <- budget;
+						}
+						//	string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code;
+			
+						match ACTION_LAND_COVER_UPDATE {
+							int d_id <- int(data[2]);
+							ask cell_UnAm where(each.id = d_id)
+							{
+								land_cover_code <-int(data[3]); 
+								switch (land_cover_code)
+								{
+										match 1 {land_cover <- "N";}
+										match 2 {land_cover <- "U";}
+										match 4 {land_cover <- "AU";}
+										match 5 {land_cover <- "A";}
+								}
+								//land_cover <- "AU";
+		
+							}
 						}
 					}
-					match UPDATE_BUDGET {
-						float mbudget <- float(data[2]);
-							budget <- budget;
-					}
-					match ACTION_DYKE_DROPPED {
-						int d_id <- int(data[2]);
-						ask dyke where(each.dyke_id =d_id )
-						{
-							do die;
-						}
-					}
-					match ACTION_DYKE_RAISED {
-						int d_id <- int(data[2]);
-						float sz <- float(data[3]);
-						ask dyke where(each.dyke_id =d_id )
-						{
-							self.height <- sz;
-						}
-					}
-					match VALIDATION_ACTION_MODIFY_LAND_COVER_AU {
-						int d_id <- int(data[2]);
-						ask cell_UnAm where(each.id = d_id)
-						{
-							land_cover_code <-4;
-							land_cover <- "AU";
-	
-						}
-					}
-					match ACTION_MODIFY_LAND_COVER_A {
-						int d_id <- int(data[2]);
-						ask cell_UnAm where(each.id = d_id)
-						{
-							land_cover_code <-2;
-							land_cover <- "U";
-	
-						}
-					}
-					match ACTION_MODIFY_LAND_COVER_N {
-						int d_id <- int(data[2]);
-						ask cell_UnAm where(each.id = d_id)
-						{
-							land_cover_code <-1;
-							land_cover <- "N";
-	
-						}
-					}
-					match ACTION_MODIFY_LAND_COVER_N {
-						int d_id <- int(data[2]);
-						ask cell_UnAm where(each.id = d_id)
-						{
-							land_cover_code <-5;
-							land_cover <- "A";
-	
-						}
-					}
-				}
+			}
 		}
 	}
 
 	action dyke_create_action(list<string> msg)
 	{
+		write "création d'une digue";
 		int d_id <- int(msg[2]);
 		float x1 <- float(msg[3]);
 		float y1 <- float(msg[4]);
 		float x2 <- float(msg[5]);
 		float y2 <- float(msg[6]);
 		float hg <- float(msg[7]);
+		int tp <- int(msg[8]);
+		string st <- msg[9];
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
 		create dyke number:1
 		{
 			shape <- pli;
 			dyke_id <- d_id;
-			type<-1;
+			type<-tp;
 			height<- hg;
-			status<-"tres bon";
+			status<-st;
 		}				
 	}
 	
@@ -650,8 +641,15 @@ species Network_agent skills:[network]
 		loop act over:my_basket
 		{
 			string val <- act.serialize_command();
-			do sendMessage  dest:"all" content:val;	
+		//	write "message " + val;
+			do sendMessage  dest:"all" content:""+val;	/*MANAGER_NAME*/
 		}
+		ask my_basket
+		{
+			do die;
+		}
+		my_basket<-[];
+		
 	}
 	
 }
@@ -892,6 +890,7 @@ species cell_mnt schedules:[]
 
 experiment game type: gui
 {
+	float minimum_cycle_duration <- 0.5;
 	parameter "choix de la commune : " var:commune_name <- "lechateau" among:["lechateau","dolus","sttrojan", "stpierre"];
 	output
 	{

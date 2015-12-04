@@ -15,6 +15,41 @@
 model oleronV1
 
 global  {
+	
+		
+	string COMMAND_SEPARATOR <- ":";
+	string MANAGER_NAME <- "model_manager";
+	string GROUP_NAME <- "Oleron";
+	string BUILT_DYKE_TYPE <- "newDyke";
+	float  STANDARD_DYKE_SIZE <- 2.5;	
+	
+	int ACTION_REPAIR_DYKE <- 5;
+	int ACTION_CREATE_DYKE <- 6;
+	int ACTION_DESTROY_DYKE <- 7;
+	int ACTION_RAISE_DYKE <- 8;
+	
+
+	int ACTION_MODIFY_LAND_COVER_AU <- 1;
+	int ACTION_MODIFY_LAND_COVER_A <- 2;
+	int ACTION_MODIFY_LAND_COVER_U <- 3;
+	int ACTION_MODIFY_LAND_COVER_N <- 4;
+	list<int> ACTION_LIST <- [ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
+	
+	int ACTION_LAND_COVER_UPDATE<-9;
+	int ACTION_DYKE_UPDATE<-9;
+	//action to acknwoledge client requests.
+//	int ACTION_DYKE_REPAIRED <- 15;
+	int ACTION_DYKE_CREATED <- 16;
+	int ACTION_DYKE_DROPPED <- 17;
+//	int ACTION_DYKE_RAISED <- 18;
+	int UPDATE_BUDGET <- 19;
+
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_U <- 13;
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;
+	
+	int messageID <- 0;
 	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile
 	string resultats <- "resultats.shp"; //	on sauvegarde les résultats dans ce fichier (attention, cela ecrase a chaque fois le resultat precedent)
 	int cycle_sauver <- 100; //cycle à laquelle les resultats sont sauvegardés au format shp
@@ -40,10 +75,12 @@ global  {
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
-		file defenses_cote_shape <- file("../includes/zone_etude/digues_brice_corriges_03122015.shp");
+		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
+		//file defenses_cote_shape <- file("../includes/zone_etude/digues_brice_corriges_03122015.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
-		file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
+		//file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
+		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
 	//	file dem_file <- file("../includes/lisflood-fp-604/oleron_dem_t0.asc") ;	bizarrement le chargement de ce fichier là est beaucoup plus long que le chargement de celui du dessus
 		int nb_cols <- 631;
 		int nb_rows <- 906;
@@ -55,8 +92,7 @@ global  {
 		int nb_rows <- 175;	*/
 		
 	//couches joueurs
-		file unAm_shape <- file("../includes/zone_etude/zones241115.shp"
-		);	
+		file unAm_shape <- file("../includes/zone_etude/zones241115.shp");	
 
 	/* Definition de l'enveloppe SIG de travail */
 		geometry shape <- envelope(emprise_shape);
@@ -64,19 +100,23 @@ global  {
 	
 	
 	list<UA> agents_to_inspect update: 10 among UA;
-
+	game_controller network_agent <- nil;
 
 	init
 	{
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		/* initialisation du bouton */
 		do init_buttons;
-		
+		create game_controller number:1 returns:ctl ;
+		network_agent <- first(ctl);
 		/*Creation des agents a partir des données SIG */
-		create ouvrage from:defenses_cote_shape  with:[type::string(read("TYPE")), etat::string(read("Etat_Ouvra")), height::float(get("hauteur")) ];
-		create commune from:communes_shape with: [id::int(get("id_jeu"))];
+		create ouvrage from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("TYPE")), etat::string(read("Etat_Ouvra")), height::float(get("hauteur")) ];
+		create commune from:communes_shape with: [nom_raccourci::string(read("NOM_RAC")),id::int(read("id_jeu"))]
+		{
+			write " commune " + nom_raccourci + " "+id;
+		}
 		create road from: road_shape;
-		create UA from: unAm_shape with: [ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
+		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
 		{
 			switch (ua_code)
 			{
@@ -92,7 +132,12 @@ global  {
 		ask commune {UAs <- UA overlapping self;}
 		ask ouvrage {cells <- cell overlapping self;}
 	}
- 	
+	
+ 	int getMessageID
+ 	{
+ 		messageID<- messageID +1;
+ 		return messageID;
+ 	}
 action tourDeJeu{
 	do runLisflood;
 	//do sauvegarder_resultat;
@@ -198,11 +243,295 @@ action load_rugosity
 	}
 
 
+
+
 /*
  * ***********************************************************************************************
  *                        RECEPTION ET APPLICATION DES ACTIONS DES JOUEURS 
  *  **********************************************************************************************
  */
+
+
+species action_done schedules:[]
+{
+	string id;
+	int chosen_element_id;
+	string doer<-"";
+	//string command_group <- "";
+	int command <- -1;
+	string label <- "no name";
+	float cost <- 0.0;	
+	rgb define_color
+	{
+		switch(command)
+		{
+			 match ACTION_CREATE_DYKE { return #blue;}
+			 match ACTION_REPAIR_DYKE {return #green;}
+			 match ACTION_DESTROY_DYKE {return #brown;}
+			 match ACTION_MODIFY_LAND_COVER_A { return #brown;}
+			 match ACTION_MODIFY_LAND_COVER_AU {return #orange;}
+			 match ACTION_MODIFY_LAND_COVER_N {return #green;}
+		} 
+		return #grey;
+	}
+	
+	
+	
+	aspect base
+	{
+		draw  20#m around shape color:define_color() border:#red;
+	}
+
+	
+	aspect base
+	{
+		draw shape color:define_color();
+	}
+	
+	ouvrage create_dyke(action_done act)
+	{
+		int id_ov <- max(ouvrage collect(each.id_ouvrage));
+		create ouvrage number:1 returns:ovgs
+		{
+			id_ouvrage <- id_ov;
+			shape <- act.shape;
+			type <- BUILT_DYKE_TYPE ;
+			height <- STANDARD_DYKE_SIZE;	
+		}
+		return first(ovgs);
+	}
+	
+}
+
+
+species game_controller skills:[network]
+{
+	init
+	{
+		do connectMessenger to:GROUP_NAME at:"localhost" withName:MANAGER_NAME;
+	}
+	
+	reflex wait_message
+	{
+		loop while:!emptyMessageBox()
+		{
+			map msg <- fetchMessage();
+			write msg;
+			if(msg["sender"]!=MANAGER_NAME)
+			{
+				do read_action(msg["content"],msg["sender"]);
+			}
+			
+					
+		}
+	}
+	
+	int commune_id(string xx)
+	{
+		
+		return	 (commune first_with (xx contains each.nom_raccourci )).id;
+	}
+	reflex apply_action when:length(action_done)>0
+	{
+		ask(action_done)
+		{
+			string tmp <- self.doer;
+			int idCom <-myself.commune_id(tmp);
+			switch(command)
+			{
+				match ACTION_CREATE_DYKE
+				{	
+					ouvrage ovg <-  create_dyke(self);
+					ask network_agent
+					{
+						do send_create_dyke_message(ovg);
+					}
+					write "create Dyke";
+				}
+				match ACTION_REPAIR_DYKE {
+					write " ACTION_REPAIR_DYKE " + idCom+ " "+ doer;
+					ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
+					{
+						do repair_by_commune(idCom);
+						is_updated <- true;
+					}		
+				}
+			 	match ACTION_DESTROY_DYKE 
+			 	 {
+			 	 	write " ACTION_DESTROY_DYKE " + idCom+ " "+ doer;
+				
+					ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
+					{
+						ask network_agent
+						{
+							do send_destroy_dyke_message(myself);
+						}
+						do destroy_by_commune (idCom) ;
+						is_updated <- true;
+					}		
+				}
+			 	match ACTION_RAISE_DYKE {
+			 		write " ACTION_RAISE_DYKE " + idCom+ " "+ doer;
+				
+			 		ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
+					{
+						do increase_height_by_commune (idCom) ;
+						is_updated <- true;
+					}
+				}
+			 	match ACTION_MODIFY_LAND_COVER_A {
+			 		write " ACTION_MODIFY_LAND_COVER_A " + idCom+ " "+ doer;
+				 
+			 		ask UA first_with(each.id=chosen_element_id)
+			 		 {
+			 		  do modify_UA (idCom, 5);
+			 		  is_updated <- true;
+			 		 }
+			 	}
+			 	match ACTION_MODIFY_LAND_COVER_AU {
+			 		write " ACTION_MODIFY_LAND_COVER_AU " + idCom+ " "+ doer;
+				
+			 		ask UA first_with(each.id=chosen_element_id)
+			 		 {
+			 		 	do modify_UA (idCom, 4);
+			 		 	is_updated <- true;
+			 		 }
+			 	}
+				match ACTION_MODIFY_LAND_COVER_N {
+					write " ACTION_MODIFY_LAND_COVER_N " + idCom+ " "+ doer;
+				
+					ask UA first_with(each.id=chosen_element_id)
+			 		 {
+			 		 	do modify_UA (idCom, 1);
+			 		 	is_updated <- true;
+			 		 }
+			 	}
+
+									
+			}
+			do die;
+		}
+	}
+	
+	action read_action(string act, string sender)
+	{
+		write "sender   " + sender;
+		list<string> data <- act split_with COMMAND_SEPARATOR;
+		if(! (ACTION_LIST contains int(data[0])) )
+		{
+			return;
+		}
+		action_done tmp_agent <- nil;
+		create action_done number:1 returns:tmp_agent_list;
+		tmp_agent <- first(tmp_agent_list);
+		ask(tmp_agent)
+		{
+			self.command <- int(data[0]);
+			self.id <- int(data[1]);
+			self.doer <- sender;
+			
+			if(self.command = ACTION_CREATE_DYKE)
+			{
+				point ori <- {float(data[2]),float(data[3])};
+				point des <- {float(data[4]),float(data[5])};
+				point loc <- {float(data[6]),float(data[7])}; 
+				shape <- polyline([ori,des]);
+				location <- loc; 
+			}
+			else
+			{
+				self.chosen_element_id <- int(data[2]);
+			}	
+		}
+		
+	}
+	
+	
+	
+	reflex send_space_update
+	{
+		do update_UA;
+		do update_dyke;
+		do update_commune;
+	}
+	
+	action update_UA
+	{
+		list<string> update_messages <-[]; 
+		ask UA where(each.is_updated)
+		{
+			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code;
+			update_messages <- update_messages + msg;	
+			is_updated <- false;
+		}
+		loop mm over:update_messages
+		{
+			do sendMessage  dest:"all" content:mm;
+		}
+	}
+	
+	action send_destroy_dyke_message(ouvrage ovg)
+	{
+		string msg <- ""+ACTION_DYKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage;
+		do sendMessage  dest:"all" content:msg;	
+	
+	}
+	
+	action send_create_dyke_message(ouvrage ovg)
+	{
+		point p1 <- first(ovg.shape.points);
+		point p2 <- last(ovg.shape.points);
+		string msg <- ""+ACTION_DYKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.etat;
+		do sendMessage  dest:"all" content:msg;	
+	}
+	
+	
+	action update_dyke
+	{
+		list<string> update_messages <-[]; 
+		ask ouvrage where(each.is_updated)
+		{
+			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id_ouvrage+COMMAND_SEPARATOR+  self.etat+COMMAND_SEPARATOR+height;
+			is_updated <- false;
+		}
+		loop mm over:update_messages
+		{
+			do sendMessage  dest:"all" content:mm;
+		}
+	}
+	
+	
+	action update_commune
+	{
+		list<string> update_messages <-[]; 
+		ask commune where(each.is_updated)
+		{
+			string msg <- ""+UPDATE_BUDGET+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ budget+COMMAND_SEPARATOR+impot_unit;
+			is_updated <- false;
+			ask first(game_controller)
+			{
+				do sendMessage  dest:"all" content:msg;
+				
+			}
+		}
+	}
+	
+	
+	
+	
+}
+	
+
+
+/*
+ **********************************************************************************************************
+ *    Serveur et connexion
+ ********************************************************************************************************** 
+ */
+
+
+
+
 
 ////////     Méthode utilisée pour appliquer les actions des joueurs coté "modèle Joueur"
 //action button_click (point loc, list selected_agents)
@@ -230,6 +559,7 @@ action simJoueurs //////désactiver lorsque c'est le moment de la submersion // 
 		do destroyOuvrage(3,ouvrage first_with(each.etat = "tres mauvais"));
 		write ""+length(commune) + " " + length(ouvrage);
 	}
+
 
 action changeUA (int a_commune_id, UA a_cell_UA, int a_ua_code)
 	{ask a_cell_UA {do modify_UA (a_commune_id, a_ua_code);}
@@ -388,7 +718,9 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 
 
 species ouvrage
-{	string type;
+{	
+	int id_ouvrage;
+	string type;
 	string etat;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
 	float height;  // height au pied en mètre
 	int length <- 0; // longueur de l'ouvrage en mètre 
@@ -396,6 +728,7 @@ species ouvrage
 	int cptEtat <-0;
 	int nb_stepsForDegradEtat <-4;
 	int rupture<-0;
+	bool is_updated <- false;
 	
 	init {
 		if etat = 'inconnu' {etat <- "bon";}
@@ -496,6 +829,7 @@ species road
 species UA
 {
 	string ua_name;
+	int id;
 	int ua_code;
 	rgb my_color <- cell_color() update: cell_color();
 	int nb_stepsForAU_toU <-3;
@@ -503,6 +837,7 @@ species UA
 	list<cell> cells ;
 	int population ;
 	int cout_expro ;
+	bool is_updated <- false;
 	
 	init {cout_expro <- (round (cout_expro /2000))*1000;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
 	
@@ -543,6 +878,7 @@ species UA
 				match 5 {val <- "A";}
 					}
 		return val;}
+
 		
 		
 	int codeOfUAname (string a_ua_name) 
@@ -610,7 +946,10 @@ Mer (code CLC 523) : 						0.02				*/
 
 
 species commune
-{	int id<-0;
+{	
+	int id<-0;
+	bool is_updated<- true;
+	string nom_raccourci;
 	int budget <-10000;
 	list<UA> UAs ;
 	int impot_unit <- 1000;
@@ -674,17 +1013,7 @@ species buttons
 	}
 }
 
-species action_done
-{
-	int id;
-	//string command_group <- "";
-	int command <- -1;
-	string label <- "no name";
-	float cost <- 0.0;
-	action apply;
-	
-	
-}
+
 
 /*
  * ***********************************************************************************************
@@ -693,6 +1022,7 @@ species action_done
  */
 
 experiment oleronV1 type: gui {
+	float minimum_cycle_duration <- 0.5;
 	output {
 		inspect world;
 		
