@@ -20,8 +20,8 @@ global
 	
 	file communes_shape <- file("../includes/zone_etude/communes.shp");
 	file communes_UnAm_shape <- file("../includes/zone_etude/zones241115.shp");	
-	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
-	file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");
+	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
+	//file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");  CE fichier n'existe pas
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 	
 	
@@ -99,7 +99,7 @@ global
 		do init_basket;
 		do init_buttons;
 		
-		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::int(read("Code_type_")), height::float(read("hauteur"))];
+		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::int(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) ];
 		ask dyke where(!(each overlaps my_commune))
 		{
 			do die;
@@ -861,10 +861,17 @@ species dyke
 	float height;
 	string status;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
 	
+	init {if status = '' {status <- "bon";} }
 	
 	aspect base
-	{
-		draw 20#m around shape color:#red size:300#m;
+	{  	rgb color <- # pink;
+		if status = "tres bon" {color <- rgb (0,175,0);} 
+		if status = "bon" {color <- rgb (0,216,100);} 
+		if status = "moyen " {color <-  rgb (206,213,0);} 
+		if status = "mauvais" {color <- rgb(255,51,102);} 
+		if status = "tres mauvais" {color <- # red;}
+		if status = "casse" {color <- # yellow;} 
+		draw 20#m around shape color: color size:300#m;
 	}
 	
 }
