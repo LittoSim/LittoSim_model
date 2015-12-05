@@ -23,7 +23,16 @@ global
 	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 	//file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");  CE fichier n'existe pas
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
-	
+
+	//récupération des couts du fichier cout_action
+	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,1});
+	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,2});
+	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,3});
+	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,8});
+	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,4});
+	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,5});
+	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,6});
+	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,7});	
 	
 	geometry shape <- envelope(emprise);// 1000#m around envelope(communes_UnAm_shape)  ;
 	geometry local_shape <- nil; // envelope(emprise_local);
@@ -78,7 +87,7 @@ global
 	float widX;
 	float widY;
 	
-	float budget <- 3000.0;
+	float budget <- 20000.0;
 	float impot <- impot;
 	list<action_done> my_basket<-[];
 	commune my_commune <- nil;
@@ -121,7 +130,7 @@ global
 		} */
 		
 	 	
-		create cell_UnAm from: communes_UnAm_shape with: [id::int(read("FID_1")),land_cover_code::int(read("grid_code"))]
+		create cell_UnAm from: communes_UnAm_shape with: [id::int(read("FID_1")),land_cover_code::int(read("grid_code")), cout_expro:: int(get("coutexpr"))]
 		{
 			switch (land_cover_code)
 			{
@@ -152,7 +161,7 @@ global
 		{
 			command <- ACTION_MODIFY_LAND_COVER_A;
 			label <- "Transformer en zone agricole";
-			action_cost <- float(all_action_cost at {2,1});
+			action_cost <- ACTION_COST_LAND_COVER_TO_A;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +button_s/2 }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
@@ -163,7 +172,7 @@ global
 		{
 			command <- ACTION_MODIFY_LAND_COVER_AU;
 			label <- "Transformer en zone à urbaniser";
-			action_cost <- float(all_action_cost at {2,2});
+			action_cost <- ACTION_COST_LAND_COVER_TO_AU;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_s }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
@@ -174,7 +183,7 @@ global
 		{
 			command <- ACTION_MODIFY_LAND_COVER_N;
 			label <- "Transformer en zone naturelle";
-			action_cost <- float(all_action_cost at {2,3});
+			action_cost <- ACTION_COST_LAND_COVER_FROM_AU_TO_N;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_s) };
@@ -187,7 +196,7 @@ global
 		{
 			command <- ACTION_CREATE_DYKE;
 			label <- "Construire une digue";
-			action_cost <- float(all_action_cost at {2,4});
+			action_cost <- ACTION_COST_DYKE_CREATE;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +button_s/2 }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
@@ -198,7 +207,7 @@ global
 		{
 			command <- ACTION_REPAIR_DYKE;
 			label <- "Réparer une digue";
-			action_cost <- float(all_action_cost at {2,5});
+			action_cost <- ACTION_COST_DYKE_REPAIR;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_s) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
@@ -210,7 +219,7 @@ global
 		{
 			command <- ACTION_DESTROY_DYKE;
 			label <- "Démenteler une digue";
-			action_cost <- float(all_action_cost at {2,6});
+			action_cost <- ACTION_COST_DYKE_DESTROY;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_s) };
@@ -222,7 +231,7 @@ global
 		{
 			command <- ACTION_RAISE_DYKE;
 			label <- "Réhausser une digue";
-			action_cost <- float(all_action_cost at {2,7});
+			action_cost <- ACTION_COST_DYKE_RAISE;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_s) };
@@ -387,7 +396,9 @@ global
 					chosen_element_id <- myself.id;
 					self.command <- selected_button.command;
 					if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.land_cover_code= 5)) 
-						{cost <- float(all_action_cost at {2,8});} 
+						{cost <- ACTION_COST_LAND_COVER_FROM_A_TO_N;} 
+					if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.land_cover_code= 2)) 
+						{cost <- myself.cout_expro;} 						
 					else {cost <- selected_button.action_cost;}
 					self.label <- selected_button.label;
 					shape <- myself.shape;
@@ -764,7 +775,7 @@ species buttons
 	int command <- -1;
 	string display_name <- "no name";
 	string label <- "no name";
-	float action_cost<-0;
+	int action_cost<-0;
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
 	file my_icon;
@@ -805,7 +816,11 @@ species cell_UnAm
 	string land_cover <- "";
 	int id;
 	int land_cover_code <- 0;
+	int cout_expro ;
 	rgb my_color <- cell_color() update: cell_color();
+
+	init {cout_expro <- (round (cout_expro /2000 /50))*100;} //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
+	
 	action modify_land_cover
 	{
 		switch (land_cover)
