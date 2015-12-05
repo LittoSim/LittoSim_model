@@ -19,9 +19,10 @@ global  {
 		
 	string COMMAND_SEPARATOR <- ":";
 	string MANAGER_NAME <- "model_manager";
-	string GROUP_NAME <- "Oleron";
-	string BUILT_DYKE_TYPE <- "newDyke";
-	float  STANDARD_DYKE_SIZE <- 2.5;	
+	string GROUP_NAME <- "Oleron";  
+	string BUILT_DYKE_TYPE <- "newDyke"; // Type de nouvelle digue
+	float  STANDARD_DYKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
+	string BUILT_DYKE_STATUS <- "tres bon"; // status de nouvelle digue
 	
 	int ACTION_REPAIR_DYKE <- 5;
 	int ACTION_CREATE_DYKE <- 6;
@@ -35,6 +36,16 @@ global  {
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
 	list<int> ACTION_LIST <- [ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
 	
+	//récupération des couts du fichier cout_action
+	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,1});
+	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,2});
+	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,3});
+	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,8});
+	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,4});
+	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,5});
+	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,6});
+	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,7});
+			
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DYKE_UPDATE<-9;
 	//action to acknwoledge client requests.
@@ -75,12 +86,11 @@ global  {
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
-		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM.shp");
-		//file defenses_cote_shape <- file("../includes/zone_etude/digues_brice_corriges_03122015.shp");
+		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 		// OPTION 1 Fichiers SIG Grande Carte
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
-		//file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
-		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
+		file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
+//		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
 	//	file dem_file <- file("../includes/lisflood-fp-604/oleron_dem_t0.asc") ;	bizarrement le chargement de ce fichier là est beaucoup plus long que le chargement de celui du dessus
 		int nb_cols <- 631;
 		int nb_rows <- 906;
@@ -110,7 +120,7 @@ global  {
 		create game_controller number:1 returns:ctl ;
 		network_agent <- first(ctl);
 		/*Creation des agents a partir des données SIG */
-		create ouvrage from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("TYPE")), etat::string(read("Etat_Ouvra")), height::float(get("hauteur")) ];
+		create ouvrage from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")) ];
 		create commune from:communes_shape with: [nom_raccourci::string(read("NOM_RAC")),id::int(read("id_jeu"))]
 		{
 			write " commune " + nom_raccourci + " "+id;
@@ -139,16 +149,16 @@ global  {
  		return messageID;
  	}
 action tourDeJeu{
-	do runLisflood;
 	//do sauvegarder_resultat;
-
-	ask ouvrage {do evolEtat;}
-	ask UA {do evolveUA;}
-	ask commune {
-		do recevoirImpots; not_updated<-true;
-		}
-		round <- round + 1;
-		write "new round "+ round;
+	write "new round "+ (round +1);
+	if round != 0
+	   {ask ouvrage {do evolveStatus;}
+		ask UA {do evolveUA;}
+		ask commune where (each.id > 0) {
+			do recevoirImpots; not_updated<-true;
+			}}
+	round <- round + 1;
+	write "done!";
 	} 	
 	
 action runLisflood
@@ -300,7 +310,9 @@ species action_done schedules:[]
 			id_ouvrage <- id_ov;
 			shape <- act.shape;
 			type <- BUILT_DYKE_TYPE ;
+			status <- BUILT_DYKE_STATUS;
 			height <- STANDARD_DYKE_SIZE;	
+			cells <- cell overlapping self;
 		}
 		return first(ovgs);
 	}
@@ -344,12 +356,14 @@ species game_controller skills:[network]
 			{
 				match ACTION_CREATE_DYKE
 				{	
+					write " ACTION_CREATE_DYKE " + idCom+ " "+ doer;
 					ouvrage ovg <-  create_dyke(self);
 					ask network_agent
 					{
 						do send_create_dyke_message(ovg);
 					}
-					write "create Dyke";
+					ask(ovg) {do new_dyke_by_commune (idCom) ;
+					}
 				}
 				match ACTION_REPAIR_DYKE {
 					write " ACTION_REPAIR_DYKE " + idCom+ " "+ doer;
@@ -483,7 +497,7 @@ species game_controller skills:[network]
 	{
 		point p1 <- first(ovg.shape.points);
 		point p2 <- last(ovg.shape.points);
-		string msg <- ""+ACTION_DYKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.etat;
+		string msg <- ""+ACTION_DYKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status;
 		do sendMessage  dest:"all" content:msg;	
 	}
 	
@@ -493,7 +507,7 @@ species game_controller skills:[network]
 		list<string> update_messages <-[]; 
 		ask ouvrage where(each.not_updated)
 		{
-			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id_ouvrage+COMMAND_SEPARATOR+  self.etat+COMMAND_SEPARATOR+height;
+			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id_ouvrage+COMMAND_SEPARATOR+  self.status+COMMAND_SEPARATOR+height;
 			not_updated <- false;
 		}
 		loop mm over:update_messages
@@ -545,6 +559,7 @@ species game_controller skills:[network]
 //		}
 //	}
 ////////    On part donc du principe que le modèle joueur va envoyer au modèle Central 4 éléments : a_joueur_id selected_UnAm, current_action et command
+/* ----------------------OBSOLETE --------------------------
 action simJoueurs //////désactiver lorsque c'est le moment de la submersion // au moment de l'innondation -> lisfloodReadingStep !=  9999999
 	{
 		do changeUA (1 , one_of(UA) , 1 );//1->N
@@ -556,9 +571,9 @@ action simJoueurs //////désactiver lorsque c'est le moment de la submersion // 
 		do changeUA (2 , one_of(UA), 5 );//5->A
 		do changeUA (2 , one_of(UA), 5 );//5->A
 		
-		do repairOuvrage(1,ouvrage first_with(each.etat = "mauvais"));
+		do repairOuvrage(1,ouvrage first_with(each.status = "mauvais"));
 		do increaseHeightOuvrage(4,ouvrage first_with(each.height > 1));
-		do destroyOuvrage(3,ouvrage first_with(each.etat = "tres mauvais"));
+		do destroyOuvrage(3,ouvrage first_with(each.status = "tres mauvais"));
 		write ""+length(commune) + " " + length(ouvrage);
 	}
 
@@ -579,6 +594,11 @@ action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 	ask a_ouvrage {do destroy_by_commune (a_commune_id) ;}
 	}
 	
+action createOuvrage (int a_commune_id, ouvrage a_ouvrage) {
+	ask a_ouvrage {do new_dyke_by_commune (a_commune_id) ;}
+	} */
+	
+	
 /*
  * ***********************************************************************************************
  *                                       LES BOUTONS  
@@ -592,32 +612,43 @@ action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 			nb_button <- 0;
 			label <- "One step";
 			shape <- square(button_size);
-			location <- { world.shape.width - 1000#m, 1000#m };
+			location <- { 1000,1000 };
 			my_icon <- image_file("../images/icones/one_step.png");
 			display_name <- UNAM_DISPLAY_c;
 		}
+		create buttons number: 1
+		{
+			command <- step_button;
+			nb_button <- 3;
+			label <- "Launch Lisflood";
+			shape <- square(button_size);
+			location <- { 5000,1000 };
+			my_icon <- image_file("../images/icones/launch_lisflood.png");
+			display_name <- UNAM_DISPLAY_c;
+		}
+		
 		create buttons number: 1
 		{
 			command <- subvention_b;
 			nb_button <- 1;
 			label <- "subvention";
 			shape <- square(button_size);
-			location <- { world.shape.width - 1000#m, 1000#m + 2200#m };
+			location <- { 1000 , 4000};
 			my_icon <- image_file("../images/icones/subvention.png");
 			display_name <- UNAM_DISPLAY_c;
-			
 		}
+		
 		create buttons number: 1
 		{
 			command <- taxe_b;
 			nb_button <- 2;
 			label <- "taxe";
 			shape <- square(button_size);
-			location <- { world.shape.width - 1000#m, 1000#m + 4200#m };
+			location <- { 1000, 6000 };
 			my_icon <- image_file("../images/icones/taxe.png");
 			display_name <- UNAM_DISPLAY_c;
-			
 		}
+		
 	}
 	
 	
@@ -636,8 +667,11 @@ action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 		list<buttons> selected_UnAm_c <- (selected_agents of_species buttons) where(each.display_name=active_display );
 		ask (selected_agents of_species buttons) where(each.display_name=active_display ){
 			if (nb_button = 0){
-				write "step";
 				ask world {do tourDeJeu;}
+			}
+			if (nb_button = 3){
+				write "lancer innondation";
+				ask world {do runLisflood;}
 			}
 			
 			if (nb_button = 1){
@@ -664,7 +698,7 @@ action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
 	}
 	
     
-    //destruction de la selrction
+    //destruction de la sélection
     action clear_selected_button
 	{
 		previous_clicked_point <- nil;
@@ -723,42 +757,42 @@ species ouvrage
 {	
 	int id_ouvrage;
 	string type;
-	string etat;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
+	string status;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
 	float height;  // height au pied en mètre
-	int length <- 0; // longueur de l'ouvrage en mètre 
+	float alt;
 	list<cell> cells ;
-	int cptEtat <-0;
-	int nb_stepsForDegradEtat <-4;
+	int cptStatus <-0;
+	int nb_stepsForDegradStatus <-4;
 	int rupture<-0;
 	bool not_updated <- false;
 	
 	init {
-		if etat = 'inconnu' {etat <- "bon";}
-		if height = 0.0 {height  <- 1.0;}
-		else {height <- height / 100;} // CONVERSION: la table du shp est en centimètre, alors que dans lisflood ainsi que dans le modèle gama on est en mètre.
-		if length = 0 {length <- (max([1,(length(cells) - 1)]) * 20);} // ESTIMATION Longueur : 20 mètre fois le nb de cells traversés moins une.
-		///  vérifier que length renvoie bien le nb de cells
+		if type ='' {type <- "inconnu";}
+		if status = '' {status <- "bon";} 
+		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
+		cells <- cell overlapping self;
 	}
 	
-	action evolEtat { ////  ne pas déclencher lorsqu'on est en innondation
-		cptEtat <- cptEtat +1;
-		if cptEtat = (nb_stepsForDegradEtat+1) {
-			cptEtat <-0;
+	action evolveStatus { 
+		cptStatus <- cptStatus +1;
+		if cptStatus = (nb_stepsForDegradStatus+1) {
+			cptStatus <-0;
 
-			if etat = "mauvais" {etat <- "tres mauvais";}
-			if etat = "moyen" {etat <- "mauvais";}
-			if etat = "bon" {etat <- "moyen";}
-			if etat = "tres bon" {etat <- "bon";}
+			if status = "mauvais" {status <- "tres mauvais";}
+			if status = "moyen" {status <- "mauvais";}
+			if status = "bon" {status <- "moyen";}
+			if status = "tres bon" {status <- "bon";}
+			not_updated<-true; 
 		}
 	}
 	
 	action calcRupture {
 		float p <- 0.0;
-		if etat = "tres mauvais" {p <- 0.5;}
-		if etat = "mauvais" {p <- 0.3;}
-		if etat = "moyen" {p <- 0.2;}
-		if etat = "bon" {p <- 0.1;}
-		if etat = "tres bon" {p <- 0.0;}
+		if status = "tres mauvais" {p <- 0.5;}
+		if status = "mauvais" {p <- 0.3;}
+		if status = "moyen" {p <- 0.2;}
+		if status = "bon" {p <- 0.1;}
+		if status = "tres bon" {p <- 0.0;}
 		if rnd (1) / 1 < p {
 				set rupture <- 1;
 				// apply Rupture On Cells
@@ -773,47 +807,54 @@ species ouvrage
 		ask cells  {if soil_height >= 0 {soil_height <-   soil_height_before_broken;}}
 	}
 
+	//La commune répare la digue
 	action repair_by_commune (int a_commune_id) {
-		set etat <- "tres bon";
-		set cptEtat <- 0;
-		ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage_longueur (myself.length);}
+		set status <- "tres bon";
+		set cptStatus <- 0;
+		ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage (myself);}
 	}
 	
 	//La commune relève la digue
 	action increase_height_by_commune (int a_commune_id) {
-		set etat <- "tres bon";
-		set cptEtat <- 0;
+		set status <- "tres bon";
+		set cptStatus <- 0;
 		height <- height + 0.5; // le réhaussement d'ouvrage est forcément de 50 centimètres
-		ask cells {	soil_height <- soil_height + 0.5;
-					soil_height_before_broken <- soil_height ;
-		}
-		ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage_longueur (myself.length);}
+		alt <- alt + 0.5;
+		ask cells {
+			soil_height <- soil_height + 0.5;
+			soil_height_before_broken <- soil_height ;
+			}
+		ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage (myself);}
 	}
 	
 	//la commune détruit la digue
 	action destroy_by_commune (int a_commune_id) {
 		ask cells {	soil_height <- soil_height - myself.height ;}
-		ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage_longueur (myself.length);}
+		ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage (myself);}
 		do die;
 	}
 	
 	//La commune construit une digue
-	action new_by_commune (int a_commune_id) {
+	action new_dyke_by_commune (int a_commune_id) {
+		///  Une nouvelle digue réhausse tout le terrain à la hauteur de la cell la plus haute
+		float h <- cells max_of (each.soil_height);
+		alt <- h + height;
 		ask cells  {
-			soil_height <- soil_height + myself.height; ///  Une nouvelle digue fait 1 mètre 
+			soil_height <- h + myself.height; ///  Une nouvelle digue fait 1,5 mètre -> STANDARD_DYKE_SIZE
+			soil_height_before_broken <- soil_height ;
 		}
-		ask commune first_with(each.id = a_commune_id) {do payerConstruction_longueur (myself.length);}
+		ask commune first_with(each.id = a_commune_id) {do payerConstructionOuvrage (myself);}
 	}
 	
 	aspect base
 	{	rgb color <- # pink;
-		if etat = "tres bon" {color <- rgb (0,175,0);} 
-		if etat = "bon" {color <- rgb (0,216,100);} 
-		if etat = "moyen " {color <-  rgb (206,213,0);} 
-		if etat = "mauvais" {color <- rgb(255,51,102);} 
-		if etat = "tres mauvais" {color <- # red;}
-		if etat = "casse" {color <- # red;} 
-		draw shape color: color ;
+		if status = "tres bon" {color <- rgb (0,175,0);} 
+		if status = "bon" {color <- rgb (0,216,100);} 
+		if status = "moyen " {color <-  rgb (206,213,0);} 
+		if status = "mauvais" {color <- rgb(255,51,102);} 
+		if status = "tres mauvais" {color <- # red;}
+		if status = "casse" {color <- # yellow;} 
+		draw 20#m around shape color: color /*size:300#m*/;
 	}
 }
 
@@ -844,14 +885,15 @@ species UA
 	init {cout_expro <- (round (cout_expro /2000))*1000;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
 	
 	
-	action modify_UA (int a_id_commune, int a_ua_code)
-	{
-		if  ua_name = "U" and nameOfUAcode(a_ua_code) = "N" /*expropriation */
+	action modify_UA (int a_id_commune, int new_ua_code)
+	{	string new_ua_name <-  nameOfUAcode(new_ua_code);
+		if  ua_name = "U" and new_ua_name = "N" /*expropriation */
 				{ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}}
-		ua_code <- a_ua_code;
-		ua_name <- nameOfUAcode(a_ua_code);
+		else {ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}}
+		ua_code <- new_ua_code;
+		ua_name <- new_ua_name;
 		//on affecte la rugosité correspondant aux cells
-		float rug <- rugosityValueOfUA (a_ua_code);
+		float rug <- rugosityValueOfUA (new_ua_code);
 		ask cells {rugosity <- rug;} 	
 	}
 	
@@ -862,10 +904,11 @@ species UA
 			if AU_to_U_counter = (nb_stepsForAU_toU +1)
 				{AU_to_U_counter<-0;
 				ua_name <- "U";
-				ua_code<-codeOfUAname("U");}
+				ua_code<-codeOfUAname("U");
+				not_updated<-true; }
 			}	
 		if (ua_name = "U" and population < 1000){
-			population <- population + 10;}
+			population <- population + 3;}// avant c'était 10 mais après des tests c recalibré à 3
 		}
 		
 	
@@ -952,9 +995,9 @@ species commune
 	int id<-0;
 	bool not_updated<- true;
 	string nom_raccourci;
-	int budget <-10000;
+	int budget <-20000;
 	list<UA> UAs ;
-	int impot_unit <- 1000;
+	int impot_unit <- 2;
 	aspect base
 	{
 		draw shape color:#whitesmoke;
@@ -964,6 +1007,7 @@ species commune
 		int nb_impose <- sum(UAs accumulate (each.population));
 		int impotRecus <- nb_impose * impot_unit;
 		budget <- budget + impotRecus;
+		write "" + nom_raccourci+ "-> budget: " +budget+" (dont impot " + impotRecus+")";
 		}
 		
 	action payerExpropriationPour (UA a_UA)
@@ -972,29 +1016,46 @@ species commune
 				not_updated <- true;
 			}
 			
-	action payerReparationOuvrage_longueur (int length)
+	action payerModifUA (UA a_UA, string new_ua_name)
 			{
-				budget <- budget - (length * 100); // mettre les bonnes valeurs
+				int cost<-0; 
+				switch (new_ua_name)
+					{
+						match "A" {cost <-ACTION_COST_LAND_COVER_TO_A;}
+						match "AU" {cost <-ACTION_COST_LAND_COVER_TO_AU;}
+						match "N" {	write a_UA.ua_name;
+							if a_UA.ua_name = "AU" {cost <-ACTION_COST_LAND_COVER_FROM_AU_TO_N;}
+									if a_UA.ua_name = "A" {cost <-ACTION_COST_LAND_COVER_FROM_A_TO_N;}	}
+					}
+				if cost = 0 {write "Problème cout change UA";}
+				budget <- budget - cost;
+				not_updated <- true;
+			}
+ 
+			
+	action payerReparationOuvrage (ouvrage dk)
+			{
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_REPAIR);
 				not_updated <- true;
 				
 			}
 			
-	action payerRehaussementOuvrage_longueur (int length)
+	action payerRehaussementOuvrage (ouvrage dk)
 			{
-				budget <- budget - (length * 500); // mettre les bonnes valeurs
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_RAISE);
 				not_updated <- true;
 			}
 
-	action payerDestructionOuvrage_longueur (int length)
+	action payerDestructionOuvrage (ouvrage dk)
 			{
-				budget <- budget - (length * 600); // mettre les bonnes valeurs
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_DESTROY);
 				not_updated <- true;
 				
 			}	
 					
-	action payerConstruction_longueur (int length)
+	action payerConstructionOuvrage (ouvrage dk)
 			{
-				budget <- budget - (length * 1600); // mettre les bonnes valeurs
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_CREATE);
 				not_updated <- true;
 			}				
 }
@@ -1033,7 +1094,7 @@ species buttons
 experiment oleronV1 type: gui {
 	float minimum_cycle_duration <- 0.5;
 	output {
-		inspect world;
+		//inspect world;
 		
 		display carte_oleron //autosave : true
 		{
@@ -1048,21 +1109,20 @@ experiment oleronV1 type: gui {
 			species commune aspect: base;
 			species UA aspect: base;
 			species road aspect:base;
-			species ouvrage aspect:base;
-			
-		}		display Population
-		{
-			// Les boutons et le clique
-			species buttons aspect:base;
-			event [mouse_down] action: button_click_C;
-			//event [mouse_down] action: subvention_action;
-			//event [mouse_down] action: taxe_action;
+			species ouvrage aspect:base;		
+		}		
+		display Population
+		{	
 			species commune aspect: base;
 			species UA aspect: population;
-			species road aspect:base;
-			
-			
+			species road aspect:base;			
 		}
+		display "Controle MdJ"
+		{    // Les boutons et le clique
+			species buttons aspect:base;
+			event [mouse_down] action: button_click_C;
+			}
+			
 		display graph_budget {
 				chart "Series" type: series {
 					data "budget" value: (commune collect each.budget)  color: #red;				
