@@ -164,15 +164,18 @@ action tourDeJeu{
 	
 action runLisflood
 	{ // déclenchement innondation
-	  if cycle = cycle_launchLisflood {
-	  		//do launchLisflood; // comment this line if you only want to read already existing results
-	  		set lisfloodReadingStep <- 0;
-	  		ask ouvrage {do calcRupture;} }
-	  // en cours d'innondation
-	  if lisfloodReadingStep !=  9999999
-		{ do readLisfloodInRep("results_"+timestamp);}
-	  // fin innondation
-	  else {ask ouvrage {if rupture = 1 {do removeRupture;}}
+		//do launchLisflood; // comment this line if you only want to read already existing results
+		set lisfloodReadingStep <- 0;
+		ask ouvrage {do calcRupture;} 
+		// lecture des fichiers innondation
+		loop while:(lisfloodReadingStep !=  9999999)
+			{ do readLisfloodInRep("results"+timestamp);
+			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
+			/// PROBLEME ICI, les cellules sont bien innondées mais elles ne s'affichent pas. 
+			//// NORMALLEMENT CA DEVRAIT AFFICHER le    Aspect: elevation_eau   des cells    , mais ca ne le fait pas
+			}
+		// fin innondation
+		ask ouvrage {if rupture = 1 {do removeRupture;}
 	  }}
 
  /* pour la sauvegarde des données en format shape */
@@ -196,7 +199,7 @@ WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close wh
  		}
 action save_lf_launch_files {
 		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_dem_t"+timestamp+".asc\n#roadfile      buscot.road\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
-		save ("lisflood -dir results_"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
+		save ("lisflood -dir results"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
 		}       
 
 action save_dem {
@@ -232,6 +235,7 @@ action readLisfloodInRep (string rep)
 	 {  string nb <- lisfloodReadingStep;
 		loop i from: 0 to: 3-length(nb) { nb <- "0"+nb; }
 		 file lfdata <- text_file("../includes/lisflood-fp-604/"+rep+"/res-"+ nb +".wd") ;
+		 write "/res-"+ nb +".wd";
 		 if lfdata.exists
 			{
 			loop r from: 6 to: length(lfdata) -1 {
