@@ -24,6 +24,16 @@ global  {
 	float  STANDARD_DYKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
 	string BUILT_DYKE_STATUS <- "tres bon"; // status de nouvelle digue
 	
+	//récupération des couts du fichier cout_action
+	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,1});
+	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,2});
+	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,3});
+	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,8});
+	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,4});
+	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,5});
+	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,6});
+	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,7});
+	
 	int ACTION_REPAIR_DYKE <- 5;
 	int ACTION_CREATE_DYKE <- 6;
 	int ACTION_DESTROY_DYKE <- 7;
@@ -36,15 +46,6 @@ global  {
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
 	list<int> ACTION_LIST <- [ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
 	
-	//récupération des couts du fichier cout_action
-	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,1});
-	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,2});
-	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,3});
-	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,8});
-	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,4});
-	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,5});
-	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,6});
-	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,7});
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DYKE_UPDATE<-9;
@@ -882,7 +883,7 @@ species UA
 	int cout_expro ;
 	bool not_updated <- false;
 	
-	init {cout_expro <- (round (cout_expro /2000))*1000;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
+	init {cout_expro <- (round (cout_expro /2000 /50 ))*100;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
 	
 	
 	action modify_UA (int a_id_commune, int new_ua_code)
