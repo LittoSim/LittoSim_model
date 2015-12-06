@@ -10,6 +10,7 @@
  *  de mettre en place différents scénarios de prévention des submersions
  *  qui seront contrôlés par les utilisateurs de la simulation en 
  *  fonction de leur rôle. 
+*
  */
 
 model oleronV1
@@ -38,28 +39,31 @@ global  {
 	int ACTION_CREATE_DYKE <- 6;
 	int ACTION_DESTROY_DYKE <- 7;
 	int ACTION_RAISE_DYKE <- 8;
-	
+	//int ACTION_DYKE_LIST <- 21;
 
 	int ACTION_MODIFY_LAND_COVER_AU <- 1;
 	int ACTION_MODIFY_LAND_COVER_A <- 2;
 	int ACTION_MODIFY_LAND_COVER_U <- 3;
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
-	list<int> ACTION_LIST <- [ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
+	list<int> ACTION_LIST <- [ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
 	
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
-	int ACTION_DYKE_UPDATE<-9;
+	int ACTION_DYKE_UPDATE<-10;
 	//action to acknwoledge client requests.
 //	int ACTION_DYKE_REPAIRED <- 15;
 	int ACTION_DYKE_CREATED <- 16;
 	int ACTION_DYKE_DROPPED <- 17;
 //	int ACTION_DYKE_RAISED <- 18;
 	int UPDATE_BUDGET <- 19;
+	int REFRESH_ALL <- 20;
+	int ACTION_MESSAGE <- 22;
 
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_U <- 13;
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;
+	int ACTION_DYKE_LIST <- 21;
 	
 	int messageID <- 0;
 	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile
@@ -161,6 +165,12 @@ action tourDeJeu{
 	round <- round + 1;
 	write "done!";
 	} 	
+	
+int commune_id(string xx)
+	{
+		return	 (commune first_with (xx contains each.nom_raccourci )).id;
+	}
+	
 	
 action runLisflood
 	{ // déclenchement innondation
@@ -280,6 +290,7 @@ species action_done schedules:[]
 	int command <- -1;
 	string label <- "no name";
 	float cost <- 0.0;	
+	list<string> my_message <-[];
 	rgb define_color
 	{
 		switch(command)
@@ -309,7 +320,7 @@ species action_done schedules:[]
 	
 	ouvrage create_dyke(action_done act)
 	{
-		int id_ov <- max(ouvrage collect(each.id_ouvrage));
+		int id_ov <- max(ouvrage collect(each.id_ouvrage))+1;
 		create ouvrage number:1 returns:ovgs
 		{
 			id_ouvrage <- id_ov;
@@ -346,22 +357,33 @@ species game_controller skills:[network]
 		}
 	}
 	
-	int commune_id(string xx)
-	{
-		
-		return	 (commune first_with (xx contains each.nom_raccourci )).id;
-	}
 	reflex apply_action when:length(action_done)>0
 	{
 		ask(action_done)
 		{
 			string tmp <- self.doer;
-			int idCom <-myself.commune_id(tmp);
+			int idCom <-world.commune_id(tmp);
 			switch(command)
 			{
+				match ACTION_MESSAGE
+				{
+					write self.doer +" -> "+my_message;
+				}
+				match REFRESH_ALL
+				{
+					write " Update ALL !!!! " + idCom+ " "+ doer;
+					commune cm <- first(commune where(each.id=idCom));
+					ask ouvrage overlapping cm { not_updated <- true;}
+					ask UA overlapping cm { not_updated <- true;}
+					ask cm {not_updated <- true;}
+					ask game_controller
+					{
+						do send_dyke_list(idCom);
+					}
+				}
+				
 				match ACTION_CREATE_DYKE
 				{	
-					write " ACTION_CREATE_DYKE " + idCom+ " "+ doer;
 					ouvrage ovg <-  create_dyke(self);
 					ask network_agent
 					{
@@ -371,7 +393,6 @@ species game_controller skills:[network]
 					}
 				}
 				match ACTION_REPAIR_DYKE {
-					write " ACTION_REPAIR_DYKE " + idCom+ " "+ doer;
 					ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
 					{
 						do repair_by_commune(idCom);
@@ -380,9 +401,7 @@ species game_controller skills:[network]
 				}
 			 	match ACTION_DESTROY_DYKE 
 			 	 {
-			 	 	write " ACTION_DESTROY_DYKE " + idCom+ " "+ doer;
-				
-					ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
+			 		ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
 					{
 						ask network_agent
 						{
@@ -393,8 +412,6 @@ species game_controller skills:[network]
 					}		
 				}
 			 	match ACTION_RAISE_DYKE {
-			 		write " ACTION_RAISE_DYKE " + idCom+ " "+ doer;
-				
 			 		ask(ouvrage first_with(each.id_ouvrage=chosen_element_id))
 					{
 						do increase_height_by_commune (idCom) ;
@@ -402,8 +419,6 @@ species game_controller skills:[network]
 					}
 				}
 			 	match ACTION_MODIFY_LAND_COVER_A {
-			 		write " ACTION_MODIFY_LAND_COVER_A " + idCom+ " "+ doer;
-				 
 			 		ask UA first_with(each.id=chosen_element_id)
 			 		 {
 			 		  do modify_UA (idCom, 5);
@@ -411,8 +426,6 @@ species game_controller skills:[network]
 			 		 }
 			 	}
 			 	match ACTION_MODIFY_LAND_COVER_AU {
-			 		write " ACTION_MODIFY_LAND_COVER_AU " + idCom+ " "+ doer;
-				
 			 		ask UA first_with(each.id=chosen_element_id)
 			 		 {
 			 		 	do modify_UA (idCom, 4);
@@ -420,16 +433,12 @@ species game_controller skills:[network]
 			 		 }
 			 	}
 				match ACTION_MODIFY_LAND_COVER_N {
-					write " ACTION_MODIFY_LAND_COVER_N " + idCom+ " "+ doer;
-				
 					ask UA first_with(each.id=chosen_element_id)
 			 		 {
 			 		 	do modify_UA (idCom, 1);
 			 		 	not_updated <- true;
 			 		 }
 			 	}
-
-									
 			}
 			do die;
 		}
@@ -438,6 +447,7 @@ species game_controller skills:[network]
 	action read_action(string act, string sender)
 	{
 		list<string> data <- act split_with COMMAND_SEPARATOR;
+		
 		if(! (ACTION_LIST contains int(data[0])) )
 		{
 			return;
@@ -450,18 +460,24 @@ species game_controller skills:[network]
 			self.command <- int(data[0]);
 			self.id <- int(data[1]);
 			self.doer <- sender;
+			self.my_message <- data;
 			
-			if(self.command = ACTION_CREATE_DYKE)
+			switch(self.command)
 			{
-				point ori <- {float(data[2]),float(data[3])};
-				point des <- {float(data[4]),float(data[5])};
-				point loc <- {float(data[6]),float(data[7])}; 
-				shape <- polyline([ori,des]);
-				location <- loc; 
-			}
-			else
-			{
-				self.chosen_element_id <- int(data[2]);
+				match ACTION_CREATE_DYKE
+				{
+					point ori <- {float(data[2]),float(data[3])};
+					point des <- {float(data[4]),float(data[5])};
+					point loc <- {float(data[6]),float(data[7])}; 
+					shape <- polyline([ori,des]);
+					location <- loc; 
+				}
+				match ACTION_MESSAGE {}
+				match REFRESH_ALL {}
+				default {
+					self.chosen_element_id <- int(data[2]);
+				}
+				
 			}	
 		}
 		
@@ -506,13 +522,29 @@ species game_controller skills:[network]
 		do sendMessage  dest:"all" content:msg;	
 	}
 	
+	action send_dyke_list(int m_commune)
+	{
+		string tmp<-"";
+		commune m <- commune first_with(each.id=m_commune);
+		ask ouvrage overlapping m
+		{
+			tmp <- tmp +  COMMAND_SEPARATOR+id_ouvrage;
+		}
+		
+		string msg <- ""+ACTION_DYKE_LIST+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR +m.nom_raccourci+tmp;
+		do sendMessage  dest:"all" content:msg;	
+//		ACTION_DYKE_LIST
+	}
 	
 	action update_dyke
 	{
 		list<string> update_messages <-[]; 
 		ask ouvrage where(each.not_updated)
 		{
-			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id_ouvrage+COMMAND_SEPARATOR+  self.status+COMMAND_SEPARATOR+height;
+			point p1 <- first(self.shape.points);
+			point p2 <- last(self.shape.points);
+			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status;
+			update_messages <- update_messages + msg;
 			not_updated <- false;
 		}
 		loop mm over:update_messages
@@ -543,65 +575,6 @@ species game_controller skills:[network]
 }
 	
 
-
-/*
- **********************************************************************************************************
- *    Serveur et connexion
- ********************************************************************************************************** 
- */
-
-
-
-
-
-////////     Méthode utilisée pour appliquer les actions des joueurs coté "modèle Joueur"
-//action button_click (point loc, list selected_agents)
-//	{
-//		list<buttons> selected_UnAm <- (selected_agents of_species buttons) where(each.display_name=active_display );
-//		ask (first(selected_UnAm))
-//		{
-//			current_action <- command;
-//		}
-//	}
-////////    On part donc du principe que le modèle joueur va envoyer au modèle Central 4 éléments : a_joueur_id selected_UnAm, current_action et command
-/* ----------------------OBSOLETE --------------------------
-action simJoueurs //////désactiver lorsque c'est le moment de la submersion // au moment de l'innondation -> lisfloodReadingStep !=  9999999
-	{
-		do changeUA (1 , one_of(UA) , 1 );//1->N
-		do changeUA (1 , UA first_with (each.ua_code = 2) , 1 );//1->N
-		do changeUA (2 , one_of(UA), 2 );//2->U
-		do changeUA (3 , one_of(UA), 4 );//4->AU
-		do changeUA (4 , one_of(UA), 4 );//4->AU
-		do changeUA (1 , one_of(UA), 4 );//4->AU
-		do changeUA (2 , one_of(UA), 5 );//5->A
-		do changeUA (2 , one_of(UA), 5 );//5->A
-		
-		do repairOuvrage(1,ouvrage first_with(each.status = "mauvais"));
-		do increaseHeightOuvrage(4,ouvrage first_with(each.height > 1));
-		do destroyOuvrage(3,ouvrage first_with(each.status = "tres mauvais"));
-		write ""+length(commune) + " " + length(ouvrage);
-	}
-
-
-action changeUA (int a_commune_id, UA a_cell_UA, int a_ua_code)
-	{ask a_cell_UA {do modify_UA (a_commune_id, a_ua_code);}
-	}
-
-action repairOuvrage (int a_commune_id, ouvrage a_ouvrage) {
-	ask a_ouvrage {do repair_by_commune (a_commune_id) ;}
-	}
-	
-action increaseHeightOuvrage (int a_commune_id, ouvrage a_ouvrage) {
-	ask a_ouvrage {do increase_height_by_commune (a_commune_id) ;}
-	}
-
-action destroyOuvrage (int a_commune_id, ouvrage a_ouvrage) {
-	ask a_ouvrage {do destroy_by_commune (a_commune_id) ;}
-	}
-	
-action createOuvrage (int a_commune_id, ouvrage a_ouvrage) {
-	ask a_ouvrage {do new_dyke_by_commune (a_commune_id) ;}
-	} */
 	
 	
 /*
@@ -808,21 +781,21 @@ species ouvrage
 	}
 	
 	action removeRupture {
-		set rupture <- 0;
+		rupture <- 0;
 		ask cells  {if soil_height >= 0 {soil_height <-   soil_height_before_broken;}}
 	}
 
 	//La commune répare la digue
 	action repair_by_commune (int a_commune_id) {
-		set status <- "tres bon";
-		set cptStatus <- 0;
+		status <- "tres bon";
+		cptStatus <- 0;
 		ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage (myself);}
 	}
 	
 	//La commune relève la digue
 	action increase_height_by_commune (int a_commune_id) {
-		set status <- "tres bon";
-		set cptStatus <- 0;
+		status <- "tres bon";
+		cptStatus <- 0;
 		height <- height + 0.5; // le réhaussement d'ouvrage est forcément de 50 centimètres
 		alt <- alt + 0.5;
 		ask cells {
@@ -1012,7 +985,6 @@ species commune
 		int nb_impose <- sum(UAs accumulate (each.population));
 		int impotRecus <- nb_impose * impot_unit;
 		budget <- budget + impotRecus;
-		write "" + nom_raccourci+ "-> budget: " +budget+" (dont impot " + impotRecus+")";
 		}
 		
 	action payerExpropriationPour (UA a_UA)
@@ -1028,7 +1000,7 @@ species commune
 					{
 						match "A" {cost <-ACTION_COST_LAND_COVER_TO_A;}
 						match "AU" {cost <-ACTION_COST_LAND_COVER_TO_AU;}
-						match "N" {	write a_UA.ua_name;
+						match "N" {	
 							if a_UA.ua_name = "AU" {cost <-ACTION_COST_LAND_COVER_FROM_AU_TO_N;}
 									if a_UA.ua_name = "A" {cost <-ACTION_COST_LAND_COVER_FROM_A_TO_N;}	}
 					}

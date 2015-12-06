@@ -21,6 +21,7 @@ global
 	file communes_shape <- file("../includes/zone_etude/communes.shp");
 	file communes_UnAm_shape <- file("../includes/zone_etude/zones241115.shp");	
 	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
+	file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 	//file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");  CE fichier n'existe pas
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 
@@ -69,20 +70,15 @@ global
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
 	
 	int ACTION_LAND_COVER_UPDATE<-9;
-	int ACTION_DYKE_UPDATE<-9;
+	int ACTION_DYKE_UPDATE<-10;
 
 	//action to acknwoledge client requests.
-//	int ACTION_DYKE_REPAIRED <- 15;
 	int ACTION_DYKE_CREATED <- 16;
 	int ACTION_DYKE_DROPPED <- 17;
-//	int ACTION_DYKE_RAISED <- 18;
+	int ACTION_DYKE_LIST <- 21;
 	int UPDATE_BUDGET <- 19;
-
-/*	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_U <- 13;
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;
-	 */
+	int REFRESH_ALL <- 20;
+	int ACTION_MESSAGE <- 22;
 	
 	float widX;
 	float widY;
@@ -100,36 +96,20 @@ global
 		create commune from: communes_shape with:[nom_raccourci::string(read("NOM_RAC"))];
 		my_commune <- commune first_with(each.nom_raccourci = commune_name);
 		local_shape <-envelope(my_commune);
-		write "commune "+ my_commune;
-		ask(commune where(each != my_commune))
+		//write "commune "+ my_commune;
+		/*ask(commune where(each != my_commune))
 		{
 			do die;
-		}
+		}*/
 		do init_basket;
 		do init_buttons;
 		
 		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::int(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) ];
+		create road from:road_shape; 
 		ask dyke where(!(each overlaps my_commune))
 		{
 			do die;
 		}
-		/*create cell_mnt from:mnt_shape with:[cell_id::int(read("ID")),soil_height::float(read("soil_heigh"))]
-		{
-			float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
-			color<- rgb( 255 - tmp, 180 - tmp , 0) ;
-		}
-		
-		ask cell_mnt overlapping envelope(world.shape)
-		{
-			inside_commune <- true;
-		}
-		
-		ask cell_mnt where(each.inside_commune = false)
-		{
-			 do die;
-		} */
-		
-	 	
 		create cell_UnAm from: communes_UnAm_shape with: [id::int(read("FID_1")),land_cover_code::int(read("grid_code")), cout_expro:: int(get("coutexpr"))]
 		{
 			switch (land_cover_code)
@@ -144,6 +124,16 @@ global
 		ask cell_UnAm where(!(each overlaps my_commune))
 		{
 			do die;
+		}
+		
+	}
+	
+	user_command "Refresh all the map"
+	{
+		string msg <- ""+REFRESH_ALL+COMMAND_SEPARATOR+world.get_action_id()+COMMAND_SEPARATOR+commune_name;
+		ask game_manager 
+		{
+			do sendMessage dest:"all" content:msg;
 		}
 	}
 	
@@ -191,7 +181,6 @@ global
 			
 		}
 		
-		//bouton de gestion des digues
 		create buttons number: 1
 		{
 			command <- ACTION_CREATE_DYKE;
@@ -361,7 +350,6 @@ global
 				previous_clicked_point <- nil;
 				current_action<- first(action_list);
 				my_basket <- my_basket + current_action; 
-			
 		}
 	}
 
@@ -379,17 +367,53 @@ global
 			cell_UnAm cell_tmp <- selected_UnAm closest_to loc;
 			ask (cell_tmp)
 			{
+				if((cell_tmp.land_cover_code=1 and selected_button.command = ACTION_MODIFY_LAND_COVER_N) 
+					or (cell_tmp.land_cover_code=4 and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
+					or (cell_tmp.land_cover_code=5 and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
+					or (length((action_done collect(each.location)) inside cell_tmp)>0  )
+				)
+				{
+					//string chain <- "action incohérente";
+					//map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
+					return;
+				}
+				if(((cell_tmp.land_cover_code=2 or cell_tmp.land_cover_code=4) and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
+				{
+					bool res<-false;
+					string chain <- "Transformer une zone urbaine en zone agricole est interdit par la législation";
+					map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
+					
+					return;
+				}
+				
 				if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (land_cover_code= 2)  )
 				{
 					bool res <- false;
 					string chain <- "Vous êtes sur le point d'exproprier des habitants. Souhaitez vous continuer ?";
-					map<string,unknown> values2 <- user_input("Avertissement",[chain::res]);		
+					map<string,unknown> values2 <- user_input("Avertissement",[chain:: res]);		
 					if(values2 at chain = false)
 					{
 						return;
 					}
 					
 				}
+				if(selected_button.command = ACTION_MODIFY_LAND_COVER_AU  and (land_cover_code= 1)  )
+				{
+					bool res <- false;
+					string chain <- "Cette action fait l'objet d'une demande en préfecture. L'avez vous fait ? \n Souhaitez vous continuer la transformation de cette parcelle ?";
+					map<string,unknown> values2 <- user_input("Avertissement",[chain:: res]);		
+					ask game_manager
+					{
+						do send_information(chain+"\n response: "+(values2 at chain ));
+					}
+					if(values2 at chain = false)
+					{
+						return;
+					}
+					
+				}
+				
+				
 				create action_land_cover number:1 returns:action_list
 				{
 					id <- world.get_action_id();
@@ -562,12 +586,12 @@ species Network_agent skills:[network]
 			map<string,string> msg <- fetchMessage();
 			string dest <- msg["dest"]; 
 			
-			if(dest= "all" or dest contains world.commune_name)
+			if(dest="all" or dest contains world.commune_name)
 			{
 				//do read_action(msg["content"],msg["sender"]);	
 				string my_msg <- msg["content"]; 
 				list<string> data <- my_msg split_with COMMAND_SEPARATOR;
-				
+				//write "coucou  msg "+msg["content"];
 				int command <- int(data[0]);
 				int action_id <- int(data[1]);
 				switch(int(data[0]))
@@ -578,16 +602,26 @@ species Network_agent skills:[network]
 							impot <- float(data[3]);
 							
 						}
+						match ACTION_DYKE_LIST
+						{
+							list<string> all_dyke <-   copy_between(data,3,length(data)-1); 
+							do check_dyke(data );
+						}
 						match ACTION_DYKE_CREATED
-						 {
+						{
 							do dyke_create_action(data);
 						}
 						match ACTION_DYKE_UPDATE {
 							int d_id <- int(data[2]);
+							if(length(dyke where(each.dyke_id =d_id ))=0)
+							{
+								do dyke_create_action(data);
+							}
 							ask dyke where(each.dyke_id =d_id )
 							{
-								status <-data[3];
-								height <-float(data[4]);
+								status <-data[9];
+								type <- int(data[8]);
+								height <-float(data[7]);
 							}
 						}
 						match ACTION_DYKE_DROPPED {
@@ -597,12 +631,7 @@ species Network_agent skills:[network]
 								do die;
 							}
 						}
-						match UPDATE_BUDGET {
-							float mbudget <- float(data[2]);
-								budget <- budget;
-						}
-						//	string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code;
-			
+						
 						match ACTION_LAND_COVER_UPDATE {
 							int d_id <- int(data[2]);
 							ask cell_UnAm where(each.id = d_id)
@@ -623,10 +652,22 @@ species Network_agent skills:[network]
 			}
 		}
 	}
-
+	
+	action check_dyke(list<string> mdata)
+	{
+		list<int> idata<- mdata collect (int(each));
+		ask(dyke)
+		{
+			//write "compare : "+dyke_id+" ---> "+ mdata;
+			if( !( idata contains dyke_id) )
+			{
+				do die;
+			}
+		}
+	}
+	
 	action dyke_create_action(list<string> msg)
 	{
-		write "création d'une digue";
 		int d_id <- int(msg[2]);
 		float x1 <- float(msg[3]);
 		float y1 <- float(msg[4]);
@@ -645,7 +686,11 @@ species Network_agent skills:[network]
 			status<-st;
 		}				
 	}
-	
+	action send_information(string msg)
+	{
+		string val <-""+ ACTION_MESSAGE + COMMAND_SEPARATOR+world.get_action_id()+ COMMAND_SEPARATOR+msg;
+		do sendMessage  dest:"all" content:""+val;
+	}
 	action send_basket
 	{
 		action_done act <-nil;
@@ -806,9 +851,18 @@ species commune
 	string nom_raccourci <-"";
 	aspect base
 	{
-		draw shape color: # gray;
+		draw shape  color: self=my_commune?rgb(202,170,145):#gray;
 	}
 
+}
+
+species road
+{
+	aspect base
+	{
+		draw shape color:#gray;
+	}
+	
 }
 
 species cell_UnAm
@@ -844,9 +898,7 @@ species cell_UnAm
 			{
 				land_cover_code <- 4;
 			}
-
 		}
-
 	}
 
 	rgb cell_color
@@ -873,13 +925,14 @@ species dyke
 {
 	int dyke_id;
 	int type;
+	rgb color <- # pink;
 	float height;
 	string status;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
 	
 	init {if status = '' {status <- "bon";} }
 	
 	aspect base
-	{  	rgb color <- # pink;
+	{  	
 		if status = "tres bon" {color <- rgb (0,175,0);} 
 		if status = "bon" {color <- rgb (0,216,100);} 
 		if status = "moyen " {color <-  rgb (206,213,0);} 
@@ -920,17 +973,20 @@ experiment game type: gui
 			species commune aspect: base;
 			species cell_UnAm aspect: base;
 			species action_land_cover aspect:base;
+			species road aspect:base;
+			
 			species buttons aspect:UnAm;
 			event [mouse_down] action: button_click_UnAM;
 		}
 		
 		display "Dyke managment" focus:my_commune
 		{
-			//image 'background' file:"../images/mnt/"+commune_name+".jpg";
+			image 'background' file:"../images/fond/fnt.png"; 
 			species commune aspect:base;
 			//species cell_mnt aspect:elevation_eau;
 			species dyke aspect:base;
 			species action_dyke aspect:base;
+			species road aspect:base;
 			species buttons aspect:dyke;
 			
 			event [mouse_down] action: button_click_Dyke;
