@@ -10,7 +10,6 @@
  *  de mettre en place différents scénarios de prévention des submersions
  *  qui seront contrôlés par les utilisateurs de la simulation en 
  *  fonction de leur rôle. 
-*
  */
 
 model oleronV1
@@ -177,16 +176,35 @@ action runLisflood
 		//do launchLisflood; // comment this line if you only want to read already existing results
 		set lisfloodReadingStep <- 0;
 		ask ouvrage {do calcRupture;} 
+		showLisflood <- true;
 		// lecture des fichiers innondation
-		loop while:(lisfloodReadingStep !=  9999999)
+		/*loop while:(lisfloodReadingStep !=  9999999)
 			{ do readLisfloodInRep("results"+timestamp);
 			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
 			/// PROBLEME ICI, les cellules sont bien innondées mais elles ne s'affichent pas. 
 			//// NORMALLEMENT CA DEVRAIT AFFICHER le    Aspect: elevation_eau   des cells    , mais ca ne le fait pas
 			}
+			* 
+			*/
 		// fin innondation
-		ask ouvrage {if rupture = 1 {do removeRupture;}
-	  }}
+	//	ask ouvrage {if rupture = 1 {do removeRupture;}}
+}
+
+bool showLisflood <- false;
+
+reflex show_lisflood when: showLisflood and lisfloodReadingStep !=  9999999
+{
+	do readLisfloodInRep("results"+timestamp);
+			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
+			/// PROBLEME ICI, les cellules sont bien innondées mais elles ne s'affichent pas. 
+			//// NORMALLEMENT CA DEVRAIT AFFICHER le    Aspect: elevation_eau   des cells    , mais ca ne le fait pas
+	if(showLisflood = false)
+	{
+		ask ouvrage {if rupture = 1 {do removeRupture;}}
+	}
+	
+}
+
 
  /* pour la sauvegarde des données en format shape */
 action sauvegarder_resultat //when: sauver_shp and cycle = cycle_sauver
@@ -256,6 +274,7 @@ action readLisfloodInRep (string rep)
 	        lisfloodReadingStep <- lisfloodReadingStep +1;
 	        }
 	     else { lisfloodReadingStep <-  9999999;
+	     		showLisflood <- false;
 	     		if nb = "0000" {map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);}
 	     		else{map values <- user_input(["L'innondation est terminée. Au prochain pas de temps les hauteurs d'eau seront remise à zéro" :: 100]);
 					 loop r from: 0 to: nb_rows -1  {
