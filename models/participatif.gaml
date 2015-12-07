@@ -576,7 +576,7 @@ species Network_agent skills:[network]
 {
 	init{
 		
-		do connectMessenger to:GROUP_NAME at:"localhost" withName:world.commune_name;	
+		do connectMessenger to:GROUP_NAME at:"192.168.1.100" withName:world.commune_name;	
 	}
 	
 	reflex receive_message 
