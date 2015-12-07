@@ -16,7 +16,7 @@ model oleronV1
 
 global  {
 	
-		
+	bool network_on <- true;	
 	string COMMAND_SEPARATOR <- ":";
 	string MANAGER_NAME <- "model_manager";
 	string GROUP_NAME <- "Oleron";  
@@ -64,13 +64,14 @@ global  {
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;
 	int ACTION_DYKE_LIST <- 21;
 	
+	string stateSimPhase <- 'not started'; // stateSimPhase is used to specify the currrent phase of the simulation 
+	//5 possible states 'not started' 'game' 'execute lisflood' 'show lisflood' and 'flood stats' 	
 	int messageID <- 0;
 	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile
 	string resultats <- "resultats.shp"; //	on sauvegarde les résultats dans ce fichier (attention, cela ecrase a chaque fois le resultat precedent)
 	int cycle_sauver <- 100; //cycle à laquelle les resultats sont sauvegardés au format shp
-	int cycle_launchLisflood <- 10; // cycle_launchLisflood specifies the cycle at which lisflood is launched
 	/* lisfloodReadingStep is used to indicate to which step of lisflood results, the current cycle corresponds */
-	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle 
+	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
 	
@@ -94,8 +95,6 @@ global  {
 		// OPTION 1 Fichiers SIG Grande Carte
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
-//		file dem_file <- file("../includes/zone_etude/mnt_recalcule_alti_v2.asc") ;
-	//	file dem_file <- file("../includes/lisflood-fp-604/oleron_dem_t0.asc") ;	bizarrement le chargement de ce fichier là est beaucoup plus long que le chargement de celui du dessus
 		int nb_cols <- 631;
 		int nb_rows <- 906;
 		// OPTION 2 Fichiers SIG Petite Carte
@@ -116,12 +115,13 @@ global  {
 	list<UA> agents_to_inspect update: 10 among UA;
 	game_controller network_agent <- nil;
 
-	init
+init
 	{
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		/* initialisation du bouton */
 		do init_buttons;
 		create game_controller number:1 returns:ctl ;
+		stateSimPhase <- 'not started';
 		network_agent <- first(ctl);
 		/*Creation des agents a partir des données SIG */
 		create ouvrage from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")) ];
@@ -144,14 +144,16 @@ global  {
 		do load_rugosity;
 		ask UA {cells <- cell overlapping self;}
 		ask commune {UAs <- UA overlapping self;}
+		ask commune {cells <- cell overlapping self;}
 		ask ouvrage {cells <- cell overlapping self;}
 	}
 	
- 	int getMessageID
+ int getMessageID
  	{
  		messageID<- messageID +1;
  		return messageID;
  	}
+ 	
 action tourDeJeu{
 	//do sauvegarder_resultat;
 	write "new round "+ (round +1);
@@ -161,6 +163,7 @@ action tourDeJeu{
 		ask commune where (each.id > 0) {
 			do recevoirImpots; not_updated<-true;
 			}}
+	else {stateSimPhase <- 'game';}
 	round <- round + 1;
 	write "done!";
 	} 	
@@ -169,51 +172,42 @@ int commune_id(string xx)
 	{
 		return	 (commune first_with (xx contains each.nom_raccourci )).id;
 	}
-	
-	
-action runLisflood
-	{ // déclenchement innondation
-		//do launchLisflood; // comment this line if you only want to read already existing results
-		set lisfloodReadingStep <- 0;
-		ask ouvrage {do calcRupture;} 
-		showLisflood <- true;
-		// lecture des fichiers innondation
-		/*loop while:(lisfloodReadingStep !=  9999999)
-			{ do readLisfloodInRep("results"+timestamp);
-			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
-			/// PROBLEME ICI, les cellules sont bien innondées mais elles ne s'affichent pas. 
-			//// NORMALLEMENT CA DEVRAIT AFFICHER le    Aspect: elevation_eau   des cells    , mais ca ne le fait pas
-			}
-			* 
-			*/
-		// fin innondation
-	//	ask ouvrage {if rupture = 1 {do removeRupture;}}
-}
 
-bool showLisflood <- false;
+reflex write_stateSimPhase
+{write stateSimPhase;}
 
-reflex show_lisflood when: showLisflood and lisfloodReadingStep !=  9999999
-{
+reflex flood_stats when: stateSimPhase = 'flood stats'
+	{// fin innondation
+		// affichage des résultats 
+		do display_communes_results;
+		// remise à zero des hauteurs d'eau
+		loop r from: 0 to: nb_rows -1  {
+						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;
+													cell[c,r].max_water_height <- 0.0;
+						}  }
+		// annulation des ruptures de digues				
+		ask ouvrage {if rupture = 1 {do removeRupture;}}
+		// redémarage du jeu
+		stateSimPhase <- 'game';
+		}
+		
+reflex show_lisflood when: stateSimPhase = 'show lisflood'
+	{// lecture des fichiers innondation
 	do readLisfloodInRep("results"+timestamp);
 			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
-			/// PROBLEME ICI, les cellules sont bien innondées mais elles ne s'affichent pas. 
-			//// NORMALLEMENT CA DEVRAIT AFFICHER le    Aspect: elevation_eau   des cells    , mais ca ne le fait pas
-	if(showLisflood = false)
-	{
-		ask ouvrage {if rupture = 1 {do removeRupture;}}
 	}
-	
-}
-
-
- /* pour la sauvegarde des données en format shape */
-action sauvegarder_resultat //when: sauver_shp and cycle = cycle_sauver
-	{										 
-		save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
+		
+action launchFloodPhase 
+	{ // déclenchement innondation
+		stateSimPhase <- 'execute lisflood';	
+		ask ouvrage {do calcRupture;} 
+		//do executeLisflood; // comment this line if you only want to read already existing results
+		set lisfloodReadingStep <- 0;
+		stateSimPhase <- 'show lisflood';
 	}
- 	   
-	   	
-action launchLisflood
+
+ 	
+action executeLisflood
 	{	timestamp <- machine_time ;
 		do save_dem;  
 		do save_rugosityGrid;
@@ -225,6 +219,7 @@ BEFORE TO CLICK OK
 
 WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: 100]);
  		}
+ 		
 action save_lf_launch_files {
 		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_dem_t"+timestamp+".asc\n#roadfile      buscot.road\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
 		save ("lisflood -dir results"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
@@ -270,15 +265,16 @@ action readLisfloodInRep (string rep)
 				string l <- lfdata[r];
 				list<string> res <- l split_with "\t";
 				loop c from: 0 to: length(res) - 1{
-					cell[c,r-6].water_height <- float(res[c]);}}	
+					float w <- float(res[c]);
+					if w > cell[c,r-6].max_water_height {cell[c,r-6].max_water_height <-w;}
+					cell[c,r-6].water_height <- w;}}	
 	        lisfloodReadingStep <- lisfloodReadingStep +1;
 	        }
-	     else { lisfloodReadingStep <-  9999999;
-	     		showLisflood <- false;
+	     else { // fin innondation
+	     		lisfloodReadingStep <-  9999999;
 	     		if nb = "0000" {map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);}
-	     		else{map values <- user_input(["L'innondation est terminée. Au prochain pas de temps les hauteurs d'eau seront remise à zéro" :: 100]);
-					 loop r from: 0 to: nb_rows -1  {
-						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;}  }}   }	   
+	     		else{map values <- user_input(["L'innondation est terminée" :: 100]);
+					stateSimPhase <- 'flood stats';}   }	   
 	}
 	
 action load_rugosity
@@ -291,7 +287,62 @@ action load_rugosity
 	}
 
 
+action display_communes_results
+		{	string text <- "";
+			ask commune where (each.id >0)
+			{  	int tot <- length(cells) ; 
+				int U_0_5 <-0;	int U_1_5 <-0;	int U_max <-0;
+				int AU_0_5 <-0;	int AU_1_5 <-0;	int AU_max <-0;
+				int A_0_5 <-0;	int A_1_5 <-0;	int A_max <-0;
+				int N_0_5 <-0;	int N_1_5 <-0;	int N_max <-0;
+				ask UAs
+					{ 
+					ask cells {
+						if max_water_height > 0
+						{ switch myself.ua_name
+							{
+							match "U" {
+								if max_water_height <= 0.5 {U_0_5 <- U_0_5 +1;}
+								if between (max_water_height ,0.5, 1.5) {U_1_5 <- U_1_5 +1;}
+								if max_water_height >= 1.5 {U_max <- U_max +1 ;}
+								}
+							match "AU" {
+								if max_water_height <= 0.5 {AU_0_5 <- AU_0_5 +1;}
+								if between (max_water_height ,0.5, 1.5) {AU_1_5 <- AU_1_5 +1;}
+								if max_water_height >= 1.5 {AU_max <- AU_max +1 ;}
+								}
+							match "N" {
+								if max_water_height <= 0.5 {N_0_5 <- N_0_5 +1;}
+								if between (max_water_height ,0.5, 1.5) {N_1_5 <- N_1_5 +1;}
+								if max_water_height >= 1.5 {N_max <- N_max +1 ;}
+								}
+							match "A" {
+								if max_water_height <= 0.5 {A_0_5 <- A_0_5 +1;}
+								if between (max_water_height ,0.5, 1.5) {A_1_5 <- A_1_5 +1;}
+								if max_water_height >= 1.5 {A_max <- A_max +1 ;}
+								}	
+							}
+							
+							}
+					}
+					}
+				text <- text + "Résultats commune " + nom_raccourci +"
+Surface U innondée : moins de 50cm " + ((U_0_5 * 0.04) with_precision 1) +"ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((U_1_5 * 0.04) with_precision 1) +"ha ("+ ((U_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((U_max * 0.04) with_precision 1) +"ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
+Surface AU innondée : moins de 50cm " + ((AU_0_5 * 0.04) with_precision 1) +"ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((AU_1_5 * 0.04) with_precision 1) +"ha ("+ ((AU_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((AU_max * 0.04) with_precision 1) +"ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
+Surface A innondée : moins de 50cm " + ((A_0_5 * 0.04) with_precision 1) +"ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((A_1_5 * 0.04) with_precision 1) +"ha ("+ ((A_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((A_max * 0.04) with_precision 1) +"ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
+Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +"ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((N_1_5 * 0.04) with_precision 1) +"ha ("+ ((N_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((N_max * 0.04) with_precision 1) +"ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
+--------------------------------------------------------------------------------------------------------------------
+" ;	
+			}
+		map values <- user_input([ text :: 100]);	
+		}
 
+ /* pour la sauvegarde des données en format shape */
+action sauvegarder_resultat //when: sauver_shp and cycle = cycle_sauver
+	{										 
+		save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
+	}
+ 	   
 
 /*
  * ***********************************************************************************************
@@ -362,7 +413,7 @@ species game_controller skills:[network]
 		do connectMessenger to:GROUP_NAME at:"localhost" withName:MANAGER_NAME;
 	}
 	
-	reflex wait_message
+	reflex wait_message when: network_on
 	{
 		loop while:!emptyMessageBox()
 		{
@@ -376,7 +427,7 @@ species game_controller skills:[network]
 		}
 	}
 	
-	reflex apply_action when:length(action_done)>0
+	reflex apply_action when:length(action_done)>0 and network_on
 	{
 		ask(action_done)
 		{
@@ -504,7 +555,7 @@ species game_controller skills:[network]
 	
 	
 	
-	reflex send_space_update
+	reflex send_space_update when: network_on
 	{
 		do update_UA;
 		do update_dyke;
@@ -667,17 +718,24 @@ species game_controller skills:[network]
 				ask world {do tourDeJeu;}
 			}
 			if (nb_button = 3){
-				write "lancer innondation";
-				ask world {do runLisflood;}
+				ask world {do launchFloodPhase;}
 			}
 			
 			if (nb_button = 1){
-				write "Subvention";
-				//  TO DO
-			}
+//				map values <- user_input("Vous allez octroyer une subvention à une commune.
+//Choisissez le numéro de la commune :
+//1 -> "+ (commune first_with (each.id =1)).nom_raccourci+"
+//2 -> "+ (commune first_with (each.id =2)).nom_raccourci+"
+//3 -> "+ (commune first_with (each.id =3)).nom_raccourci+"
+//4 -> "+ (commune first_with (each.id =4)).nom_raccourci +"
+//
+//Et le montant octroyé. "["id_commune":: 4, "amount" :: 10000]);
+////				int(values at "Number") with: [location:: (point(values at "Location")
+//				ask commune first_with (each.id = int(values at "id_commune")) {budget <- budget + int(values at "amount");}
+				}
+
 			
 			if (nb_button = 2){
-				write "taxe";
 				// TO DO
 			}
 		}
@@ -716,6 +774,7 @@ species game_controller skills:[network]
 grid cell file: dem_file schedules:[] neighbours: 8 {	
 		int cell_type <- 0 ; // 0 -> terre
 		float water_height  <- 0.0;
+		float max_water_height  <- 0.0;
 		float soil_height <- grid_value;
 		float soil_height_before_broken <- 0.0;
 		float rugosity;
@@ -994,11 +1053,14 @@ species commune
 	string nom_raccourci;
 	int budget <-20000;
 	list<UA> UAs ;
+	list<cell> cells ;
 	int impot_unit <- 2;
+
 	aspect base
 	{
 		draw shape color:#whitesmoke;
 	}
+	
 	
 	action recevoirImpots {
 		int nb_impose <- sum(UAs accumulate (each.population));
