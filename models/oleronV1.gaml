@@ -15,8 +15,7 @@
 model oleronV1
 
 global  {
-	
-	bool network_on <- true;	
+
 	string COMMAND_SEPARATOR <- ":";
 	string MANAGER_NAME <- "model_manager";
 	string GROUP_NAME <- "Oleron";  
@@ -163,7 +162,7 @@ action tourDeJeu{
 		ask commune where (each.id > 0) {
 			do recevoirImpots; not_updated<-true;
 			}}
-	else {stateSimPhase <- 'game';}
+	else {stateSimPhase <- 'game'; write stateSimPhase;}
 	round <- round + 1;
 	write "done!";
 	} 	
@@ -173,8 +172,6 @@ int commune_id(string xx)
 		return	 (commune first_with (xx contains each.nom_raccourci )).id;
 	}
 
-reflex write_stateSimPhase
-{write stateSimPhase;}
 
 reflex flood_stats when: stateSimPhase = 'flood stats'
 	{// fin innondation
@@ -188,7 +185,8 @@ reflex flood_stats when: stateSimPhase = 'flood stats'
 		// annulation des ruptures de digues				
 		ask ouvrage {if rupture = 1 {do removeRupture;}}
 		// redémarage du jeu
-		stateSimPhase <- 'game';
+		if round = 0 {stateSimPhase <- 'not started'; } else {stateSimPhase <- 'game';}
+		write stateSimPhase;
 		}
 		
 reflex show_lisflood when: stateSimPhase = 'show lisflood'
@@ -199,11 +197,13 @@ reflex show_lisflood when: stateSimPhase = 'show lisflood'
 		
 action launchFloodPhase 
 	{ // déclenchement innondation
-		stateSimPhase <- 'execute lisflood';	
-		ask ouvrage {do calcRupture;} 
-		//do executeLisflood; // comment this line if you only want to read already existing results
+		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
+		if round != 0 {
+			ask ouvrage {do calcRupture;} 
+			do executeLisflood; // comment this line if you only want to read already existing results
+		} 
 		set lisfloodReadingStep <- 0;
-		stateSimPhase <- 'show lisflood';
+		stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	}
 
  	
@@ -221,7 +221,7 @@ WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close wh
  		}
  		
 action save_lf_launch_files {
-		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_dem_t"+timestamp+".asc\n#roadfile      buscot.road\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
+		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n_t"+timestamp+".asc\n#roadfile      buscot.road\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
 		save ("lisflood -dir results"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
 		}       
 
@@ -274,7 +274,7 @@ action readLisfloodInRep (string rep)
 	     		lisfloodReadingStep <-  9999999;
 	     		if nb = "0000" {map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);}
 	     		else{map values <- user_input(["L'innondation est terminée" :: 100]);
-					stateSimPhase <- 'flood stats';}   }	   
+					stateSimPhase <- 'flood stats'; write stateSimPhase;}   }	   
 	}
 	
 action load_rugosity
@@ -413,7 +413,7 @@ species game_controller skills:[network]
 		do connectMessenger to:GROUP_NAME at:"localhost" withName:MANAGER_NAME;
 	}
 	
-	reflex wait_message when: network_on
+	reflex wait_message 
 	{
 		loop while:!emptyMessageBox()
 		{
@@ -427,7 +427,7 @@ species game_controller skills:[network]
 		}
 	}
 	
-	reflex apply_action when:length(action_done)>0 and network_on
+	reflex apply_action when:length(action_done)>0 
 	{
 		ask(action_done)
 		{
@@ -555,7 +555,7 @@ species game_controller skills:[network]
 	
 	
 	
-	reflex send_space_update when: network_on
+	reflex send_space_update
 	{
 		do update_UA;
 		do update_dyke;
@@ -722,22 +722,43 @@ species game_controller skills:[network]
 			}
 			
 			if (nb_button = 1){
-//				map values <- user_input("Vous allez octroyer une subvention à une commune.
-//Choisissez le numéro de la commune :
-//1 -> "+ (commune first_with (each.id =1)).nom_raccourci+"
-//2 -> "+ (commune first_with (each.id =2)).nom_raccourci+"
-//3 -> "+ (commune first_with (each.id =3)).nom_raccourci+"
-//4 -> "+ (commune first_with (each.id =4)).nom_raccourci +"
-//
-//Et le montant octroyé. "["id_commune":: 4, "amount" :: 10000]);
-////				int(values at "Number") with: [location:: (point(values at "Location")
-//				ask commune first_with (each.id = int(values at "id_commune")) {budget <- budget + int(values at "amount");}
+				//Bouton Subvention
+				map values <- user_input("Vous allez octroyer une subvention à une commune.
+Choisissez le numéro de la commune :
+1 -> "+ (commune first_with (each.id =1)).nom_raccourci+"
+2 -> "+ (commune first_with (each.id =2)).nom_raccourci+"
+3 -> "+ (commune first_with (each.id =3)).nom_raccourci+"
+4 -> "+ (commune first_with (each.id =4)).nom_raccourci +"
+
+Et le montant octroyé. ",["id_commune":: 4, "amount" :: 10000]);
+				if  between(int(values at "id_commune"),0,5) and int(values at "amount") > 0
+				{
+					ask commune first_with (each.id = int(values at "id_commune")) {budget <- budget + int(values at "amount");
+					not_updated <- true;
+					}
+				}
 				}
 
 			
 			if (nb_button = 2){
-				// TO DO
-			}
+				// Bouton Amende
+				map values <- user_input("Vous allez mettre une amende à une commune.
+Choisissez le numéro de la commune :
+1 -> "+ (commune first_with (each.id =1)).nom_raccourci+"
+2 -> "+ (commune first_with (each.id =2)).nom_raccourci+"
+3 -> "+ (commune first_with (each.id =3)).nom_raccourci+"
+4 -> "+ (commune first_with (each.id =4)).nom_raccourci +"
+
+Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
+				if  between(int(values at "id_commune"),0,5) and int(values at "amount") > 0
+				{
+				 ask commune first_with (each.id = int(values at "id_commune")) {
+				 	budget <- budget - int(values at "amount");
+				 	not_updated <- true;
+				 }
+				 
+				}
+				}
 		}
 		
 		if(length(selected_UnAm_c)>0)
@@ -843,18 +864,19 @@ species ouvrage
 	}
 	
 	action calcRupture {
-		float p <- 0.0;
-		if status = "tres mauvais" {p <- 0.5;}
-		if status = "mauvais" {p <- 0.3;}
-		if status = "moyen" {p <- 0.2;}
-		if status = "bon" {p <- 0.1;}
-		if status = "tres bon" {p <- 0.0;}
-		if rnd (1) / 1 < p {
+		int p <- 0;
+		if status = "tres mauvais" {p <- 20;}
+		if status = "mauvais" {p <- 13;}
+		if status = "moyen" {p <- 7;}
+		if status = "bon" {p <- 2;}
+		if status = "tres bon" {p <- -1;}
+		if rnd (100) <= p {
 				set rupture <- 1;
 				// apply Rupture On Cells
 				ask cells  {/// todo : a changer: ne pas appliquer sur toutes les cells de l'ouvrage mais que sur une portion
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 				}
+				write "rupture digue n°" + id_ouvrage + "(état " + status +", type "+type +", hauteur "+height+", commune "+first((commune overlapping self)).nom_raccourci +")"; 
 		}
 	}
 	
