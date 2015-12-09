@@ -91,12 +91,12 @@ global  {
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
-		// OPTION 1 Fichiers SIG Grande Carte
+		// OPTION 1 -> Zone d'étude
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
 		int nb_cols <- 631;
 		int nb_rows <- 906;
-		// OPTION 2 Fichiers SIG Petite Carte
+		// OPTION 2 -> Zone restreinte
 		/*file emprise_shape <- file("../includes/zone_restreinte/cadre.shp");
 		file coastline_shape <- file("../includes/zone_restreinte/contour.shp");
 		file dem_file <- file("../includes/zone_restreinte/mnt.asc") ;
@@ -227,9 +227,9 @@ action save_lf_launch_files {
 
 action save_dem {
 		string filename <- "../includes/lisflood-fp-604/oleron_dem_t" + timestamp + ".asc";
-		//OPTION 1 Big map
+		//OPTION 1 -> Zone d'étude
 		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
-		//OPTION 2 Small map
+		//OPTION 2 -> Zone restreinte
 		//save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;			
 		loop j from: 0 to: nb_rows- 1 {
 			string text <- "";
@@ -241,9 +241,9 @@ action save_dem {
 		
 action save_rugosityGrid {
 		string filename <- "../includes/lisflood-fp-604/oleron_n_t" + timestamp + ".asc";
-		//OPTION 1 Big map
+		//OPTION 1 -> Zone d'étude
 		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
-		//OPTION 2 Small map
+		//OPTION 2 -> Zone restreinte
 		//save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;			
 		loop j from: 0 to: nb_rows- 1 {
 			string text <- "";
