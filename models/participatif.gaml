@@ -44,7 +44,7 @@ global
 	list<float> basket_location <- [];
 	list<del_basket_button> del_buttons <-[];
 	
-	int basket_max_size <- 10;
+	int basket_max_size <- 15;
 	int font_size <- int(shape.height/30);
 	int font_interleave <- int(shape.width/60);
 	
@@ -79,9 +79,12 @@ global
 	int UPDATE_BUDGET <- 19;
 	int REFRESH_ALL <- 20;
 	int ACTION_MESSAGE <- 22;
+	int CONNECTION_MESSAGE <- 23;
 	
 	float widX;
 	float widY;
+	float minimal_budget <- -5000;
+	
 	
 	float budget <- 20000.0;
 	float impot <- impot;
@@ -275,8 +278,17 @@ global
 		list<basket_validation> bsk_validation <- selected_agents of_species basket_validation;
 		if(length(bsk_validation)>0)
 		{
+			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
+			{
+				string budget_display <- "Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions";
+				map<string,unknown> res <- user_input("Avertissement",[budget_display:: false]);
+				return;
+			
+			}
+			
+			
 			bool choice <- false;
-			string ask_display <- "Vous êtes sur le point de valider votre panier";
+			string ask_display <- "Vous êtes sur le point de valider votre panier \n Cocher la case, pour accepter le panier et valider";
 			map<string,unknown> res <- user_input("Avertissement",[ask_display:: choice]);
 			if(res at ask_display )
 			{
@@ -578,6 +590,8 @@ species Network_agent skills:[network]
 	init{
 		
 		do connectMessenger to:GROUP_NAME at:"localhost" withName:world.commune_name;	
+		string mm<- ""+CONNECTION_MESSAGE+COMMAND_SEPARATOR+world.commune_name;
+		do sendMessage dest:"all" content:mm;
 	}
 	
 	reflex receive_message 
@@ -586,7 +600,7 @@ species Network_agent skills:[network]
 		{
 			map<string,string> msg <- fetchMessage();
 			string dest <- msg["dest"]; 
-			write dest;
+			write "message " + msg;
 			if(dest="all" or dest contains world.commune_name)
 			{
 				//do read_action(msg["content"],msg["sender"]);	
@@ -731,8 +745,6 @@ species basket_validation skills:[network]
 	{
 		float x_loc <- font_interleave + 12* (font_size + font_interleave);
 		float y_loc <- font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave);
-	//	location <- {x_loc,y_loc};
-		//draw shape color:#red;
 		if(length(my_basket) = 0)
 		{
 			draw "Aucune action enregistrée" size:font_size color:#black at:{0 , y_loc };
@@ -971,11 +983,9 @@ species cell_mnt schedules:[]
 experiment game type: gui
 {
 	float minimum_cycle_duration <- 0.5;
-	parameter "choix de la commune : " var:commune_name <- "lechateau" among:["lechateau","dolus","sttrojan", "stpierre"];
+	parameter "choix de la commune : " var:commune_name <- "dolus" among:["lechateau","dolus","sttrojan", "stpierre"];
 	output
-	{ 	
-		inspect world;
-		
+		{
 		display UnAm focus:my_commune
 		{
 			species commune aspect: base;
