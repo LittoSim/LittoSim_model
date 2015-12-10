@@ -19,7 +19,7 @@ global  {
 	string COMMAND_SEPARATOR <- ":";
 	string MANAGER_NAME <- "model_manager";
 	string GROUP_NAME <- "Oleron";  
-	string BUILT_DYKE_TYPE <- "newDyke"; // Type de nouvelle digue
+	string BUILT_DYKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 	float  STANDARD_DYKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
 	string BUILT_DYKE_STATUS <- "tres bon"; // status de nouvelle digue
 	
@@ -74,7 +74,7 @@ global  {
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
 	
-	//bottum size
+	//buttons size
 	float button_size <- 2000#m;
 	int step_button <- 1;
 	int subvention_b <- 1;
@@ -84,8 +84,22 @@ global  {
 	point previous_clicked_point <- nil;
 	
 	action_done current_action <- nil;
+
+	//// tableau des données de budget des communes pour tracer le graph d'évaolution des budgets
+	container data_budget_C1 <- [0];
+	container data_budget_C2 <- [0];
+	container data_budget_C3 <- [0];	
+	container data_budget_C4 <- [0];
+	int count_N_to_AU_C1 <-0;
+	int count_N_to_AU_C2 <-0;
+	int count_N_to_AU_C3 <-0;	
+	int count_N_to_AU_C4 <-0;
+	container data_count_N_to_AU_C1 <- [0];
+	container data_count_N_to_AU_C2 <- [0];
+	container data_count_N_to_AU_C3 <- [0];	
+	container data_count_N_to_AU_C4 <- [0];
 	
-	/*
+		/*
 	 * Chargements des données SIG
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
@@ -146,7 +160,13 @@ init
 		ask commune {cells <- cell overlapping self;}
 		ask ouvrage {cells <- cell overlapping self;}
 	}
-	
+
+
+// reflex affiche_budget {
+// 	ask commune {write "budget "+ nom_raccourci +" : " + budget;}
+// 	}
+ 
+ 	
  int getMessageID
  	{
  		messageID<- messageID +1;
@@ -164,6 +184,8 @@ action tourDeJeu{
 			}}
 	else {stateSimPhase <- 'game'; write stateSimPhase;}
 	round <- round + 1;
+	do save_budget_data;
+	do save_N_to_AU_data;
 	write "done!";
 	} 	
 	
@@ -192,7 +214,6 @@ reflex flood_stats when: stateSimPhase = 'flood stats'
 reflex show_lisflood when: stateSimPhase = 'show lisflood'
 	{// lecture des fichiers innondation
 	do readLisfloodInRep("results"+timestamp);
-			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
 	}
 		
 action launchFloodPhase 
@@ -291,10 +312,10 @@ action display_communes_results
 		{	string text <- "";
 			ask commune where (each.id >0)
 			{  	int tot <- length(cells) ; 
-				int U_0_5 <-0;	int U_1_5 <-0;	int U_max <-0;
-				int AU_0_5 <-0;	int AU_1_5 <-0;	int AU_max <-0;
-				int A_0_5 <-0;	int A_1_5 <-0;	int A_max <-0;
-				int N_0_5 <-0;	int N_1_5 <-0;	int N_max <-0;
+				int U_0_5 <-0;	int U_1 <-0;	int U_max <-0;
+				int AU_0_5 <-0;	int AU_1 <-0;	int AU_max <-0;
+				int A_0_5 <-0;	int A_1 <-0;	int A_max <-0;
+				int N_0_5 <-0;	int N_1 <-0;	int N_max <-0;
 				ask UAs
 					{ 
 					ask cells {
@@ -303,23 +324,23 @@ action display_communes_results
 							{
 							match "U" {
 								if max_water_height <= 0.5 {U_0_5 <- U_0_5 +1;}
-								if between (max_water_height ,0.5, 1.5) {U_1_5 <- U_1_5 +1;}
-								if max_water_height >= 1.5 {U_max <- U_max +1 ;}
+								if between (max_water_height ,0.5, 1) {U_1 <- U_1 +1;}
+								if max_water_height >= 1 {U_max <- U_max +1 ;}
 								}
 							match "AU" {
 								if max_water_height <= 0.5 {AU_0_5 <- AU_0_5 +1;}
-								if between (max_water_height ,0.5, 1.5) {AU_1_5 <- AU_1_5 +1;}
-								if max_water_height >= 1.5 {AU_max <- AU_max +1 ;}
+								if between (max_water_height ,0.5, 1) {AU_1 <- AU_1 +1;}
+								if max_water_height >= 1 {AU_max <- AU_max +1 ;}
 								}
 							match "N" {
 								if max_water_height <= 0.5 {N_0_5 <- N_0_5 +1;}
-								if between (max_water_height ,0.5, 1.5) {N_1_5 <- N_1_5 +1;}
-								if max_water_height >= 1.5 {N_max <- N_max +1 ;}
+								if between (max_water_height ,0.5, 1) {N_1 <- N_1 +1;}
+								if max_water_height >= 1 {N_max <- N_max +1 ;}
 								}
 							match "A" {
 								if max_water_height <= 0.5 {A_0_5 <- A_0_5 +1;}
-								if between (max_water_height ,0.5, 1.5) {A_1_5 <- A_1_5 +1;}
-								if max_water_height >= 1.5 {A_max <- A_max +1 ;}
+								if between (max_water_height ,0.5, 1) {A_1 <- A_1 +1;}
+								if max_water_height >= 1 {A_max <- A_max +1 ;}
 								}	
 							}
 							
@@ -327,10 +348,10 @@ action display_communes_results
 					}
 					}
 				text <- text + "Résultats commune " + nom_raccourci +"
-Surface U innondée : moins de 50cm " + ((U_0_5 * 0.04) with_precision 1) +"ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((U_1_5 * 0.04) with_precision 1) +"ha ("+ ((U_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((U_max * 0.04) with_precision 1) +"ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
-Surface AU innondée : moins de 50cm " + ((AU_0_5 * 0.04) with_precision 1) +"ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((AU_1_5 * 0.04) with_precision 1) +"ha ("+ ((AU_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((AU_max * 0.04) with_precision 1) +"ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
-Surface A innondée : moins de 50cm " + ((A_0_5 * 0.04) with_precision 1) +"ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((A_1_5 * 0.04) with_precision 1) +"ha ("+ ((A_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((A_max * 0.04) with_precision 1) +"ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
-Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +"ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1.5m" + ((N_1_5 * 0.04) with_precision 1) +"ha ("+ ((N_1_5 / tot * 100) with_precision 1) +"%) | plus de 1.5m " + ((N_max * 0.04) with_precision 1) +"ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
+Surface U innondée : moins de 50cm " + ((U_0_5 * 0.04) with_precision 1) +"ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((U_1 * 0.04) with_precision 1) +"ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_max * 0.04) with_precision 1) +"ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
+Surface AU innondée : moins de 50cm " + ((AU_0_5 * 0.04) with_precision 1) +"ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((AU_1 * 0.04) with_precision 1) +"ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((AU_max * 0.04) with_precision 1) +"ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
+Surface A innondée : moins de 50cm " + ((A_0_5 * 0.04) with_precision 1) +"ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((A_1 * 0.04) with_precision 1) +"ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((A_max * 0.04) with_precision 1) +"ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
+Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +"ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((N_1 * 0.04) with_precision 1) +"ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((N_max * 0.04) with_precision 1) +"ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
 --------------------------------------------------------------------------------------------------------------------
 " ;	
 			}
@@ -784,6 +805,24 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 		}
 	}
 	
+	action save_budget_data
+	{	add (commune first_with(each.id =1)).budget to: data_budget_C1  ;
+		add (commune first_with(each.id =2)).budget to: data_budget_C2  ;
+		add (commune first_with(each.id =3)).budget to: data_budget_C3  ;
+		add (commune first_with(each.id =4)).budget to: data_budget_C4  ;
+	}	
+	
+	action save_N_to_AU_data
+	{	add count_N_to_AU_C1 to: data_count_N_to_AU_C1  ;
+		add count_N_to_AU_C2 to: data_count_N_to_AU_C2  ;
+		add count_N_to_AU_C3 to: data_count_N_to_AU_C3  ;
+		add count_N_to_AU_C4 to: data_count_N_to_AU_C4  ;
+		count_N_to_AU_C1 <-0;
+		count_N_to_AU_C2 <-0  ;
+		count_N_to_AU_C3 <-0  ;
+		count_N_to_AU_C4 <-0;
+	}	
+	
 }
 
 /*
@@ -837,6 +876,7 @@ species ouvrage
 	string status;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
 	float height;  // height au pied en mètre
 	float alt;
+	rgb color <- # pink;
 	list<cell> cells ;
 	int cptStatus <-0;
 	int nb_stepsForDegradStatus <-4;
@@ -865,9 +905,9 @@ species ouvrage
 	
 	action calcRupture {
 		int p <- 0;
-		if status = "tres mauvais" {p <- 20;}
-		if status = "mauvais" {p <- 13;}
-		if status = "moyen" {p <- 7;}
+		if status = "tres mauvais" {p <- 15;}
+		if status = "mauvais" {p <- 10;}
+		if status = "moyen" {p <- 5;}
 		if status = "bon" {p <- 2;}
 		if status = "tres bon" {p <- -1;}
 		if rnd (100) <= p {
@@ -925,14 +965,14 @@ species ouvrage
 	}
 	
 	aspect base
-	{	rgb color <- # pink;
-		if status = "tres bon" {color <- rgb (0,175,0);} 
-		if status = "bon" {color <- rgb (0,216,100);} 
-		if status = "moyen " {color <-  rgb (206,213,0);} 
-		if status = "mauvais" {color <- rgb(255,51,102);} 
-		if status = "tres mauvais" {color <- # red;}
-		if status = "casse" {color <- # yellow;} 
-		draw 20#m around shape color: color /*size:300#m*/;
+	{  
+		if status = "tres bon" {color <- # green;} 
+		if status = "bon" {color <- rgb (239,204,51);} 
+		if status = "moyen" {color <-  rgb (255,102,0);} 
+		if status = "mauvais" {color <- # red;} 
+		if status = "tres mauvais" {color <- # black;}
+		if rupture  = 1 {draw circle(100) color:#red;} 
+		draw 30#m around shape color: color /*size:1500#m*/;
 	}
 }
 
@@ -967,7 +1007,17 @@ species UA
 	{	string new_ua_name <-  nameOfUAcode(new_ua_code);
 		if  ua_name = "U" and new_ua_name = "N" /*expropriation */
 				{ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}}
-		else {ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}}
+		else {ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}
+			if  ua_name = "N" and new_ua_name = "AU" /*dénaturalisation -> requière autorosation du prefet */
+				{switch a_id_commune
+					{	match 1 {world.count_N_to_AU_C1 <-world.count_N_to_AU_C1 +1;}
+						match 2 {world.count_N_to_AU_C2 <-world.count_N_to_AU_C2 +1;}
+						match 3 {world.count_N_to_AU_C3 <-world.count_N_to_AU_C3 +1;}
+						match 4 {world.count_N_to_AU_C4 <-world.count_N_to_AU_C4 +1;}
+					}
+					
+				}
+		}
 		ua_code <- new_ua_code;
 		ua_name <- new_ua_name;
 		//on affecte la rugosité correspondant aux cells
@@ -1083,6 +1133,10 @@ species commune
 		draw shape color:#whitesmoke;
 	}
 	
+	aspect outline
+	{
+		draw shape color: rgb (0,0,0,0) border:#black;
+	}
 	
 	action recevoirImpots {
 		int nb_impose <- sum(UAs accumulate (each.population));
@@ -1107,7 +1161,7 @@ species commune
 							if a_UA.ua_name = "AU" {cost <-ACTION_COST_LAND_COVER_FROM_AU_TO_N;}
 									if a_UA.ua_name = "A" {cost <-ACTION_COST_LAND_COVER_FROM_A_TO_N;}	}
 					}
-				if cost = 0 {write "Problème cout change UA";}
+				if cost = 0 {write "Problème cout change UA : cout de 0 ; passade de "+  a_UA.ua_name + " à "+new_ua_name;}
 				budget <- budget - cost;
 				not_updated <- true;
 			}
@@ -1137,7 +1191,8 @@ species commune
 			{
 				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_CREATE);
 				not_updated <- true;
-			}				
+			}
+						
 }
 
 // Definition des boutons générique
@@ -1174,13 +1229,14 @@ species buttons
 experiment oleronV1 type: gui {
 	float minimum_cycle_duration <- 0.5;
 	output {
-		//inspect world;
+		inspect world;
 		
 		display carte_oleron //autosave : true
 		{
+			
 			grid cell ;
 			species cell aspect:elevation_eau;
-			//species commune aspect:base;
+			species commune aspect:outline;
 			species road aspect:base;
 			species ouvrage aspect:base;
 		}
@@ -1205,8 +1261,15 @@ experiment oleronV1 type: gui {
 			
 		display graph_budget {
 				chart "Series" type: series {
-					data "budget" value: (commune collect each.budget)  color: #red;				
+					datalist value:[data_budget_C1,data_budget_C2,data_budget_C3,data_budget_C4] color:[#red,#blue,#green,#black] legend:["stpierre","lechateau","dolus","sttrojan"]; 			
 				}
 			}
+			
+		display "Chgt de N à AU" {
+				chart "Series" type: series {
+					datalist value:[data_count_N_to_AU_C1,data_count_N_to_AU_C2,data_count_N_to_AU_C3,data_count_N_to_AU_C4] color:[#red,#blue,#green,#black] legend:["stpierre","lechateau","dolus","sttrojan"]; 			
+				}
+			}	
+			
 			}}
 		

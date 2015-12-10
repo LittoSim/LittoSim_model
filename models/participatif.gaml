@@ -104,12 +104,13 @@ global
 		do init_basket;
 		do init_buttons;
 		
-		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::int(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) ];
+		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) ];
 		create road from:road_shape; 
 		ask dyke where(!(each overlaps my_commune))
 		{
 			do die;
 		}
+		ask dyke {do init_dyke;}
 		create cell_UnAm from: communes_UnAm_shape with: [id::int(read("FID_1")),land_cover_code::int(read("grid_code")), cout_expro:: int(get("coutexpr"))]
 		{
 			switch (land_cover_code)
@@ -585,7 +586,7 @@ species Network_agent skills:[network]
 		{
 			map<string,string> msg <- fetchMessage();
 			string dest <- msg["dest"]; 
-			
+			write dest;
 			if(dest="all" or dest contains world.commune_name)
 			{
 				//do read_action(msg["content"],msg["sender"]);	
@@ -674,7 +675,7 @@ species Network_agent skills:[network]
 		float x2 <- float(msg[5]);
 		float y2 <- float(msg[6]);
 		float hg <- float(msg[7]);
-		int tp <- int(msg[8]);
+		string tp <- string(msg[8]);
 		string st <- msg[9];
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
 		create dyke number:1
@@ -924,20 +925,25 @@ species cell_UnAm
 species dyke
 {
 	int dyke_id;
-	int type;
+	string type;
 	rgb color <- # pink;
 	float height;
 	string status;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
 	
-	init {if status = '' {status <- "bon";} }
+	action init_dyke {
+		if status = "" {status <- "bon";} 
+		if type ='' {type <- "inconnu";}
+		if status = '' {status <- "bon";} 
+		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
+	}
 	
 	aspect base
 	{  	
-		if status = "tres bon" {color <- rgb (0,175,0);} 
-		if status = "bon" {color <- rgb (0,216,100);} 
-		if status = "moyen " {color <-  rgb (206,213,0);} 
-		if status = "mauvais" {color <- rgb(255,51,102);} 
-		if status = "tres mauvais" {color <- # red;}
+		if status = "tres bon" {color <- # green;} 
+		if status = "bon" {color <- rgb (239,204,51);} 
+		if status = "moyen" {color <-  rgb (255,102,0);} 
+		if status = "mauvais" {color <- # red;} 
+		if status = "tres mauvais" {color <- # black;}
 		if status = "casse" {color <- # yellow;} 
 		draw 20#m around shape color: color size:300#m;
 	}
@@ -967,7 +973,9 @@ experiment game type: gui
 	float minimum_cycle_duration <- 0.5;
 	parameter "choix de la commune : " var:commune_name <- "lechateau" among:["lechateau","dolus","sttrojan", "stpierre"];
 	output
-	{
+	{ 	
+		inspect world;
+		
 		display UnAm focus:my_commune
 		{
 			species commune aspect: base;
