@@ -43,7 +43,7 @@ global  {
 	int ACTION_MODIFY_LAND_COVER_A <- 2;
 	int ACTION_MODIFY_LAND_COVER_U <- 3;
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
-	list<int> ACTION_LIST <- [ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
 	
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
@@ -56,6 +56,8 @@ global  {
 	int UPDATE_BUDGET <- 19;
 	int REFRESH_ALL <- 20;
 	int ACTION_MESSAGE <- 22;
+	int CONNECTION_MESSAGE <- 23;
+	
 
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;
@@ -191,7 +193,13 @@ action tourDeJeu{
 	
 int commune_id(string xx)
 	{
-		return	 (commune first_with (xx contains each.nom_raccourci )).id;
+		commune m <- commune first_with(each.network_name = xx);
+		if(m = nil)
+		{
+			m <- (commune first_with (xx contains each.nom_raccourci ));
+			m.network_name <- xx;
+		}
+		return	 m.id;
 	}
 
 
@@ -439,9 +447,23 @@ species game_controller skills:[network]
 		loop while:!emptyMessageBox()
 		{
 			map msg <- fetchMessage();
-			if(msg["sender"]!=MANAGER_NAME and round>0)
+			if(msg["sender"]!=MANAGER_NAME )
 			{
-				do read_action(msg["content"],msg["sender"]);
+				write msg;
+				list<string> data <- string(msg["content"]) split_with COMMAND_SEPARATOR;
+		
+				if(CONNECTION_MESSAGE = int(data[0]))
+				{
+					int idCom <-world.commune_id(msg["sender"]);
+					write "connexion de "+ msg["sender"] + " "+ idCom;
+					return;
+				}
+		
+				if(round>0) 
+				{
+					do read_action(msg["content"],msg["sender"]);
+					
+				}
 			}
 			
 					
@@ -543,6 +565,7 @@ species game_controller skills:[network]
 		{
 			return;
 		}
+		
 		action_done tmp_agent <- nil;
 		create action_done number:1 returns:tmp_agent_list;
 		tmp_agent <- first(tmp_agent_list);
@@ -585,23 +608,39 @@ species game_controller skills:[network]
 	
 	action update_UA
 	{
-		list<string> update_messages <-[]; 
+		list<string> update_messages <-[];
+		list<UA> updated_UA <- [];
 		ask UA where(each.not_updated)
 		{
 			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code;
 			update_messages <- update_messages + msg;	
 			not_updated <- false;
+			updated_UA <- updated_UA + self;
 		}
-		loop mm over:update_messages
+		int i <- 0;
+		loop while: i< length(update_messages)
 		{
-			do sendMessage  dest:"all" content:mm;
+			string msg <- update_messages at i;
+			list<commune> cms <- commune overlapping (updated_UA at i);
+			loop cm over:cms
+			{
+				do sendMessage  dest:cm.network_name content:msg;
+			}
+			i <- i + 1;
+			
 		}
 	}
 	
 	action send_destroy_dyke_message(ouvrage ovg)
 	{
 		string msg <- ""+ACTION_DYKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage;
-		do sendMessage  dest:"all" content:msg;	
+		
+		list<commune> cms <- commune overlapping ovg;
+		loop cm over:cms
+			{
+				do sendMessage  dest:cm.network_name content:msg;
+			}
+	//	do sendMessage  dest:"all" content:msg;	
 	
 	}
 	
@@ -610,7 +649,13 @@ species game_controller skills:[network]
 		point p1 <- first(ovg.shape.points);
 		point p2 <- last(ovg.shape.points);
 		string msg <- ""+ACTION_DYKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status;
-		do sendMessage  dest:"all" content:msg;	
+		list<commune> cms <- commune overlapping ovg;
+			loop cm over:cms
+			{
+				do sendMessage  dest:cm.network_name content:msg;
+			}
+
+	//	do sendMessage  dest:"all" content:msg;	
 	}
 	
 	action send_dyke_list(int m_commune)
@@ -623,24 +668,34 @@ species game_controller skills:[network]
 		}
 		
 		string msg <- ""+ACTION_DYKE_LIST+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR +m.nom_raccourci+tmp;
-		do sendMessage  dest:"all" content:msg;	
+		do sendMessage  dest:m.network_name content:msg;	
 //		ACTION_DYKE_LIST
 	}
 	
 	action update_dyke
 	{
 		list<string> update_messages <-[]; 
+		list<ouvrage> update_ouvrage <- [];
 		ask ouvrage where(each.not_updated)
 		{
 			point p1 <- first(self.shape.points);
 			point p2 <- last(self.shape.points);
 			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status;
 			update_messages <- update_messages + msg;
+			update_ouvrage <- update_ouvrage + self;
 			not_updated <- false;
 		}
-		loop mm over:update_messages
+		int i <- 0;
+		loop while: i< length(update_messages)
 		{
-			do sendMessage  dest:"all" content:mm;
+			string msg <- update_messages at i;
+			list<commune> cms <- commune overlapping (update_ouvrage at i);
+			loop cm over:cms
+			{
+				do sendMessage  dest:cm.network_name content:msg;
+			}
+			i <- i + 1;
+			
 		}
 	}
 	
@@ -654,7 +709,7 @@ species game_controller skills:[network]
 			not_updated <- false;
 			ask first(game_controller)
 			{
-				do sendMessage  dest:"all" content:msg;
+				do sendMessage  dest:myself.network_name content:msg;
 				
 			}
 		}
@@ -1123,6 +1178,7 @@ species commune
 	int id<-0;
 	bool not_updated<- true;
 	string nom_raccourci;
+	string network_name;
 	int budget <-20000;
 	list<UA> UAs ;
 	list<cell> cells ;
