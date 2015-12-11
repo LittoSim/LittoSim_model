@@ -22,6 +22,8 @@ global  {
 	string BUILT_DYKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 	float  STANDARD_DYKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
 	string BUILT_DYKE_STATUS <- "tres bon"; // status de nouvelle digue
+	string LOG_FILE_NAME <- "log_"+machine_time+"csv";
+	bool log_user_action <- true;
 	
 	//récupération des couts du fichier cout_action
 	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,1});
@@ -57,6 +59,7 @@ global  {
 	int REFRESH_ALL <- 20;
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
+	int INFORM_TAX_GAIN <-24;
 	
 
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
@@ -86,7 +89,7 @@ global  {
 	point previous_clicked_point <- nil;
 	
 	action_done current_action <- nil;
-
+	
 	//// tableau des données de budget des communes pour tracer le graph d'évaolution des budgets
 	container data_budget_C1 <- [0];
 	container data_budget_C2 <- [0];
@@ -101,7 +104,7 @@ global  {
 	container data_count_N_to_AU_C3 <- [0];	
 	container data_count_N_to_AU_C4 <- [0];
 	
-		/*
+	/*
 	 * Chargements des données SIG
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
@@ -162,13 +165,7 @@ init
 		ask commune {cells <- cell overlapping self;}
 		ask ouvrage {cells <- cell overlapping self;}
 	}
-
-
-// reflex affiche_budget {
-// 	ask commune {write "budget "+ nom_raccourci +" : " + budget;}
-// 	}
- 
- 	
+	
  int getMessageID
  	{
  		messageID<- messageID +1;
@@ -222,6 +219,7 @@ reflex flood_stats when: stateSimPhase = 'flood stats'
 reflex show_lisflood when: stateSimPhase = 'show lisflood'
 	{// lecture des fichiers innondation
 	do readLisfloodInRep("results"+timestamp);
+//			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
 	}
 		
 action launchFloodPhase 
@@ -326,7 +324,7 @@ action display_communes_results
 				int N_0_5 <-0;	int N_1 <-0;	int N_max <-0;
 				ask UAs
 					{ 
-					ask cells {
+				ask cells {
 						if max_water_height > 0
 						{ switch myself.ua_name
 							{
@@ -455,15 +453,21 @@ species game_controller skills:[network]
 				if(CONNECTION_MESSAGE = int(data[0]))
 				{
 					int idCom <-world.commune_id(msg["sender"]);
+					ask(commune where(each.id= idCom))
+					{
+						not_updated <- true;
+					}
 					write "connexion de "+ msg["sender"] + " "+ idCom;
-					return;
 				}
-		
-				if(round>0) 
-				{
-					do read_action(msg["content"],msg["sender"]);
-					
-				}
+				else
+					{
+						if(round>0) 
+							{
+								do read_action(msg["content"],msg["sender"]);
+								
+							}
+							
+					}
 			}
 			
 					
@@ -476,6 +480,11 @@ species game_controller skills:[network]
 		{
 			string tmp <- self.doer;
 			int idCom <-world.commune_id(tmp);
+			if(log_user_action)
+			{
+				list<string> data <- [string(machine_time),tmp]+self.my_message;
+				save data to:LOG_FILE_NAME type:"csv";
+			}
 			switch(command)
 			{
 				match ACTION_MESSAGE
@@ -859,7 +868,6 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 			self.is_selected <- false;
 		}
 	}
-	
 	action save_budget_data
 	{	add (commune first_with(each.id =1)).budget to: data_budget_C1  ;
 		add (commune first_with(each.id =2)).budget to: data_budget_C2  ;
@@ -1020,7 +1028,7 @@ species ouvrage
 	}
 	
 	aspect base
-	{  
+	{	
 		if status = "tres bon" {color <- # green;} 
 		if status = "bon" {color <- rgb (239,204,51);} 
 		if status = "moyen" {color <-  rgb (255,102,0);} 
@@ -1079,7 +1087,7 @@ species UA
 		float rug <- rugosityValueOfUA (new_ua_code);
 		ask cells {rugosity <- rug;} 	
 	}
-	
+		
 	
 	action evolveUA
 		{if ua_name ="AU"
@@ -1198,7 +1206,12 @@ species commune
 		int nb_impose <- sum(UAs accumulate (each.population));
 		int impotRecus <- nb_impose * impot_unit;
 		budget <- budget + impotRecus;
+		ask network_agent
+		{
+			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+impotRecus;
+			do sendMessage dest:myself.network_name content:msg;
 		}
+	}
 		
 	action payerExpropriationPour (UA a_UA)
 			{
@@ -1247,8 +1260,7 @@ species commune
 			{
 				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_CREATE);
 				not_updated <- true;
-			}
-						
+			}				
 }
 
 // Definition des boutons générique
@@ -1284,12 +1296,12 @@ species buttons
 
 experiment oleronV1 type: gui {
 	float minimum_cycle_duration <- 0.5;
+	parameter "Log user action" var:log_user_action<- true;
 	output {
 		inspect world;
 		
 		display carte_oleron //autosave : true
 		{
-			
 			grid cell ;
 			species cell aspect:elevation_eau;
 			species commune aspect:outline;

@@ -11,6 +11,7 @@ global
 {
 	string commune_name <- "lechateau";
 	string MANAGER_NAME <- "model_manager";
+	string log_file_name <- "log_"+machine_time+"csv";
 	
 	//file emprise <- file("../includes/participatif/emprise/"+commune_name+".shp");
 	file emprise <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
@@ -80,6 +81,7 @@ global
 	int REFRESH_ALL <- 20;
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
+	int INFORM_TAX_GAIN <-24;
 	
 	float widX;
 	float widY;
@@ -611,6 +613,12 @@ species Network_agent skills:[network]
 				int action_id <- int(data[1]);
 				switch(int(data[0]))
 					{
+						match INFORM_TAX_GAIN
+						{
+							map<string,unknown> values2 <- user_input("Avertissement","Vous avez reçu une subvention de "+ data[2]+ " B \n issues de l'imposition"::"");
+			
+						}	//string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+impotRecus;
+						
 						match UPDATE_BUDGET
 						{
 							budget <- float(data[2]);
