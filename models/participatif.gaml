@@ -93,7 +93,7 @@ global
 	int minimal_budget <- -5000;
 	
 	
-	int budget <- 20000;
+	int budget <- 10000;
 	int impot <- impot;
 	list<action_done> my_basket<-[];
 	commune my_commune <- nil;

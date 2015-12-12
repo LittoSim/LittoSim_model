@@ -72,7 +72,7 @@ global  {
 	int ACTION_DYKE_LIST <- 21;
 	
 	string stateSimPhase <- 'not started'; // stateSimPhase is used to specify the currrent phase of the simulation 
-	//5 possible states 'not started' 'game' 'execute lisflood' 'show lisflood' and 'flood stats' 	
+	//5 possible states 'not started' 'game' 'execute lisflood' 'show lisflood' , 'calculate flood stats' and 'show flood stats' 	
 	int messageID <- 0;
 	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile
 	string resultats <- "resultats.shp"; //	on sauvegarde les résultats dans ce fichier (attention, cela ecrase a chaque fois le resultat precedent)
@@ -81,6 +81,7 @@ global  {
 	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
+	string flood_results <- ""; // store the text to be displayed on flood results per commune 
 	
 	//buttons size
 	float button_size <- 2000#m;
@@ -164,6 +165,7 @@ init
 		ask commune {UAs <- UA overlapping self;}
 		ask commune {cells <- cell overlapping self;}
 		ask ouvrage {cells <- cell overlapping self;}
+		playable_commune <-  (commune where (each.id > 0)) sort_by (each.id);
 	}
 	
  int getMessageID
@@ -199,11 +201,10 @@ int commune_id(string xx)
 		return	 m.id;
 	}
 
-
-reflex flood_stats when: stateSimPhase = 'flood stats'
+reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
-		do display_communes_results;
+		map values <- user_input([ flood_results :: ""]);	
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;
@@ -217,6 +218,14 @@ reflex flood_stats when: stateSimPhase = 'flood stats'
 				stateSimPhase <- 'game';
 				do tourDeJeu;
 		}
+		write stateSimPhase;
+		}
+	
+reflex calculate_flood_stats when: stateSimPhase = 'calculate flood stats'
+	{// fin innondation
+		// calcul des résultats 
+		do calculate_communes_results;
+		stateSimPhase <- 'show flood stats';
 		write stateSimPhase;
 		}
 		
@@ -305,7 +314,7 @@ action readLisfloodInRep (string rep)
 	     		lisfloodReadingStep <-  9999999;
 	     		if nb = "0000" {map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);}
 	     		else{map values <- user_input(["L'innondation est terminée" :: 100]);
-					stateSimPhase <- 'flood stats'; write stateSimPhase;}   }	   
+					stateSimPhase <- 'calculate flood stats'; write stateSimPhase;}   }	   
 	}
 	
 action load_rugosity
@@ -318,9 +327,9 @@ action load_rugosity
 	}
 
 
-action display_communes_results
+action calculate_communes_results
 		{	string text <- "";
-			ask commune where (each.id >0)
+			ask playable_commune
 			{  	int tot <- length(cells) ;
 				int myid <-  self.id; 
 				int U_0_5 <-0;	int U_1 <-0;	int U_max <-0;
@@ -426,7 +435,10 @@ Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +"ha (
 --------------------------------------------------------------------------------------------------------------------
 " ;	
 			}
-		map values <- user_input([ text :: 100]);	
+			flood_results <-  text;
+			write "Surface inondée par commune";
+			ask playable_commune
+				{write ""+ nom_raccourci + " : " + (U_0_5c + U_1c + U_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) +  " ha"; }
 		}
 
  /* pour la sauvegarde des données en format shape */
@@ -982,6 +994,8 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 		count_N_to_AU_C4 <-0;
 	}	
 	
+	list<commune> playable_commune <-  commune where (each.id > 0);
+	
 }
 
 /*
@@ -1290,7 +1304,7 @@ species commune
 	bool not_updated<- true;
 	string nom_raccourci;
 	string network_name;
-	int budget <-20000;
+	int budget <-10000;
 	list<UA> UAs ;
 	list<cell> cells ;
 	int impot_unit <- 2;
@@ -1459,23 +1473,23 @@ experiment oleronV1 type: gui {
 		display Barplots {
                 
 				chart "Zone U" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0} {
-					datalist value:[(commune collect each.U_0_5c),(commune collect each.U_1c),(commune collect each.U_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
+					datalist value:[(playable_commune collect each.U_0_5c),(playable_commune collect each.U_1c),(playable_commune collect each.U_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone AU" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0} {
-					datalist value:[(commune collect each.AU_0_5c),(commune collect each.AU_1c),(commune collect each.AU_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
+					datalist value:[(playable_commune collect each.AU_0_5c),(playable_commune collect each.AU_1c),(playable_commune collect each.AU_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone A" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0.5} {
-					datalist value:[(commune collect each.A_0_5c),(commune collect each.A_1c),(commune collect each.A_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
+					datalist value:[(playable_commune collect each.A_0_5c),(playable_commune collect each.A_1c),(playable_commune collect each.A_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone N" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0.5} {
-					datalist value:[(commune collect each.N_0_5c),(commune collect each.N_1c),(commune collect each.N_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
+					datalist value:[(playable_commune collect each.N_0_5c),(playable_commune collect each.N_1c),(playable_commune collect each.N_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
 						
 				}
 				
