@@ -1460,22 +1460,22 @@ experiment oleronV1 type: gui {
                 
 				chart "Zone U" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0} {
 					datalist value:[(commune collect each.U_0_5c),(commune collect each.U_1c),(commune collect each.U_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone AU" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0} {
 					datalist value:[(commune collect each.AU_0_5c),(commune collect each.AU_1c),(commune collect each.AU_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone A" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0.5} {
 					datalist value:[(commune collect each.A_0_5c),(commune collect each.A_1c),(commune collect each.A_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone N" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0.5} {
 					datalist value:[(commune collect each.N_0_5c),(commune collect each.N_1c),(commune collect each.N_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(commune collect each.nom_raccourci); 	
 						
 				}
 				
