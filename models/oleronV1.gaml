@@ -321,7 +321,8 @@ action load_rugosity
 action display_communes_results
 		{	string text <- "";
 			ask commune where (each.id >0)
-			{  	int tot <- length(cells) ; 
+			{  	int tot <- length(cells) ;
+				int myid <-  self.id; 
 				int U_0_5 <-0;	int U_1 <-0;	int U_max <-0;
 				int AU_0_5 <-0;	int AU_1 <-0;	int AU_max <-0;
 				int A_0_5 <-0;	int A_1 <-0;	int A_max <-0;
@@ -333,24 +334,84 @@ action display_communes_results
 						{ switch myself.ua_name
 							{
 							match "U" {
-								if max_water_height <= 0.5 {U_0_5 <- U_0_5 +1;}
-								if between (max_water_height ,0.5, 1) {U_1 <- U_1 +1;}
-								if max_water_height >= 1 {U_max <- U_max +1 ;}
+									if max_water_height <= 0.5 {
+										U_0_5 <- U_0_5 +1;
+										ask commune where(each.id = myid){
+											U_0_5c <- U_0_5 * 0.04;
+										}
+									}
+									if between (max_water_height ,0.5, 1.0) {
+										U_1 <- U_1 +1;
+										ask commune where(each.id = myid){
+											U_1c <- U_1 * 0.04;
+										}
+									}
+									if max_water_height >= 1{
+										U_max <- U_max +1 ;
+										ask commune where(each.id = myid){
+											U_maxc <- U_max * 0.04;
+										}
+									}
 								}
 							match "AU" {
-								if max_water_height <= 0.5 {AU_0_5 <- AU_0_5 +1;}
-								if between (max_water_height ,0.5, 1) {AU_1 <- AU_1 +1;}
-								if max_water_height >= 1 {AU_max <- AU_max +1 ;}
+									if max_water_height <= 0.5 {
+										AU_0_5 <- AU_0_5 +1;
+										ask commune where(each.id = myid){
+											AU_0_5c <- AU_0_5 * 0.04;
+										}
+									}
+									if between (max_water_height ,0.5, 1.0) {
+										AU_1 <- AU_1 +1;
+										ask commune where(each.id = myid){
+											AU_1c <- AU_1 * 0.04;
+										}
+									}
+									if max_water_height >= 1.0 {
+										AU_max <- AU_max +1 ;
+										ask commune where(each.id = myid){
+											AU_maxc <- AU_max * 0.04;
+										}
+									}
 								}
 							match "N" {
-								if max_water_height <= 0.5 {N_0_5 <- N_0_5 +1;}
-								if between (max_water_height ,0.5, 1) {N_1 <- N_1 +1;}
-								if max_water_height >= 1 {N_max <- N_max +1 ;}
+									if max_water_height <= 0.5 {
+										N_0_5 <- N_0_5 +1;
+										ask commune where(each.id = myid){
+											N_0_5c <- N_0_5 * 0.04;
+										}
+									}
+									if between (max_water_height ,0.5, 1.0) {
+										N_1 <- N_1 +1;
+										ask commune where(each.id = myid){
+											N_1c <- N_1 * 0.04;
+										}
+									}
+									if max_water_height >= 1.0 {
+										N_max <- N_max +1 ;
+										ask commune where(each.id = myid){
+											N_maxc <- N_max * 0.04;
+										}
+									}
 								}
 							match "A" {
-								if max_water_height <= 0.5 {A_0_5 <- A_0_5 +1;}
-								if between (max_water_height ,0.5, 1) {A_1 <- A_1 +1;}
-								if max_water_height >= 1 {A_max <- A_max +1 ;}
+								if max_water_height <= 0.5 {
+									A_0_5 <- A_0_5 +1;
+									ask commune where(each.id = myid){
+											A_0_5c <- A_0_5 * 0.04;
+										}
+								}
+								if between (max_water_height ,0.5, 1.0) {
+									A_1 <- A_1 +1;
+									ask commune where(each.id = myid){
+											A_1c <- A_1 * 0.04;
+										}
+								}
+								if max_water_height >= 1.0 {
+									A_max <- A_max +1 ;
+									ask commune where(each.id = myid){
+											A_maxc <- A_max * 0.04;
+										}
+								}
 								}	
 							}
 							
@@ -1233,6 +1294,12 @@ species commune
 	list<UA> UAs ;
 	list<cell> cells ;
 	int impot_unit <- 2;
+	
+	/* initialisation des hauteurs d'eau */ 
+	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
+	float AU_0_5c <-0.0; float AU_1c <-0.0; float AU_maxc <-0.0;
+	float A_0_5c <-0.0;	float A_1c <-0.0;	float A_maxc <-0.0;
+	float N_0_5c <-0.0;	float N_1c <-0.0;	float N_maxc <-0.0;
 
 	aspect base
 	{
@@ -1388,7 +1455,31 @@ experiment oleronV1 type: gui {
 				chart "Series" type: series {
 					datalist value:[data_count_N_to_AU_C1,data_count_N_to_AU_C2,data_count_N_to_AU_C3,data_count_N_to_AU_C4] color:[#red,#blue,#green,#black] legend:["stpierre","lechateau","dolus","sttrojan"]; 			
 				}
-			}	
+			}
+		display Barplots {
+                
+				chart "Zone U" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0} {
+					datalist value:[(commune collect each.U_0_5c),(commune collect each.U_1c),(commune collect each.U_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						
+				}
+				chart "Zone AU" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0} {
+					datalist value:[(commune collect each.AU_0_5c),(commune collect each.AU_1c),(commune collect each.AU_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						
+				}
+				chart "Zone A" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0.5} {
+					datalist value:[(commune collect each.A_0_5c),(commune collect each.A_1c),(commune collect each.A_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						
+				}
+				chart "Zone N" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0.5} {
+					datalist value:[(commune collect each.N_0_5c),(commune collect each.N_1c),(commune collect each.N_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:[(commune collect each.nom_raccourci)]; 	
+						
+				}
+				
+			}
 			
 			}}
 		
