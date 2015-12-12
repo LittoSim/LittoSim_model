@@ -85,11 +85,11 @@ global
 	
 	float widX;
 	float widY;
-	float minimal_budget <- -5000;
+	int minimal_budget <- -5000;
 	
 	
-	float budget <- 20000.0;
-	float impot <- impot;
+	int budget <- 20000;
+	int impot <- impot;
 	list<action_done> my_basket<-[];
 	commune my_commune <- nil;
 	Network_agent game_manager <-nil;
@@ -383,6 +383,7 @@ global
 			ask (cell_tmp)
 			{
 				if((cell_tmp.land_cover_code=1 and selected_button.command = ACTION_MODIFY_LAND_COVER_N) 
+					or (cell_tmp.land_cover_code=2 and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
 					or (cell_tmp.land_cover_code=4 and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
 					or (cell_tmp.land_cover_code=5 and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
 					or (length((action_done collect(each.location)) inside cell_tmp)>0  )
@@ -392,7 +393,15 @@ global
 					//map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
 					return;
 				}
-				if(((cell_tmp.land_cover_code=2 or cell_tmp.land_cover_code=4) and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
+				if(((cell_tmp.land_cover_code=1) and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
+				{
+					bool res<-false;
+					string chain <- "Transformer une zone naturelle en zone agricole est interdit par la législation";
+					map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
+					
+					return;
+				}
+				if(((cell_tmp.land_cover_code=2) and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
 				{
 					bool res<-false;
 					string chain <- "Transformer une zone urbaine en zone agricole est interdit par la législation";
@@ -415,7 +424,7 @@ global
 				if(selected_button.command = ACTION_MODIFY_LAND_COVER_AU  and (land_cover_code= 1)  )
 				{
 					bool res <- false;
-					string chain <- "Cette action fait l'objet d'une demande en préfecture. L'avez vous fait ? \n Souhaitez vous continuer la transformation de cette parcelle ?";
+					string chain <- "Transformer une zone naturelle en zone à urbaniser fait l'objet d'une demande en préfecture. L'avez vous fait ? \n Souhaitez vous continuer la transformation de cette parcelle ?";
 					map<string,unknown> values2 <- user_input("Avertissement",[chain:: res]);		
 					ask game_manager
 					{
@@ -436,9 +445,10 @@ global
 					self.command <- selected_button.command;
 					if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.land_cover_code= 5)) 
 						{cost <- ACTION_COST_LAND_COVER_FROM_A_TO_N;} 
-					if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.land_cover_code= 2)) 
-						{cost <- myself.cout_expro;} 						
-					else {cost <- selected_button.action_cost;}
+					else {
+						if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.land_cover_code= 2)) 
+							{cost <- myself.cout_expro;} 						
+						else {cost <- selected_button.action_cost;}}
 					self.label <- selected_button.label;
 					shape <- myself.shape;
 				}
@@ -512,6 +522,17 @@ global
 		{
 			self.is_selected <- false;
 		}
+	}
+	
+	string separateur_milliers (int a_value)
+	{
+		string txt <- ""+a_value;
+		if length(txt)>3
+			{string a <- copy_between(txt,0,length(txt)-3);
+			string b <- copy_between(txt,length(txt)-3,length(txt));
+			txt <- a +"."+b;
+			}
+		return txt;
 	}
 }
 
@@ -621,8 +642,8 @@ species Network_agent skills:[network]
 						
 						match UPDATE_BUDGET
 						{
-							budget <- float(data[2]);
-							impot <- float(data[3]);
+							budget <- int(data[2]);
+							impot <- int(data[3]);
 							
 						}
 						match ACTION_DYKE_LIST
@@ -643,7 +664,7 @@ species Network_agent skills:[network]
 							ask dyke where(each.dyke_id =d_id )
 							{
 								status <-data[9];
-								type <- int(data[8]);
+								type <- string(data[8]);
 								height <-float(data[7]);
 							}
 						}
@@ -872,7 +893,7 @@ species commune
 	string nom_raccourci <-"";
 	aspect base
 	{
-		draw shape  color: self=my_commune?rgb(202,170,145):#gray;
+		draw shape  color: self=my_commune?rgb(202,170,145):#lightgray;
 	}
 
 }
@@ -1023,8 +1044,8 @@ experiment game type: gui
 			species action_land_cover aspect:basket;
 			species del_basket_button aspect:base;
 			species basket_validation aspect:base;
-			text "Budget : "+ budget color:#black size:font_size position:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) } ;
-			text "Budget restant : " + (budget - round(sum(my_basket collect(each.cost)))) color:#black  size:font_size position:{0 , font_size+ font_interleave/2 + (length(my_basket) +5)* (font_size + font_interleave) } ;
+			text "Budget : "+ world.separateur_milliers(budget) color:#black size:font_size position:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) } ;
+			text "Budget restant : " +  world.separateur_milliers(budget - round(sum(my_basket collect(each.cost)))) color:#black  size:font_size position:{0 , font_size+ font_interleave/2 + (length(my_basket) +5)* (font_size + font_interleave) } ;
 			
 			event [mouse_down] action: basket_click;
 

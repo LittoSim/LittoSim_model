@@ -81,9 +81,6 @@ global  {
 	
 	//buttons size
 	float button_size <- 2000#m;
-	int step_button <- 1;
-	int subvention_b <- 1;
-	int taxe_b <- 1;
 	string UNAM_DISPLAY_c <- "UnAm";
 	string active_display <- nil;
 	point previous_clicked_point <- nil;
@@ -741,7 +738,6 @@ species game_controller skills:[network]
 	{
 		create buttons number: 1
 		{
-			command <- step_button;
 			nb_button <- 0;
 			label <- "One step";
 			shape <- square(button_size);
@@ -751,7 +747,6 @@ species game_controller skills:[network]
 		}
 		create buttons number: 1
 		{
-			command <- step_button;
 			nb_button <- 3;
 			label <- "Launch Lisflood";
 			shape <- square(button_size);
@@ -762,7 +757,6 @@ species game_controller skills:[network]
 		
 		create buttons number: 1
 		{
-			command <- subvention_b;
 			nb_button <- 1;
 			label <- "subvention";
 			shape <- square(button_size);
@@ -773,7 +767,6 @@ species game_controller skills:[network]
 		
 		create buttons number: 1
 		{
-			command <- taxe_b;
 			nb_button <- 2;
 			label <- "taxe";
 			shape <- square(button_size);
@@ -781,12 +774,20 @@ species game_controller skills:[network]
 			my_icon <- image_file("../images/icones/taxe.png");
 			display_name <- UNAM_DISPLAY_c;
 		}
-		
+		create buttons number: 1
+		{
+			nb_button <- 4;
+			label <- "Show UA grid";
+			shape <- square(850);
+			location <- { 800,14000 };
+			my_icon <- image_file("../images/icones/sans_quadrillage.png");
+			is_selected <- false;
+		}
 	}
 	
 	
     //Action Général appel action particulière 
-    action button_click_C (point loc, list selected_agents)
+    action button_click_C_mdj (point loc, list selected_agents)
 	{
 		
 		if(active_display != UNAM_DISPLAY_c)
@@ -798,7 +799,8 @@ species game_controller skills:[network]
 		}
 		
 		list<buttons> selected_UnAm_c <- (selected_agents of_species buttons) where(each.display_name=active_display );
-		ask (selected_agents of_species buttons) where(each.display_name=active_display ){
+		ask (selected_agents of_species buttons) where(each.display_name=active_display )
+		{
 			if (nb_button = 0){
 				ask world {do tourDeJeu;}
 			}
@@ -858,6 +860,18 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 		
 	}
 	
+	action button_click_carte_oleron (point loc, list selected_agents)
+	{
+		buttons a_button <- first((selected_agents of_species buttons) where(each.nb_button = 4));
+		if a_button != nil
+		{
+			ask a_button
+			{
+				is_selected <- not(is_selected);
+				my_icon <-  is_selected ? image_file("../images/icones/avec_quadrillage.png") :  image_file("../images/icones/sans_quadrillage.png");
+			}
+		}
+	}
     
     //destruction de la sélection
     action clear_selected_button
@@ -997,7 +1011,6 @@ species ouvrage
 	
 	//La commune relève la digue
 	action increase_height_by_commune (int a_commune_id) {
-		status <- "tres bon";
 		cptStatus <- 0;
 		height <- height + 0.5; // le réhaussement d'ouvrage est forcément de 50 centimètres
 		alt <- alt + 0.5;
@@ -1171,13 +1184,21 @@ Mer (code CLC 523) : 						0.02				*/
 	{
 		draw shape color: my_color;
 	}
-	aspect population {
+	aspect population 
+	{
 		rgb acolor <- nil;
 		if population = 0 {acolor <- # white; }
 		 else {acolor <- rgb(255-(population),0,0);}
 		draw shape color: acolor;
 		
+	}
+	aspect conditional_outline
+	{
+		if (buttons first_with(each.nb_button=4)).is_selected
+		{
+		 draw shape color: rgb (0,0,0,0) border:#black;
 		}
+	}
 }
 
 
@@ -1273,15 +1294,20 @@ species buttons
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
 	file my_icon;
-	aspect base
+	aspect buttons_C_mdj
 	{
-			//draw shape color:#white border: is_selected ? # red : # white;
-			//draw my_icon size:button_size-50#m ;
 		if( display_name = UNAM_DISPLAY_c)
 		{
 			draw shape color:#white border: is_selected ? # red : # white;
 			draw my_icon size:button_size-50#m ;
-			
+		}
+	}
+	aspect buttons_carte_oleron
+	{
+		if( nb_button = 4)
+		{
+			draw shape color:#white border: is_selected ? # red : # white;
+			draw my_icon size:800#m ;
 		}
 	}
 }
@@ -1307,6 +1333,10 @@ experiment oleronV1 type: gui {
 			species commune aspect:outline;
 			species road aspect:base;
 			species ouvrage aspect:base;
+			species UA aspect: conditional_outline;
+			 // Les boutons et le clique
+			species buttons aspect:buttons_carte_oleron;
+			event [mouse_down] action: button_click_carte_oleron;
 		}
 		display Amenagement
 		{
@@ -1323,8 +1353,8 @@ experiment oleronV1 type: gui {
 		}
 		display "Controle MdJ"
 		{    // Les boutons et le clique
-			species buttons aspect:base;
-			event [mouse_down] action: button_click_C;
+			species buttons aspect:buttons_C_mdj;
+			event [mouse_down] action: button_click_C_mdj;
 			}
 			
 		display graph_budget {
