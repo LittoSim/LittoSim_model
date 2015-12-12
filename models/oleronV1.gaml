@@ -61,6 +61,8 @@ global  {
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
 	int INFORM_TAX_GAIN <-24;
+	int INFORM_GRANT_RECEIVED <-27;
+	int INFORM_FINE_RECEIVED <-28;
 	
 
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
@@ -210,7 +212,11 @@ reflex flood_stats when: stateSimPhase = 'flood stats'
 		// annulation des ruptures de digues				
 		ask ouvrage {if rupture = 1 {do removeRupture;}}
 		// redémarage du jeu
-		if round = 0 {stateSimPhase <- 'not started'; } else {stateSimPhase <- 'game';}
+		if round = 0 {stateSimPhase <- 'not started'; }
+		else {
+				stateSimPhase <- 'game';
+				do tourDeJeu;
+		}
 		write stateSimPhase;
 		}
 		
@@ -821,8 +827,16 @@ Choisissez le numéro de la commune :
 Et le montant octroyé. ",["id_commune":: 4, "amount" :: 10000]);
 				if  between(int(values at "id_commune"),0,5) and int(values at "amount") > 0
 				{
-					ask commune first_with (each.id = int(values at "id_commune")) {budget <- budget + int(values at "amount");
-					not_updated <- true;
+					commune cm <-commune first_with (each.id = int(values at "id_commune"));
+					ask cm 
+					{
+						budget <- budget + int(values at "amount");
+						ask network_agent
+							{
+							string msg <- ""+INFORM_GRANT_RECEIVED+COMMAND_SEPARATOR+cm.id+COMMAND_SEPARATOR+int(values at "amount");
+							do sendMessage dest:cm.network_name content:msg;
+							}
+						not_updated <- true;
 					}
 				}
 				}
@@ -840,9 +854,15 @@ Choisissez le numéro de la commune :
 Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 				if  between(int(values at "id_commune"),0,5) and int(values at "amount") > 0
 				{
-				 ask commune first_with (each.id = int(values at "id_commune")) {
-				 	budget <- budget - int(values at "amount");
-				 	not_updated <- true;
+					commune cm <-commune first_with (each.id = int(values at "id_commune"));
+					ask cm  {
+				 		budget <- budget - int(values at "amount");
+				 		ask network_agent
+							{
+							string msg <- ""+INFORM_FINE_RECEIVED+COMMAND_SEPARATOR+cm.id+COMMAND_SEPARATOR+int(values at "amount");
+							do sendMessage dest:cm.network_name content:msg;
+							}
+				 		not_updated <- true;
 				 }
 				 
 				}
@@ -1230,7 +1250,7 @@ species commune
 		budget <- budget + impotRecus;
 		ask network_agent
 		{
-			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+impotRecus;
+			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+impotRecus+COMMAND_SEPARATOR+round;
 			do sendMessage dest:myself.network_name content:msg;
 		}
 	}

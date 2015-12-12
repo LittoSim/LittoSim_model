@@ -84,6 +84,9 @@ global
 	int INFORM_TAX_GAIN <-24;
 	int ACTION_INSPECT_DYKE <- 25;
 	int ACTION_INSPECT_LAND_USE <-26;
+	int INFORM_GRANT_RECEIVED <-27;
+	int INFORM_FINE_RECEIVED <-28;
+	
 	
 	float widX;
 	float widY;
@@ -191,7 +194,7 @@ global
 		create buttons number: 1
 		{
 			command <- ACTION_INSPECT_LAND_USE;
-			label <- "Transformer en zone naturelle";
+			label <- "Inspecter une unité d'aménagement";
 			action_cost <- 0;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
@@ -250,7 +253,7 @@ global
 		create buttons number: 1
 		{
 			command <- ACTION_INSPECT_DYKE;
-			label <- "Transformer en zone naturelle";
+			label <- "Inspecter un ouvrage de défense";
 			action_cost <- 0;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
@@ -341,10 +344,8 @@ global
 			switch(selected_button.command)
 			{
 				match ACTION_CREATE_DYKE { do create_new_dyke(loc,selected_button);}
-				match ACTION_INSPECT_DYKE { do inspect_dyke(loc,selected_agents,selected_button); do clear_selected_button;
-			}
-				default {do modify_dyke(loc, selected_agents,selected_button); do clear_selected_button;
-			}
+				match ACTION_INSPECT_DYKE { do inspect_dyke(loc,selected_agents,selected_button);}
+				default {do modify_dyke(loc, selected_agents,selected_button);}
 			}
 		}
 	}
@@ -387,7 +388,7 @@ global
 			 }
 			 action_dyke tmp <- first(action_list);
 			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-			 map<string,unknown> values2 <- user_input("Inspecteur de digue",[chain::""]);		
+			 map<string,unknown> values2 <- user_input("Inspecteur de digue",[chain::string(dk.dyke_id)]);		
 			ask(tmp)
 			{
 				do die;
@@ -465,7 +466,7 @@ global
 				//	float rg <- mean(cls collect(each.rugosity));
 				//	float hg <- mean(cls collect(each.soil_height));
 					
-					string chain <- "Caractéristiques de l'unité d'aménagement \n Occupation : "+ land_cover+ "\n cout d'expropriation : "+cout_expro; // + " \n "+"Elévation : "+ hg+"\n rugosité : " + rg;
+					string chain <- "Caractéristiques de l'unité d'aménagement \n Occupation : "+ land_cover+ (land_cover="U"?( "\n Cout d'expropriation : "+cout_expro):""); // + " \n "+"Elévation : "+ hg+"\n rugosité : " + rg;
 					map<string,unknown> values2 <- user_input("Inspecteur",[chain::""]);		
 					return;	
 					
@@ -555,21 +556,28 @@ global
 			do clear_selected_button;
 			//return;
 		}
-		list<buttons> selected_UnAm <- (selected_agents of_species buttons) where(each.display_name=active_display );
+		list<buttons> cliked_UnAm_button <- (selected_agents of_species buttons) where(each.display_name=active_display );
 		
-		if(length(selected_UnAm)>0)
+		if(length(cliked_UnAm_button)>0)
 		{
+			list<buttons> current_active_button <- buttons where (each.is_selected);
+			bool clic_deselect <- false;
+			if length (current_active_button) > 1 {write "Problème -> deux boutons sélectionnés en même temps";}
+			if length (current_active_button) = 1 
+				{if (first (current_active_button)).command = (first(cliked_UnAm_button)).command
+					{clic_deselect <-true;}}
 			do clear_selected_button;
-			ask (first(selected_UnAm))
-			{
-				is_selected <- true;
-			}
+			if !clic_deselect 
+				{ask (first(cliked_UnAm_button))
+					{
+					is_selected <- true;
+					}
+				}
 			return;
 		}
 		else
 		{
 			do change_plu(loc,selected_agents);
-			do  clear_selected_button;
 		}
 		
 	
@@ -585,16 +593,23 @@ global
 			//return;
 		}
 		
-		list<buttons> selected_Dyke <- (selected_agents of_species buttons) where(each.display_name=active_display );
+		list<buttons> cliked_Dyke_button <- (selected_agents of_species buttons) where(each.display_name=active_display );
 	
-		if( length(selected_Dyke) > 0)
+		if( length(cliked_Dyke_button) > 0)
 		{
+			list<buttons> current_active_button <- buttons where (each.is_selected);
+			bool clic_deselect <- false;
+			if length (current_active_button) > 1 {write "Problème -> deux boutons sélectionnés en même temps";}
+			if length (current_active_button) = 1 
+				{if (first (current_active_button)).command = (first(cliked_Dyke_button)).command
+					{clic_deselect <-true;}}
 			do clear_selected_button;
-			ask (first(selected_Dyke))
-			{
-				is_selected <- true;
-			}
-			
+			if !clic_deselect 
+				{ask (first(cliked_Dyke_button))
+					{
+					is_selected <- true;
+					}
+				}
 		}
 		else
 		{
@@ -724,9 +739,22 @@ species Network_agent skills:[network]
 					{
 						match INFORM_TAX_GAIN
 						{
-							map<string,unknown> values2 <- user_input("Avertissement","Vous avez reçu une subvention de "+ data[2]+ " B \n issues de l'imposition"::"");
+							map<string,unknown> values2 <- user_input("Avertissement","Vous avez perçu des impôts locaux à hauteur de "+ world.separateur_milliers(int(data[2]))+ " pour le tour "+data[3] +" \n Le tour "+(int(data[3])+1)+" vient de commencer"::"");
 			
-						}	//string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+impotRecus;
+						}	
+						
+						match INFORM_GRANT_RECEIVED
+						{
+							map<string,unknown> values2 <- user_input("Avertissement","Vous avez reçu une subvention d'un montant de "+ world.separateur_milliers(int(data[2]))::"");
+			
+						}	
+						match INFORM_FINE_RECEIVED
+						{
+							map<string,unknown> values2 <- user_input("Avertissement","Vous avez reçu une amende d'un montant de "+ world.separateur_milliers(int(data[2]))::"");
+			
+						}	
+						
+						
 						
 						match UPDATE_BUDGET
 						{
