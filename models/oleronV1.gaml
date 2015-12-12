@@ -23,6 +23,7 @@ global  {
 	float  STANDARD_DYKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
 	string BUILT_DYKE_STATUS <- "tres bon"; // status de nouvelle digue
 	string LOG_FILE_NAME <- "log_"+machine_time+"csv";
+	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
 	
 	//récupération des couts du fichier cout_action
@@ -479,7 +480,7 @@ species game_controller skills:[network]
 			int idCom <-world.commune_id(tmp);
 			if(log_user_action)
 			{
-				list<string> data <- [string(machine_time),tmp]+self.my_message;
+				list<string> data <- [string(machine_time-START_LOG),tmp]+self.my_message;
 				save data to:LOG_FILE_NAME type:"csv";
 			}
 			switch(command)

@@ -82,6 +82,8 @@ global
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
 	int INFORM_TAX_GAIN <-24;
+	int ACTION_INSPECT_DYKE <- 25;
+	int ACTION_INSPECT_LAND_USE <-26;
 	
 	float widX;
 	float widY;
@@ -160,7 +162,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_A;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +button_s/2 }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/agriculture.png");
 		}
 
@@ -171,7 +173,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_AU;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_s }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/urban.png");
 		}
 
@@ -182,8 +184,19 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_FROM_AU_TO_N;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_s) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/tree_nature.png");
+			
+		}
+		create buttons number: 1
+		{
+			command <- ACTION_INSPECT_LAND_USE;
+			label <- "Transformer en zone naturelle";
+			action_cost <- 0;
+			shape <- square(button_size);
+			display_name <- UNAM_DISPLAY;
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
+			my_icon <- image_file("../images/icones/Loupe.png");
 			
 		}
 		
@@ -194,7 +207,7 @@ global
 			action_cost <- ACTION_COST_DYKE_CREATE;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +button_s/2 }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/digue_validation.png");
 		}
 
@@ -205,7 +218,7 @@ global
 			action_cost <- ACTION_COST_DYKE_REPAIR;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_s) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/digue_entretien.png");
 			
 		}
@@ -217,7 +230,7 @@ global
 			action_cost <- ACTION_COST_DYKE_DESTROY;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_s) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_suppression.png");
 			
 		}
@@ -229,10 +242,24 @@ global
 			action_cost <- ACTION_COST_DYKE_RAISE;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_s) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_rehausse_plus.png");
 			
 		}
+		
+		create buttons number: 1
+		{
+			command <- ACTION_INSPECT_DYKE;
+			label <- "Transformer en zone naturelle";
+			action_cost <- 0;
+			shape <- square(button_size);
+			display_name <- DYKE_DISPLAY;
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +4* (interleave+ button_size) };
+			my_icon <- image_file("../images/icones/Loupe.png");
+			
+		}
+		
+		
 	}
 	
 	action init_basket
@@ -311,18 +338,62 @@ global
 		buttons selected_button <- buttons first_with(each.is_selected);
 		if(selected_button != nil)
 		{
-			if(ACTION_CREATE_DYKE =  selected_button.command)
-				{
-					
-					do create_new_dyke(loc,selected_button);
-				}
-			else
+			switch(selected_button.command)
 			{
-				do modify_dyke(loc, selected_agents,selected_button);
+				match ACTION_CREATE_DYKE { do create_new_dyke(loc,selected_button);}
+				match ACTION_INSPECT_DYKE { do inspect_dyke(loc,selected_agents,selected_button); do clear_selected_button;
+			}
+				default {do modify_dyke(loc, selected_agents,selected_button); do clear_selected_button;
+			}
 			}
 		}
 	}
 	
+	action inspect_UNAM(point mloc, list agts, buttons but)
+	{
+		list<dyke> selected_dyke <- agts of_species dyke;
+		
+		if(length(selected_dyke)>0)
+		{
+			dyke dk<- selected_dyke closest_to mloc;
+			create action_dyke number:1 returns:action_list
+			 {
+				id <- 0;
+				shape <- dk.shape;
+				chosen_element_id <- dk.dyke_id;
+			 }
+			 action_dyke tmp <- first(action_list);
+			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
+			 map<string,unknown> values2 <- user_input("Inspecteur de digue",[chain::""]);		
+			ask(tmp)
+			{
+				do die;
+			}
+		}
+	}
+	
+	action inspect_dyke(point mloc, list agts, buttons but)
+	{
+		list<dyke> selected_dyke <- agts of_species dyke;
+		
+		if(length(selected_dyke)>0)
+		{
+			dyke dk<- selected_dyke closest_to mloc;
+			create action_dyke number:1 returns:action_list
+			 {
+				id <- 0;
+				shape <- dk.shape;
+				chosen_element_id <- dk.dyke_id;
+			 }
+			 action_dyke tmp <- first(action_list);
+			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
+			 map<string,unknown> values2 <- user_input("Inspecteur de digue",[chain::""]);		
+			ask(tmp)
+			{
+				do die;
+			}
+		}
+	}
 	action modify_dyke(point mloc, list agts, buttons but)
 	{
 		list<dyke> selected_dyke <- agts of_species dyke;
@@ -365,7 +436,10 @@ global
 				previous_clicked_point <- nil;
 				current_action<- first(action_list);
 				my_basket <- my_basket + current_action; 
+				do clear_selected_button;
+			
 		}
+		
 	}
 
 
@@ -382,12 +456,25 @@ global
 			cell_UnAm cell_tmp <- selected_UnAm closest_to loc;
 			ask (cell_tmp)
 			{
+				if(selected_button.command = ACTION_INSPECT_LAND_USE)
+				{
+					bool res <- false;
+					
+					list<cell_mnt> cls <- cell_mnt overlapping self;
+					
+				//	float rg <- mean(cls collect(each.rugosity));
+				//	float hg <- mean(cls collect(each.soil_height));
+					
+					string chain <- "Caractéristiques de l'unité d'aménagement \n Occupation : "+ land_cover+ "\n cout d'expropriation : "+cout_expro; // + " \n "+"Elévation : "+ hg+"\n rugosité : " + rg;
+					map<string,unknown> values2 <- user_input("Inspecteur",[chain::""]);		
+					return;	
+					
+				}
 				if((cell_tmp.land_cover_code=1 and selected_button.command = ACTION_MODIFY_LAND_COVER_N) 
 					or (cell_tmp.land_cover_code=2 and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
 					or (cell_tmp.land_cover_code=4 and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
 					or (cell_tmp.land_cover_code=5 and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
-					or (length((action_done collect(each.location)) inside cell_tmp)>0  )
-				)
+					or (length((action_done collect(each.location)) inside cell_tmp)>0  ))
 				{
 					//string chain <- "action incohérente";
 					//map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
@@ -482,6 +569,7 @@ global
 		else
 		{
 			do change_plu(loc,selected_agents);
+			do  clear_selected_button;
 		}
 		
 	
