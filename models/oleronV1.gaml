@@ -165,7 +165,6 @@ init
 		ask commune {UAs <- UA overlapping self;}
 		ask commune {cells <- cell overlapping self;}
 		ask ouvrage {cells <- cell overlapping self;}
-		playable_commune <-  (commune where (each.id > 0)) sort_by (each.id);
 	}
 	
  int getMessageID
@@ -329,7 +328,7 @@ action load_rugosity
 
 action calculate_communes_results
 		{	string text <- "";
-			ask playable_commune
+			ask (commune where (each.id > 0))
 			{  	int tot <- length(cells) ;
 				int myid <-  self.id; 
 				int U_0_5 <-0;	int U_1 <-0;	int U_max <-0;
@@ -428,17 +427,20 @@ action calculate_communes_results
 					}
 					}
 				text <- text + "Résultats commune " + nom_raccourci +"
-Surface U innondée : moins de 50cm " + ((U_0_5 * 0.04) with_precision 1) +"ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((U_1 * 0.04) with_precision 1) +"ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_max * 0.04) with_precision 1) +"ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
-Surface AU innondée : moins de 50cm " + ((AU_0_5 * 0.04) with_precision 1) +"ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((AU_1 * 0.04) with_precision 1) +"ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((AU_max * 0.04) with_precision 1) +"ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
-Surface A innondée : moins de 50cm " + ((A_0_5 * 0.04) with_precision 1) +"ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((A_1 * 0.04) with_precision 1) +"ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((A_max * 0.04) with_precision 1) +"ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
-Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +"ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((N_1 * 0.04) with_precision 1) +"ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((N_max * 0.04) with_precision 1) +"ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
+Surface U innondée : moins de 50cm " + ((U_0_5 * 0.04) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((U_1 * 0.04) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_max * 0.04) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
+Surface AU innondée : moins de 50cm " + ((AU_0_5 * 0.04) with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((AU_1 * 0.04) with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((AU_max * 0.04) with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
+Surface A innondée : moins de 50cm " + ((A_0_5 * 0.04) with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((A_1 * 0.04) with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((A_max * 0.04) with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
+Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((N_1 * 0.04) with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((N_max * 0.04) with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
 --------------------------------------------------------------------------------------------------------------------
 " ;	
 			}
 			flood_results <-  text;
 			write "Surface inondée par commune";
-			ask playable_commune
-				{write ""+ nom_raccourci + " : " + (U_0_5c + U_1c + U_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) +  " ha"; }
+			ask (commune where (each.id > 0))
+				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ; 
+					add surface_inondee to: data_surface_inondee; 
+					write ""+ nom_raccourci + " : " + surface_inondee +" ha";
+				}
 		}
 
  /* pour la sauvegarde des données en format shape */
@@ -994,7 +996,6 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 		count_N_to_AU_C4 <-0;
 	}	
 	
-	list<commune> playable_commune <-  commune where (each.id > 0);
 	
 }
 
@@ -1314,6 +1315,8 @@ species commune
 	float AU_0_5c <-0.0; float AU_1c <-0.0; float AU_maxc <-0.0;
 	float A_0_5c <-0.0;	float A_1c <-0.0;	float A_maxc <-0.0;
 	float N_0_5c <-0.0;	float N_1c <-0.0;	float N_maxc <-0.0;
+	float surface_inondee <- 0.0;
+	list<float> data_surface_inondee <- [];
 
 	aspect base
 	{
@@ -1461,39 +1464,43 @@ experiment oleronV1 type: gui {
 			
 		display graph_budget {
 				chart "Series" type: series {
-					datalist value:[data_budget_C1,data_budget_C2,data_budget_C3,data_budget_C4] color:[#red,#blue,#green,#black] legend:["stpierre","lechateau","dolus","sttrojan"]; 			
+					datalist value:[data_budget_C1,data_budget_C2,data_budget_C3,data_budget_C4] color:[#red,#blue,#green,#black] legend:((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci; 			
 				}
 			}
 			
 		display "Chgt de N à AU" {
 				chart "Series" type: series {
-					datalist value:[data_count_N_to_AU_C1,data_count_N_to_AU_C2,data_count_N_to_AU_C3,data_count_N_to_AU_C4] color:[#red,#blue,#green,#black] legend:["stpierre","lechateau","dolus","sttrojan"]; 			
+					datalist value:[data_count_N_to_AU_C1,data_count_N_to_AU_C2,data_count_N_to_AU_C3,data_count_N_to_AU_C4] color:[#red,#blue,#green,#black] legend:((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci; 			
 				}
 			}
 		display Barplots {
                 
 				chart "Zone U" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0} {
-					datalist value:[(playable_commune collect each.U_0_5c),(playable_commune collect each.U_1c),(playable_commune collect each.U_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
+					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone AU" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0} {
-					datalist value:[(playable_commune collect each.AU_0_5c),(playable_commune collect each.AU_1c),(playable_commune collect each.AU_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
+					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone A" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0.5} {
-					datalist value:[(playable_commune collect each.A_0_5c),(playable_commune collect each.A_1c),(playable_commune collect each.A_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
+					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
 						
 				}
 				chart "Zone N" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0.5} {
-					datalist value:[(playable_commune collect each.N_0_5c),(playable_commune collect each.N_1c),(playable_commune collect each.N_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(playable_commune collect each.nom_raccourci); 	
+					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
 						
 				}
 				
 			}
-			
+		display "Surface inondée par commune" {
+				chart "Series" type: series {
+					datalist value:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 			
+				}
+			}
 			}}
 		
