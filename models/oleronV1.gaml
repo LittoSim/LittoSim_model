@@ -133,6 +133,7 @@ global  {
 	int round <- 0;
 	list<UA> agents_to_inspect update: 10 among UA;
 	game_controller network_agent <- nil;
+	
 
 init
 	{
@@ -1429,7 +1430,7 @@ experiment oleronV1 type: gui {
 	float minimum_cycle_duration <- 0.5;
 	parameter "Log user action" var:log_user_action<- true;
 	output {
-		inspect world;
+		//inspect world;
 		
 		display carte_oleron //autosave : true
 		{
@@ -1463,13 +1464,13 @@ experiment oleronV1 type: gui {
 			}
 			
 		display graph_budget {
-				chart "Series" type: series {
+				chart "Graphe des budgets" type: series {
 					datalist value:[data_budget_C1,data_budget_C2,data_budget_C3,data_budget_C4] color:[#red,#blue,#green,#black] legend:((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci; 			
 				}
 			}
 			
 		display "Chgt de N à AU" {
-				chart "Series" type: series {
+				chart "Changement de N à AU" type: series {
 					datalist value:[data_count_N_to_AU_C1,data_count_N_to_AU_C2,data_count_N_to_AU_C3,data_count_N_to_AU_C4] color:[#red,#blue,#green,#black] legend:((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci; 			
 				}
 			}
@@ -1497,9 +1498,14 @@ experiment oleronV1 type: gui {
 				}
 				
 			}
+			
+		display "VIDE"
+		{
+			
+		}	
 		display "Surface inondée par commune" {
-				chart "Series" type: series {
-					datalist value:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 			
+				chart "Surface inondée par commune" type: series {
+					datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 			
 				}
 			}
 			}}
