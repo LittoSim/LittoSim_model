@@ -16,6 +16,8 @@ model oleronV1
 
 global  {
 
+	float MOUSE_BUFFER <- 50#m;
+	
 	string COMMAND_SEPARATOR <- ":";
 	string MANAGER_NAME <- "model_manager";
 	string GROUP_NAME <- "Oleron";  
@@ -935,10 +937,11 @@ species game_controller skills:[network]
 	
 	
     //Action Général appel action particulière 
-    action button_click_C_mdj (point loc, list selected_agents)
+    action button_click_C_mdj //(point loc, list selected_agents)
 	{
 		write "clidkljsqfmdsqfj ";
 		
+		point loc <- #user_location;
 		if(active_display != UNAM_DISPLAY_c)
 		{
 			current_action <- nil;
@@ -947,8 +950,8 @@ species game_controller skills:[network]
 			//return;
 		}
 		
-		list<buttons> selected_UnAm_c <- (selected_agents of_species buttons) where(each.display_name=active_display );
-		ask (selected_agents of_species buttons) where(each.display_name=active_display )
+		list<buttons> selected_UnAm_c <- ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
+		ask ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display )
 		{
 			if (nb_button = 0){
 				ask world {do tourDeJeu;}
@@ -1023,9 +1026,10 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 		
 	}
 	
-	action button_click_carte_oleron (point loc, list selected_agents)
+	action button_click_carte_oleron 
 	{
-		buttons a_button <- first((selected_agents of_species buttons) where(each.nb_button = 4));
+		point loc <- #user_location;
+		buttons a_button <- first((buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.nb_button = 4));
 		if a_button != nil
 		{
 			ask a_button

@@ -13,6 +13,8 @@ global
 	string MANAGER_NAME <- "model_manager";
 	string log_file_name <- "log_"+machine_time+"csv";
 	
+	float MOUSE_BUFFER <- 50#m;
+	
 	//file emprise <- file("../includes/participatif/emprise/"+commune_name+".shp");
 	file emprise <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		
@@ -112,12 +114,14 @@ global
 	
 	geometry population_area <- nil;
 	
-	commune my_commune <- commune first_with(each.nom_raccourci = commune_name);
+	commune my_commune <- nil;
+
 	Network_agent game_manager <-nil;
 	point INFORMATION_BOX_SIZE <- {200,80};
 	
 	init
 	{
+		my_commune <-  commune first_with(each.nom_raccourci = commune_name);
 		create Network_agent number:1 returns:net;
 		game_manager <- first(net);
 		create commune from: communes_shape with:[nom_raccourci::string(read("NOM_RAC"))];
@@ -343,8 +347,9 @@ global
 		return false;
 	}
 	
-	action mouse_move_UnAM(point loc, list selected_agents)
+	action mouse_move_UnAM //(point loc, list selected_agents)
 	{
+		point loc <- #user_location;
 		list<buttons> current_active_button <- buttons where (each.is_selected);
 		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_LAND_USE)
 		{
@@ -364,8 +369,10 @@ global
 		}
 	}
 
-	action mouse_move_dyke(point loc, list selected_agents)
+	action mouse_move_dyke//(point loc, list selected_agents)
 	{
+		point loc <- #user_location;
+		
 		list<buttons> current_active_button <- buttons where (each.is_selected);
 		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_DYKE)
 		{
@@ -385,10 +392,13 @@ global
 		}
 	}
 
-	action history_click(point loc, list selected_agents)
+	action history_click //(point loc, list selected_agents)
 	{
+		point loc <- #user_location;
+		
 		do remove_selection;
-		list<highlight_action_button> bsk <- selected_agents of_species highlight_action_button;
+		list<highlight_action_button> bsk <-  highlight_action_button overlapping loc; // agts of_species dyke;
+		
 		if(length(bsk)>0)
 		{
 			highlight_action_button but <- first(bsk);
@@ -396,10 +406,13 @@ global
 		}
 	}
 	
-	action basket_click(point loc, list selected_agents)
+	action basket_click //(point loc, list selected_agents)
 	{
+		point loc <- #user_location;
+		
 		do remove_selection;
-		list<del_basket_button> bsk_del <- selected_agents of_species del_basket_button;
+		list<del_basket_button> bsk_del <-  del_basket_button overlapping loc; // agts of_species dyke;
+		
 		if(length(bsk_del)>0)
 		{
 			del_basket_button but<-first(bsk_del);
@@ -410,7 +423,7 @@ global
 			}
 			remove act from:my_basket;
 		}
-		list<basket_validation> bsk_validation <- selected_agents of_species basket_validation;
+		list<basket_validation> bsk_validation <-  basket_validation  overlapping loc;
 		if(length(bsk_validation)>0)
 		{
 			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
@@ -436,8 +449,12 @@ global
 		}
 	}
 	
-	action change_dyke (point loc, list selected_agents)
+	action change_dyke// (point loc, list selected_agents)
 	{
+		point loc <- #user_location;
+		
+		list<dyke> selected_dyke <-   dyke where (each distance_to loc < MOUSE_BUFFER); // agts of_species dyke;
+		
 		if(basket_overflow())
 		{
 			return;
@@ -448,15 +465,17 @@ global
 			switch(selected_button.command)
 			{
 				match ACTION_CREATE_DYKE { do create_new_dyke(loc,selected_button);}
-				match ACTION_INSPECT_DYKE { do inspect_dyke(loc,selected_agents,selected_button);}
-				default {do modify_dyke(loc, selected_agents,selected_button);}
+				match ACTION_INSPECT_DYKE { do inspect_dyke(loc,selected_dyke,selected_button);}
+				default {do modify_dyke(loc, selected_dyke,selected_button);}
 			}
 		}
 	}
 	
-	action inspect_UNAM(point mloc, list agts, buttons but)
+	action inspect_UNAM//(point mloc, list agts, buttons but)
 	{
-		list<dyke> selected_dyke <- agts of_species dyke;
+		point mloc <- #user_location;
+		
+		list<dyke> selected_dyke <-   dyke where (each distance_to mloc < MOUSE_BUFFER); // agts of_species dyke;
 		
 		if(length(selected_dyke)>0)
 		{
@@ -477,9 +496,9 @@ global
 		}
 	}
 	
-	action inspect_dyke(point mloc, list agts, buttons but)
+	action inspect_dyke(point mloc, list<dyke> agts, buttons but)
 	{
-		list<dyke> selected_dyke <- agts of_species dyke;
+		list<dyke> selected_dyke <- agts ;
 		
 		if(length(selected_dyke)>0)
 		{
@@ -499,9 +518,9 @@ global
 			}
 		}
 	}
-	action modify_dyke(point mloc, list agts, buttons but)
+	action modify_dyke(point mloc, list<dyke> agts, buttons but)
 	{
-		list<dyke> selected_dyke <- agts of_species dyke;
+		list<dyke> selected_dyke <- agts ;
 		
 		if(length(selected_dyke)>0)
 		{
@@ -547,8 +566,10 @@ global
 	}
 
 
-	action change_plu (point loc, list selected_agents)
+	action change_plu 
 	{
+		
+		point loc <- #user_location;
 		if(basket_overflow())
 		{
 			return;
@@ -556,7 +577,7 @@ global
 		buttons selected_button <- buttons first_with(each.is_selected);
 		if(selected_button != nil)
 		{
-			list<cell_UnAm> selected_UnAm <- selected_agents of_species cell_UnAm;
+			list<cell_UnAm> selected_UnAm <- cell_UnAm where (each distance_to loc < MOUSE_BUFFER); //selected_agents of_species cell_UnAm;
 			cell_UnAm cell_tmp <- selected_UnAm closest_to loc;
 			ask (cell_tmp)
 			{
@@ -645,8 +666,12 @@ global
 	}
 	
 
-	action button_click_UnAM (point loc, list selected_agents)
+	action button_click_UnAM 
 	{
+		point loc <- #user_location;
+		
+		
+		
 		if(active_display != UNAM_DISPLAY)
 		{
 			current_action <- nil;
@@ -654,7 +679,7 @@ global
 			do clear_selected_button;
 			//return;
 		}
-		list<buttons> cliked_UnAm_button <- (selected_agents of_species buttons) where(each.display_name=active_display );
+		list<buttons> cliked_UnAm_button <- (buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
 		
 		if(length(cliked_UnAm_button)>0)
 		{
@@ -675,12 +700,18 @@ global
 		}
 		else
 		{
-			do change_plu(loc,selected_agents);
+			do change_plu;
 		}
 	}
 	
-	action button_click_Dyke (point loc, list selected_agents)
+	action button_click_Dyke 
 	{
+		point loc <- #user_location;
+		
+		
+		
+		
+		
 		if(active_display != DYKE_DISPLAY)
 		{
 			current_action <- nil;
@@ -689,7 +720,7 @@ global
 			//return;
 		}
 		
-		list<buttons> cliked_Dyke_button <- (selected_agents of_species buttons) where(each.display_name=active_display );
+		list<buttons> cliked_Dyke_button <- ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
 	
 		if( length(cliked_Dyke_button) > 0)
 		{
@@ -709,7 +740,7 @@ global
 		}
 		else
 		{
-			do change_dyke ( loc,  selected_agents);
+			do change_dyke;
 		}
 
 	}
@@ -1018,7 +1049,6 @@ species Network_agent skills:[network]
 		{
 			string val <- act.serialize_command();
 			act.is_sent <- true;
-		//	write "message " + val;
 			map<string,string> data <- ["stringContents"::val];
 			do send to:MANAGER_NAME contents:data;
 			my_history <- []+act +  my_history;
