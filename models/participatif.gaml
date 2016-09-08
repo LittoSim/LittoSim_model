@@ -53,12 +53,16 @@ global
 	string DYKE_DISPLAY <- "sloap";
 	
 	
+	int MAX_HISTORY_VIEW_SIZE <- 10;
+	
+	
 	string active_display <- nil;
 	action_done current_action <- nil;
 	point previous_clicked_point <- nil;
 	int action_id <- 0;
 	
 	float button_size <- 500#m;
+	
 	
 	int ACTION_REPAIR_DYKE <- 5;
 	int ACTION_CREATE_DYKE <- 6;
@@ -86,18 +90,31 @@ global
 	int ACTION_INSPECT_LAND_USE <-26;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
+	int ACTION_CLOSE_PENDING_REQUEST <- 30;
+	
 	
 	
 	float widX;
 	float widY;
 	int minimal_budget <- -5000;
 	
-	
+	float a <- 1000 update: a+100;
 	int budget <- 10000;
 	int impot <- impot;
 	list<action_done> my_basket<-[];
-	commune my_commune <- nil;
+	
+	
+	list<action_done> my_history<-[];
+	list<float> history_location <- [];
+	
+	cell_UnAm explored_cell <- nil;
+	dyke explored_dyke <- nil;
+	
+	geometry population_area <- nil;
+	
+	commune my_commune <- commune first_with(each.nom_raccourci = commune_name);
 	Network_agent game_manager <-nil;
+	point INFORMATION_BOX_SIZE <- {200,80};
 	
 	init
 	{
@@ -113,7 +130,7 @@ global
 		}*/
 		do init_basket;
 		do init_buttons;
-		
+		do init_pending_request_button;
 		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) ];
 		create road from:road_shape; 
 		ask dyke where(!(each overlaps my_commune))
@@ -132,19 +149,25 @@ global
 			}
 			my_color <- cell_color();
 		}
+		
+	
+		
 		ask cell_UnAm where(!(each overlaps my_commune))
 		{
 			do die;
 		}
-		
-	}
-	
+		//buffer(a_geometry,a_float)
+		//population_area <- smooth(union((cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")) collect (buffer(each.shape,100#m))),0.1);
+		population_area <- union(cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU"));
+	//	population_area <- smooth(union(cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")),0.001); 
+	}	
 	user_command "Refresh all the map"
 	{
 		string msg <- ""+REFRESH_ALL+COMMAND_SEPARATOR+world.get_action_id()+COMMAND_SEPARATOR+commune_name;
 		ask game_manager 
 		{
-			do sendMessage dest:"all" content:msg;
+			map<string,string> data <- ["stringContents"::msg];
+			do send to:MANAGER_NAME contents:data;
 		}
 	}
 	
@@ -152,6 +175,15 @@ global
 	{
 		action_id <- action_id + 1;
 		return action_id;
+	}
+	
+	
+	action remove_selection
+	{
+		ask(highlight_action_button where(each.my_action != nil))
+		{
+			self.my_action.is_highlighted <- false;	
+		}
 	}
 	
 	action init_buttons
@@ -284,18 +316,89 @@ global
 		create basket_validation number:1;
 		}
 
+
+	action init_pending_request_button
+	{
+		int i <- 0;
+		loop while: (i< 	MAX_HISTORY_VIEW_SIZE )
+		{
+			float y_location <- font_size+ font_interleave/2 + i* (font_size);
+			//basket_location <- basket_location + y_location;
+			create highlight_action_button number:1 returns:mb
+			{
+				location <- {font_interleave+ font_size/2,y_location};
+				my_index<- i;
+			}
+			i<-i+1;
+		}
+		
+	}
 	bool basket_overflow
 	{
 		if(basket_max_size = length(my_basket))
 		{
-			map<string,unknown> values2 <- user_input("Avertissement","Vous avez atteint la capacité maximum de votre panier, veuiller supprimer des action avant de continuer");
+			map<string,unknown> values2 <- user_input("Avertissement","Vous avez atteint la capacité maximum de votre panier, veuiller supprimer des action avant de continuer"::true);
 			return true;
 		}
 		return false;
 	}
 	
+	action mouse_move_UnAM(point loc, list selected_agents)
+	{
+		list<buttons> current_active_button <- buttons where (each.is_selected);
+		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_LAND_USE)
+		{
+			list<cell_UnAm> selectedUnams <- cell_UnAm overlapping loc; // of_species cell_UnAm;
+			if (length(selectedUnams)> 0) 
+			{
+				explored_cell <- first(selectedUnams);
+			}
+			else
+			{
+				explored_cell <- nil;
+			}
+		}
+		else
+		{
+			explored_cell <- nil;
+		}
+	}
+
+	action mouse_move_dyke(point loc, list selected_agents)
+	{
+		list<buttons> current_active_button <- buttons where (each.is_selected);
+		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_DYKE)
+		{
+			list<dyke> selected_dyke <- dyke overlapping (loc buffer(100#m)); //selected_agents of_species dyke ; // of_species cell_UnAm;
+			if (length(selected_dyke)> 0) 
+			{
+				explored_dyke <- first(selected_dyke);
+			}
+			else
+			{
+				explored_dyke <- nil;
+			}
+		}
+		else
+		{
+			explored_dyke <- nil;
+		}
+	}
+
+	action history_click(point loc, list selected_agents)
+	{
+		do remove_selection;
+		list<highlight_action_button> bsk <- selected_agents of_species highlight_action_button;
+		if(length(bsk)>0)
+		{
+			highlight_action_button but <- first(bsk);
+			but.my_action.is_highlighted<-true;
+		}
+	}
+	
 	action basket_click(point loc, list selected_agents)
 	{
+		do remove_selection;
 		list<del_basket_button> bsk_del <- selected_agents of_species del_basket_button;
 		if(length(bsk_del)>0)
 		{
@@ -313,15 +416,16 @@ global
 			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
 			{
 				string budget_display <- "Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions";
-				map<string,unknown> res <- user_input("Avertissement",[budget_display:: false]);
+				write budget_display;
+				bool bres;
+				map<string,unknown> res <- user_input("Avertissement", budget_display::bres );//[budget_display:: false]);
 				return;
-			
 			}
 			
 			
 			bool choice <- false;
 			string ask_display <- "Vous êtes sur le point de valider votre panier \n Cocher la case, pour accepter le panier et valider";
-			map<string,unknown> res <- user_input("Avertissement",[ask_display:: choice]);
+			map<string,unknown> res <- user_input("Avertissement", ask_display::choice);
 			if(res at ask_display )
 			{
 				ask first(bsk_validation)
@@ -365,7 +469,7 @@ global
 			 }
 			 action_dyke tmp <- first(action_list);
 			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-			 map<string,unknown> values2 <- user_input("Inspecteur de digue",[chain::""]);		
+			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::"");		
 			ask(tmp)
 			{
 				do die;
@@ -388,7 +492,7 @@ global
 			 }
 			 action_dyke tmp <- first(action_list);
 			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-			 map<string,unknown> values2 <- user_input("Inspecteur de digue",[chain::string(dk.dyke_id)]);		
+			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::string(dk.dyke_id));		
 			ask(tmp)
 			{
 				do die;
@@ -438,7 +542,6 @@ global
 				current_action<- first(action_list);
 				my_basket <- my_basket + current_action; 
 				do clear_selected_button;
-			
 		}
 		
 	}
@@ -462,12 +565,8 @@ global
 					bool res <- false;
 					
 					list<cell_mnt> cls <- cell_mnt overlapping self;
-					
-				//	float rg <- mean(cls collect(each.rugosity));
-				//	float hg <- mean(cls collect(each.soil_height));
-					
 					string chain <- "Caractéristiques de l'unité d'aménagement \n Occupation : "+ land_cover+ (land_cover="U"?( "\n Cout d'expropriation : "+cout_expro):""); // + " \n "+"Elévation : "+ hg+"\n rugosité : " + rg;
-					map<string,unknown> values2 <- user_input("Inspecteur",[chain::""]);		
+					map<string,unknown> values2 <- user_input("Inspecteur",chain::"");		
 					return;	
 					
 				}
@@ -485,7 +584,7 @@ global
 				{
 					bool res<-false;
 					string chain <- "Transformer une zone naturelle en zone agricole est interdit par la législation";
-					map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
+					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
 					
 					return;
 				}
@@ -493,7 +592,7 @@ global
 				{
 					bool res<-false;
 					string chain <- "Transformer une zone urbaine en zone agricole est interdit par la législation";
-					map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
+					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
 					
 					return;
 				}
@@ -502,7 +601,7 @@ global
 				{
 					bool res <- false;
 					string chain <- "Vous êtes sur le point d'exproprier des habitants. Souhaitez vous continuer ?";
-					map<string,unknown> values2 <- user_input("Avertissement",[chain:: res]);		
+					map<string,unknown> values2 <- user_input("Avertissement",chain:: res);		
 					if(values2 at chain = false)
 					{
 						return;
@@ -513,7 +612,7 @@ global
 				{
 					bool res <- false;
 					string chain <- "Transformer une zone naturelle en zone à urbaniser fait l'objet d'une demande en préfecture. L'avez vous fait ? \n Souhaitez vous continuer la transformation de cette parcelle ?";
-					map<string,unknown> values2 <- user_input("Avertissement",[chain:: res]);		
+					map<string,unknown> values2 <- user_input("Avertissement",chain:: res);		
 					ask game_manager
 					{
 						do send_information(chain+"\n response: "+(values2 at chain ));
@@ -522,7 +621,6 @@ global
 					{
 						return;
 					}
-					
 				}
 				
 				
@@ -579,8 +677,6 @@ global
 		{
 			do change_plu(loc,selected_agents);
 		}
-		
-	
 	}
 	
 	action button_click_Dyke (point loc, list selected_agents)
@@ -656,10 +752,29 @@ species del_basket_button
 	{
 		if(my_index < length(my_basket))
 		{
-			draw image:"../images/icones/suppression.png" size:font_size;
+			draw image_file("../images/icones/suppression.png") size:font_size;
 		}
 		
 	}
+}
+
+species highlight_action_button
+{
+	int my_index <- 0;
+	action_done my_action -> {my_index<length(my_history)? my_history[my_index]:nil};
+	init
+	{
+		shape <- square(font_size);
+	}
+	aspect base
+	{
+		if(my_index < min([MAX_HISTORY_VIEW_SIZE,length(my_history)]))
+		{
+			draw image_file("../images/icones/Loupe.png") size:font_size/2;
+		}
+		
+	}
+	
 }
 
 species action_done
@@ -670,6 +785,9 @@ species action_done
 	int command <- -1;
 	string label <- "no name";
 	float cost <- 0.0;
+	bool is_sent <- false;
+	bool is_applied <- false;
+	bool is_highlighted <- false;
 	action apply;
 	
 	string serialize_command
@@ -695,122 +813,150 @@ species action_done
 	
 	action draw_action
 	{
-		int indx <- my_basket index_of self;
-		float y_loc <- basket_location[indx];
-		float x_loc <- font_interleave + 12* (font_size+font_interleave);
-		
-		draw label at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
-		draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
-		if((indx +1) = length(my_basket))
+		if(!is_sent)
 		{
-			string text<- "---------------";
-			draw text at: {x_loc,font_size+ font_interleave/2 + (indx +1)* (font_size + font_interleave)} size:font_size color:#black;
-			draw "    "+round(sum(my_basket collect(each.cost))) at: {x_loc,font_size+ font_interleave/2 + (indx +2)* (font_size + font_interleave)} size:font_size color:#black;
+			int indx <- my_basket index_of self;
+			write "my index" +indx;
+			float y_loc <- basket_location[indx];
+			float x_loc <- font_interleave + 12* (font_size+font_interleave);
+			
+			draw label at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
+			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
+			if((indx +1) = length(my_basket))
+			{
+				string text<- "---------------";
+				draw text at: {x_loc,font_size+ font_interleave/2 + (indx +1)* (font_size + font_interleave)} size:font_size color:#black;
+				draw "    "+round(sum(my_basket collect(each.cost))) at: {x_loc,font_size+ font_interleave/2 + (indx +2)* (font_size + font_interleave)} size:font_size color:#black;
+			}
 		}
-
 	}
+	
+	action draw_history
+	{
+		if(is_sent)
+		{
+			int indx <- my_history index_of self;
+			float y_loc <- (indx +1)  * font_size ; //basket_location[indx];
+			float x_loc <- font_interleave + 12* (font_size+font_interleave);
+			float x_loc2 <- font_interleave + 20* (font_size+font_interleave);
+			if(self.is_highlighted)
+			{
+				draw rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} ) color:#yellow;
+			}
+			//else
+			//{
+				draw label at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:#orange;
+				draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:#orange;				
+		//	}
+		}
+	}
+	
 }
 
 species Network_agent skills:[network]
 {
-	init{
+	init {
 		
-		do connectMessenger to:GROUP_NAME at:"192.168.1.100" withName:world.commune_name;	
+		do connect to:"localhost" with_name:world.commune_name;	
 		string mm<- ""+CONNECTION_MESSAGE+COMMAND_SEPARATOR+world.commune_name;
-		do sendMessage dest:"all" content:mm;
+			map<string,string> data <- ["stringContents"::mm];
+			do send to:MANAGER_NAME contents:data;
+		
+	//	do send to:MANAGER_NAME contents:data;
 	}
 	
 	reflex receive_message 
 	{
-		loop while:!emptyMessageBox()
+		loop while:has_more_message()
 		{
-			map<string,string> msg <- fetchMessage();
-			string dest <- msg["dest"]; 
-			write "message " + msg;
-			if(dest="all" or dest contains world.commune_name)
-			{
-				//do read_action(msg["content"],msg["sender"]);	
-				string my_msg <- msg["content"]; 
-				list<string> data <- my_msg split_with COMMAND_SEPARATOR;
-				//write "coucou  msg "+msg["content"];
-				int command <- int(data[0]);
-				int action_id <- int(data[1]);
-				switch(int(data[0]))
+			message msg <- fetch_message();
+			string my_msg <- msg.contents; 
+			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
+			write "coucou  msg "+my_msg;
+			int command <- int(data[0]);
+			int action_id <- int(data[1]);
+			switch(int(data[0]))
+				{
+					match ACTION_CLOSE_PENDING_REQUEST
 					{
-						match INFORM_TAX_GAIN
-						{
-							map<string,unknown> values2 <- user_input("Avertissement","Vous avez perçu des impôts locaux à hauteur de "+ world.separateur_milliers(int(data[2]))+ " pour le tour "+data[3] +" \n Le tour "+(int(data[3])+1)+" vient de commencer"::"");
-			
-						}	
+						int id <- int(data[2]);
+						do action_application_acknowledgment(id);
 						
-						match INFORM_GRANT_RECEIVED
-						{
-							map<string,unknown> values2 <- user_input("Avertissement","Vous avez reçu une subvention d'un montant de "+ world.separateur_milliers(int(data[2]))::"");
-			
-						}	
-						match INFORM_FINE_RECEIVED
-						{
-							map<string,unknown> values2 <- user_input("Avertissement","Vous avez reçu une amende d'un montant de "+ world.separateur_milliers(int(data[2]))::"");
-			
-						}	
+					}
+					match INFORM_TAX_GAIN
+					{
+						map<string,unknown> values2 <- user_input("Avertissement",("Vous avez perçu des impôts locaux à hauteur de "+ world.separateur_milliers(int(data[2]))+ " pour le tour "+data[3] +" \n Le tour "+(int(data[3])+1)+" vient de commencer")::"");
+		
+					}	
+					
+					match INFORM_GRANT_RECEIVED
+					{
+						map<string,unknown> values2 <- user_input("Avertissement",("Vous avez reçu une subvention d'un montant de "+ world.separateur_milliers(int(data[2])))::"");
+		
+					}	
+					match INFORM_FINE_RECEIVED
+					{
+						map<string,unknown> values2 <- user_input("Avertissement",("Vous avez reçu une amende d'un montant de "+ world.separateur_milliers(int(data[2])))::"");
+		
+					}	
+					match UPDATE_BUDGET
+					{
+						budget <- int(data[2]);
+						impot <- int(data[3]);
 						
-						
-						
-						match UPDATE_BUDGET
-						{
-							budget <- int(data[2]);
-							impot <- int(data[3]);
-							
-						}
-						match ACTION_DYKE_LIST
-						{
-							list<string> all_dyke <-   copy_between(data,3,length(data)-1); 
-							do check_dyke(data );
-						}
-						match ACTION_DYKE_CREATED
+					}
+					match ACTION_DYKE_LIST
+					{
+						list<string> all_dyke <-   copy_between(data,3,length(data)-1); 
+						do check_dyke(data );
+					}
+					match ACTION_DYKE_CREATED
+					{
+						do dyke_create_action(data);
+					}
+					match ACTION_DYKE_UPDATE {
+						int d_id <- int(data[2]);
+						if(length(dyke where(each.dyke_id =d_id ))=0)
 						{
 							do dyke_create_action(data);
 						}
-						match ACTION_DYKE_UPDATE {
-							int d_id <- int(data[2]);
-							if(length(dyke where(each.dyke_id =d_id ))=0)
-							{
-								do dyke_create_action(data);
-							}
-							ask dyke where(each.dyke_id =d_id )
-							{
-								status <-data[9];
-								type <- string(data[8]);
-								height <-float(data[7]);
-							}
+						ask dyke where(each.dyke_id =d_id )
+						{
+							status <-data[9];
+							type <- string(data[8]);
+							height <-float(data[7]);
 						}
-						match ACTION_DYKE_DROPPED {
-							int d_id <- int(data[2]);
-							ask dyke where(each.dyke_id =d_id )
-							{
-								do die;
-							}
-						}
-						
-						match ACTION_LAND_COVER_UPDATE {
-							int d_id <- int(data[2]);
-							ask cell_UnAm where(each.id = d_id)
-							{
-								land_cover_code <-int(data[3]); 
-								switch (land_cover_code)
-								{
-										match 1 {land_cover <- "N";}
-										match 2 {land_cover <- "U";}
-										match 4 {land_cover <- "AU";}
-										match 5 {land_cover <- "A";}
-								}
-								//land_cover <- "AU";
-		
-							}
+						do action_application_acknowledgment(d_id);	
+					}
+					match ACTION_DYKE_DROPPED {
+						int d_id <- int(data[2]);
+						do action_application_acknowledgment(d_id);	
+						ask dyke where(each.dyke_id =d_id )
+						{
+							do die;
 						}
 					}
+					
+					match ACTION_LAND_COVER_UPDATE {
+						int d_id <- int(data[2]);
+						do action_application_acknowledgment(d_id);	
+						ask cell_UnAm where(each.id = d_id)
+						{
+							land_cover_code <-int(data[3]); 
+							switch (land_cover_code)
+							{
+									match 1 {land_cover <- "N";}
+									match 2 {land_cover <- "U";}
+									match 4 {land_cover <- "AU";}
+									match 5 {land_cover <- "A";}
+							}
+							//land_cover <- "AU";
+	
+						}
+					}
+				}
 			}
-		}
+	//	}
 	}
 	
 	action check_dyke(list<string> mdata)
@@ -844,37 +990,59 @@ species Network_agent skills:[network]
 			type<-tp;
 			height<- hg;
 			status<-st;
-		}				
+		}	
+		do action_application_acknowledgment(d_id);			
 	}
+	
+	action action_application_acknowledgment(int m_action_id)
+	{
+		ask action_done where(each.id  = m_action_id)
+		{
+			self.is_applied <- true;
+		}
+	}
+	
 	action send_information(string msg)
 	{
 		string val <-""+ ACTION_MESSAGE + COMMAND_SEPARATOR+world.get_action_id()+ COMMAND_SEPARATOR+msg;
-		do sendMessage  dest:"all" content:""+val;
+		map<string,string> data <- ["stringContents"::msg];
+		do send to:MANAGER_NAME contents:data;
+		
 	}
+	
 	action send_basket
 	{
 		action_done act <-nil;
 		loop act over:my_basket
 		{
 			string val <- act.serialize_command();
+			act.is_sent <- true;
 		//	write "message " + val;
-			do sendMessage  dest:"all" content:""+val;	/*MANAGER_NAME*/
-		}
-		ask my_basket
-		{
-			do die;
+			map<string,string> data <- ["stringContents"::val];
+			do send to:MANAGER_NAME contents:data;
+			my_history <- []+act +  my_history;
+			
 		}
 		my_basket<-[];
-		
 	}
 	
 }
 
-
-species basket_validation skills:[network]
+species history
 {
 	point location <- {0,0} update:{font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
-	init{
+	list<action_done> all_action;
+	init {
+		shape <- square(button_size);
+		all_action <- [];
+	}
+}
+
+
+species basket_validation
+{
+	point location <- {0,0} update:{font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
+	init {
 		shape <- square(button_size);
 	}
 	
@@ -890,20 +1058,20 @@ species basket_validation skills:[network]
 	{
 		float x_loc <- font_interleave + 12* (font_size + font_interleave);
 		float y_loc <- font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave);
+		location <- {font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
+	
 		if(length(my_basket) = 0)
 		{
 			draw "Aucune action enregistrée" size:font_size color:#black at:{0 , y_loc };
 		}
 		else
 		{
-			draw image:"../images/icones/validation.png" size:world.shape.width/8;
+			draw image_file("../images/icones/validation.png") size:world.shape.width/8 ;
 		}
 		
 		//draw "Budget : "+ budget color:#black size:font_size at:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) } ;
 		//draw "Budget restant : " + (budget - round(sum(my_basket collect(each.cost)))) color:#black  size:font_size at:{0 , font_size+ font_interleave/2 + (length(my_basket) +5)* (font_size + font_interleave) } ;
-		
 	}
-	
 }
 
 species action_dyke parent:action_done
@@ -920,17 +1088,21 @@ species action_dyke parent:action_done
 		return #grey;
 	}
 	
-	
-	
 	aspect base
 	{
-		draw  20#m around shape color:define_color() border:#red;
+		draw  20#m around shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);
 	}
 	
 	aspect basket
 	{
 		do draw_action;
 	}
+	
+	aspect history
+	{
+		do draw_history;
+	}
+	
 	
 	action apply
 	{
@@ -952,24 +1124,24 @@ species action_land_cover parent:action_done
 		} 
 		return #grey;
 	}
-	
-	
-	
 	action apply
 	{
 		//creer une digue
 	}
-	
-	
 	aspect base
 	{
-		draw shape color:define_color() border:#red;
+		draw shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);
 	}
-	
 	aspect basket
 	{
 		do draw_action;
 	}
+	
+	aspect history
+	{
+		do draw_history;
+	}
+	
 	
 }
 
@@ -981,24 +1153,21 @@ species buttons
 	int action_cost<-0;
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
-	file my_icon;
+	image_file my_icon;
 	aspect UnAm
 	{
 		if( display_name = UNAM_DISPLAY)
 		{
 			draw shape color:#white border: is_selected ? # red : # white;
 			draw my_icon size:button_size-50#m ;
-			
 		}
 	}
 	aspect dyke
 	{
-		
 		if( display_name = DYKE_DISPLAY)
 		{
 			draw shape color:#white border: is_selected ? # red : # white;
 			draw my_icon size:button_size-50#m ;
-			
 		}
 	}
 }
@@ -1035,23 +1204,19 @@ species cell_UnAm
 	
 	action modify_land_cover
 	{
-		switch (land_cover)
-		{
+		switch (land_cover) {
 			match "AU"
 			{
 				land_cover_code <- 1;
 			}
-
 			match "A"
 			{
 				land_cover_code <- 2;
 			}
-
 			match "U"
 			{
 				land_cover_code <- 3;
 			}
-
 			match "N"
 			{
 				land_cover_code <- 4;
@@ -1059,6 +1224,18 @@ species cell_UnAm
 		}
 	}
 
+	string landuse_name
+	{
+		string result <- "";
+		switch (land_cover)
+		{
+			match "N" {result <- "Naturel";}
+			match "U" {result <- "Urbanisé";}
+			match "AU" {result <- "A urbaniser";}
+			match "A" {result <- "Agricole";}
+		}
+		return result;
+	}
 	rgb cell_color
 	{
 		rgb res <- nil;
@@ -1071,7 +1248,6 @@ species cell_UnAm
 		}
 		return res;
 	}
-
 	aspect base
 	{
 		draw shape color: my_color;
@@ -1094,6 +1270,17 @@ species dyke
 		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
 	}
 	
+	string type_ouvrage
+	{
+		string res;
+		switch type
+		{
+			match "inconnu" { res <- "un ouvrage inconnu";}
+			match "Naturel" { res <- "la dune";}
+			match "Ouvrage longitudinal" { res <- "la digue";}
+		}
+		return res;
+	}
 	aspect base
 	{  	
 		if status = "tres bon" {color <- # green;} 
@@ -1103,8 +1290,7 @@ species dyke
 		if status = "tres mauvais" {color <- # black;}
 		if status = "casse" {color <- # yellow;} 
 		draw 20#m around shape color: color size:300#m;
-	}
-	
+	}	
 }
 
 species cell_mnt schedules:[]
@@ -1115,58 +1301,96 @@ species cell_mnt schedules:[]
 	float soil_height <- 0.0;
 	float rugosity;
 	rgb color <- #white;
-	
 	bool inside_commune <- false;
-	
-	aspect elevation_eau
+	aspect elevation_eau 
 	{
 		draw shape color:self.color border:self.color bitmap:true;
 	}	
-	
 }
 
 experiment game type: gui
 {
+	font regular <- font("Helvetica", 14, # bold);
+	geometry zone <- circle(1000#m);
 	float minimum_cycle_duration <- 0.5;
 	parameter "choix de la commune : " var:commune_name <- "dolus" among:["lechateau","dolus","sttrojan", "stpierre"];
 	output
 		{
-		display UnAm focus:my_commune
+		display "Gestion du PLU" focus:envelope(my_commune.shape) camera_pos:my_commune
 		{
 			species commune aspect: base;
 			species cell_UnAm aspect: base;
 			species action_land_cover aspect:base;
 			species road aspect:base;
-			
 			species buttons aspect:UnAm;
-			event [mouse_down] action: button_click_UnAM;
+			
+			graphics "Full target" transparency:0.5
+			{
+				//int size <- length(moved_agents);
+				if (explored_cell != nil)
+				{
+					point target <- {explored_cell.location.x  ,explored_cell.location.y };
+					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
+					draw string(explored_cell.landuse_name()) at: target + { 30#px, 35#px } font: regular color: # white;
+					draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
+				}
+			}
+			event mouse_down action: button_click_UnAM;
+			event mouse_move action: mouse_move_UnAM;
 		}
 		
-		display "Dyke managment" focus:my_commune
+		display "Gestion des digues" focus:envelope(my_commune.shape) camera_pos:my_commune
 		{
 			image 'background' file:"../images/fond/fnt.png"; 
 			species commune aspect:base;
+			graphics population {
+				draw population_area color:#black;				
+			}
 			//species cell_mnt aspect:elevation_eau;
 			species dyke aspect:base;
 			species action_dyke aspect:base;
 			species road aspect:base;
 			species buttons aspect:dyke;
 			
+			graphics "Full target" transparency:0.5
+			{
+				if (explored_dyke != nil)
+				{
+					point target <- {explored_dyke.location.x  ,explored_dyke.location.y };
+					point target2 <- {explored_dyke.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dyke.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw "Information sur "+explored_dyke.type_ouvrage() at: target + { 0#px, 15#px } font: regular color: # white;
+					draw "Hauteur "+string(explored_dyke.height) at: target + { 30#px, 35#px } font: regular color: # white;
+					draw "Etat "+string(explored_dyke.status) at: target + { 30#px, 55#px} font: regular color: # white;
+				}
+			}
 			event [mouse_down] action: button_click_Dyke;
+			event mouse_move action: mouse_move_dyke;			
 		}
+		
 		display Basket
 		{
 			species action_dyke aspect:basket;
 			species action_land_cover aspect:basket;
 			species del_basket_button aspect:base;
 			species basket_validation aspect:base;
-			text "Budget : "+ world.separateur_milliers(budget) color:#black size:font_size position:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) } ;
-			text "Budget restant : " +  world.separateur_milliers(budget - round(sum(my_basket collect(each.cost)))) color:#black  size:font_size position:{0 , font_size+ font_interleave/2 + (length(my_basket) +5)* (font_size + font_interleave) } ;
-			
+			graphics budget position:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) }
+			{
+				draw "Budget : "+ world.separateur_milliers(budget) color:#black size:font_size  ;
+				draw "Budget restant : " +  world.separateur_milliers(budget - round(sum(my_basket collect(each.cost)))) color:#black  size:font_size at:{0 , font_size+ font_interleave/2 } ;// + (length(my_basket) +5)* (font_size + font_interleave)	
+			}
 			event [mouse_down] action: basket_click;
+		}
+ 
+ 		display Dossier
+		{
+			species action_dyke aspect:history;
+			species action_land_cover aspect:history;
+			species highlight_action_button aspect:base;
+			event [mouse_down] action: history_click;
 
 		}
-
-	}
-
+ 	}
 }
