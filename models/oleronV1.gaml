@@ -769,6 +769,7 @@ species game_controller skills:[network]
 			not_updated <- false;
 			updated_UA <- updated_UA + self;
 		}
+		write update_messages;
 		int i <- 0;
 		loop while: i< length(update_messages)
 		{

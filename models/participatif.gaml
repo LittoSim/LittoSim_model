@@ -141,7 +141,7 @@ global
 		create cell_UnAm from: communes_UnAm_shape with: [id::int(read("FID_1")),land_cover_code::int(read("grid_code")), cout_expro:: int(get("coutexpr"))]
 		{
 			switch (land_cover_code)
-			{
+			{ //// Correspondance entre land_cover_code et land_cover  (dans le modèle serveur, ca s'appelle a_ua_code et a_ua_name)
 				match 1 {land_cover <- "N";}
 				match 2 {land_cover <- "U";}
 				match 4 {land_cover <- "AU";}
@@ -875,6 +875,7 @@ species Network_agent skills:[network]
 			write "coucou  msg "+my_msg;
 			int command <- int(data[0]);
 			int action_id <- int(data[1]);
+			write "int(data[0]) -> " + int(data[0]);
 			switch(int(data[0]))
 				{
 					match ACTION_CLOSE_PENDING_REQUEST
@@ -940,6 +941,7 @@ species Network_agent skills:[network]
 					match ACTION_LAND_COVER_UPDATE {
 						int d_id <- int(data[2]);
 						do action_application_acknowledgment(d_id);	
+						write cell_UnAm where(each.id = d_id);
 						ask cell_UnAm where(each.id = d_id)
 						{
 							land_cover_code <-int(data[3]); 
@@ -950,7 +952,6 @@ species Network_agent skills:[network]
 									match 4 {land_cover <- "AU";}
 									match 5 {land_cover <- "A";}
 							}
-							//land_cover <- "AU";
 	
 						}
 					}
@@ -1201,28 +1202,6 @@ species cell_UnAm
 	rgb my_color <- cell_color() update: cell_color();
 
 	init {cout_expro <- (round (cout_expro /2000 /50))*100;} //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
-	
-	action modify_land_cover
-	{
-		switch (land_cover) {
-			match "AU"
-			{
-				land_cover_code <- 1;
-			}
-			match "A"
-			{
-				land_cover_code <- 2;
-			}
-			match "U"
-			{
-				land_cover_code <- 3;
-			}
-			match "N"
-			{
-				land_cover_code <- 4;
-			}
-		}
-	}
 
 	string landuse_name
 	{
