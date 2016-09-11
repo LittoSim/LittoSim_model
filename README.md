@@ -1,10 +1,14 @@
 LittoSim
 =========
 
+## License
+
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Licence Creative Commons" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/80x15.png" /></a><br />Ce(tte) œuvre est mise à disposition selon les termes de la <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Licence Creative Commons Attribution -  Partage dans les Mêmes Conditions 4.0 International</a>.
+
 ## Introduction
 Le projet LittoSim vise à construire un jeu sérieux qui se présente sous la forme d’une simulation intégrant à la fois un modèle de submersion marine, la modélisation de différents rôles d’acteurs agissant sur le territoire (collectivité territoriale, association de défense, élu, services de l’État...) et la possibilité de mettre en place différents scénarios de prévention des submersions qui seront contrôlées par les utilisateurs de la simulation en fonction de leur rôle.
 
-## Matériel et méthodes 
+## Matériel et méthodes
 
 Le modèle est développé sous [GAMA plateforme](https://code.google.com/p/gama-platform/), couplé à [listflood](http://www.bristol.ac.uk/geography/research/hydrology/models/lisflood/) . Le modèle fonctionne grâce à deux modèles (l'un servant de serveur central, l'autre permettant aux acteurs d'interagir sur un espace commun).
 
@@ -14,7 +18,7 @@ Les deux modèles interagissent grâce à un serveur [Appach ActiveMQ](http://ac
 
 Une fois que le téléchargement de GAMA effectué. Lancez Gama une première fois pour que le dossier `gama_workspace` se matérialise dans votre dossier utilisateur.
 
-Une fois que vous disposez du dossier `gama_workspace` vous pouvez cloner le repo github. Pour le moment la gestion de git n'est pas facile dans Gama il faudra procéder à la main. 
+Une fois que vous disposez du dossier `gama_workspace` vous pouvez cloner le repo github. Pour le moment la gestion de git n'est pas facile dans Gama il faudra procéder à la main.
 
 ```
 cd gama_workspace
@@ -25,11 +29,11 @@ Dans Gama, il faut maintenant créer un un nouveau projet Gama en effectuant un 
 
 Normalement le système de fichier doit maintenant apparaitre dans le dossier `User modèle` dans l'interface de GAMA.
 
-On a également besoin de d'un plug-in pour permettre la communication entre les deux modèles GAMA et ActiveMQ. Pour cela il faut installer le plug-in `Communicator`. La procédure : 
+On a également besoin de d'un plug-in pour permettre la communication entre les deux modèles GAMA et ActiveMQ. Pour cela il faut installer le plug-in `Communicator`. La procédure :
 
-Dans le menu « help », il y a un sous-menu « install new software de gama », on peut alors rentrer l'adresse suivante : 
+Dans le menu « help », il y a un sous-menu « install new software de gama », on peut alors rentrer l'adresse suivante :
 
-``` 
+```
 https://gama-platform.googlecode.com/svn/update_site/
 ```
 
