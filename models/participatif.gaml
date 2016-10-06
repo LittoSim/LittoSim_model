@@ -1,10 +1,10 @@
 //
 /**
- *  lechateau
+ *  Commune
  *  Author: nicolas
  *  Description: 
  */
-model lechateau
+model Commune
 
 
 global
@@ -22,21 +22,23 @@ global
 	
 	
 	file communes_shape <- file("../includes/zone_etude/communes.shp");
+	string commune_name_shpfile;
 	file communes_UnAm_shape <- file("../includes/zone_etude/zones241115.shp");	
 	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 	file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 	//file mnt_shape <- file("../includes/zone_etude/all_cell_20m.shp");  CE fichier n'existe pas
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 
-	//récupération des couts du fichier cout_action
-	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,1});
-	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,2});
-	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,3});
-	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,8});
-	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,4});
-	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,5});
-	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,6});
-	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,7});	
+	//récupération des couts du fichier cout_action	
+	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,0});
+	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,1});
+	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,2});
+	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,7});
+	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,3});
+	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,4});
+	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,5});
+	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,6});
+	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
 	
 	geometry shape <- envelope(emprise);// 1000#m around envelope(communes_UnAm_shape)  ;
 	geometry local_shape <- nil; // envelope(emprise_local);
@@ -70,6 +72,7 @@ global
 	int ACTION_CREATE_DYKE <- 6;
 	int ACTION_DESTROY_DYKE <- 7;
 	int ACTION_RAISE_DYKE <- 8;
+	int ACTION_INSTALL_GANIVELLE <- 29;
 	
 	int ACTION_MODIFY_LAND_COVER_AU <- 1;
 	int ACTION_MODIFY_LAND_COVER_A <- 2;
@@ -101,8 +104,8 @@ global
 	int minimal_budget <- -5000;
 	
 	float a <- 1000 update: a+100;
-	int budget <- 10000;
-	int impot <- impot;
+	int budget <- 0;
+	int impot_recu <- 0;
 	list<action_done> my_basket<-[];
 	
 	
@@ -120,7 +123,9 @@ global
 	point INFORMATION_BOX_SIZE <- {200,80};
 	
 	init
-	{
+	{  do implementation_tests;
+		
+		
 		my_commune <-  commune first_with(each.nom_raccourci = commune_name);
 		create Network_agent number:1 returns:net;
 		game_manager <- first(net);
@@ -135,12 +140,17 @@ global
 		do init_basket;
 		do init_buttons;
 		do init_pending_request_button;
-		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) ];
+		create dyke from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune::string(read("Commune"))];
 		create road from:road_shape; 
-		ask dyke where(!(each overlaps my_commune))
-		{
-			do die;
-		}
+		switch (commune_name)
+			{
+			match "lechateau" {commune_name_shpfile <-"Le-Chateau-d'Oleron";}
+			match "dolus" {commune_name_shpfile <-"Dolus-d'Oleron";}
+			match "sttrojan" {commune_name_shpfile <-"Saint-Trojan-Les-Bains";}
+			match "stpierre" {commune_name_shpfile <-"Saint-Pierre-d'Oleron";}
+			} 
+		ask dyke where(each.commune != commune_name_shpfile)
+			{ do die; }
 		ask dyke {do init_dyke;}
 		create cell_UnAm from: communes_UnAm_shape with: [id::int(read("FID_1")),land_cover_code::int(read("grid_code")), cout_expro:: int(get("coutexpr"))]
 		{
@@ -190,6 +200,12 @@ global
 		}
 	}
 	
+	action implementation_tests {
+		 if (int(all_action_cost at {0,0}) != 0 or (int(all_action_cost at {0,5}) != 5)) {
+		 		write "Probleme lecture du fichier cout_action";
+		 		write ""+all_action_cost;
+		 }
+	}
 	action init_buttons
 	{
 		float interleave <- world.local_shape.height / 20;
@@ -288,12 +304,23 @@ global
 		
 		create buttons number: 1
 		{
+			command <- ACTION_INSTALL_GANIVELLE;
+			label <- "Installer des ganivelles";
+			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
+			shape <- square(button_size);
+			display_name <- DYKE_DISPLAY;
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
+			my_icon <- image_file("../images/icones/ganivelle.png");
+		}
+		
+		create buttons number: 1
+		{
 			command <- ACTION_INSPECT_DYKE;
 			label <- "Inspecter un ouvrage de défense";
 			action_cost <- 0;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +4* (interleave+ button_size) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/Loupe.png");
 			
 		}
@@ -847,7 +874,6 @@ species action_done
 		if(!is_sent)
 		{
 			int indx <- my_basket index_of self;
-			write "my index" +indx;
 			float y_loc <- basket_location[indx];
 			float x_loc <- font_interleave + 12* (font_size+font_interleave);
 			
@@ -903,10 +929,8 @@ species Network_agent skills:[network]
 			message msg <- fetch_message();
 			string my_msg <- msg.contents; 
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
-			write "coucou  msg "+my_msg;
 			int command <- int(data[0]);
 			int action_id <- int(data[1]);
-			write "int(data[0]) -> " + int(data[0]);
 			switch(int(data[0]))
 				{
 					match ACTION_CLOSE_PENDING_REQUEST
@@ -916,8 +940,9 @@ species Network_agent skills:[network]
 						
 					}
 					match INFORM_TAX_GAIN
-					{
-						map<string,unknown> values2 <- user_input("Avertissement",("Vous avez perçu des impôts locaux à hauteur de "+ world.separateur_milliers(int(data[2]))+ " pour le tour "+data[3] +" \n Le tour "+(int(data[3])+1)+" vient de commencer")::"");
+					{	impot_recu <- int(data[2]);
+					// Remplacement du User Input par un Write
+						 write ("Avertissement : Vous avez perçu des impôts locaux à hauteur de "+ world.separateur_milliers(int(data[2]))+ " pour le tour "+data[3] +" \n Le tour "+(int(data[3])+1)+" vient de commencer");
 		
 					}	
 					
@@ -934,7 +959,6 @@ species Network_agent skills:[network]
 					match UPDATE_BUDGET
 					{
 						budget <- int(data[2]);
-						impot <- int(data[3]);
 						
 					}
 					match ACTION_DYKE_LIST
@@ -954,28 +978,27 @@ species Network_agent skills:[network]
 						}
 						ask dyke where(each.dyke_id =d_id )
 						{
+							ganivelle <-bool(data[10]);
 							status <-data[9];
-							type <- string(data[8]);
+							type <- data[8];
 							height <-float(data[7]);
 						}
-						do action_application_acknowledgment(d_id);	
+						do action_dyke_application_acknowledgment(d_id);	
 					}
 					match ACTION_DYKE_DROPPED {
 						int d_id <- int(data[2]);
-						do action_application_acknowledgment(d_id);	
+						do action_dyke_application_acknowledgment(d_id);	
 						ask dyke where(each.dyke_id =d_id )
 						{
 							do die;
 						}
 					}
-					
 					match ACTION_LAND_COVER_UPDATE {
 						int d_id <- int(data[2]);
-						do action_application_acknowledgment(d_id);	
-						write cell_UnAm where(each.id = d_id);
+						do action_land_cover_application_acknowledgment(d_id);
 						ask cell_UnAm where(each.id = d_id)
 						{
-							land_cover_code <-int(data[3]); 
+							land_cover_code <-int(data[3]);
 							switch (land_cover_code)
 							{
 									match 1 {land_cover <- "N";}
@@ -983,7 +1006,9 @@ species Network_agent skills:[network]
 									match 4 {land_cover <- "AU";}
 									match 5 {land_cover <- "A";}
 							}
-	
+						//Ajout NB pour supprimer le carre de couleur au dessus de l'UA qui idiquant que l'action était en cours
+						/*ask action_land_cover where (each.id =d_id) 
+							{do die;}*/
 						}
 					}
 				}
@@ -1023,13 +1048,29 @@ species Network_agent skills:[network]
 			height<- hg;
 			status<-st;
 		}	
-		do action_application_acknowledgment(d_id);			
+		do action_dyke_application_acknowledgment(d_id);			
+	}
+	
+	action action_dyke_application_acknowledgment(int m_action_id)
+	{write "UPDATE dyke " + m_action_id;
+		ask action_dyke where(each.chosen_element_id  = m_action_id)
+		{ write self;
+			self.is_applied <- true;
+		}
+	}
+	
+	action action_land_cover_application_acknowledgment(int m_action_id)
+	{write "UPDATE UA " + m_action_id;
+		ask action_land_cover where(each.id  = m_action_id)
+		{ write self;
+			self.is_applied <- true;
+		}
 	}
 	
 	action action_application_acknowledgment(int m_action_id)
-	{
+	{write "ICI RIEN m_action_id " + m_action_id;
 		ask action_done where(each.id  = m_action_id)
-		{
+		{ write self;
 			self.is_applied <- true;
 		}
 	}
@@ -1115,13 +1156,14 @@ species action_dyke parent:action_done
 			 match ACTION_REPAIR_DYKE {return #green;}
 			 match ACTION_DESTROY_DYKE {return #brown;}
 			 match ACTION_RAISE_DYKE {return #yellow;}
+			 match ACTION_INSTALL_GANIVELLE {return #indigo;}
 		} 
 		return #grey;
 	}
 	
 	aspect base
 	{
-		draw  20#m around shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);
+		if !is_applied {draw  20#m around shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);}
 	}
 	
 	aspect basket
@@ -1161,7 +1203,7 @@ species action_land_cover parent:action_done
 	}
 	aspect base
 	{
-		draw shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);
+		if !is_applied {draw shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);}
 	}
 	aspect basket
 	{
@@ -1181,7 +1223,7 @@ species buttons
 	int command <- -1;
 	string display_name <- "no name";
 	string label <- "no name";
-	int action_cost<-0;
+	float action_cost<-0;
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
 	image_file my_icon;
@@ -1268,16 +1310,20 @@ species dyke
 {
 	int dyke_id;
 	string type;
+	string commune;
 	rgb color <- # pink;
 	float height;
-	string status;	// "tres bon" "bon" "moyen" "mauvais" "tres mauvais" 
+	bool ganivelle <- false;
+	string status;	//  "bon" "moyen" "mauvais" 
 	
 	action init_dyke {
 		if status = "" {status <- "bon";} 
 		if type ='' {type <- "inconnu";}
 		if status = '' {status <- "bon";} 
+		if status = "tres bon" {status <- "bon";} 
+		if status = "tres mauvais" {status <- "mauvais";} 
 		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
-	}
+		}
 	
 	string type_ouvrage
 	{
@@ -1291,14 +1337,24 @@ species dyke
 		return res;
 	}
 	aspect base
-	{  	
-		if status = "tres bon" {color <- # green;} 
-		if status = "bon" {color <- rgb (239,204,51);} 
-		if status = "moyen" {color <-  rgb (255,102,0);} 
-		if status = "mauvais" {color <- # red;} 
-		if status = "tres mauvais" {color <- # black;}
-		if status = "casse" {color <- # yellow;} 
-		draw 20#m around shape color: color size:300#m;
+	{  	if type != 'Naturel'
+			{switch status {
+				match  "bon" {color <- # green;}
+				match "moyen" {color <-  rgb (255,102,0);} 
+				match "mauvais" {color <- # red;} 
+				default { /*"casse" {color <- # yellow;}*/write "probleee status dyke";}
+				}
+			draw 20#m around shape color: color size:300#m;
+				}
+		else {switch status {
+				match  "bon" {color <- rgb (222, 134, 14,255);}
+				match "moyen" {color <-  rgb (231, 189, 24,255);} 
+				match "mauvais" {color <- rgb (241, 230, 14,255);} 
+				default { write "probleee status dune";}
+				}
+			draw 50#m around shape color: color;
+			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
+		}		
 	}	
 }
 

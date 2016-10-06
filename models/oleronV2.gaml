@@ -29,16 +29,16 @@ global  {
 	bool log_user_action <- true;
 	bool activemq_connect <- false;
 	
-	//récupération des couts du fichier cout_action
-	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,1});
-	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,2});
-	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,3});
-	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,8});
-	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,4});
-	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,5});
-	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,6});
-	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,7});
-	int ACTION_COST_GANIVELLE <- int(all_action_cost at {2,9}); //  TODO Ajuster  le prix de la Ganivelle  dans le fichier csv
+	//récupération des couts du fichier cout_action	
+	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,0});
+	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,1});
+	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,2});
+	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,7});
+	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,3});
+	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,4});
+	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,5});
+	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,6});
+	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
 
 	int ACTION_REPAIR_DYKE <- 5;
 	int ACTION_CREATE_DYKE <- 6;
@@ -51,7 +51,7 @@ global  {
 	int ACTION_MODIFY_LAND_COVER_A <- 2;
 	int ACTION_MODIFY_LAND_COVER_U <- 3;
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
 	
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
@@ -114,9 +114,9 @@ global  {
 	//// Paramètres  des dynamiques des ouvrage /////
 	float H_MAX_GANIVELLE <- 1.2; // ganivelle  d'une hauteur de 1.2 metres  -> fixe le maximum d'augmentation de hauteur de la dune
 	float H_DELTA_GANIVELLE <- 0.05 ; // une ganivelle  augmente de 5 cm par an la hauteur du cordon dunaire
-	int STEPS_DEGRAD_STATUS_OUVRAGE <- 6; // Sur les ouvrages il faut 8 ans pour que ça change de statut
-	int STEPS_DEGRAD_STATUS_DUNE <-8; // Sur les dunes, sans ganivelle,  il faut 6 ans pour que ça change de statut
-	int STEPS_REGAIN_STATUS_GANIVELLE  <-4; // Avec une ganivelle ça se régénère 2 fois plus vite que ça ne se dégrade
+	int STEPS_DEGRAD_STATUS_OUVRAGE <- 8; // Sur les ouvrages il faut 8 ans pour que ça change de statut
+	int STEPS_DEGRAD_STATUS_DUNE <-6; // Sur les dunes, sans ganivelle,  il faut 6 ans pour que ça change de statut
+	int STEPS_REGAIN_STATUS_GANIVELLE  <-3; // Avec une ganivelle ça se régénère 2 fois plus vite que ça ne se dégrade
 	
 	/*
 	 * Chargements des données SIG
@@ -150,6 +150,7 @@ global  {
 
 init
 	{
+		do implementation_tests;
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		/* initialisation du bouton */
 		do init_buttons;
@@ -158,7 +159,7 @@ init
 			network_agent <- first(ctl); }
 
 		/*Creation des agents a partir des données SIG */
-		create def_cote from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("etat2016")), alt::float(get("alt")), height::float(get("hauteur")) ];
+		create def_cote from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")) ];
 		create commune from:communes_shape with: [nom_raccourci::string(read("NOM_RAC")),id::int(read("id_jeu"))]
 		{
 			write " commune " + nom_raccourci + " "+id;
@@ -181,9 +182,9 @@ init
 		{
 			UAs <- UA overlapping self;
 			cells <- cell overlapping self;
-			budget <- current_population(self) * impot_unit;
+			budget <- current_population(self) * impot_unit * 1.2; ///A l’initialisation la commune commence avec un budget équivalent aux impôts annuels perçus + 20%
 		}
-		ask def_cote {cells <- cell overlapping self;}
+		ask def_cote {do init_dyke;}
 	}
 	
  int getMessageID
@@ -191,8 +192,15 @@ init
  		messageID<- messageID +1;
  		return messageID;
  	}
- 	
-action tourDeJeu{
+
+action implementation_tests {
+		 if (int(all_action_cost at {0,0}) != 0 or (int(all_action_cost at {0,5}) != 5)) {
+		 		write "Probleme lecture du fichier cout_action";
+		 		write ""+all_action_cost;
+		 }
+	}
+	 	
+action nextRound{
 	//do sauvegarder_resultat;
 	write "new round "+ (round +1);
 	if round != 0
@@ -236,7 +244,7 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 		if round = 0 {stateSimPhase <- 'not started'; }
 		else {
 				stateSimPhase <- 'game';
-				do tourDeJeu;
+				do nextRound;
 		}
 		write stateSimPhase;
 		}
@@ -486,7 +494,7 @@ action sauvegarder_resultat //when: sauver_shp and cycle = cycle_sauver
 
 species action_done schedules:[]
 {
-	string id;
+	int id;
 	int chosen_element_id;
 	string doer<-"";
 	//string command_group <- "";
@@ -560,7 +568,7 @@ species game_controller skills:[network]
 				
 				if(m_contents["stringContents"]!= nil)
 				{
-					write"my message" + m_contents["stringContents"];
+					write"read message: " + m_contents["stringContents"];
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
 					if(CONNECTION_MESSAGE = int(data[0]))
 					{
@@ -598,7 +606,6 @@ species game_controller skills:[network]
 	
 	reflex apply_action when:length(action_done)>0 
 	{
-		write "action "+ length(action_done)+ " "+ (action_done count(each.should_be_applied));
 		ask(action_done where(each.should_be_applied))
 		{
 			
@@ -609,7 +616,6 @@ species game_controller skills:[network]
 				list<string> data <- [string(machine_time-START_LOG),tmp]+self.my_message;
 				save data to:LOG_FILE_NAME type:"csv";
 			}
-			write "ici -> "+command;
 			switch(command)
 			{
 				match ACTION_MESSAGE
@@ -718,18 +724,26 @@ species game_controller skills:[network]
 		{
 			self.command <- int(data[0]);
 			self.id <- int(data[1]);
-			write "received message "+ self.id;
 			self.doer <- sender;
 			self.my_message <- data;
-			
+			// A CORRIGER POur que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
 			switch(self.command)
 			{
 				match ACTION_CREATE_DYKE { self.application_round <- round + 3;}
-				match ACTION_REPAIR_DYKE { self.application_round <- round + 3;}
-				match ACTION_COST_LAND_COVER_FROM_A_TO_N { self.application_round <- round + 5;}
-				match ACTION_COST_LAND_COVER_FROM_AU_TO_N { self.application_round <- round + 5;}
+				match ACTION_RAISE_DYKE { self.application_round <- round + 3;}
+				match ACTION_REPAIR_DYKE { self.application_round <- round + 1;}
+				match ACTION_DESTROY_DYKE { self.application_round <- round + 1;}
+				match ACTION_INSTALL_GANIVELLE { self.application_round <- round + 1;}				
 				default { self.application_round <- round +1;}
 			}
+			if self.command = ACTION_MODIFY_LAND_COVER_N { // c'est possible que ce soit une action d'expropriation; auquel cas il fait appliquer un delai d'execution
+						if (UA first_with(each.id=id)).ua_name = "U" {
+							application_round <- round + 5;
+							write "Procédure d'expropriation declenchée pour l'UA "+self.id;
+							
+						
+					}
+				}
 			switch(self.command)
 			{
 				match ACTION_CREATE_DYKE
@@ -766,20 +780,18 @@ species game_controller skills:[network]
 		list<UA> updated_UA <- [];
 		ask UA where(each.not_updated)
 		{
-			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code;
+			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code+COMMAND_SEPARATOR+self.population;
 			update_messages <- update_messages + msg;	
 			not_updated <- false;
 			updated_UA <- updated_UA + self;
 		}
-		write update_messages;
 		int i <- 0;
 		loop while: i< length(update_messages)
 		{
 			string msg <- update_messages at i;
 			list<commune> cms <- commune overlapping (updated_UA at i);
 			loop cm over:cms
-			{
-				do send to:cm.network_name contents:msg;
+			{ do send to:cm.network_name contents:msg;
 			}
 			i <- i + 1;
 			
@@ -835,7 +847,7 @@ species game_controller skills:[network]
 		{
 			point p1 <- first(self.shape.points);
 			point p2 <- last(self.shape.points);
-			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status;
+			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle;
 			update_messages <- update_messages + msg;
 			update_ouvrage <- update_ouvrage + self;
 			not_updated <- false;
@@ -861,7 +873,7 @@ species game_controller skills:[network]
 		list<string> update_messages <-[]; 
 		ask commune where(each.not_updated)
 		{
-			string msg <- ""+UPDATE_BUDGET+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ budget+COMMAND_SEPARATOR+impot_unit;
+			string msg <- ""+UPDATE_BUDGET+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ budget;
 			not_updated <- false;
 			ask first(game_controller)
 			{
@@ -939,7 +951,6 @@ species game_controller skills:[network]
     //Action Général appel action particulière 
     action button_click_C_mdj //(point loc, list selected_agents)
 	{
-		write "clidkljsqfmdsqfj ";
 		
 		point loc <- #user_location;
 		if(active_display != UNAM_DISPLAY_c)
@@ -954,7 +965,7 @@ species game_controller skills:[network]
 		ask ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display )
 		{
 			if (nb_button = 0){
-				ask world {do tourDeJeu;}
+				ask world {do nextRound;}
 			}
 			if (nb_button = 3){
 				ask world {do launchFloodPhase;}
@@ -1129,10 +1140,14 @@ species def_cote
 	bool ganivelle <- false;
 	float height_avant_ganivelle;
 	
-	init {
+	action init_dyke {
+		if status = "" {status <- "bon";} 
 		if type ='' {type <- "inconnu";}
 		if status = '' {status <- "bon";} 
+		if status = "tres bon" {status <- "bon";} 
+		if status = "tres mauvais" {status <- "mauvais";} 
 		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
+		cptStatus <- type = 'Naturel'?rnd(STEPS_DEGRAD_STATUS_DUNE-1):rnd(STEPS_DEGRAD_STATUS_OUVRAGE-1);
 		cells <- cell overlapping self;
 		if type = 'Naturel' {height_avant_ganivelle <- height;}
 	}
@@ -1150,6 +1165,13 @@ species def_cote
 	action evolve_dune {
 		if ganivelle {
 			//Dynamique de la dune avec ganivelle 
+			cptStatus <- cptStatus +1;
+			if cptStatus = (STEPS_REGAIN_STATUS_GANIVELLE + 1) {
+				cptStatus <-0;
+				if status = "moyen" {status <- "bon";}
+				if status = "mauvais" {status <- "moyen";}
+				not_updated <- true; 
+			}
 			if height < height_avant_ganivelle + H_MAX_GANIVELLE {
 				height <- height + H_DELTA_GANIVELLE;  // la ganivelle permet d'augmenter de 5 cm par an dans la limite de h_ganivelle
 				alt <- alt + H_DELTA_GANIVELLE;
@@ -1159,13 +1181,10 @@ species def_cote
 					}
 				not_updated <- true;
 			}
-			cptStatus <- cptStatus +1;
-			if cptStatus = (STEPS_REGAIN_STATUS_GANIVELLE + 1) {
-				cptStatus <-0;
-				if status = "moyen" {status <- "bon";}
-				if status = "mauvais" {status <- "moyen";}
-				not_updated <- true; 
-			}
+			else {//la dune a recouvert toute la hauteur de la ganivelle. On remet a zero le processus Ganivelle
+				ganivelle <- false;
+				not_updated<- true;}
+			
 		}
 		else {
 			//Dynamique de la dune sans ganivelle 
@@ -1249,13 +1268,26 @@ species def_cote
 	
 	
 	aspect base
-	{	
-		if status = "bon" {color <- # green;}	/*rgb (239,204,51);*/
-		if status = "moyen" {color <-  rgb (255,102,0);} 
-		if status = "mauvais" {color <- # red;} 
-		if rupture  = 1 {draw circle(100) color:#red;} 
-		if type = 'Naturel' {draw 60#m around shape color: color /*size:1500#m*/;}
-		else {draw 30#m around shape color: color /*size:1500#m*/;}				
+	{  	if type != 'Naturel'
+			{switch status {
+				match  "bon" {color <- # green;}
+				match "moyen" {color <-  rgb (255,102,0);} 
+				match "mauvais" {color <- # red;} 
+				default { /*"casse" {color <- # yellow;}*/write "probleee status dyke";}
+				}
+			draw 20#m around shape color: color size:300#m;
+				}
+		else {switch status {
+				match  "bon" {color <- rgb (222, 134, 14,255);}
+				match "moyen" {color <-  rgb (231, 189, 24,255);} 
+				match "mauvais" {color <- rgb (241, 230, 14,255);} 
+				default { write "probleee status dune";}
+				}
+			draw 50#m around shape color: color;
+			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
+		}		
+			
+		if rupture  = 1 {draw circle(100) color:#red;} 	
 	}
 }
 
@@ -1416,9 +1448,10 @@ species commune
 	string nom_raccourci;
 	string network_name;
 	int budget;
+	int impot_recu <-0;
 	list<UA> UAs ;
 	list<cell> cells ;
-	float impot_unit <- 0.42; //  21 € / hab à convertir au taux de la monnaie du jeu   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
+	float impot_unit <- 0.42; // 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
 	
 	/* initialisation des hauteurs d'eau */ 
 	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
@@ -1442,14 +1475,15 @@ species commune
 		return sum(aC.UAs accumulate (each.population));
 	}
 	action recevoirImpots {
-		int impotRecus <- current_population(self) * impot_unit;
-		budget <- budget + impotRecus;
+		impot_recu <- current_population(self) * impot_unit;
+		budget <- budget + impot_recu;
 		write nom_raccourci + "->" + budget;
 		ask network_agent
 		{
-			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+impotRecus+COMMAND_SEPARATOR+round;
+			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+myself.impot_recu+COMMAND_SEPARATOR+round;
 			do send to:myself.network_name contents:msg;
 		}
+		not_updated <- true;
 	}
 		
 	action payerExpropriationPour (UA a_UA)
@@ -1501,7 +1535,7 @@ species commune
 			
 	action payerGanivelle (def_cote dk)
 			{
-				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_CREATE);
+				budget <- budget - ((int(dk.shape.perimeter)) * ACTION_COST_INSTALL_GANIVELLE);
 				not_updated <- true;
 			}						
 }
