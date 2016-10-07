@@ -8,3 +8,7 @@ identifiant;action;cost
 6;Rehausser une digue;2
 7;Transformer une A en N;100
 8;Installer des ganivelles;0.5
+9;Transformer en AUs;1500
+10;Transformer en Us;1000
+11;Transformer en AUs subventionné;800
+12;Transformer en Us subventionné;400

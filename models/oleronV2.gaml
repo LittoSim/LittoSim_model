@@ -23,7 +23,7 @@ global  {
 	string GROUP_NAME <- "Oleron";  
 	string BUILT_DYKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 	float  STANDARD_DYKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
-	string BUILT_DYKE_STATUS <- "tres bon"; // status de nouvelle digue
+	string BUILT_DYKE_STATUS <- "bon"; // status de nouvelle digue
 	string LOG_FILE_NAME <- "log_"+machine_time+"csv";
 	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
@@ -39,23 +39,30 @@ global  {
 	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,5});
 	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,6});
 	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
-
+	int ACTION_COST_LAND_COVER_TO_AUs <- int(all_action_cost at {2,9});
+	int ACTION_COST_LAND_COVER_TO_Us <- int(all_action_cost at {2,10});
+	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY <- int(all_action_cost at {2,11});
+	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY <- int(all_action_cost at {2,12});
+	
 	int ACTION_REPAIR_DYKE <- 5;
 	int ACTION_CREATE_DYKE <- 6;
 	int ACTION_DESTROY_DYKE <- 7;
 	int ACTION_RAISE_DYKE <- 8;
 	int ACTION_INSTALL_GANIVELLE <- 29;
-	//int ACTION_DYKE_LIST <- 21;
 
 	int ACTION_MODIFY_LAND_COVER_AU <- 1;
 	int ACTION_MODIFY_LAND_COVER_A <- 2;
 	int ACTION_MODIFY_LAND_COVER_U <- 3;
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_N];
+	int ACTION_MODIFY_LAND_COVER_AUs <-31;	
+	int ACTION_MODIFY_LAND_COVER_Us <-32;
+	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_N];
 	
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DYKE_UPDATE<-10;
+	
 	//action to acknwoledge client requests.
 //	int ACTION_DYKE_REPAIRED <- 15;
 	int ACTION_DYKE_CREATED <- 16;
@@ -63,19 +70,19 @@ global  {
 //	int ACTION_DYKE_RAISED <- 18;
 	int UPDATE_BUDGET <- 19;
 	int REFRESH_ALL <- 20;
+	int ACTION_DYKE_LIST <- 21;
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
 	int INFORM_TAX_GAIN <-24;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
-	
-
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11;
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_U <- 13;
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;
-	int ACTION_DYKE_LIST <- 21;
 	int ACTION_CLOSE_PENDING_REQUEST <- 30;
+
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11; // Not used. Should detele ?
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;// Not used. Should detele ?
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_U <- 13;// Not used. Should detele ?
+	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;// Not used. Should detele ?
+
 	
 	string stateSimPhase <- 'not started'; // stateSimPhase is used to specify the currrent phase of the simulation 
 	//5 possible states 'not started' 'game' 'execute lisflood' 'show lisflood' , 'calculate flood stats' and 'show flood stats' 	
@@ -87,6 +94,7 @@ global  {
 	int lisfloodReadingStep <- 9999999; //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
+	matrix<string> all_action_delay <- matrix<string>(csv_file("../includes/delai_action.csv",";"));	
 	string flood_results <- ""; // store the text to be displayed on flood results per commune 
 	
 	//buttons size
@@ -167,13 +175,7 @@ init
 		create road from: road_shape;
 		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
 		{
-			switch (ua_code)
-			{
-				match 1 {ua_name <- "N";}
-				match 2 {ua_name <- "U";}
-				match 4 {ua_name <- "AU";}
-				match 5 {ua_name <- "A";}
-			}
+			ua_name <- nameOfUAcode(ua_code);
 			my_color <- cell_color();
 		}
 		do load_rugosity;
@@ -200,6 +202,16 @@ action implementation_tests {
 		 }
 	}
 	 	
+	 	
+int delayOfAction (int action_code){
+	int rslt <- 9999;
+	loop i from:0 to: length(all_action_delay)/3 {
+		if ((int(all_action_delay at {1,i})) = action_code)
+		 {rslt <- int(all_action_delay at {2,i});}
+	}
+	return rslt;
+	}
+	 
 action nextRound{
 	//do sauvegarder_resultat;
 	write "new round "+ (round +1);
@@ -503,6 +515,7 @@ species action_done schedules:[]
 	float cost <- 0.0;	
 	bool should_be_applied ->{round >= application_round} ;
 	int application_round <- -1;
+	int round_delay <- 0 ; // nb rounds of delay
 	list<string> my_message <-[];
 	rgb define_color
 	{
@@ -681,21 +694,35 @@ species game_controller skills:[network]
 			 	match ACTION_MODIFY_LAND_COVER_A {
 			 		ask UA first_with(each.id=chosen_element_id)
 			 		 {
-			 		  do modify_UA (idCom, 5);
+			 		  do modify_UA (idCom, "A");
 			 		  not_updated <- true;
 			 		 }
 			 	}
 			 	match ACTION_MODIFY_LAND_COVER_AU {
 			 		ask UA first_with(each.id=chosen_element_id)
 			 		 {
-			 		 	do modify_UA (idCom, 4);
+			 		 	do modify_UA (idCom, "AU");
 			 		 	not_updated <- true;
 			 		 }
 			 	}
 				match ACTION_MODIFY_LAND_COVER_N {
 					ask UA first_with(each.id=chosen_element_id)
 			 		 {
-			 		 	do modify_UA (idCom, 1);
+			 		 	do modify_UA (idCom, "N");
+			 		 	not_updated <- true;
+			 		 }
+			 	}
+			 	match ACTION_MODIFY_LAND_COVER_Us {
+			 		ask UA first_with(each.id=chosen_element_id)
+			 		 {
+			 		 	do modify_UA (idCom, "Us");
+			 		 	not_updated <- true;
+			 		 }
+			 	 }
+			 	match ACTION_MODIFY_LAND_COVER_AUs {
+			 		ask UA first_with(each.id=chosen_element_id)
+			 		 {
+			 		 	do modify_UA (idCom, "AUs");
 			 		 	not_updated <- true;
 			 		 }
 			 	}
@@ -712,7 +739,7 @@ species game_controller skills:[network]
 	{
 		list<string> data <- act split_with COMMAND_SEPARATOR;
 		
-		if(! (ACTION_LIST contains int(data[0])) )
+		if(! (int(data[0]) in ACTION_LIST ) )
 		{
 			return;
 		}
@@ -727,23 +754,17 @@ species game_controller skills:[network]
 			self.doer <- sender;
 			self.my_message <- data;
 			// A CORRIGER POur que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
-			switch(self.command)
-			{
-				match ACTION_CREATE_DYKE { self.application_round <- round + 3;}
-				match ACTION_RAISE_DYKE { self.application_round <- round + 3;}
-				match ACTION_REPAIR_DYKE { self.application_round <- round + 1;}
-				match ACTION_DESTROY_DYKE { self.application_round <- round + 1;}
-				match ACTION_INSTALL_GANIVELLE { self.application_round <- round + 1;}				
-				default { self.application_round <- round +1;}
+			//  DOnc il faut que le paieemnt se fasse au niveau de cette méthode. Et que l'execution soit en effet différée
+			if self.application_round !=- round  + (world.delayOfAction(self.command))
+			{write "Pas recupere du client, la valeur de l'application round ";
+				self.application_round <- round  + (world.delayOfAction(self.command));
 			}
 			if self.command = ACTION_MODIFY_LAND_COVER_N { // c'est possible que ce soit une action d'expropriation; auquel cas il fait appliquer un delai d'execution
-						if (UA first_with(each.id=id)).ua_name = "U" {
-							application_round <- round + 5;
+					if (UA first_with(each.id=id)).ua_name in ["U","Us"] {///   ATTENTION, c'est possible qu il y ai une erreur car on interroge id alors qu'on devrait interroger chosen_element_id
+							application_round <- round + world.delayOfAction(ACTION_EXPROPRIATION); 
 							write "Procédure d'expropriation declenchée pour l'UA "+self.id;
-							
-						
 					}
-				}
+			}
 			switch(self.command)
 			{
 				match ACTION_CREATE_DYKE
@@ -1308,49 +1329,50 @@ species UA
 	int id;
 	int ua_code;
 	rgb my_color <- cell_color() update: cell_color();
-	int nb_stepsForAU_toU <-3;
+	int nb_stepsForAU_toU <-1;// On doit mettre 1 pour en fait obtenir un délai de 3 ans (car il y a un tour décompté de chgt de A/N à AU et un autre de AU à U 
 	int AU_to_U_counter <- 0;
 	list<cell> cells ;
 	int population ;
 	int cout_expro ;
+	bool isUrbanType -> {ua_name in ["U","Us","AU","AUs"] };
+	bool isAdapte -> {ua_name in ["Us","AUs"]};
 	bool not_updated <- false;
 	
 	init {cout_expro <- (round (cout_expro /2000 /50 ))*100;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
 	
 	
-	action modify_UA (int a_id_commune, int new_ua_code)
-	{	string new_ua_name <-  nameOfUAcode(new_ua_code);
-		if  ua_name = "U" and new_ua_name = "N" /*expropriation */
+	action modify_UA (int a_id_commune, string new_ua_name)
+	{	if  (ua_name in ["U","Us"])and new_ua_name = "N" /*expropriation */
 				{ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}}
-		else {ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}
-			if  ua_name = "N" and new_ua_name = "AU" /*dénaturalisation -> requière autorosation du prefet */
-				{switch a_id_commune
+		else {	ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}
+				if  ua_name = "N" and (new_ua_name in ["AU","AUs"]) /*dénaturalisation -> requière autorosation du prefet */
+					{switch a_id_commune
 					{	match 1 {world.count_N_to_AU_C1 <-world.count_N_to_AU_C1 +1;}
 						match 2 {world.count_N_to_AU_C2 <-world.count_N_to_AU_C2 +1;}
 						match 3 {world.count_N_to_AU_C3 <-world.count_N_to_AU_C3 +1;}
 						match 4 {world.count_N_to_AU_C4 <-world.count_N_to_AU_C4 +1;}
 					}
-					
 				}
 		}
-		ua_code <- new_ua_code;
 		ua_name <- new_ua_name;
+		ua_code <- codeOfUAname(ua_name);
+		
 		//on affecte la rugosité correspondant aux cells
-		float rug <- rugosityValueOfUA (new_ua_code);
+		float rug <- rugosityValueOfUA_name (ua_name);
 		ask cells {rugosity <- rug;} 	
 	}
 		
 	
 	action evolveUA
-		{if ua_name ="AU"
+		{if ua_name in ["AU","AUs"]
 			{AU_to_U_counter<-AU_to_U_counter+1;
 			if AU_to_U_counter = (nb_stepsForAU_toU +1)
 				{AU_to_U_counter<-0;
-				ua_name <- "U";
-				ua_code<-codeOfUAname("U");
+				ua_name <- ua_name="AU"?"U":"Us";
+				ua_code<-codeOfUAname(ua_name);
 				not_updated<-true; }
 			}	
-		if (ua_name = "U" and population < 1000){
+		if ((ua_name in ["U","Us"]) and population < 1000){
 			population <- population + 3;}// avant c'était 10 mais après des tests c recalibré à 3
 		}
 		
@@ -1364,10 +1386,10 @@ species UA
 				match 2 {val <- "U";}
 				match 4 {val <- "AU";}
 				match 5 {val <- "A";}
+				match 6 {val <- "Us";}
+				match 7 {val <- "AUs";}
 					}
 		return val;}
-
-		
 		
 	int codeOfUAname (string a_ua_name) 
 		{ int val <- 0 ;
@@ -1377,12 +1399,14 @@ species UA
 				match "U" {val <- 2;}
 				match "AU" {val <- 4;}
 				match "A" {val <- 5;}
+				match "Us" {val <- 6;}
+				match "AUs" {val <- 7;}
 					}
 		return val;}
 	
-	float rugosityValueOfUA (int a_ua_code) 
+	float rugosityValueOfUA_name (string a_ua_name) 
 		{float val <- 0.0;
-		 switch (a_ua_code)
+		 switch (a_ua_name)
 			{
 /* Valeur rugosité fournies par Brice
 Urbain (codes CLC 112,123,142) : 				0.12	->U
@@ -1399,22 +1423,24 @@ Marais intérieur (code CLC 411) : 				0.055
 Marais maritime (code CLC 421) : 				0.05
 Zone intertidale (code CLC 423) : 				0.025
 Mer (code CLC 523) : 						0.02				*/
-				match 1 {val <- 0.05;}//N (entre 0.04 et 0.07 -> 0.05)   ->selon MA et NB 0.11
-				match 2 {val <- 0.12;}//U                                                ->selon MA et NB 0.05
-				match 4 {val <- 0.1;}//AU							->selon MA et NB  0.09
-				match 5 {val <- 0.06;}//A							->selon MA et NB 0.07
+				match "N" {val <- 0.05;}//N (entre 0.04 et 0.07 -> 0.05)   ->selon MA et NB 0.11
+				match "U" {val <- 0.12;}//U                                                ->selon MA et NB 0.05
+				match "AU" {val <- 0.1;}//AU							->selon MA et NB  0.09
+				match "A" {val <- 0.06;}//A							->selon MA et NB 0.07
+				match "AUs" {val <- 0.09;}//A						->selon les notes de MAPS9
+				match "Us" {val <- 0.09;}//U                                                ->selon les notes de MAPS9
 			}
 		return val;}
 
 	rgb cell_color
 	{
 		rgb res <- nil;
-		switch (ua_code)
+		switch (ua_name)
 		{
-			match 1 {res <- # palegreen;} // naturel
-			match 2 {res <- rgb (110, 100,100);} //  urbanisé
-			match 4 {res <- # yellow;} // à urbaniser
-			match 5 {res <- rgb (225, 165,0);} // agricole
+			match "N" {res <- # palegreen;} // naturel
+			match_one ["U","Us"] {res <- rgb (110, 100,100);} //  urbanisé
+			match_one ["AU","AUs"] {res <- # yellow;} // à urbaniser
+			match "A" {res <- rgb (225, 165,0);} // agricole
 		}
 		return res;
 	}
@@ -1422,6 +1448,8 @@ Mer (code CLC 523) : 						0.02				*/
 	aspect base
 	{
 		draw shape color: my_color;
+		if isAdapte {draw "A" color:#black;}
+		
 	}
 	aspect population 
 	{
@@ -1449,6 +1477,7 @@ species commune
 	string network_name;
 	int budget;
 	int impot_recu <-0;
+	bool subvention_habitat_adapte <- false;
 	list<UA> UAs ;
 	list<cell> cells ;
 	float impot_unit <- 0.42; // 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
@@ -1501,7 +1530,9 @@ species commune
 						match "AU" {cost <-ACTION_COST_LAND_COVER_TO_AU;}
 						match "N" {	
 							if a_UA.ua_name = "AU" {cost <-ACTION_COST_LAND_COVER_FROM_AU_TO_N;}
-									if a_UA.ua_name = "A" {cost <-ACTION_COST_LAND_COVER_FROM_A_TO_N;}	}
+							if a_UA.ua_name = "A" {cost <-ACTION_COST_LAND_COVER_FROM_A_TO_N;}	}
+						match "Us" {cost <-ACTION_COST_LAND_COVER_TO_Us;}
+						match "AUs" {cost <-a_UA.ua_name = "AU"?ACTION_COST_LAND_COVER_TO_Us:ACTION_COST_LAND_COVER_TO_AUs;}
 					}
 				if cost = 0 {write "Problème cout change UA : cout de 0 ; passade de "+  a_UA.ua_name + " à "+new_ua_name;}
 				budget <- budget - cost;
