@@ -58,6 +58,10 @@ global
 	
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DYKE_UPDATE<-10;
+	int INFORM_ROUND <-34;
+	int NOTIFY_DELAY <-35;
+	int ENTITY_TYPE_CODE_DEF_COTE <-36;
+	int ENTITY_TYPE_CODE_UA <-37;
 	
 	//action to acknwoledge client requests.
 	int ACTION_DYKE_CREATED <- 16;
@@ -72,7 +76,7 @@ global
 	int ACTION_INSPECT_LAND_USE <-26;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
-	int ACTION_CLOSE_PENDING_REQUEST <- 30;
+	/*int ACTION_CLOSE_PENDING_REQUEST <- 30;*/
 	
 	
 	//// action display map layers
@@ -489,7 +493,11 @@ global
 		}
 		list<basket_validation> bsk_validation <-  basket_validation  overlapping loc;
 		if(length(bsk_validation)>0)
-		{
+		{	if round = 0
+			{
+				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
+				return;
+			}
 			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
 			{
 				string budget_display <- "Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions";
@@ -966,6 +974,7 @@ species action_done
 	float cost <- 0.0;
 	int application_round <- -1;
 	int round_delay <- 0 ; // nb rounds of delay
+	bool is_delayed ->{round_delay>0} ;
 	bool is_sent <- false;
 	bool is_applied <- false;
 	bool is_highlighted <- false;
@@ -981,16 +990,17 @@ species action_done
 			match ACTION_CREATE_DYKE  {
 				point end <- last(shape.points);
 				point origin <- first(shape.points);
-				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+( origin.x)+COMMAND_SEPARATOR+(origin.y) +COMMAND_SEPARATOR+(end.x)+COMMAND_SEPARATOR+(end.y)+COMMAND_SEPARATOR+location.x+COMMAND_SEPARATOR+location.y;
+				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+( origin.x)+COMMAND_SEPARATOR+(origin.y) +COMMAND_SEPARATOR+(end.x)+COMMAND_SEPARATOR+(end.y)+COMMAND_SEPARATOR+location.x+COMMAND_SEPARATOR+location.y;
 			}
 			
 			default {
-				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+chosen_element_id;
+				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+chosen_element_id;
 			}
 		}
 		
 		return result;	
 	}
+	
 	
 	action draw_action
 	{
@@ -1024,9 +1034,9 @@ species action_done
 				draw rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} ) color:#yellow;
 			}
 			string txt <- label;
-			if !self.is_applied {txt <- txt +" ("+string(application_round-round)+")"; }
-			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:#orange;
-			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:#orange;
+			if !self.is_applied {txt <- txt +" ("+string(application_round-round)+")"+(self.is_delayed?" (+"+string(round_delay)+")":""); }
+			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:(self.is_delayed?#red:#orange);
+			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:(self.is_delayed?#red:#orange);
 		}
 	}
 	
@@ -1055,12 +1065,32 @@ species Network_agent skills:[network]
 			int action_id <- int(data[1]);
 			switch(int(data[0]))
 				{
-					match ACTION_CLOSE_PENDING_REQUEST
+					match INFORM_ROUND
+					{
+						round<-int(data[2]);
+						ask (action_UA + action_def_cote) where (not(each.is_sent)) {application_round<-application_round+1;}
+					} 
+					
+				/*match ACTION_CLOSE_PENDING_REQUEST
 					{
 						int id <- int(data[2]);
 						do action_application_acknowledgment(id);
 						
+					}*/
+					
+					match NOTIFY_DELAY
+					{
+						int entityTypeCode<- int(data[2]);
+						int id <- int(data[3]);
+						int nb <- int(data[4]);
+						write ""+entityTypeCode+" "+id + " " +nb;
+						switch entityTypeCode {
+							match ENTITY_TYPE_CODE_DEF_COTE {do action_def_cote_delay_acknowledgment(id, nb);} 
+							match ENTITY_TYPE_CODE_UA {do action_UA_delay_acknowledgment(id, nb);} 
+							default {write "probleme: entityTypeCode pas reconnu : " + entityTypeCode;}
+						}
 					}
+					
 					match INFORM_TAX_GAIN
 					{	impot_recu <- int(data[2]);
 						round <-int(data[3])+1;
@@ -1180,11 +1210,29 @@ species Network_agent skills:[network]
 		}
 	}
 	
-	action action_application_acknowledgment(int m_action_id)
-	{write "ICI RIEN m_action_id " + m_action_id;
+/*action action_application_acknowledgment(int m_action_id)
+	{
 		ask action_done where(each.id  = m_action_id)
-		{ write self;
+		{ write "Ca passe ICI ?";
 			self.is_applied <- true;
+		}
+	}*/
+	
+	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
+	{ write m_action_id;
+		ask action_def_cote where(each.id  = m_action_id)
+		{ write "delay dyke";
+			round_delay <- round_delay + nb;
+			application_round <- application_round + nb;
+		}
+	}
+	
+	action action_UA_delay_acknowledgment(int m_action_id, int nb)
+	{ write m_action_id;
+		ask action_UA where(each.id  = m_action_id)
+		{ write "deay UA";
+			round_delay <- round_delay + nb;
+			application_round <- application_round + nb;
 		}
 	}
 	

@@ -62,6 +62,11 @@ global  {
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DYKE_UPDATE<-10;
+	int INFORM_ROUND <-34;
+	int NOTIFY_DELAY <-35;
+	int ENTITY_TYPE_CODE_DEF_COTE <-36;
+	int ENTITY_TYPE_CODE_UA <-37;
+	
 	
 	//action to acknwoledge client requests.
 //	int ACTION_DYKE_REPAIRED <- 15;
@@ -76,7 +81,7 @@ global  {
 	int INFORM_TAX_GAIN <-24;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
-	int ACTION_CLOSE_PENDING_REQUEST <- 30;
+	/*int ACTION_CLOSE_PENDING_REQUEST <- 30;*/
 
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11; // Not used. Should detele ?
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;// Not used. Should detele ?
@@ -95,6 +100,7 @@ global  {
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
 	matrix<string> all_action_delay <- matrix<string>(csv_file("../includes/delai_action.csv",";"));	
+	matrix<string> actions_def <- matrix<string>(csv_file("../includes/actions_def.csv",";"));	
 	string flood_results <- ""; // store the text to be displayed on flood results per commune 
 	
 	//buttons size
@@ -104,6 +110,10 @@ global  {
 	point previous_clicked_point <- nil;
 	
 	action_done current_action <- nil;
+	
+	// interface de suivi des actions
+	int font_size <- int(shape.height/30);
+	int font_interleave <- int(shape.width/60);
 	
 	//// tableau des données de budget des communes pour tracer le graph d'évaolution des budgets
 	container data_budget_C1 <- [0];
@@ -131,6 +141,7 @@ global  {
 	 */
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
+		file zone_protegee_shape <- file("../includes/zone_etude/zps_sic.shp");
 		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 		// OPTION 1 -> Zone d'étude
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
@@ -173,6 +184,9 @@ init
 			write " commune " + nom_raccourci + " "+id;
 		}
 		create road from: road_shape;
+		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
+		create game_master number:1;
+		
 		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
 		{
 			ua_name <- nameOfUAcode(ua_code);
@@ -211,6 +225,28 @@ int delayOfAction (int action_code){
 	}
 	return rslt;
 	}
+	
+string labelOfAction (int action_code){
+	string rslt <- "";
+	loop i from:0 to: 30 {
+		if ((int(actions_def at {1,i})) = action_code)
+		 {rslt <- actions_def at {3,i};}
+	}
+	return rslt;
+	}
+	 
+int entityTypeCodeOfAction (int action_code){
+	string rslt <- 0;
+	loop i from:0 to: 30 {
+		if ((int(actions_def at {1,i})) = action_code)
+		 {rslt <- actions_def at {5,i};}
+	}
+	switch rslt {
+		match "def_cote" {return ENTITY_TYPE_CODE_DEF_COTE;}
+		match "UA" {return ENTITY_TYPE_CODE_UA;}
+		default {return 0;}
+		}
+	}	 
 	 
 action nextRound{
 	//do sauvegarder_resultat;
@@ -225,6 +261,7 @@ action nextRound{
 			}}
 	else {stateSimPhase <- 'game'; write stateSimPhase;}
 	round <- round + 1;
+	ask commune {do informerNumTour;}
 	do save_budget_data;
 	do save_N_to_AU_data;
 	write "done!";
@@ -286,14 +323,14 @@ action launchFloodPhase
 		stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	}
 
-action execute_pending_request(action_done act)
+/*action execute_pending_request(action_done act)
 {
 		string data <- ""+ACTION_CLOSE_PENDING_REQUEST+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+act.id;
 		ask game_controller
 		{
 			do send to:act.doer contents:data;
 		}
-}
+}*/
  	
 action executeLisflood
 	{	timestamp <- machine_time ;
@@ -510,13 +547,15 @@ species action_done schedules:[]
 	int chosen_element_id;
 	string doer<-"";
 	//string command_group <- "";
-	int command <- -1;
+	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	string label <- "no name";
 	float cost <- 0.0;	
 	bool should_be_applied ->{round >= application_round} ;
 	int application_round <- -1;
 	int round_delay <- 0 ; // nb rounds of delay
+	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
+	
 	rgb define_color
 	{
 		switch(command)
@@ -531,18 +570,37 @@ species action_done schedules:[]
 		return #grey;
 	}
 	
-	
+	action assign_delay(int nb) 
+	{
+		round_delay <- round_delay + nb;
+		application_round <- application_round + nb; 
+		commune cm <-commune first_with (each.nom_raccourci = doer);
+		ask network_agent
+							{
+							string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+nb;
+							do send to:cm.network_name contents:msg;
+							}
+	}
 	
 	aspect base
 	{
-		draw  20#m around shape color:define_color() border:#red;
+		
+		
+			int indx <- action_done index_of self;
+			float y_loc <- (indx +1)  * font_size ;
+			float x_loc <- font_interleave + 12* (font_size+font_interleave);
+			float x_loc2 <- font_interleave + 20* (font_size+font_interleave);
+			shape <- rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} );
+			draw shape color:#white;
+			string txt <- doer+": "+ label;
+			txt <- txt +" ("+string(application_round-round)+")"; 
+			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
+			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
+		
 	}
 
 	
-	aspect base
-	{
-		draw shape color:define_color();
-	}
+
 	
 	def_cote create_dyke(action_done act)
 	{
@@ -561,6 +619,28 @@ species action_done schedules:[]
 	
 }
 
+species game_master // c'est le game master qui va mettre en place les leviers pour inciter les joueurs à changer de stratégie
+{
+	action  monitor_new_action (action_done new_action)
+	{
+		// Cette première mesure n'est pas un levier incitatif a proprpement aprlé mais plutot une contrainte réglementaire qui s'applique automatiqmeent 
+		if new_action.command in [ACTION_CREATE_DYKE , ACTION_RAISE_DYKE ]
+			{	
+				geometry a_shape ;
+				switch new_action.command {
+					match ACTION_RAISE_DYKE{ a_shape <- (def_cote first_with(each.id_ouvrage=new_action.chosen_element_id)).shape ;}
+					match ACTION_CREATE_DYKE{ a_shape <- new_action.shape ;}
+					}
+				if a_shape = nil {write "PROBLEME  switch new.action.command";
+					}
+					// si à moins de 400 m du zone protégée --> un an de retard
+			if !empty(protected_area overlapping (a_shape+400#m)) 
+				{
+					ask new_action {do assign_delay(1);}
+				}
+		}
+	}
+}  
 
 species game_controller skills:[network]
 {
@@ -589,6 +669,7 @@ species game_controller skills:[network]
 						ask(commune where(each.id= idCom))
 						{
 							not_updated <- true;
+							do informerNumTour;
 						}
 						write "connexion de "+ m_sender + " "+ idCom;
 					}
@@ -621,7 +702,6 @@ species game_controller skills:[network]
 	{
 		ask(action_done where(each.should_be_applied))
 		{
-			
 			string tmp <- self.doer;
 			int idCom <-world.commune_id(tmp);
 			if(log_user_action)
@@ -727,10 +807,10 @@ species game_controller skills:[network]
 			 		 }
 			 	}
 			}
-			ask world
+		/*ask world
 			{
 				do execute_pending_request(myself);	
-			}
+			}*/
 			do die;
 		}
 	}
@@ -744,45 +824,54 @@ species game_controller skills:[network]
 			return;
 		}
 		
-		action_done tmp_agent <- nil;
+		action_done new_action <- nil;
 		create action_done number:1 returns:tmp_agent_list;
-		tmp_agent <- first(tmp_agent_list);
-		ask(tmp_agent)
+		new_action <- first(tmp_agent_list);
+		ask(new_action)
 		{
 			self.command <- int(data[0]);
 			self.id <- int(data[1]);
+			self.application_round <- int(data[2]);
 			self.doer <- sender;
 			self.my_message <- data;
 			// A CORRIGER POur que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
 			//  DOnc il faut que le paieemnt se fasse au niveau de cette méthode. Et que l'execution soit en effet différée
-			if self.application_round !=- round  + (world.delayOfAction(self.command))
-			{write "Pas recupere du client, la valeur de l'application round ";
-				self.application_round <- round  + (world.delayOfAction(self.command));
-			}
-			if self.command = ACTION_MODIFY_LAND_COVER_N { // c'est possible que ce soit une action d'expropriation; auquel cas il fait appliquer un delai d'execution
+			if self.application_round != (round  + (world.delayOfAction(self.command)))
+			{	if self.command = ACTION_MODIFY_LAND_COVER_N { // c'est possible que ce soit une action d'expropriation; auquel cas il fait appliquer un delai d'execution
 					if (UA first_with(each.id=id)).ua_name in ["U","Us"] {///   ATTENTION, c'est possible qu il y ai une erreur car on interroge id alors qu'on devrait interroger chosen_element_id
-							application_round <- round + world.delayOfAction(ACTION_EXPROPRIATION); 
 							write "Procédure d'expropriation declenchée pour l'UA "+self.id;
+							if self.application_round != (round  + (world.delayOfAction(ACTION_EXPROPRIATION)))
+								{write "PROBELEME avec la valeur de l'application round récupéré du client >> self.application_round : "+ self.application_round + " ; round  + (world.delayOfAction(self.command)) : " +(round  + (world.delayOfAction(self.command)));
+								/*self.application_round <- round  + (world.delayOfAction(ACTION_EXPROPRIATION));*/
+							}
 					}
+					else{	write "PROBELEME avec la valeur de l'application round récupéré du client >> self.application_round : "+ self.application_round + " ; round  + (world.delayOfAction(self.command)) : " +(round  + (world.delayOfAction(self.command)));
+							self.application_round <- round  + (world.delayOfAction(self.command));
+					}
+				}
+				else{	write "PROBELEME avec la valeur de l'application round récupéré du client >> self.application_round : "+ self.application_round + " ; round  + (world.delayOfAction(self.command)) : " +(round  + (world.delayOfAction(self.command)));
+						self.application_round <- round  + (world.delayOfAction(self.command));
+				}
 			}
 			switch(self.command)
 			{
 				match ACTION_CREATE_DYKE
 				{
-					point ori <- {float(data[2]),float(data[3])};
-					point des <- {float(data[4]),float(data[5])};
-					point loc <- {float(data[6]),float(data[7])}; 
+					point ori <- {float(data[3]),float(data[4])};
+					point des <- {float(data[5]),float(data[6])};
+					point loc <- {float(data[7]),float(data[8])}; 
 					shape <- polyline([ori,des]);
 					location <- loc; 
 				}
 				match ACTION_MESSAGE {}
 				match REFRESH_ALL {}
 				default {
-					self.chosen_element_id <- int(data[2]);
+					self.chosen_element_id <- int(data[3]);
 				}
 				
 			}	
 		}
+		ask game_master {do monitor_new_action( new_action);}
 		
 	}
 	
@@ -1010,7 +1099,7 @@ Et le montant octroyé. ",["id_commune":: 4, "amount" :: 10000]);
 						budget <- budget + int(values at "amount");
 						ask network_agent
 							{
-							string msg <- ""+INFORM_GRANT_RECEIVED+COMMAND_SEPARATOR+cm.id+COMMAND_SEPARATOR+int(values at "amount");
+							string msg <- ""+INFORM_GRANT_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(values at "amount");
 							do send to:cm.network_name contents:msg;
 							}
 						not_updated <- true;
@@ -1036,7 +1125,7 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 				 		budget <- budget - int(values at "amount");
 				 		ask network_agent
 							{
-							string msg <- ""+INFORM_FINE_RECEIVED+COMMAND_SEPARATOR+cm.id+COMMAND_SEPARATOR+int(values at "amount");
+							string msg <- ""+INFORM_FINE_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(values at "amount");
 							do send to:cm.network_name contents:msg;
 							}
 				 		not_updated <- true;
@@ -1069,6 +1158,19 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 				is_selected <- not(is_selected);
 				my_icon <-  is_selected ? image_file("../images/icones/avec_quadrillage.png") :  image_file("../images/icones/sans_quadrillage.png");
 			}
+		}
+	}
+	
+	action button_click_action
+	{
+		point loc <- #user_location;
+		list<action_done> list_act <-  action_done overlapping loc; // agts of_species dyke;
+		
+		if(length(list_act)>0)
+		{
+			map values <- user_input("Assigner un retard à cette action.
+Nombre de tours de retard assigner ?",["nb":: 1]);
+			ask first(list_act) {do assign_delay(int(values at "nb"));}
 		}
 	}
     
@@ -1322,6 +1424,17 @@ species road
 	}
 }
 
+species protected_area {
+	string name;
+	aspect base 
+	{
+		/*if (buttons_map first_with(each.command =ACTION_DISPLAY_PROTECTED_AREA)).is_selected
+		{*/
+		 draw shape color: rgb (185, 255, 185,120) border:#black;
+		/*}*/
+	}
+}
+
 
 species UA
 {
@@ -1503,13 +1616,22 @@ species commune
 	int current_population (commune aC){
 		return sum(aC.UAs accumulate (each.population));
 	}
+	
+	action informerNumTour {
+		ask network_agent
+		{
+			string msg <- ""+INFORM_ROUND+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+round;
+			do send to:myself.network_name contents:msg;
+		}
+	}
+	
 	action recevoirImpots {
 		impot_recu <- current_population(self) * impot_unit;
 		budget <- budget + impot_recu;
 		write nom_raccourci + "->" + budget;
 		ask network_agent
 		{
-			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+myself.impot_recu+COMMAND_SEPARATOR+round;
+			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+myself.impot_recu+COMMAND_SEPARATOR+round;
 			do send to:myself.network_name contents:msg;
 		}
 		not_updated <- true;
@@ -1690,5 +1812,13 @@ experiment oleronV2 type: gui {
 					datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 			
 				}
 			}
+			
+		display "Liste Actions"
+		{
+			species action_done aspect: base;
+			//species highlight_action_button aspect:base;
+			event [mouse_down] action: button_click_action ;
+
+		}
 			}}
 		
