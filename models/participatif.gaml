@@ -249,7 +249,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_A;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/agriculture.png");
 		}
 
@@ -260,7 +260,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_AU;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/urban.png");
 		}
 		
@@ -271,7 +271,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_AUs;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/urban_adapte.png");
 		}
 		create buttons number: 1
@@ -281,7 +281,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_FROM_AU_TO_N;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/tree_nature.png");
 			
 		}
@@ -292,7 +292,7 @@ global
 			action_cost <- 0;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/Loupe.png");
 			
 		}
@@ -304,7 +304,7 @@ global
 			action_cost <- ACTION_COST_DYKE_CREATE;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/digue_validation.png");
 		}
 
@@ -315,7 +315,7 @@ global
 			action_cost <- ACTION_COST_DYKE_REPAIR;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/digue_entretien.png");
 			
 		}
@@ -327,7 +327,7 @@ global
 			action_cost <- ACTION_COST_DYKE_DESTROY;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_suppression.png");
 			
 		}
@@ -339,7 +339,7 @@ global
 			action_cost <- ACTION_COST_DYKE_RAISE;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_rehausse_plus.png");
 			
 		}
@@ -351,7 +351,7 @@ global
 			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
 			my_icon <- image_file("../images/icones/ganivelle.png");
 		}
 		
@@ -362,7 +362,7 @@ global
 			action_cost <- 0;
 			shape <- square(button_size);
 			display_name <- DYKE_DISPLAY;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/10, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/Loupe.png");
 			
 		}
@@ -1666,7 +1666,7 @@ experiment game type: gui
 					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
-					draw explored_buttons.name() at: target2 + { 0#px, 15#px } font: regular color: # white;
+					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					draw "Cout de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
 				}
@@ -1701,7 +1701,7 @@ experiment game type: gui
 					point target <- {explored_dyke.location.x  ,explored_dyke.location.y };
 					point target2 <- {explored_dyke.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dyke.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
-					draw "Information sur "+explored_dyke.type_ouvrage() at: target + { 0#px, 15#px } font: regular color: # white;
+					draw "Information sur "+explored_dyke.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: # white;
 					draw "Hauteur "+string(explored_dyke.height) at: target + { 30#px, 35#px } font: regular color: # white;
 					draw "Etat "+string(explored_dyke.status) at: target + { 30#px, 55#px} font: regular color: # white;
 				}
@@ -1717,7 +1717,7 @@ experiment game type: gui
 					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
-					draw explored_buttons.name() at: target2 + { 0#px, 15#px } font: regular color: # white;
+					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					draw "Cout de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
 				}
