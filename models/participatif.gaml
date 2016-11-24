@@ -131,17 +131,23 @@ global
 	UA explored_cell <- nil;
 	def_cote explored_dyke <- nil;
 	
+	buttons explored_buttons <- nil;
+	
 	geometry population_area <- nil;
 	
 	commune my_commune <- nil;
 
 	Network_agent game_manager <-nil;
 	point INFORMATION_BOX_SIZE <- {200,80};
+	geometry dyke_shape_space <- nil;
+	geometry unam_shape_space <- nil;
+	
+	
+	
 	
 	init
-	{  do implementation_tests;
-		
-		
+	{  
+		do implementation_tests;
 		my_commune <-  commune first_with(each.nom_raccourci = commune_name);
 		create Network_agent number:1 returns:net;
 		game_manager <- first(net);
@@ -186,6 +192,11 @@ global
 		//buffer(a_geometry,a_float)
 		//population_area <- smooth(union((cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")) collect (buffer(each.shape,100#m))),0.1);
 		population_area <- union(UA where(each.ua_name = "U" or each.ua_name = "AU"));
+		
+		list<geometry> tmp <- buttons collect(each.shape) accumulate my_commune.shape;
+		
+		dyke_shape_space <- envelope(tmp);
+		
 	//	population_area <- smooth(union(cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")),0.001); 
 	}	
 	user_command "Refresh all the map"
@@ -417,6 +428,7 @@ global
 	
 	action mouse_move_UnAM //(point loc, list selected_agents)
 	{
+		do mouse_move_buttons();
 		point loc <- #user_location;
 		list<buttons> current_active_button <- buttons where (each.is_selected);
 		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_LAND_USE)
@@ -439,6 +451,7 @@ global
 
 	action mouse_move_dyke//(point loc, list selected_agents)
 	{
+		do mouse_move_buttons();
 		point loc <- #user_location;
 		
 		list<buttons> current_active_button <- buttons where (each.is_selected);
@@ -460,6 +473,12 @@ global
 		}
 	}
 
+
+	action mouse_move_buttons
+	{
+		point loc <- #user_location;
+		explored_buttons <- buttons first_with (each overlaps loc);
+	}
 	action history_click //(point loc, list selected_agents)
 	{
 		point loc <- #user_location;
@@ -651,7 +670,6 @@ global
 
 	action change_plu 
 	{
-		
 		point loc <- #user_location;
 		if(basket_overflow())
 		{
@@ -1392,6 +1410,24 @@ species buttons
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
 	image_file my_icon;
+	
+	string my_help;
+	int cost;
+	
+	string help
+	{
+		return my_help;
+	}
+	string name
+	{
+		return label;
+	}
+	
+	string cost
+	{
+		return ""+cost;
+	}
+	
 	aspect UnAm
 	{
 		if( display_name = UNAM_DISPLAY)
@@ -1597,7 +1633,7 @@ experiment game type: gui
 	parameter "choix de la commune : " var:commune_name <- "dolus" among:["lechateau","dolus","sttrojan", "stpierre"];
 	output
 		{
-		display "Gestion du PLU" focus:envelope(my_commune.shape) camera_pos:my_commune
+		display "Gestion du PLU" focus:my_commune //camera_pos:my_commune
 		{
 			image 'background' file:"../images/fond/fnt.png"; 
 			species commune aspect: base;
@@ -1621,11 +1657,29 @@ experiment game type: gui
 					draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
 				}
 			}
+			
+			graphics "Button information" transparency:0.5
+			{
+				if (explored_buttons != nil)
+				{
+					point target <- {explored_buttons.location.x  ,explored_buttons.location.y };
+					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
+					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
+					draw explored_buttons.name() at: target2 + { 0#px, 15#px } font: regular color: # white;
+					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
+					draw "Cout de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
+				}
+				
+				
+			}
+			
+			
 			event mouse_down action: button_click_UnAM;
 			event mouse_move action: mouse_move_UnAM;
 		}
 		
-		display "Gestion des digues" focus:envelope(my_commune.shape) camera_pos:my_commune
+		display "Gestion des digues" focus:my_commune //camera_pos:my_commune
 		{
 			image 'background' file:"../images/fond/fnt.png"; 
 			species commune aspect:base;
@@ -1651,6 +1705,24 @@ experiment game type: gui
 					draw "Hauteur "+string(explored_dyke.height) at: target + { 30#px, 35#px } font: regular color: # white;
 					draw "Etat "+string(explored_dyke.status) at: target + { 30#px, 55#px} font: regular color: # white;
 				}
+				
+				
+			}
+			
+			graphics "Button information" transparency:0.5
+			{
+				if (explored_buttons != nil)
+				{
+					point target <- {explored_buttons.location.x  ,explored_buttons.location.y };
+					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
+					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
+					draw explored_buttons.name() at: target2 + { 0#px, 15#px } font: regular color: # white;
+					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
+					draw "Cout de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
+				}
+				
+				
 			}
 			event [mouse_down] action: button_click_Dyke;
 			event mouse_move action: mouse_move_dyke;			
