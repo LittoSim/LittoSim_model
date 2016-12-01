@@ -1413,7 +1413,13 @@ species action_UA parent:action_done
 		if !is_applied {
 			
 			draw shape  color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red) ;
-			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command {draw "A" color:#white;}
+			if(ACTION_MODIFY_LAND_COVER_AUi = command)
+			{
+				draw file("../images/icones/crowd.png") size:self.shape.width;
+			}
+
+		
+			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command {draw file("../images/icones/wave.png") size:self.shape.width;}
 		}
 		
 	}
@@ -1593,8 +1599,17 @@ species UA
 	aspect base
 	{
 		draw shape color: my_color;
-		if isAdapte {draw "A" color:#black;}
-		if isEnDensification {draw "D" color:#black;}
+		if(isAdapte)
+			{
+				draw file("../images/icones/wave.png") size:self.shape.width;
+			}
+		if(isEnDensification)
+		{
+				draw file("../images/icones/crowd.png") size:self.shape.width;
+		}
+		
+//		if isAdapte {draw "A" color:#black;}
+//		if isEnDensification {draw "D" color:#black;}
 	}
 
 }
