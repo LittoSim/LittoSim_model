@@ -52,6 +52,7 @@ global
 	int ACTION_MODIFY_LAND_COVER_U <- 3;
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
 	int ACTION_MODIFY_LAND_COVER_AUs <-31;	
+	int ACTION_MODIFY_LAND_COVER_AUi <-311;
 	int ACTION_MODIFY_LAND_COVER_Us <-32;
 	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
 
@@ -281,8 +282,22 @@ global
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
-			my_icon <- image_file("../images/icones/urban_adapte.png");
+			my_icon <- image_file("../images/icones/urban_adapte2.png");
 		}
+		
+				create buttons number: 1
+		{
+			command <- ACTION_MODIFY_LAND_COVER_AUi;
+			label <- "Changer en zone d'urbanisation intensifiée";
+			action_cost <- ACTION_COST_LAND_COVER_TO_AUs;
+			my_help <- unamMessage;
+			shape <- square(button_size);
+			display_name <- UNAM_DISPLAY;
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 4*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
+			my_icon <- image_file("../images/icones/urban_intensifie.png");
+		}
+		
+		
 		create buttons number: 1
 		{
 			command <- ACTION_MODIFY_LAND_COVER_N;
