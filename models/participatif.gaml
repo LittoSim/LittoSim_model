@@ -533,6 +533,8 @@ global
 			remove act from:my_basket;
 		}
 		list<basket_validation> bsk_validation <-  basket_validation  overlapping loc;
+		
+		write "basket "+ bsk_validation;
 		if(length(bsk_validation)>0)
 		{	if round = 0
 			{
@@ -1320,9 +1322,13 @@ species history
 
 species basket_validation
 {
-	point location <- {0,0} update:{font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
+	
+	reflex update_loc
+	{
+		location <-  {font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
+	}
 	init {
-		shape <- square(button_size);
+		shape <- square(world.shape.width/8);
 	}
 	
 	action send_basket
@@ -1345,6 +1351,7 @@ species basket_validation
 		}
 		else
 		{
+			draw shape color:#red;
 			draw image_file("../images/icones/validation.png") size:world.shape.width/8 ;
 		}
 		
