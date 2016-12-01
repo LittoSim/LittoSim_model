@@ -21,9 +21,9 @@ global  {
 	string COMMAND_SEPARATOR <- ":";
 	string MANAGER_NAME <- "model_manager";
 	string GROUP_NAME <- "Oleron";  
-	string BUILT_DYKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
-	float  STANDARD_DYKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
-	string BUILT_DYKE_STATUS <- "bon"; // status de nouvelle digue
+	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
+	float  STANDARD_DIKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
+	string BUILT_DIKE_STATUS <- "bon"; // status de nouvelle digue
 	string LOG_FILE_NAME <- "log_"+machine_time+"csv";
 	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
@@ -34,20 +34,20 @@ global  {
 	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,1});
 	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,2});
 	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,7});
-	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,3});
-	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,4});
-	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,5});
-	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,6});
+	int ACTION_COST_DIKE_CREATE <- int(all_action_cost at {2,3});
+	int ACTION_COST_DIKE_REPAIR <- int(all_action_cost at {2,4});
+	int ACTION_COST_DIKE_DESTROY <- int(all_action_cost at {2,5});
+	int ACTION_COST_DIKE_RAISE <- int(all_action_cost at {2,6});
 	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
 	int ACTION_COST_LAND_COVER_TO_AUs <- int(all_action_cost at {2,9});
 	int ACTION_COST_LAND_COVER_TO_Us <- int(all_action_cost at {2,10});
 	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY <- int(all_action_cost at {2,11});
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY <- int(all_action_cost at {2,12});
 	
-	int ACTION_REPAIR_DYKE <- 5;
-	int ACTION_CREATE_DYKE <- 6;
-	int ACTION_DESTROY_DYKE <- 7;
-	int ACTION_RAISE_DYKE <- 8;
+	int ACTION_REPAIR_DIKE <- 5;
+	int ACTION_CREATE_DIKE <- 6;
+	int ACTION_DESTROY_DIKE <- 7;
+	int ACTION_RAISE_DIKE <- 8;
 	int ACTION_INSTALL_GANIVELLE <- 29;
 
 	int ACTION_MODIFY_LAND_COVER_AU <- 1;
@@ -57,11 +57,11 @@ global  {
 	int ACTION_MODIFY_LAND_COVER_AUs <-31;	
 	int ACTION_MODIFY_LAND_COVER_Us <-32;
 	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DYKE,ACTION_CREATE_DYKE,ACTION_DESTROY_DYKE,ACTION_RAISE_DYKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_N];
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_N];
 	
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
-	int ACTION_DYKE_UPDATE<-10;
+	int ACTION_DIKE_UPDATE<-10;
 	int INFORM_ROUND <-34;
 	int NOTIFY_DELAY <-35;
 	int ENTITY_TYPE_CODE_DEF_COTE <-36;
@@ -69,13 +69,13 @@ global  {
 	
 	
 	//action to acknwoledge client requests.
-//	int ACTION_DYKE_REPAIRED <- 15;
-	int ACTION_DYKE_CREATED <- 16;
-	int ACTION_DYKE_DROPPED <- 17;
-//	int ACTION_DYKE_RAISED <- 18;
+//	int ACTION_DIKE_REPAIRED <- 15;
+	int ACTION_DIKE_CREATED <- 16;
+	int ACTION_DIKE_DROPPED <- 17;
+//	int ACTION_DIKE_RAISED <- 18;
 	int UPDATE_BUDGET <- 19;
 	int REFRESH_ALL <- 20;
-	int ACTION_DYKE_LIST <- 21;
+	int ACTION_DIKE_LIST <- 21;
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
 	int INFORM_TAX_GAIN <-24;
@@ -159,8 +159,8 @@ global  {
 		file unAm_shape <- file("../includes/zone_etude/zones241115.shp");	
 
 	/* Definition de l'enveloppe SIG de travail */
-		geometry shape <- envelope(emprise_shape);
-	
+	geometry shape <- envelope(emprise_shape);
+	list<rgb> listC <- brewer_colors("YlOrRd",8);
 	
 	int round <- 0;
 	list<UA> agents_to_inspect update: 10 among UA;
@@ -168,7 +168,10 @@ global  {
 	
 
 init
-	{
+	{loop i from: 0 to: (length(listC)-1)  {
+		listC[i] <- blend (listC[i], #red , 0.9);
+	}
+		
 		do implementation_tests;
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		/* initialisation du bouton */
@@ -191,16 +194,23 @@ init
 		{
 			ua_name <- nameOfUAcode(ua_code);
 			my_color <- cell_color();
+			cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
+			if ua_name = "U" and population = 0 {
+					population <- 10;
+					classe_densite <- maj_densite();	}
+			my_color <- cell_color(); 
+			
 		}
 		do load_rugosity;
 		ask UA {cells <- cell overlapping self;}
-		ask commune
+		ask commune where (each.id > 0)
 		{
 			UAs <- UA overlapping self;
 			cells <- cell overlapping self;
 			budget <- current_population(self) * impot_unit * 1.2; ///A l’initialisation la commune commence avec un budget équivalent aux impôts annuels perçus + 20%
+			write nom_raccourci +" budget initial : " + budget;
 		}
-		ask def_cote {do init_dyke;}
+		ask def_cote {do init_dike;}
 	}
 	
  int getMessageID
@@ -560,9 +570,9 @@ species action_done schedules:[]
 	{
 		switch(command)
 		{
-			 match ACTION_CREATE_DYKE { return #blue;}
-			 match ACTION_REPAIR_DYKE {return #green;}
-			 match ACTION_DESTROY_DYKE {return #brown;}
+			 match ACTION_CREATE_DIKE { return #blue;}
+			 match ACTION_REPAIR_DIKE {return #green;}
+			 match ACTION_DESTROY_DIKE {return #brown;}
 			 match ACTION_MODIFY_LAND_COVER_A { return #brown;}
 			 match ACTION_MODIFY_LAND_COVER_AU {return #orange;}
 			 match ACTION_MODIFY_LAND_COVER_N {return #green;}
@@ -602,16 +612,16 @@ species action_done schedules:[]
 	
 
 	
-	def_cote create_dyke(action_done act)
+	def_cote create_dike(action_done act)
 	{
 		int id_ov <- max(def_cote collect(each.id_ouvrage))+1;
 		create def_cote number:1 returns:ovgs
 		{
 			id_ouvrage <- id_ov;
 			shape <- act.shape;
-			type <- BUILT_DYKE_TYPE ;
-			status <- BUILT_DYKE_STATUS;
-			height <- STANDARD_DYKE_SIZE;	
+			type <- BUILT_DIKE_TYPE ;
+			status <- BUILT_DIKE_STATUS;
+			height <- STANDARD_DIKE_SIZE;	
 			cells <- cell overlapping self;
 		}
 		return first(ovgs);
@@ -624,12 +634,12 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 	action  monitor_new_action (action_done new_action)
 	{
 		// Cette première mesure n'est pas un levier incitatif a proprpement aprlé mais plutot une contrainte réglementaire qui s'applique automatiqmeent 
-		if new_action.command in [ACTION_CREATE_DYKE , ACTION_RAISE_DYKE ]
+		if new_action.command in [ACTION_CREATE_DIKE , ACTION_RAISE_DIKE ]
 			{	
 				geometry a_shape ;
 				switch new_action.command {
-					match ACTION_RAISE_DYKE{ a_shape <- (def_cote first_with(each.id_ouvrage=new_action.chosen_element_id)).shape ;}
-					match ACTION_CREATE_DYKE{ a_shape <- new_action.shape ;}
+					match ACTION_RAISE_DIKE{ a_shape <- (def_cote first_with(each.id_ouvrage=new_action.chosen_element_id)).shape ;}
+					match ACTION_CREATE_DIKE{ a_shape <- new_action.shape ;}
 					}
 				if a_shape = nil {write "PROBLEME  switch new.action.command";
 					}
@@ -724,40 +734,40 @@ species game_controller skills:[network]
 					ask cm {not_updated <- true;}
 					ask game_controller
 					{
-						do send_dyke_list(idCom);
+						do send_dike_list(idCom);
 					}
 				}
 				
-				match ACTION_CREATE_DYKE
+				match ACTION_CREATE_DIKE
 				{	
-					def_cote ovg <-  create_dyke(self);
+					def_cote ovg <-  create_dike(self);
 					ask network_agent
 					{
-						do send_create_dyke_message(ovg);
+						do send_create_dike_message(ovg);
 					}
-					ask(ovg) {do new_dyke_by_commune (idCom) ;
+					ask(ovg) {do new_dike_by_commune (idCom) ;
 					}
 				}
-				match ACTION_REPAIR_DYKE {
+				match ACTION_REPAIR_DIKE {
 					ask(def_cote first_with(each.id_ouvrage=chosen_element_id))
 					{
 						do repair_by_commune(idCom);
 						not_updated <- true;
 					}		
 				}
-			 	match ACTION_DESTROY_DYKE 
+			 	match ACTION_DESTROY_DIKE 
 			 	 {
 			 		ask(def_cote first_with(each.id_ouvrage=chosen_element_id))
 					{
 						ask network_agent
 						{
-							do send_destroy_dyke_message(myself);
+							do send_destroy_dike_message(myself);
 						}
 						do destroy_by_commune (idCom) ;
 						not_updated <- true;
 					}		
 				}
-			 	match ACTION_RAISE_DYKE {
+			 	match ACTION_RAISE_DIKE {
 			 		ask(def_cote first_with(each.id_ouvrage=chosen_element_id))
 					{
 						do increase_height_by_commune (idCom) ;
@@ -855,7 +865,7 @@ species game_controller skills:[network]
 			}
 			switch(self.command)
 			{
-				match ACTION_CREATE_DYKE
+				match ACTION_CREATE_DIKE
 				{
 					point ori <- {float(data[3]),float(data[4])};
 					point des <- {float(data[5]),float(data[6])};
@@ -880,7 +890,7 @@ species game_controller skills:[network]
 	reflex send_space_update
 	{
 		do update_UA;
-		do update_dyke;
+		do update_dike;
 		do update_commune;
 	}
 	
@@ -908,9 +918,9 @@ species game_controller skills:[network]
 		}
 	}
 	
-	action send_destroy_dyke_message(def_cote ovg)
+	action send_destroy_dike_message(def_cote ovg)
 	{
-		string msg <- ""+ACTION_DYKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage;
+		string msg <- ""+ACTION_DIKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage;
 		
 		list<commune> cms <- commune overlapping ovg;
 		loop cm over:cms
@@ -921,13 +931,13 @@ species game_controller skills:[network]
 	
 	}
 	
-	action send_create_dyke_message(def_cote ovg)
+	action send_create_dike_message(def_cote ovg)
 	{
 		point p1 <- first(ovg.shape.points);
 		point p2 <- last(ovg.shape.points);
 		
 		
-		string msg <- ""+ACTION_DYKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status+ COMMAND_SEPARATOR+min_dyke_elevation(ovg);
+		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status+ COMMAND_SEPARATOR+min_dike_elevation(ovg);
 		list<commune> cms <- commune overlapping ovg;
 			loop cm over:cms
 			{
@@ -937,11 +947,11 @@ species game_controller skills:[network]
 	//	do sendMessage  dest:"all" content:msg;	
 	}
 	
-	float min_dyke_elevation(def_cote ovg)
+	float min_dike_elevation(def_cote ovg)
 	{
 		return min(cell overlapping ovg collect(each.soil_height));
 	}
-	action send_dyke_list(int m_commune)
+	action send_dike_list(int m_commune)
 	{
 		string tmp<-"";
 		commune m <- commune first_with(each.id=m_commune);
@@ -950,11 +960,11 @@ species game_controller skills:[network]
 			tmp <- tmp +  COMMAND_SEPARATOR+id_ouvrage;
 		}
 		
-		string msg <- ""+ACTION_DYKE_LIST+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR +m.nom_raccourci+tmp;
+		string msg <- ""+ACTION_DIKE_LIST+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR +m.nom_raccourci+tmp;
 		do send to:m.network_name contents:msg;	
 	}
 	
-	action update_dyke
+	action update_dike
 	{
 		list<string> update_messages <-[]; 
 		list<def_cote> update_ouvrage <- [];
@@ -962,7 +972,7 @@ species game_controller skills:[network]
 		{
 			point p1 <- first(self.shape.points);
 			point p2 <- last(self.shape.points);
-			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle+COMMAND_SEPARATOR+myself.min_dyke_elevation(self);
+			string msg <- ""+ACTION_DIKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle+COMMAND_SEPARATOR+myself.min_dike_elevation(self);
 			update_messages <- update_messages + msg;
 			update_ouvrage <- update_ouvrage + self;
 			not_updated <- false;
@@ -1169,7 +1179,7 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 	action button_click_action
 	{
 		point loc <- #user_location;
-		list<action_done> list_act <-  action_done overlapping loc; // agts of_species dyke;
+		list<action_done> list_act <-  action_done overlapping loc; // agts of_species dike;
 		
 		if(length(list_act)>0)
 		{
@@ -1268,7 +1278,7 @@ species def_cote
 	bool ganivelle <- false;
 	float height_avant_ganivelle;
 	
-	action init_dyke {
+	action init_dike {
 		if status = "" {status <- "bon";} 
 		if type ='' {type <- "inconnu";}
 		if status = '' {status <- "bon";} 
@@ -1375,12 +1385,12 @@ species def_cote
 	}
 	
 	//La commune construit une digue
-	action new_dyke_by_commune (int a_commune_id) {
+	action new_dike_by_commune (int a_commune_id) {
 		///  Une nouvelle digue réhausse tout le terrain à la hauteur de la cell la plus haute
 		float h <- cells max_of (each.soil_height);
 		alt <- h + height;
 		ask cells  {
-			soil_height <- h + myself.height; ///  Une nouvelle digue fait 1,5 mètre -> STANDARD_DYKE_SIZE
+			soil_height <- h + myself.height; ///  Une nouvelle digue fait 1,5 mètre -> STANDARD_DIKE_SIZE
 			soil_height_before_broken <- soil_height ;
 		}
 		ask commune first_with(each.id = a_commune_id) {do payerConstructionOuvrage (myself);}
@@ -1401,7 +1411,7 @@ species def_cote
 				match  "bon" {color <- # green;}
 				match "moyen" {color <-  rgb (255,102,0);} 
 				match "mauvais" {color <- # red;} 
-				default { /*"casse" {color <- # yellow;}*/write "probleee status dyke";}
+				default { /*"casse" {color <- # yellow;}*/write "probleee status dike";}
 				}
 			draw 20#m around shape color: color size:300#m;
 				}
@@ -1451,14 +1461,45 @@ species UA
 	int AU_to_U_counter <- 0;
 	list<cell> cells ;
 	int population ;
+	string classe_densite <- maj_densite() update: maj_densite();
 	int cout_expro ;
 	bool isUrbanType -> {ua_name in ["U","Us","AU","AUs"] };
 	bool isAdapte -> {ua_name in ["Us","AUs"]};
+	bool isEnDensification <- false;
 	bool not_updated <- false;
 	
-	init {cout_expro <- (round (cout_expro /2000 /50 ))*100;} // on divise par 2 la valeur du cout expro car elle semble surévaluée 
+//	/*init {	cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
+//			if ua_name = "U" and population = 0 {population <- 10;}
+//		}*/
 	
-	
+	string nameOfUAcode (int a_ua_code) 
+		{ string val <- "" ;
+			switch (a_ua_code)
+			{
+				match 1 {val <- "N";}
+				match 2 {val <- "U";}
+				match 4 {val <- "AU";}
+				match 5 {val <- "A";}
+				match 6 {val <- "Us";}
+				match 7 {val <- "AUs";}
+					}
+		return val;}
+		
+	int codeOfUAname (string a_ua_name) 
+		{ int val <- 0 ;
+			switch (a_ua_name)
+			{
+				match "N" {val <- 1;}
+				match "U" {val <- 2;}
+				match "AU" {val <- 4;}
+				match "A" {val <- 5;}
+				match "Us" {val <- 6;}
+				match "AUs" {val <- 7;}
+					}
+		return val;}
+	string maj_densite {
+		return (population =0?"vide":(population <=40?"peu dense":(population <=80?"densité intermédiaire":"dense")));
+	}		
 	action modify_UA (int a_id_commune, string new_ua_name)
 	{	if  (ua_name in ["U","Us"])and new_ua_name = "N" /*expropriation */
 				{ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}}
@@ -1495,33 +1536,6 @@ species UA
 		}
 		
 	
-		
-	string nameOfUAcode (int a_ua_code) 
-		{ string val <- "" ;
-			switch (a_ua_code)
-			{
-				match 1 {val <- "N";}
-				match 2 {val <- "U";}
-				match 4 {val <- "AU";}
-				match 5 {val <- "A";}
-				match 6 {val <- "Us";}
-				match 7 {val <- "AUs";}
-					}
-		return val;}
-		
-	int codeOfUAname (string a_ua_name) 
-		{ int val <- 0 ;
-			switch (a_ua_name)
-			{
-				match "N" {val <- 1;}
-				match "U" {val <- 2;}
-				match "AU" {val <- 4;}
-				match "A" {val <- 5;}
-				match "Us" {val <- 6;}
-				match "AUs" {val <- 7;}
-					}
-		return val;}
-	
 	float rugosityValueOfUA_name (string a_ua_name) 
 		{float val <- 0.0;
 		 switch (a_ua_name)
@@ -1556,7 +1570,14 @@ Mer (code CLC 523) : 						0.02				*/
 		switch (ua_name)
 		{
 			match "N" {res <- # palegreen;} // naturel
-			match_one ["U","Us"] {res <- rgb (110, 100,100);} //  urbanisé
+			match_one ["U","Us"] { //  urbanisé
+				switch classe_densite {
+					match "vide" {res <- # red; } // Problème
+					match "peu dense" {res <-  rgb( 150, 150, 150 ); }
+					match "densité intermédiaire" {res <- rgb( 120, 120, 120 ) ;}
+					match "dense" {res <- rgb( 80,80,80 ) ;}
+				}
+			} 
 			match_one ["AU","AUs"] {res <- # yellow;} // à urbaniser
 			match "A" {res <- rgb (225, 165,0);} // agricole
 		}
@@ -1567,13 +1588,37 @@ Mer (code CLC 523) : 						0.02				*/
 	{
 		draw shape color: my_color;
 		if isAdapte {draw "A" color:#black;}
-		
+		if isEnDensification {draw "D" color:#black;}
 	}
 	aspect population 
 	{
 		rgb acolor <- nil;
-		if population = 0 {acolor <- # white; }
-		 else {acolor <- rgb(255-(population),0,0);}
+		switch population {
+			 match 0 {acolor <- # white; }
+	/*match_between [1 , 20] {acolor <- listC[0]; }
+			 match_between [20 , 40] {acolor <- listC[1]; }*/
+			 match_between [1 , 20] {acolor <- listC[2]; }
+			 match_between [20 , 40] {acolor <- listC[3]; }
+			 match_between [40 , 60] {acolor <- listC[4]; }
+			 match_between [60 , 80] {acolor <- listC[5]; }
+			 match_between [80 , 100] {acolor <- listC[6]; }
+			 match_between [100 , 4000] {acolor <- listC[7]; }
+			 default {acolor <- #yellow; }
+		}
+		draw shape color: acolor;
+		
+	}
+
+	aspect densite_pop 
+	{
+		rgb acolor <- nil;
+		switch classe_densite {
+			match "vide" {acolor <- # white; }
+			match "peu dense" {acolor <-  rgb( 253, 189, 131 ); }
+			match "densité intermédiaire" {acolor <- rgb( 238, 101, 16 ) ;}
+			match "dense" {acolor <- rgb( 127, 39, 4 ) ;}
+			default "peu dense" {acolor <- # yellow; }
+			}
 		draw shape color: acolor;
 		
 	}
@@ -1669,25 +1714,25 @@ species commune
 			
 	action payerReparationOuvrage (def_cote dk)
 			{
-				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_REPAIR);
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DIKE_REPAIR);
 				not_updated <- true;
 			}
 			
 	action payerRehaussementOuvrage (def_cote dk)
 			{
-				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_RAISE);
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DIKE_RAISE);
 				not_updated <- true;
 			}
 
 	action payerDestructionOuvrage (def_cote dk)
 			{
-				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_DESTROY);
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DIKE_DESTROY);
 				not_updated <- true;
 			}	
 					
 	action payerConstructionOuvrage (def_cote dk)
 			{
-				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DYKE_CREATE);
+				budget <- budget - (int(dk.shape.perimeter) * ACTION_COST_DIKE_CREATE);
 				not_updated <- true;
 			}	
 			
@@ -1762,9 +1807,16 @@ experiment oleronV2 type: gui {
 		}		
 		display Population
 		{	
-			species commune aspect: base;
 			species UA aspect: population;
-			species road aspect:base;			
+			species road aspect:base;
+			species commune aspect: outline;			
+		}
+		
+		display "Densité de population"
+		{	
+			species UA aspect: densite_pop;
+			species road aspect:base;
+			species commune aspect: outline;			
 		}
 		display "Controle MdJ"
 		{    // Les boutons et le clique

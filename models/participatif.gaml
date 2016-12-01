@@ -31,20 +31,20 @@ global
 	int ACTION_COST_LAND_COVER_TO_AU <- int(all_action_cost at {2,1});
 	int ACTION_COST_LAND_COVER_FROM_AU_TO_N <- int(all_action_cost at {2,2});
 	int ACTION_COST_LAND_COVER_FROM_A_TO_N <- int(all_action_cost at {2,7});
-	int ACTION_COST_DYKE_CREATE <- int(all_action_cost at {2,3});
-	int ACTION_COST_DYKE_REPAIR <- int(all_action_cost at {2,4});
-	int ACTION_COST_DYKE_DESTROY <- int(all_action_cost at {2,5});
-	int ACTION_COST_DYKE_RAISE <- int(all_action_cost at {2,6});
+	int ACTION_COST_DIKE_CREATE <- int(all_action_cost at {2,3});
+	int ACTION_COST_DIKE_REPAIR <- int(all_action_cost at {2,4});
+	int ACTION_COST_DIKE_DESTROY <- int(all_action_cost at {2,5});
+	int ACTION_COST_DIKE_RAISE <- int(all_action_cost at {2,6});
 	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
 	int ACTION_COST_LAND_COVER_TO_AUs <- int(all_action_cost at {2,9});
 	int ACTION_COST_LAND_COVER_TO_Us <- int(all_action_cost at {2,10});
 	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY <- int(all_action_cost at {2,11});
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY <- int(all_action_cost at {2,12});
 
-	int ACTION_REPAIR_DYKE <- 5;
-	int ACTION_CREATE_DYKE <- 6;
-	int ACTION_DESTROY_DYKE <- 7;
-	int ACTION_RAISE_DYKE <- 8;
+	int ACTION_REPAIR_DIKE <- 5;
+	int ACTION_CREATE_DIKE <- 6;
+	int ACTION_DESTROY_DIKE <- 7;
+	int ACTION_RAISE_DIKE <- 8;
 	int ACTION_INSTALL_GANIVELLE <- 29;
 	
 	int ACTION_MODIFY_LAND_COVER_AU <- 1;
@@ -58,22 +58,22 @@ global
 
 	
 	int ACTION_LAND_COVER_UPDATE<-9;
-	int ACTION_DYKE_UPDATE<-10;
+	int ACTION_DIKE_UPDATE<-10;
 	int INFORM_ROUND <-34;
 	int NOTIFY_DELAY <-35;
 	int ENTITY_TYPE_CODE_DEF_COTE <-36;
 	int ENTITY_TYPE_CODE_UA <-37;
 	
 	//action to acknwoledge client requests.
-	int ACTION_DYKE_CREATED <- 16;
-	int ACTION_DYKE_DROPPED <- 17;
+	int ACTION_DIKE_CREATED <- 16;
+	int ACTION_DIKE_DROPPED <- 17;
 	int UPDATE_BUDGET <- 19;
 	int REFRESH_ALL <- 20;
-	int ACTION_DYKE_LIST <- 21;
+	int ACTION_DIKE_LIST <- 21;
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
 	int INFORM_TAX_GAIN <-24;
-	int ACTION_INSPECT_DYKE <- 25;
+	int ACTION_INSPECT_DIKE <- 25;
 	int ACTION_INSPECT_LAND_USE <-26;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
@@ -97,7 +97,7 @@ global
 	int font_interleave <- int(shape.width/60);
 	
 	string UNAM_DISPLAY <- "UnAm";
-	string DYKE_DISPLAY <- "sloap";
+	string DIKE_DISPLAY <- "sloap";
 	
 	
 	int MAX_HISTORY_VIEW_SIZE <- 10;
@@ -130,7 +130,7 @@ global
 	list<float> history_location <- [];
 	
 	UA explored_cell <- nil;
-	def_cote explored_dyke <- nil;
+	def_cote explored_dike <- nil;
 	
 	buttons explored_buttons <- nil;
 	
@@ -140,7 +140,7 @@ global
 
 	Network_agent game_manager <-nil;
 	point INFORMATION_BOX_SIZE <- {200,80};
-	geometry dyke_shape_space <- nil;
+	geometry dike_shape_space <- nil;
 	geometry unam_shape_space <- nil;
 	
 	
@@ -158,9 +158,9 @@ global
 		do init_basket;
 		do init_buttons;
 		do init_pending_request_button;
-		create def_cote from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), elevation::float(read("alt")), height::float(get("hauteur")) , commune::string(read("Commune"))]
+		create def_cote from:defense_shape with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), elevation::float(read("alt")), height::float(get("hauteur")) , commune::string(read("Commune"))]
 		{
-			name <- "défence numéro "+ self.dyke_id;
+			name <- "défence numéro "+ self.dike_id;
 		}
 		create road from:road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
@@ -174,21 +174,17 @@ global
 			} 
 		ask def_cote where(each.commune != commune_name_shpfile)
 			{ do die; }
-		ask def_cote {do init_dyke;}
-		create UA from: communes_UnAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), cout_expro:: int(get("coutexpr"))]
+		ask def_cote {do init_dike;}
+		create UA from: communes_UnAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
 		{
-			switch (ua_code)
-			{ //// Correspondance entre land_cover_code et land_cover  (dans le modèle serveur, ca s'appelle a_ua_code et a_ua_name)
-				match 1 {ua_name <- "N";}
-				match 2 {ua_name <- "U";}
-				match 4 {ua_name <- "AU";}
-				match 5 {ua_name <- "A";}
-			}
-			my_color <- cell_color();
+			ua_name <- nameOfUAcode(ua_code);
+			cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
+			if ua_name = "U" and population = 0 {
+					population <- 10;
+					classe_densite <- maj_densite();	}
+			my_color <- cell_color(); 
+			
 		}
-		
-	
-		
 		ask UA where(!(each overlaps my_commune))
 		{
 			do die;
@@ -199,7 +195,7 @@ global
 		
 		list<geometry> tmp <- buttons collect(each.shape) accumulate my_commune.shape;
 		
-		dyke_shape_space <- envelope(tmp);
+		dike_shape_space <- envelope(tmp);
 		
 	//	population_area <- smooth(union(cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")),0.001); 
 	}	
@@ -325,22 +321,22 @@ global
 		
 		create buttons number: 1
 		{
-			command <- ACTION_CREATE_DYKE;
+			command <- ACTION_CREATE_DIKE;
 			label <- "Construire une digue";
-			action_cost <- ACTION_COST_DYKE_CREATE;
+			action_cost <- ACTION_COST_DIKE_CREATE;
 			shape <- square(button_size);
-			display_name <- DYKE_DISPLAY;
+			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/digue_validation.png");
 		}
 
 		create buttons number: 1
 		{
-			command <- ACTION_REPAIR_DYKE;
+			command <- ACTION_REPAIR_DIKE;
 			label <- "Réparer une digue";
-			action_cost <- ACTION_COST_DYKE_REPAIR;
+			action_cost <- ACTION_COST_DIKE_REPAIR;
 			shape <- square(button_size);
-			display_name <- DYKE_DISPLAY;
+			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/digue_entretien.png");
 			
@@ -348,11 +344,11 @@ global
 
 		create buttons number: 1
 		{
-			command <- ACTION_DESTROY_DYKE;
+			command <- ACTION_DESTROY_DIKE;
 			label <- "Démenteler une digue";
-			action_cost <- ACTION_COST_DYKE_DESTROY;
+			action_cost <- ACTION_COST_DIKE_DESTROY;
 			shape <- square(button_size);
-			display_name <- DYKE_DISPLAY;
+			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_suppression.png");
 			
@@ -360,11 +356,11 @@ global
 		
 		create buttons number: 1
 		{
-			command <- ACTION_RAISE_DYKE;
+			command <- ACTION_RAISE_DIKE;
 			label <- "Réhausser une digue";
-			action_cost <- ACTION_COST_DYKE_RAISE;
+			action_cost <- ACTION_COST_DIKE_RAISE;
 			shape <- square(button_size);
-			display_name <- DYKE_DISPLAY;
+			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_rehausse_plus.png");
 			
@@ -376,18 +372,18 @@ global
 			label <- "Installer des ganivelles";
 			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
 			shape <- square(button_size);
-			display_name <- DYKE_DISPLAY;
+			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
 			my_icon <- image_file("../images/icones/ganivelle.png");
 		}
 		
 		create buttons number: 1
 		{
-			command <- ACTION_INSPECT_DYKE;
+			command <- ACTION_INSPECT_DIKE;
 			label <- "Inspecter un ouvrage de défense";
 			action_cost <- 0;
 			shape <- square(button_size);
-			display_name <- DYKE_DISPLAY;
+			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/Loupe.png");
 			
@@ -475,27 +471,27 @@ global
 		}
 	}
 
-	action mouse_move_dyke//(point loc, list selected_agents)
+	action mouse_move_dike//(point loc, list selected_agents)
 	{
 		do mouse_move_buttons();
 		point loc <- #user_location;
 		
 		list<buttons> current_active_button <- buttons where (each.is_selected);
-		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_DYKE)
+		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_DIKE)
 		{
-			list<def_cote> selected_dyke <- def_cote overlapping (loc buffer(100#m)); //selected_agents of_species dyke ; // of_species cell_UnAm;
-			if (length(selected_dyke)> 0) 
+			list<def_cote> selected_dike <- def_cote overlapping (loc buffer(100#m)); //selected_agents of_species dike ; // of_species cell_UnAm;
+			if (length(selected_dike)> 0) 
 			{
-				explored_dyke <- first(selected_dyke);
+				explored_dike <- first(selected_dike);
 			}
 			else
 			{
-				explored_dyke <- nil;
+				explored_dike <- nil;
 			}
 		}
 		else
 		{
-			explored_dyke <- nil;
+			explored_dike <- nil;
 		}
 	}
 
@@ -510,7 +506,7 @@ global
 		point loc <- #user_location;
 		
 		do remove_selection;
-		list<highlight_action_button> bsk <-  highlight_action_button overlapping loc; // agts of_species dyke;
+		list<highlight_action_button> bsk <-  highlight_action_button overlapping loc; // agts of_species dike;
 		
 		if(length(bsk)>0)
 		{
@@ -524,7 +520,7 @@ global
 		point loc <- #user_location;
 		
 		do remove_selection;
-		list<del_basket_button> bsk_del <-  del_basket_button overlapping loc; // agts of_species dyke;
+		list<del_basket_button> bsk_del <-  del_basket_button overlapping loc; // agts of_species dike;
 		
 		if(length(bsk_del)>0)
 		{
@@ -566,11 +562,11 @@ global
 		}
 	}
 	
-	action change_dyke// (point loc, list selected_agents)
+	action change_dike// (point loc, list selected_agents)
 	{
 		point loc <- #user_location;
 		
-		list<def_cote> selected_dyke <-   def_cote where (each distance_to loc < MOUSE_BUFFER); // agts of_species dyke;
+		list<def_cote> selected_dike <-   def_cote where (each distance_to loc < MOUSE_BUFFER); // agts of_species dike;
 		
 		if(basket_overflow())
 		{
@@ -581,9 +577,9 @@ global
 		{
 			switch(selected_button.command)
 			{
-				match ACTION_CREATE_DYKE { do create_new_dyke(loc,selected_button);}
-				match ACTION_INSPECT_DYKE { do inspect_dyke(loc,selected_dyke,selected_button);}
-				default {do modify_dyke(loc, selected_dyke,selected_button);}
+				match ACTION_CREATE_DIKE { do create_new_dike(loc,selected_button);}
+				match ACTION_INSPECT_DIKE { do inspect_dike(loc,selected_dike,selected_button);}
+				default {do modify_dike(loc, selected_dike,selected_button);}
 			}
 		}
 	}
@@ -592,16 +588,16 @@ global
 	{
 		point mloc <- #user_location;
 		
-		list<def_cote> selected_dyke <-   def_cote where (each distance_to mloc < MOUSE_BUFFER); // agts of_species dyke;
+		list<def_cote> selected_dike <-   def_cote where (each distance_to mloc < MOUSE_BUFFER); // agts of_species dike;
 		
-		if(length(selected_dyke)>0)
+		if(length(selected_dike)>0)
 		{
-			def_cote dk<- selected_dyke closest_to mloc;
+			def_cote dk<- selected_dike closest_to mloc;
 			create action_def_cote number:1 returns:action_list
 			 {
 				id <- 0;
 				shape <- dk.shape;
-				chosen_element_id <- dk.dyke_id;
+				chosen_element_id <- dk.dike_id;
 			 }
 			 action_def_cote tmp <- first(action_list);
 			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
@@ -613,40 +609,40 @@ global
 		}
 	}
 	
-	action inspect_dyke(point mloc, list<def_cote> agts, buttons but)
+	action inspect_dike(point mloc, list<def_cote> agts, buttons but)
 	{
-		list<def_cote> selected_dyke <- agts ;
+		list<def_cote> selected_dike <- agts ;
 		
-		if(length(selected_dyke)>0)
+		if(length(selected_dike)>0)
 		{
-			def_cote dk<- selected_dyke closest_to mloc;
+			def_cote dk<- selected_dike closest_to mloc;
 			create action_def_cote number:1 returns:action_list
 			 {
 				id <- 0;
 				shape <- dk.shape;
-				chosen_element_id <- dk.dyke_id;
+				chosen_element_id <- dk.dike_id;
 			 }
 			 action_def_cote tmp <- first(action_list);
 			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::string(dk.dyke_id));		
+			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::string(dk.dike_id));		
 			ask(tmp)
 			{
 				do die;
 			}
 		}
 	}
-	action modify_dyke(point mloc, list<def_cote> agts, buttons but)
+	action modify_dike(point mloc, list<def_cote> agts, buttons but)
 	{
-		list<def_cote> selected_dyke <- agts ;
+		list<def_cote> selected_dike <- agts ;
 		
-		if(length(selected_dyke)>0)
+		if(length(selected_dike)>0)
 		{
-			def_cote dk<- selected_dyke closest_to mloc;
+			def_cote dk<- selected_dike closest_to mloc;
 			create action_def_cote number:1 returns:action_list
 			 {
 				id <- world.get_action_id();
 				self.label <- but.label;
-				chosen_element_id <- dk.dyke_id;
+				chosen_element_id <- dk.dike_id;
 				self.command <- but.command;
 				self.application_round <- round  + (world.delayOfAction(self.command));
 				shape <- dk.shape;
@@ -658,7 +654,7 @@ global
 		}
 	}
 	
-	action create_new_dyke(point loc,buttons but)
+	action create_new_dike(point loc,buttons but)
 	{
 		if(previous_clicked_point = nil)
 		{
@@ -671,7 +667,7 @@ global
 					id <- world.get_action_id();
 					self.label <- but.label;
 					chosen_element_id <- -1;
-					self.command <- ACTION_CREATE_DYKE;
+					self.command <- ACTION_CREATE_DIKE;
 					self.application_round <- round  + (world.delayOfAction(self.command));
 					shape <- polyline([previous_clicked_point,loc]);
 					cost <- but.action_cost*shape.perimeter; 
@@ -901,30 +897,30 @@ global
 		}
 	}
 	
-	action button_click_Dyke 
+	action button_click_dike 
 	{
 		point loc <- #user_location;
-		if(active_display != DYKE_DISPLAY)
+		if(active_display != DIKE_DISPLAY)
 		{
 			current_action <- nil;
-			active_display <- DYKE_DISPLAY;
+			active_display <- DIKE_DISPLAY;
 			do clear_selected_button;
 			//return;
 		}
 		
-		list<buttons> cliked_Dyke_button <- ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
+		list<buttons> cliked_dike_button <- ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
 	
-		if( length(cliked_Dyke_button) > 0)
+		if( length(cliked_dike_button) > 0)
 		{
 			list<buttons> current_active_button <- buttons where (each.is_selected);
 			bool clic_deselect <- false;
 			if length (current_active_button) > 1 {write "Problème -> deux boutons sélectionnés en même temps";}
 			if length (current_active_button) = 1 
-				{if (first (current_active_button)).command = (first(cliked_Dyke_button)).command
+				{if (first (current_active_button)).command = (first(cliked_dike_button)).command
 					{clic_deselect <-true;}}
 			do clear_selected_button;
 			if !clic_deselect 
-				{ask (first(cliked_Dyke_button))
+				{ask (first(cliked_dike_button))
 					{
 					is_selected <- true;
 					}
@@ -940,7 +936,7 @@ global
 					}			
 				}
 			}
-			else {do change_dyke;}
+			else {do change_dike;}
 		}
 
 	}
@@ -1031,7 +1027,7 @@ species action_done
 		
 		switch(command)
 		{
-			match ACTION_CREATE_DYKE  {
+			match ACTION_CREATE_DIKE  {
 				point end <- last(shape.points);
 				point origin <- first(shape.points);
 				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+( origin.x)+COMMAND_SEPARATOR+(origin.y) +COMMAND_SEPARATOR+(end.x)+COMMAND_SEPARATOR+(end.y)+COMMAND_SEPARATOR+location.x+COMMAND_SEPARATOR+location.y;
@@ -1161,22 +1157,22 @@ species Network_agent skills:[network]
 						budget <- int(data[2]);
 						
 					}
-					match ACTION_DYKE_LIST
+					match ACTION_DIKE_LIST
 					{
-						list<string> all_dyke <-   copy_between(data,3,length(data)-1); 
-						do check_dyke(data );
+						list<string> all_dike <-   copy_between(data,3,length(data)-1); 
+						do check_dike(data );
 					}
-					match ACTION_DYKE_CREATED
+					match ACTION_DIKE_CREATED
 					{
-						do dyke_create_action(data);
+						do dike_create_action(data);
 					}
-					match ACTION_DYKE_UPDATE {
+					match ACTION_DIKE_UPDATE {
 						int d_id <- int(data[2]);
-						if(length(def_cote where(each.dyke_id =d_id ))=0)
+						if(length(def_cote where(each.dike_id =d_id ))=0)
 						{
-							do dyke_create_action(data);
+							do dike_create_action(data);
 						}
-						ask def_cote where(each.dyke_id =d_id )
+						ask def_cote where(each.dike_id =d_id )
 						{
 							ganivelle <-bool(data[10]);
 							elevation <-float(data[11]);
@@ -1184,12 +1180,12 @@ species Network_agent skills:[network]
 							type <- data[8];
 							height <-float(data[7]);
 						}
-						do action_dyke_application_acknowledgment(d_id);	
+						do action_dike_application_acknowledgment(d_id);	
 					}
-					match ACTION_DYKE_DROPPED {
+					match ACTION_DIKE_DROPPED {
 						int d_id <- int(data[2]);
-						do action_dyke_application_acknowledgment(d_id);	
-						ask def_cote where(each.dyke_id =d_id )
+						do action_dike_application_acknowledgment(d_id);	
+						ask def_cote where(each.dike_id =d_id )
 						{
 							do die;
 						}
@@ -1207,20 +1203,20 @@ species Network_agent skills:[network]
 			}
 	}
 	
-	action check_dyke(list<string> mdata)
+	action check_dike(list<string> mdata)
 	{
 		list<int> idata<- mdata collect (int(each));
 		ask(def_cote)
 		{
-			//write "compare : "+dyke_id+" ---> "+ mdata;
-			if( !( idata contains dyke_id) )
+			//write "compare : "+dike_id+" ---> "+ mdata;
+			if( !( idata contains dike_id) )
 			{
 				do die;
 			}
 		}
 	}
 	
-	action dyke_create_action(list<string> msg)
+	action dike_create_action(list<string> msg)
 	{
 		int d_id <- int(msg[2]);
 		float x1 <- float(msg[3]);
@@ -1232,21 +1228,21 @@ species Network_agent skills:[network]
 		string st <- msg[9];
 		float elev <- msg[10];
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
-		create def_cote number:1 returns: dykes
+		create def_cote number:1 returns: dikes
 		{
 			shape <- pli;
-			dyke_id <- d_id;
+			dike_id <- d_id;
 			type<-tp;
 			height<- hg;
 			status<-st;
 			elevation <- elev;
 			ask first(action_def_cote overlapping self) {chosen_element_id <- d_id;}
 		}	
-		do action_dyke_application_acknowledgment(d_id);			
+		do action_dike_application_acknowledgment(d_id);			
 	}
 	
-	action action_dyke_application_acknowledgment(int m_action_id)
-	{write "UPDATE dyke " + m_action_id;
+	action action_dike_application_acknowledgment(int m_action_id)
+	{write "UPDATE dike " + m_action_id;
 		ask action_def_cote where(each.chosen_element_id  = m_action_id)
 		{ self.is_applied <- true;
 		}
@@ -1271,7 +1267,7 @@ species Network_agent skills:[network]
 	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
 	{ write m_action_id;
 		ask action_def_cote where(each.id  = m_action_id)
-		{ write "delay dyke";
+		{ write "delay dike";
 			round_delay <- round_delay + nb;
 			application_round <- application_round + nb;
 		}
@@ -1363,10 +1359,10 @@ species action_def_cote parent:action_done
 	{
 		switch(command)
 		{
-			 match ACTION_CREATE_DYKE { return #blue;}
-			 match ACTION_REPAIR_DYKE {return #green;}
-			 match ACTION_DESTROY_DYKE {return #brown;}
-			 match ACTION_RAISE_DYKE {return #yellow;}
+			 match ACTION_CREATE_DIKE { return #blue;}
+			 match ACTION_REPAIR_DIKE {return #green;}
+			 match ACTION_DESTROY_DIKE {return #brown;}
+			 match ACTION_RAISE_DIKE {return #yellow;}
 			 match ACTION_INSTALL_GANIVELLE {return #indigo;}
 		} 
 		return #grey;
@@ -1469,9 +1465,9 @@ species buttons
 			draw my_icon size:button_size-50#m ;
 		}
 	}
-	aspect dyke
+	aspect dike
 	{
-		if( display_name = DYKE_DISPLAY)
+		if( display_name = DIKE_DISPLAY)
 		{
 			draw shape color:#white border: is_selected ? # red : # white;
 			draw my_icon size:button_size-50#m ;
@@ -1525,11 +1521,12 @@ species UA
 	int id;
 	int ua_code <- 0;
 	rgb my_color <- cell_color() update: cell_color();
+	int population ;
+	string classe_densite <- maj_densite() update: maj_densite();
 	int cout_expro ;
 	bool isUrbanType -> {["U","Us","AU","AUs"] contains ua_name};
 	bool isAdapte -> {["Us","AUs"] contains ua_name};
-
-	init {cout_expro <- (round (cout_expro /2000 /50))*100;} //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
+	bool isEnDensification <- false;
 
 	string nameOfUAcode (int a_ua_code) 
 		{ string val <- "" ;
@@ -1556,7 +1553,10 @@ species UA
 				match "AUs" {val <- 7;}
 					}
 		return val;}
-		
+
+	string maj_densite {
+		return (population =0?"vide":(population <=40?"peu dense":(population <=80?"densité intermédiaire":"dense")));
+	}		
 	string fullNameOfUAname
 	{string result <- "";
 		switch (ua_name)
@@ -1576,7 +1576,14 @@ species UA
 		switch (ua_name)
 		{
 			match "N" {res <- # palegreen;} // naturel
-			match_one ["U","Us"] {res <- rgb (110, 100,100);} //  urbanisé
+			match_one ["U","Us"] { //  urbanisé
+				switch classe_densite {
+					match "vide" {res <- # red; } // Problème
+					match "peu dense" {res <-  rgb( 150, 150, 150 ); }
+					match "densité intermédiaire" {res <- rgb( 120, 120, 120 ) ;}
+					match "dense" {res <- rgb( 80,80,80 ) ;}
+				}
+			} 
 			match_one ["AU","AUs"] {res <- # yellow;} // à urbaniser
 			match "A" {res <- rgb (225, 165,0);} // agricole
 		}
@@ -1587,13 +1594,14 @@ species UA
 	{
 		draw shape color: my_color;
 		if isAdapte {draw "A" color:#black;}
+		if isEnDensification {draw "D" color:#black;}
 	}
 
 }
 
 species def_cote
 {
-	int dyke_id;
+	int dike_id;
 	string type;
 	string commune;
 	rgb color <- # pink;
@@ -1602,7 +1610,7 @@ species def_cote
 	float elevation <- 0.0;
 	string status;	//  "bon" "moyen" "mauvais" 
 	
-	action init_dyke {
+	action init_dike {
 		if status = "" {status <- "bon";} 
 		if type ='' {type <- "inconnu";}
 		if status = '' {status <- "bon";} 
@@ -1628,7 +1636,7 @@ species def_cote
 				match  "bon" {color <- # green;}
 				match "moyen" {color <-  rgb (255,102,0);} 
 				match "mauvais" {color <- # red;} 
-				default { /*"casse" {color <- # yellow;}*/write "probleee status dyke";}
+				default { /*"casse" {color <- # yellow;}*/write "probleee status dike";}
 				}
 			draw 20#m around shape color: color size:300#m;
 				}
@@ -1689,6 +1697,7 @@ experiment game type: gui
 					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
 					draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
+					draw "population : "+string(explored_cell.ua_name="U"?explored_cell.population:0) at: target + { 30#px, 75#px} font: regular color: # white;
 				}
 			}
 			
@@ -1725,32 +1734,32 @@ experiment game type: gui
 			species action_def_cote aspect:base;
 			species road aspect:base;
 			species protected_area aspect:base;
-			species buttons aspect:dyke;
+			species buttons aspect:dike;
 			species buttons_map aspect:base;
 			
 			graphics "Full target" transparency:0.3
 			{
-				if (explored_dyke != nil)
+				if (explored_dike != nil)
 				{
-					point target <- {explored_dyke.location.x  ,explored_dyke.location.y };
-					point target2 <- {explored_dyke.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dyke.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					point target <- {explored_dike.location.x  ,explored_dike.location.y };
+					point target2 <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
-					draw "Information sur "+explored_dyke.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: #white;
-					draw "Altitude "+string(round(100*explored_dyke.elevation)/100.0)+"m" at: target + { 30#px, 35#px } font: regular color: # white;
-					draw "Etat "+string(explored_dyke.status) at: target + { 30#px, 55#px} font: regular color: # white;
+					draw "Information sur "+explored_dike.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: #white;
+					draw "Altitude "+string(round(100*explored_dike.elevation)/100.0)+"m" at: target + { 30#px, 35#px } font: regular color: # white;
+					draw "Etat "+string(explored_dike.status) at: target + { 30#px, 55#px} font: regular color: # white;
 				}
 				
 				
 			}
 			
-			graphics "explore_dyke_icone" 
+			graphics "explore_dike_icone" 
 			{
-				if (explored_dyke != nil)
+				if (explored_dike != nil)
 				{
-					point image_loc <- {explored_dyke.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dyke.location.y + 50#px  };
+					point image_loc <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dike.location.y + 50#px  };
 					string to_draw <- nil;
-					switch(explored_dyke.status)
+					switch(explored_dike.status)
 					{
 						match "bon" { draw file("../images/icones/conforme.png") at:image_loc size:50#px; }
 						match "moyen" { draw file("../images/icones/danger.png") at:image_loc size:50#px; }
@@ -1777,8 +1786,8 @@ experiment game type: gui
 				
 				
 			}
-			event [mouse_down] action: button_click_Dyke;
-			event mouse_move action: mouse_move_dyke;			
+			event [mouse_down] action: button_click_dike;
+			event mouse_move action: mouse_move_dike;			
 		}
 		
 		display Basket
