@@ -38,6 +38,7 @@ global
 	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
 	int ACTION_COST_LAND_COVER_TO_AUs <- int(all_action_cost at {2,9});
 	int ACTION_COST_LAND_COVER_TO_Us <- int(all_action_cost at {2,10});
+	int ACTION_COST_LAND_COVER_TO_Ui <- int(all_action_cost at {2,13});
 	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY <- int(all_action_cost at {2,11});
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY <- int(all_action_cost at {2,12});
 
@@ -52,8 +53,8 @@ global
 	int ACTION_MODIFY_LAND_COVER_U <- 3;
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
 	int ACTION_MODIFY_LAND_COVER_AUs <-31;	
-	int ACTION_MODIFY_LAND_COVER_AUi <-311;
 	int ACTION_MODIFY_LAND_COVER_Us <-32;
+	int ACTION_MODIFY_LAND_COVER_Ui <-311;
 	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
 
 	
@@ -283,9 +284,9 @@ global
 		
 				create buttons number: 1
 		{
-			command <- ACTION_MODIFY_LAND_COVER_AUi;
-			label <- "Changer en zone d'urbanisation intensifiée";
-			action_cost <- ACTION_COST_LAND_COVER_TO_AUs;
+			command <- ACTION_MODIFY_LAND_COVER_Ui;
+			label <- "Inciter à la densification sur une zone urbaine déjà existante";
+			action_cost <- ACTION_COST_LAND_COVER_TO_Ui;
 			my_help <- unamMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
@@ -776,12 +777,10 @@ global
 					}	
 				}
 				if ((ua_name = "A" or ua_name = "N") and (selected_button.command = ACTION_MODIFY_LAND_COVER_AUs))
-				{   
+				{
 					 if empty(UA at_distance 100 where (each.isUrbanType))
-					 {	bool res<-false;
-						string chain <- "Impossible de construire en habitat adapté en dehors d'une périphérie urbaine";
+					 {	string chain <- "Impossible de construire en habitat adapté en dehors d'une périphérie urbaine";
 						map<string,unknown> values2 <- user_input("Avertissement",chain::"");
-						
 						return;
 					}
 				}
@@ -799,7 +798,15 @@ global
 						return;
 					}
 				}
-				
+				if ((ua_name in ["A", "N", "AU"]) and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
+				{
+					return;
+				}
+				if ((ua_name = "U" and classe_densite = "dense") and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
+				{	string chain <- "Cette unité urbain est déjà à son niveau de densification maximum";
+					map<string,unknown> values2 <- user_input("Avertissement",chain::"");
+					return;	
+				}
 				
 				create action_UA number:1 returns:action_list
 				{
@@ -1106,13 +1113,14 @@ species Network_agent skills:[network]
 			int action_id <- int(data[1]);
 			switch(int(data[0]))
 				{
-					match INFORM_ROUND
+		/*
+		  Commenté car j'ai tout le temps un bug ici sinon
+		 match INFORM_ROUND
 					{
 						round<-int(data[2]);
 						ask (action_UA + action_def_cote) where (not(each.is_sent)) {application_round<-application_round+1;}
 						map<string,unknown> values2 <- user_input("Avertissement","Un tour de jeu vient de démarrer ("+ round+")"::"");
-						
-					} 
+					}*/
 					
 				/*match ACTION_CLOSE_PENDING_REQUEST
 					{
@@ -1399,7 +1407,7 @@ species action_UA parent:action_done
 		switch(command)
 		{
 			 match ACTION_MODIFY_LAND_COVER_A { return #brown;}
-			 match_one [ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] {return #black;}
+			 match_one [ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui] {return #black;}
 			 match ACTION_MODIFY_LAND_COVER_N {return #green;}
 		} 
 		return #grey;
@@ -1414,6 +1422,7 @@ species action_UA parent:action_done
 			
 			draw shape  color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red) ;
 			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command {draw "A" color:#white;}
+			if [ACTION_MODIFY_LAND_COVER_Ui] contains command {draw "D" color:#white;}
 		}
 		
 	}
@@ -1696,8 +1705,10 @@ experiment game type: gui
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
-					draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
-					draw "population : "+string(explored_cell.ua_name="U"?explored_cell.population:0) at: target + { 30#px, 75#px} font: regular color: # white;
+					if explored_cell.ua_name="U"{
+							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
+							draw "population : "+string(explored_cell.population) at: target + { 30#px, 75#px} font: regular color: # white;
+							}
 				}
 			}
 			
@@ -1727,7 +1738,7 @@ experiment game type: gui
 			image 'background' file:"../images/fond/fnt.png"; 
 			species commune aspect:base;
 			graphics population {
-			draw population_area color:#black;				
+			draw population_area color:rgb( 120, 120, 120 ) ;				
 			}
 			//species cell_mnt aspect:elevation_eau;
 			species def_cote aspect:base;
