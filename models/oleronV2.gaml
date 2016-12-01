@@ -925,7 +925,9 @@ species game_controller skills:[network]
 	{
 		point p1 <- first(ovg.shape.points);
 		point p2 <- last(ovg.shape.points);
-		string msg <- ""+ACTION_DYKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status;
+		
+		
+		string msg <- ""+ACTION_DYKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status+ COMMAND_SEPARATOR+min_dyke_elevation(ovg);
 		list<commune> cms <- commune overlapping ovg;
 			loop cm over:cms
 			{
@@ -935,6 +937,10 @@ species game_controller skills:[network]
 	//	do sendMessage  dest:"all" content:msg;	
 	}
 	
+	float min_dyke_elevation(def_cote ovg)
+	{
+		return min(cell overlapping ovg collect(each.soil_height));
+	}
 	action send_dyke_list(int m_commune)
 	{
 		string tmp<-"";
@@ -946,7 +952,6 @@ species game_controller skills:[network]
 		
 		string msg <- ""+ACTION_DYKE_LIST+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR +m.nom_raccourci+tmp;
 		do send to:m.network_name contents:msg;	
-//		ACTION_DYKE_LIST
 	}
 	
 	action update_dyke
@@ -957,7 +962,7 @@ species game_controller skills:[network]
 		{
 			point p1 <- first(self.shape.points);
 			point p2 <- last(self.shape.points);
-			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle;
+			string msg <- ""+ACTION_DYKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle+COMMAND_SEPARATOR+myself.min_dyke_elevation(self);
 			update_messages <- update_messages + msg;
 			update_ouvrage <- update_ouvrage + self;
 			not_updated <- false;

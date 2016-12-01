@@ -157,7 +157,10 @@ global
 		do init_basket;
 		do init_buttons;
 		do init_pending_request_button;
-		create def_cote from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune::string(read("Commune"))];
+		create def_cote from:defense_shape with:[dyke_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), elevation::float(read("alt")), height::float(get("hauteur")) , commune::string(read("Commune"))]
+		{
+			name <- "défence numéro "+ self.dyke_id;
+		}
 		create road from:road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
 		
@@ -242,6 +245,9 @@ global
 	{
 		float interleave <- world.local_shape.height / 20;
 		float button_s <- world.local_shape.height / 10;
+		
+		string unamMessage <- "Cliquez sur la cellule à modifier.";
+		
 		create buttons number: 1
 		{
 			command <- ACTION_MODIFY_LAND_COVER_A;
@@ -249,6 +255,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_A;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
+			my_help <- unamMessage;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/agriculture.png");
 		}
@@ -260,6 +267,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_AU;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
+			my_help <- unamMessage;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/urban.png");
 		}
@@ -269,6 +277,7 @@ global
 			command <- ACTION_MODIFY_LAND_COVER_AUs;
 			label <- "Changer en zone à urbaniser adaptée";
 			action_cost <- ACTION_COST_LAND_COVER_TO_AUs;
+			my_help <- unamMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
@@ -281,6 +290,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_FROM_AU_TO_N;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
+			my_help <- unamMessage;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/tree_nature.png");
 			
@@ -290,6 +300,7 @@ global
 			command <- ACTION_INSPECT_LAND_USE;
 			label <- "Inspecter une unité d'aménagement";
 			action_cost <- 0;
+			my_help <- "glisser le pointeur sur les cellules à inspecter";
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
@@ -1077,6 +1088,7 @@ species Network_agent skills:[network]
 		loop while:has_more_message()
 		{
 			message msg <- fetch_message();
+			write msg.contents;
 			string my_msg <- msg.contents; 
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
 			int command <- int(data[0]);
@@ -1087,6 +1099,8 @@ species Network_agent skills:[network]
 					{
 						round<-int(data[2]);
 						ask (action_UA + action_def_cote) where (not(each.is_sent)) {application_round<-application_round+1;}
+						map<string,unknown> values2 <- user_input("Avertissement","Un tour de jeu vient de démarrer ("+ round+")"::"");
+						
 					} 
 					
 				/*match ACTION_CLOSE_PENDING_REQUEST
@@ -1150,6 +1164,7 @@ species Network_agent skills:[network]
 						ask def_cote where(each.dyke_id =d_id )
 						{
 							ganivelle <-bool(data[10]);
+							elevation <-float(data[11]);
 							status <-data[9];
 							type <- data[8];
 							height <-float(data[7]);
@@ -1200,6 +1215,7 @@ species Network_agent skills:[network]
 		float hg <- float(msg[7]);
 		string tp <- string(msg[8]);
 		string st <- msg[9];
+		float elev <- msg[10];
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
 		create def_cote number:1 returns: dykes
 		{
@@ -1208,6 +1224,7 @@ species Network_agent skills:[network]
 			type<-tp;
 			height<- hg;
 			status<-st;
+			elevation <- elev;
 			ask first(action_def_cote overlapping self) {chosen_element_id <- d_id;}
 		}	
 		do action_dyke_application_acknowledgment(d_id);			
@@ -1383,7 +1400,8 @@ species action_UA parent:action_done
 	aspect base
 	{
 		if !is_applied {
-			draw shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);
+			
+			draw shape  color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red) ;
 			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command {draw "A" color:#white;}
 		}
 		
@@ -1406,7 +1424,7 @@ species buttons
 	int command <- -1;
 	string display_name <- "no name";
 	string label <- "no name";
-	float action_cost<-0;
+	float action_cost<-0.0;
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
 	image_file my_icon;
@@ -1425,7 +1443,7 @@ species buttons
 	
 	string cost
 	{
-		return ""+cost;
+		return ""+action_cost;
 	}
 	
 	aspect UnAm
@@ -1566,6 +1584,7 @@ species def_cote
 	rgb color <- # pink;
 	float height;
 	bool ganivelle <- false;
+	float elevation <- 0.0;
 	string status;	//  "bon" "moyen" "mauvais" 
 	
 	action init_dyke {
@@ -1668,7 +1687,7 @@ experiment game type: gui
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
-					draw "Cout de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
+					draw "Coût de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
 				}
 				
 				
@@ -1694,32 +1713,51 @@ experiment game type: gui
 			species buttons aspect:dyke;
 			species buttons_map aspect:base;
 			
-			graphics "Full target" transparency:0.5
+			graphics "Full target" transparency:0.3
 			{
 				if (explored_dyke != nil)
 				{
 					point target <- {explored_dyke.location.x  ,explored_dyke.location.y };
 					point target2 <- {explored_dyke.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dyke.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
-					draw "Information sur "+explored_dyke.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: # white;
-					draw "Hauteur "+string(explored_dyke.height) at: target + { 30#px, 35#px } font: regular color: # white;
+					draw "Information sur "+explored_dyke.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: #white;
+					draw "Altitude "+string(round(100*explored_dyke.elevation)/100.0)+"m" at: target + { 30#px, 35#px } font: regular color: # white;
 					draw "Etat "+string(explored_dyke.status) at: target + { 30#px, 55#px} font: regular color: # white;
 				}
 				
 				
 			}
 			
+			graphics "explore_dyke_icone" 
+			{
+				if (explored_dyke != nil)
+				{
+					point image_loc <- {explored_dyke.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dyke.location.y + 50#px  };
+					string to_draw <- nil;
+					switch(explored_dyke.status)
+					{
+						match "bon" { draw file("../images/icones/conforme.png") at:image_loc size:50#px; }
+						match "moyen" { draw file("../images/icones/danger.png") at:image_loc size:50#px; }
+						match "mauvais" { draw file("../images/icones/rupture.png") at:image_loc size:50#px; }
+						
+					}
+				}
+			}
+			
 			graphics "Button information" transparency:0.5
 			{
 				if (explored_buttons != nil)
 				{
-					point target <- {explored_buttons.location.x  ,explored_buttons.location.y };
+					point target <- {explored_buttons.location.x  , explored_buttons.location.y };
 					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					point target4 <- {target3.x,target2.y - 15#px };
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
-					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
+				//	draw rectangle(target2,target4)   empty: false border: false color: #red ; //transparency:0.5;
+					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #green;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
-					draw "Cout de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
+					draw "Coût de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
 				}
 				
 				
