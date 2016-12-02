@@ -244,6 +244,47 @@ global
 		 		write ""+all_action_cost;
 		 }
 	}
+	
+	
+	image_file chooseActionIcone(int cmd)
+	{
+		
+		switch(cmd)
+		{
+			match ACTION_MODIFY_LAND_COVER_A { return image_file("../images/icones/agriculture.png");}
+			match ACTION_MODIFY_LAND_COVER_AU { return image_file("../images/icones/urban.png");}
+			match ACTION_MODIFY_LAND_COVER_AUs { return image_file("../images/icones/urban_adapte2.png");}
+			match ACTION_MODIFY_LAND_COVER_Ui { return image_file("../images/icones/urban_intensifie.png");}
+			match ACTION_MODIFY_LAND_COVER_N { return image_file("../images/icones/tree_nature.png");}
+			match ACTION_CREATE_DIKE { return image_file("../images/icones/digue_validation.png");}
+			match ACTION_REPAIR_DIKE { return image_file("../images/icones/digue_entretien.png");}
+			match ACTION_RAISE_DIKE { return image_file("../images/icones/digue_rehausse_plus.png");}
+			match ACTION_DESTROY_DIKE { return image_file("../images/icones/tree_nature.png");}
+			match ACTION_INSTALL_GANIVELLE { return image_file("../images/icones/ganivelle.png");}
+		}
+		return nil;
+	}
+	
+	image_file au_icone(UA mc)
+	{
+		string val<-"";
+		if(mc.isEnDensification)
+		{
+			return image_file("../images/icones/urban_intensifie.png");
+		}
+		
+		switch(mc.ua_code)
+		{
+			match 1 {return image_file("../images/icones/tree_nature.png");}
+			match 2 {return image_file("../images/icones/urban.png");}
+			match 4 {return image_file("../images/icones/urban.png");}
+			match 5 {return image_file("../images/icones/agriculture.png");}
+			match 6 {return image_file("../images/icones/urban_adapte2.png");}
+			match 7 {return image_file("../images/icones/urban_adapte2.png");}
+		}
+		return nil;
+	}
+	
 	action init_buttons
 	{
 		float interleave <- world.local_shape.height / 20;
@@ -1758,11 +1799,17 @@ experiment game type: gui
 			graphics "Action Full target" transparency:0.5
 			{
 				//int size <- length(moved_agents);
-				if (explored_cell != nil)
+				if (explored_action_UA != nil)
 				{
+					
+					UA mcell <- UA first_with(each.id = explored_action_UA.chosen_element_id);
 					point target <- {explored_cell.location.x  ,explored_cell.location.y };
 					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					
+					draw world.chooseActionIcone(explored_action_UA.command) at:  { target2.x - 75#px, target.y +75#px} size:50#px;
+					draw world.au_icone(mcell) at:  { target.x +25#px,target.y + 75#px} size:50#px;
+					
 					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
 					if explored_cell.ua_name="U"{
