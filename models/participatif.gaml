@@ -7,6 +7,7 @@
 model Commune
 
 
+
 global
 {
 	string commune_name <- "lechateau";
@@ -99,7 +100,7 @@ global
 	string UNAM_DISPLAY <- "UnAm";
 	string DIKE_DISPLAY <- "sloap";
 	
-	
+
 	int MAX_HISTORY_VIEW_SIZE <- 10;
 	
 	
@@ -131,7 +132,8 @@ global
 	
 	UA explored_cell <- nil;
 	def_cote explored_dike <- nil;
-	
+	action_UA explored_action_UA<- nil;
+		
 	buttons explored_buttons <- nil;
 	
 	geometry population_area <- nil;
@@ -455,6 +457,18 @@ global
 		list<buttons> current_active_button <- buttons where (each.is_selected);
 		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_LAND_USE)
 		{
+			list<action_UA> selected_explored_action_UA <- action_UA overlapping loc;
+			
+			if(length(selected_explored_action_UA)>0)
+			{
+				explored_action_UA <-first(selected_explored_action_UA);
+			}
+			else
+			{
+				explored_action_UA <-nil;
+			}
+			
+			
 			list<UA> selectedUnams <- UA overlapping loc; // of_species cell_UnAm;
 			if (length(selectedUnams)> 0) 
 			{
@@ -534,8 +548,9 @@ global
 		}
 		list<basket_validation> bsk_validation <-  basket_validation  overlapping loc;
 		
-		write "basket "+ bsk_validation;
-		if(length(bsk_validation)>0)
+		basket_validation btt <- first(basket_validation);
+		bool valid <-  btt overlaps loc;
+		if(valid)
 		{	if round = 0
 			{
 				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
@@ -1326,6 +1341,7 @@ species basket_validation
 	reflex update_loc
 	{
 		location <-  {font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
+		shape <- square(world.shape.width/8);
 	}
 	init {
 		shape <- square(world.shape.width/8);
@@ -1338,12 +1354,11 @@ species basket_validation
 			do send_basket;
 		}
 	}
-	
 	aspect base
 	{
 		float x_loc <- font_interleave + 12* (font_size + font_interleave);
 		float y_loc <- font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave);
-		location <- {font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
+	//	location <- {font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
 	
 		if(length(my_basket) = 0)
 		{
@@ -1351,8 +1366,7 @@ species basket_validation
 		}
 		else
 		{
-			draw shape color:#red;
-			draw image_file("../images/icones/validation.png") size:world.shape.width/8 ;
+			draw image_file("../images/icones/validation.png") at:location size:world.shape.width/8 ;
 		}
 		
 		//draw "Budget : "+ budget color:#black size:font_size at:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) } ;
@@ -1711,6 +1725,21 @@ experiment game type: gui
 			graphics "Full target" transparency:0.5
 			{
 				//int size <- length(moved_agents);
+				if (explored_cell != nil and explored_action_UA = nil)
+				{
+					point target <- {explored_cell.location.x  ,explored_cell.location.y };
+					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
+					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
+					draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
+					draw "population : "+string(explored_cell.ua_name="U"?explored_cell.population:0) at: target + { 30#px, 75#px} font: regular color: # white;
+				}
+			}
+			
+			graphics "Action Full target" transparency:0.5
+			{
+				//int size <- length(moved_agents);
 				if (explored_cell != nil)
 				{
 					point target <- {explored_cell.location.x  ,explored_cell.location.y };
@@ -1722,6 +1751,7 @@ experiment game type: gui
 					draw "population : "+string(explored_cell.ua_name="U"?explored_cell.population:0) at: target + { 30#px, 75#px} font: regular color: # white;
 				}
 			}
+			
 			
 			graphics "Button information" transparency:0.5
 			{
@@ -1805,9 +1835,9 @@ experiment game type: gui
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					draw "Coût de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
 				}
-				
-				
 			}
+			
+			
 			event [mouse_down] action: button_click_dike;
 			event mouse_move action: mouse_move_dike;			
 		}
