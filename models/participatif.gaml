@@ -146,7 +146,7 @@ global
 	geometry dike_shape_space <- nil;
 	geometry unam_shape_space <- nil;
 	
-	
+
 	
 	
 	init
@@ -219,6 +219,9 @@ global
 	}
 
 	int delayOfAction (int action_code){
+		
+		//peut-etre convertir en map.... A modifier mais plus tard
+		
 		int rslt <- 9999;
 		loop i from:0 to: length(all_action_delay)/3 {
 			if ((int(all_action_delay at {1,i})) = action_code)
@@ -568,7 +571,12 @@ global
 			
 			
 			bool choice <- false;
-			string ask_display <- "Vous êtes sur le point de valider votre panier \n Cocher la case, pour accepter le panier et valider";
+			
+			int nb_delayed <- my_basket count(delayOfAction(each.command) > 0);
+			
+			string action_delayed <- nb_delayed = 0 ? "":"Attention, une ou plusieurs de vos réalisations risquent de faire l'objet d'un retard\n";
+			
+			string ask_display <- "Vous êtes sur le point de valider votre panier \n"+action_delayed+" Cocher la case, pour accepter le panier et valider";
 			map<string,unknown> res <- user_input("Avertissement", ask_display::choice);
 			if(res at ask_display )
 			{
