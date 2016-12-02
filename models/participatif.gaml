@@ -1442,18 +1442,15 @@ species action_UA parent:action_done
 		if !is_applied {
 			
 			draw shape  color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red) ;
-<<<<<<< HEAD
-			if(ACTION_MODIFY_LAND_COVER_AUi = command)
+
+			if(ACTION_MODIFY_LAND_COVER_Ui = command)
 			{
 				draw file("../images/icones/crowd.png") size:self.shape.width;
 			}
 
 		
 			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command {draw file("../images/icones/wave.png") size:self.shape.width;}
-=======
-			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command {draw "A" color:#white;}
-			if [ACTION_MODIFY_LAND_COVER_Ui] contains command {draw "D" color:#white;}
->>>>>>> 8e7c6cae75efac9699e5ba485ce17ea92ca3c062
+
 		}
 		
 	}
