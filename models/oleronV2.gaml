@@ -56,6 +56,7 @@ global  {
 	int ACTION_MODIFY_LAND_COVER_N <- 4;
 	int ACTION_MODIFY_LAND_COVER_AUs <-31;	
 	int ACTION_MODIFY_LAND_COVER_Us <-32;
+	int ACTION_MODIFY_LAND_COVER_Ui <-311;
 	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_N];
 	
@@ -291,7 +292,7 @@ int commune_id(string xx)
 reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
-		map values <- user_input([ flood_results :: ""]);	
+		//map values <- user_input([ flood_results :: ""]);	
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;
