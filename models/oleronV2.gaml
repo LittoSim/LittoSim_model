@@ -41,6 +41,7 @@ global  {
 	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
 	int ACTION_COST_LAND_COVER_TO_AUs <- int(all_action_cost at {2,9});
 	int ACTION_COST_LAND_COVER_TO_Us <- int(all_action_cost at {2,10});
+	int ACTION_COST_LAND_COVER_TO_Ui <- int(all_action_cost at {2,13});
 	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY <- int(all_action_cost at {2,11});
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY <- int(all_action_cost at {2,12});
 	
@@ -58,7 +59,7 @@ global  {
 	int ACTION_MODIFY_LAND_COVER_Us <-32;
 	int ACTION_MODIFY_LAND_COVER_Ui <-311;
 	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_N];
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,ACTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N];
 	
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
@@ -116,7 +117,7 @@ global  {
 	int font_size <- int(shape.height/30);
 	int font_interleave <- int(shape.width/60);
 	
-	//// tableau des données de budget des communes pour tracer le graph d'évaolution des budgets
+	//// tableau des données de budget des communes pour tracer le graph d'évolution des budgets
 	container data_budget_C1 <- [0];
 	container data_budget_C2 <- [0];
 	container data_budget_C3 <- [0];	
@@ -136,7 +137,16 @@ global  {
 	int STEPS_DEGRAD_STATUS_OUVRAGE <- 8; // Sur les ouvrages il faut 8 ans pour que ça change de statut
 	int STEPS_DEGRAD_STATUS_DUNE <-6; // Sur les dunes, sans ganivelle,  il faut 6 ans pour que ça change de statut
 	int STEPS_REGAIN_STATUS_GANIVELLE  <-3; // Avec une ganivelle ça se régénère 2 fois plus vite que ça ne se dégrade
-	
+	int PROBA_RUPTURE_ETAT_MAUVAIS <- 10;
+	int PROBA_RUPTURE_ETAT_MOYEN <- 5;
+	int PROBA_RUPTURE_ETAT_BON <- -1; // si -1, alors  impossible
+
+	// Paramètres des dynamique de Population
+	float ANNUAL_POP_GROWTH_RATE <- 0.009;
+	int new_comers_still_to_dispatch <- 0;
+	int POP_FOR_NEW_U <- 3 ; // pour les cases qui viennent de passer de AU à U
+	int POP_FOR_U_DENSIFICATION <- 10 ; // pour les cases qui ont une action densification
+	int POP_FOR_U_STANDARD <- 1 ; // pour les autres cases 	
 	/*
 	 * Chargements des données SIG
 	 */
@@ -199,7 +209,11 @@ init
 			if ua_name = "U" and population = 0 {
 					population <- 10;
 					classe_densite <- maj_densite();	}
-			my_color <- cell_color(); 
+			my_color <- cell_color();
+			if ua_name = "AU"  {
+				AU_to_U_counter <- flip(0.5)?1:0;
+				not_updated <- true;
+			}
 			
 		}
 		do load_rugosity;
@@ -259,14 +273,26 @@ int entityTypeCodeOfAction (int action_code){
 		}
 	}	 
 	 
+int current_total_population {
+	return sum(commune where (each.id > 0) accumulate (each.current_population(each)));
+	}
+	
+int new_comers_to_dispatch {
+	return round(current_total_population() * ANNUAL_POP_GROWTH_RATE);
+}
+
+
 action nextRound{
 	//do sauvegarder_resultat;
 	write "new round "+ (round +1);
 	if round != 0
 	   {ask def_cote where (each.type != 'Naturel') {  do evolveStatus_ouvrage;}
 	   	ask def_cote where (each.type = 'Naturel') { do evolve_dune;}
-	   
-		ask UA {do evolveUA;}
+		new_comers_still_to_dispatch <- new_comers_to_dispatch() ;
+		ask shuffle(UA) {pop_updated <- false; do evolve_AU_to_U ;}
+		ask shuffle(UA) {do evolve_U_densification ;}
+		ask shuffle(UA) {do evolve_U_standard ;} 
+		//ask UA sort (each.population - each.floor_ClasseDensity()) {do evolve_U_standard ;} // c'est pas bon car ca ne fait pas cnahger la densité et tout d'un coup toutes les cases de change de clase de densité
 		ask commune where (each.id > 0) {
 			do recevoirImpots; not_updated<-true;
 			}}
@@ -810,6 +836,13 @@ species game_controller skills:[network]
 			 		 	not_updated <- true;
 			 		 }
 			 	 }
+			 	 match ACTION_MODIFY_LAND_COVER_Ui {
+			 		ask UA first_with(each.id=chosen_element_id)
+			 		 {
+			 		 	do apply_Densification(idCom);
+			 		 	not_updated <- true;
+			 		 }
+			 	 }
 			 	match ACTION_MODIFY_LAND_COVER_AUs {
 			 		ask UA first_with(each.id=chosen_element_id)
 			 		 {
@@ -901,7 +934,7 @@ species game_controller skills:[network]
 		list<UA> updated_UA <- [];
 		ask UA where(each.not_updated)
 		{
-			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code+COMMAND_SEPARATOR+self.population;
+			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code+COMMAND_SEPARATOR+self.population+COMMAND_SEPARATOR+self.isEnDensification;
 			update_messages <- update_messages + msg;	
 			not_updated <- false;
 			updated_UA <- updated_UA + self;
@@ -1339,11 +1372,10 @@ species def_cote
 		
 	action calcRupture {
 		int p <- 0;
-				//		if status = "tres mauvais" {p <- 15;}
-		if status = "mauvais" {p <- 10;}
-		if status = "moyen" {p <- 5;}
-		if status = "bon" {p <- -1;}
-				//		if status = "tres bon" {p <- -1;}
+		
+		if status = "mauvais" {p <- PROBA_RUPTURE_ETAT_MAUVAIS;}
+		if status = "moyen" {p <- PROBA_RUPTURE_ETAT_MOYEN;}
+		if status = "bon" {p <- PROBA_RUPTURE_ETAT_BON;}
 		if rnd (100) <= p {
 				set rupture <- 1;
 				// apply Rupture On Cells
@@ -1468,6 +1500,7 @@ species UA
 	bool isAdapte -> {ua_name in ["Us","AUs"]};
 	bool isEnDensification <- false;
 	bool not_updated <- false;
+	bool pop_updated <- false;
 	
 //	/*init {	cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
 //			if ua_name = "U" and population = 0 {population <- 10;}
@@ -1498,9 +1531,19 @@ species UA
 				match "AUs" {val <- 7;}
 					}
 		return val;}
+		
 	string maj_densite {
-		return (population =0?"vide":(population <=40?"peu dense":(population <=80?"densité intermédiaire":"dense")));
-	}		
+		return (population =0?"vide":(population <40?"peu dense":(population <80?"densité intermédiaire":"dense")));
+	}	
+	
+	int floor_ClasseDensity {
+		switch maj_densite {
+				match "peu_dense" {return 1;}
+				match "densité intermédiaire" {return 41;}
+				match "dense" {return 81;}
+		}
+	}	
+		
 	action modify_UA (int a_id_commune, string new_ua_name)
 	{	if  (ua_name in ["U","Us"])and new_ua_name = "N" /*expropriation */
 				{ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}}
@@ -1521,21 +1564,45 @@ species UA
 		float rug <- rugosityValueOfUA_name (ua_name);
 		ask cells {rugosity <- rug;} 	
 	}
-		
+	action apply_Densification (int a_id_commune) {
+		ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, "densification");}
+		isEnDensification <-true;
+	}	
 	
-	action evolveUA
+	action evolve_AU_to_U
 		{if ua_name in ["AU","AUs"]
 			{AU_to_U_counter<-AU_to_U_counter+1;
 			if AU_to_U_counter = (nb_stepsForAU_toU +1)
-				{AU_to_U_counter<-0;
-				ua_name <- ua_name="AU"?"U":"Us";
-				ua_code<-codeOfUAname(ua_name);
-				not_updated<-true; }
+				{	AU_to_U_counter<-0;
+					ua_name <- ua_name="AU"?"U":"Us";
+					ua_code<-codeOfUAname(ua_name);
+					not_updated<-true;
+					do assign_pop (POP_FOR_NEW_U);
+				}
 			}	
-		if ((ua_name in ["U","Us"]) and population < 1000){
-			population <- population + 3;}// avant c'était 10 mais après des tests c recalibré à 3
 		}
+	action evolve_U_densification {
+		if !pop_updated and isEnDensification and (ua_name in ["U","Us"]){
+			string previous_d_classe <- maj_densite(); 
+			do assign_pop (POP_FOR_U_DENSIFICATION);
+			if previous_d_classe != maj_densite() {isEnDensification <- false;}
+				}
+	}
 		
+	action evolve_U_standard {
+		if !pop_updated and (ua_name in ["U","Us"]){
+			do assign_pop (POP_FOR_U_STANDARD);
+			}
+	}	
+	
+	action assign_pop (int nbPop) 
+	{ if new_comers_still_to_dispatch > 0 {
+			population <- population + nbPop;
+			new_comers_still_to_dispatch <- new_comers_still_to_dispatch - nbPop;
+			not_updated<-true;
+			pop_updated <- true;
+		}
+	}
 	
 	float rugosityValueOfUA_name (string a_ua_name) 
 		{float val <- 0.0;
@@ -1706,6 +1773,7 @@ species commune
 							if a_UA.ua_name = "A" {cost <-ACTION_COST_LAND_COVER_FROM_A_TO_N;}	}
 						match "Us" {cost <-ACTION_COST_LAND_COVER_TO_Us;}
 						match "AUs" {cost <-a_UA.ua_name = "AU"?ACTION_COST_LAND_COVER_TO_Us:ACTION_COST_LAND_COVER_TO_AUs;}
+						match "densification" {cost <-ACTION_COST_LAND_COVER_TO_Ui;}
 					}
 				if cost = 0 {write "Problème cout change UA : cout de 0 ; passade de "+  a_UA.ua_name + " à "+new_ua_name;}
 				budget <- budget - cost;

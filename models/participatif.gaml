@@ -1271,6 +1271,8 @@ species Network_agent skills:[network]
 						{
 							ua_code <-int(data[3]);
 							ua_name <- nameOfUAcode(ua_code);
+							population <-int(data[4]);
+							isEnDensification <-bool(data[5]);
 						}
 					}
 				}
@@ -1641,7 +1643,7 @@ species UA
 		return val;}
 
 	string maj_densite {
-		return (population =0?"vide":(population <=40?"peu dense":(population <=80?"densité intermédiaire":"dense")));
+		return (population =0?"vide":(population <40?"peu dense":(population <80?"densité intermédiaire":"dense")));
 	}		
 	string fullNameOfUAname
 	{string result <- "";
@@ -1791,8 +1793,10 @@ experiment game type: gui
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
-					draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
-					draw "population : "+string(explored_cell.ua_name="U"?explored_cell.population:0) at: target + { 30#px, 75#px} font: regular color: # white;
+					if explored_cell.ua_name="U"{
+							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
+							draw "population : "+string(explored_cell.population) at: target + { 30#px, 75#px} font: regular color: # white;
+							}
 				}
 			}
 			
