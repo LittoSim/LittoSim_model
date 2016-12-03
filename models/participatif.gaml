@@ -1796,26 +1796,22 @@ experiment game type: gui
 				}
 			}
 			
-			graphics "Action Full target" transparency:0.5
+			graphics "Action Full target" transparency:0.3
 			{
 				//int size <- length(moved_agents);
-				if (explored_action_UA != nil)
+				if(explored_action_UA !=nil)
 				{
 					
 					UA mcell <- UA first_with(each.id = explored_action_UA.chosen_element_id);
-					point target <- {explored_cell.location.x  ,explored_cell.location.y };
-					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					point target <- {mcell.location.x  ,mcell.location.y };
+					point target2 <- {mcell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),mcell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw "Changement d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
 					
-					draw world.chooseActionIcone(explored_action_UA.command) at:  { target2.x - 75#px, target.y +75#px} size:50#px;
-					draw world.au_icone(mcell) at:  { target.x +25#px,target.y + 75#px} size:50#px;
-					
-					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
-					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
-					if explored_cell.ua_name="U"{
-							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
-							draw "population : "+string(explored_cell.population) at: target + { 30#px, 75#px} font: regular color: # white;
-							}
+					draw file("../images/icones/fleche.png") at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px}  size:50#px;
+					draw ""+ (explored_action_UA.application_round)   at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size:20#px; 
+					draw world.chooseActionIcone(explored_action_UA.command) at:  { target2.x - 50#px, target.y +50#px} size:50#px;
+					draw world.au_icone(mcell) at:  { target.x +50#px,target.y + 50#px} size:50#px;
 				}
 			}
 			

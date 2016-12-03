@@ -17,6 +17,7 @@ model oleronV2
 global  {
 
 	float MOUSE_BUFFER <- 50#m;
+	string OBSERVER_NAME <- "model_observer";
 	
 	string COMMAND_SEPARATOR <- ":";
 	string MANAGER_NAME <- "model_manager";
@@ -28,6 +29,10 @@ global  {
 	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
 	bool activemq_connect <- false;
+	
+	string UPDATE_ACTION_DONE <- "update_action_done";
+	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
+	
 	
 	//récupération des couts du fichier cout_action	
 	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,0});
@@ -169,9 +174,12 @@ global  {
 	
 
 init
-	{loop i from: 0 to: (length(listC)-1)  {
+	{
+		loop i from: 0 to: (length(listC)-1)  {
 		listC[i] <- blend (listC[i], #red , 0.9);
-	}
+		}
+		
+		create game_leader number:1;
 		
 		do implementation_tests;
 		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
@@ -567,6 +575,34 @@ species action_done schedules:[]
 	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
 	
+	action init_from_map(map<string, string> a )
+	{
+		self.id <- int(a at "id");
+		self.chosen_element_id <- int(a at "chosen_element_id");
+		self.doer <- a at "doer";
+		self.command <- int(a at "command");
+		self.label <- a at "label";
+		self.cost <- float(a at "cost");
+		self.application_round <- int(a at "application_round");
+		self.round_delay <- int(a at "round_delay");
+	}
+	
+	map<string,string> build_map_from_attribute
+	{
+		map<string,string> res <- ["id"::string(id),
+			"chosen_element_id"::string(chosen_element_id),
+			"doer"::string(doer),
+			"command"::string(command),
+			"label"::string(label),
+			"cost"::string(cost),
+			"application_round"::string(application_round),
+			"round_delay"::string(round_delay) ]	;
+			
+	return res;
+	}
+	
+	
+	
 	rgb define_color
 	{
 		switch(command)
@@ -652,6 +688,27 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 		}
 	}
 }  
+
+species game_leader skills:[network]
+{
+	init
+	{
+		 do connect to:"localhost" with_name:MANAGER_NAME;
+	}
+	
+	reflex send_action_state when: cycle mod 10 = 0
+	{
+		loop act_done over: action_done
+		{
+			map<string,string> msg <- act_done.build_map_from_attribute();
+			put UPDATE_ACTION_DONE key:OBSERVER_MESSAGE_COMMAND in:msg ;
+			do send to:OBSERVER_NAME contents:msg;
+			write "send message to leader "+ msg;
+			
+		}
+	}
+	
+}
 
 species game_controller skills:[network]
 {
