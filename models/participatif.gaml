@@ -79,7 +79,6 @@ global
 	int ACTION_INSPECT_LAND_USE <-26;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
-	/*int ACTION_CLOSE_PENDING_REQUEST <- 30;*/
 	
 	
 	//// action display map layers
@@ -290,7 +289,8 @@ global
 		float interleave <- world.local_shape.height / 20;
 		float button_s <- world.local_shape.height / 10;
 		
-		string unamMessage <- "Cliquez sur la cellule à modifier.";
+		string uaHelpMessage <- "Cliquez sur la cellule à modifier.";
+		string dikeHelpMessage <- "Cliquez sur la digue à modifier.";
 		
 		create buttons number: 1
 		{
@@ -299,7 +299,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_A;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			my_help <- unamMessage;
+			my_help <- uaHelpMessage;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/agriculture.png");
 		}
@@ -311,7 +311,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_AU;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			my_help <- unamMessage;
+			my_help <- uaHelpMessage;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/urban.png");
 		}
@@ -319,21 +319,21 @@ global
 		create buttons number: 1
 		{
 			command <- ACTION_MODIFY_LAND_COVER_AUs;
-			label <- "Changer en zone à urbaniser adaptée";
+			label <- "Changer en zone urbanisée adaptée";
 			action_cost <- ACTION_COST_LAND_COVER_TO_AUs;
-			my_help <- unamMessage;
+			my_help <- uaHelpMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/urban_adapte2.png");
 		}
 		
-				create buttons number: 1
+		create buttons number: 1
 		{
 			command <- ACTION_MODIFY_LAND_COVER_Ui;
-			label <- "Inciter à la densification sur une zone urbaine déjà existante";
+			label <- "Inciter à la densification";
 			action_cost <- ACTION_COST_LAND_COVER_TO_Ui;
-			my_help <- unamMessage;
+			my_help <- uaHelpMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 4*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
@@ -348,7 +348,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_FROM_AU_TO_N;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			my_help <- unamMessage;
+			my_help <- uaHelpMessage;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/tree_nature.png");
 			
@@ -358,7 +358,7 @@ global
 			command <- ACTION_INSPECT_LAND_USE;
 			label <- "Inspecter une unité d'aménagement";
 			action_cost <- 0;
-			my_help <- "glisser le pointeur sur les cellules à inspecter";
+			my_help <- "Glissez le pointeur sur les cellules à inspecter";
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
@@ -372,6 +372,7 @@ global
 			label <- "Construire une digue";
 			action_cost <- ACTION_COST_DIKE_CREATE;
 			shape <- square(button_size);
+			my_help <- "Cliquez aux deux extrémités du linéaire de digue que vous voulez construire";
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquer sur le point de départ et d'arrivée pour construire";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
@@ -384,6 +385,7 @@ global
 			label <- "Réparer une digue";
 			action_cost <- ACTION_COST_DIKE_REPAIR;
 			shape <- square(button_size);
+			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquer sur la digue à réparer";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
@@ -397,6 +399,7 @@ global
 			label <- "Démenteler une digue";
 			action_cost <- ACTION_COST_DIKE_DESTROY;
 			shape <- square(button_size);
+			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquer sur la digue à supprimer";
 			
@@ -411,6 +414,7 @@ global
 			label <- "Réhausser une digue";
 			action_cost <- ACTION_COST_DIKE_RAISE;
 			shape <- square(button_size);
+			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquer sur la digue à réhausser";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
@@ -424,6 +428,7 @@ global
 			label <- "Installer des ganivelles";
 			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
 			shape <- square(button_size);
+			my_help <- "Cliquez sur la dune à modifier";
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquer sur la dune où vous souhaitez installer une ganivelle";
 			
@@ -437,6 +442,7 @@ global
 			label <- "Inspecter un ouvrage de défense";
 			action_cost <- 0;
 			shape <- square(button_size);
+			my_help <- "Glissez le pointeur sur les digues et dunes à inspecter";
 			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/Loupe.png");
@@ -786,14 +792,8 @@ global
 			ask (cell_tmp)
 			{
 				if(selected_button.command = ACTION_INSPECT_LAND_USE)
-				{
-					/*NE RIEN FAIRE SI ON CLIC AVEC L'OUTIL LOUPE
-					 bool res <- false;
-					list<cell> cls <- cell overlapping self;
-					string chain <- "Caractéristiques de l'unité d'aménagement \n Occupation : "+ ua_name+ (ua_name="U"?( "\n Cout d'expropriation : "+cout_expro):""); // + " \n "+"Elévation : "+ hg+"\n rugosité : " + rg;
-					map<string,unknown> values2 <- user_input("Inspecteur",chain::"");*/
-					return;	
-					
+				{	//NE RIEN FAIRE SI ON CLIC AVEC L'OUTIL LOUPE
+					return;		
 				}
 				if((ua_name ="N" and selected_button.command = ACTION_MODIFY_LAND_COVER_N) 
 					or (ua_name ="U" and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
@@ -802,9 +802,7 @@ global
 					or (ua_name ="Us" and selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)
 					or (ua_name ="A" and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
 					or (length((action_done collect(each.location)) inside cell_tmp)>0  ))
-				{
-					//string chain <- "action incohérente";
-					//map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
+				{	// Action incohérente -> la case est déjà dans l'état souhaité
 					return;
 				}
 				if (!empty(protected_area where (each intersects (circle(10,shape.centroid))))){
@@ -1193,21 +1191,18 @@ species Network_agent skills:[network]
 			int action_id <- int(data[1]);
 			switch(int(data[0]))
 				{
-		/*
-		  Commenté car j'ai tout le temps un bug ici sinon
-		 match INFORM_ROUND
+		
+		 			match INFORM_ROUND
 					{
 						round<-int(data[2]);
-						ask (action_UA + action_def_cote) where (not(each.is_sent)) {application_round<-application_round+1;}
-						map<string,unknown> values2 <- user_input("Avertissement","Un tour de jeu vient de démarrer ("+ round+")"::"");
-					}*/
-					
-				/*match ACTION_CLOSE_PENDING_REQUEST
-					{
-						int id <- int(data[2]);
-						do action_application_acknowledgment(id);
-						
-					}*/
+						ask action_UA where (not(each.is_sent)) {application_round<-application_round+1;}
+						ask action_def_cote where (not(each.is_sent)) {application_round<-application_round+1;}
+						switch round {
+							match 1 {map<string,unknown> values2 <- user_input("La simulation démarre. C'est le tour 1"::"");}
+							match 0 {}
+							default {map<string,unknown> values2 <- user_input("Le tour "+ round+" a commencé"::"");}
+							}							
+					}
 					
 					match NOTIFY_DELAY
 					{
@@ -1543,7 +1538,6 @@ species buttons
 	image_file my_icon;
 	
 	string my_help;
-	int cost;
 	
 	string help
 	{
@@ -1805,11 +1799,11 @@ experiment game type: gui
 					point target <- {explored_cell.location.x  ,explored_cell.location.y };
 					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
-					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
+					draw "Zonage PLU" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
-					if explored_cell.ua_name="U"{
-							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
-							draw "population : "+string(explored_cell.population) at: target + { 30#px, 75#px} font: regular color: # white;
+					if explored_cell.ua_name in ["U","Us"]{
+							draw "population : "+string(explored_cell.population) at: target + { 30#px, 55#px} font: regular color: # white;
+							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 75#px} font: regular color: # white;
 							}
 				}
 			}
@@ -1843,8 +1837,15 @@ experiment game type: gui
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
+
 					draw explored_buttons.my_help at: target2 + { 30#px, 35#px } font: regular color: # white;
-					draw "Coût de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
+					if explored_buttons.command != ACTION_INSPECT_LAND_USE {
+							if explored_buttons.command != ACTION_MODIFY_LAND_COVER_N
+								{draw "Coût de l'action : "+explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;}
+							else {	draw "Coût si appliqué à une parcelle A : "+ACTION_COST_LAND_COVER_FROM_A_TO_N  at: target2 + { 30#px, 55#px} font: regular color: # white;
+									draw "Coût si appliqué à une parcelle AU : "+ACTION_COST_LAND_COVER_FROM_AU_TO_N  at: target2 + { 30#px, 75#px} font: regular color: # white;
+							}
+					}
 				}
 				
 				
@@ -1902,7 +1903,7 @@ experiment game type: gui
 				}
 			}
 			
-			graphics "Button information" transparency:0.5
+			graphics "Dike Button information" transparency:0.5
 			{
 				if (explored_buttons != nil)
 				{
@@ -1914,7 +1915,7 @@ experiment game type: gui
 				//	draw rectangle(target2,target4)   empty: false border: false color: #red ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
 					draw explored_buttons.my_help at: target2 + { 30#px, 35#px } font: regular color: # white;
-					draw "Coût de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
+					if explored_buttons.command != ACTION_INSPECT_DIKE {draw "Coût de l'action : "+explored_buttons.action_cost +"/mètre" at: target2 + { 30#px, 55#px} font: regular color: # white;}
 				}
 			}
 			
