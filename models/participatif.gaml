@@ -373,6 +373,7 @@ global
 			action_cost <- ACTION_COST_DIKE_CREATE;
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
+			my_help <- "Cliquer sur le point de départ et d'arrivée pour construire";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/digue_validation.png");
 		}
@@ -384,6 +385,7 @@ global
 			action_cost <- ACTION_COST_DIKE_REPAIR;
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
+			my_help <- "Cliquer sur la digue à réparer";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/digue_entretien.png");
 			
@@ -396,6 +398,8 @@ global
 			action_cost <- ACTION_COST_DIKE_DESTROY;
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
+			my_help <- "Cliquer sur la digue à supprimer";
+			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_suppression.png");
 			
@@ -408,6 +412,7 @@ global
 			action_cost <- ACTION_COST_DIKE_RAISE;
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
+			my_help <- "Cliquer sur la digue à réhausser";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_rehausse_plus.png");
 			
@@ -420,6 +425,8 @@ global
 			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
+			my_help <- "Cliquer sur la dune où vous souhaitez installer une ganivelle";
+			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
 			my_icon <- image_file("../images/icones/ganivelle.png");
 		}
@@ -497,7 +504,7 @@ global
 	
 	action mouse_move_UnAM //(point loc, list selected_agents)
 	{
-		do mouse_move_buttons();
+		do mouse_move_buttons_unam();
 		point loc <- #user_location;
 		list<buttons> current_active_button <- buttons where (each.is_selected);
 		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_LAND_USE)
@@ -532,7 +539,7 @@ global
 
 	action mouse_move_dike//(point loc, list selected_agents)
 	{
-		do mouse_move_buttons();
+		do mouse_move_buttons_dyke();
 		point loc <- #user_location;
 		
 		list<buttons> current_active_button <- buttons where (each.is_selected);
@@ -555,11 +562,18 @@ global
 	}
 
 
-	action mouse_move_buttons
+	action mouse_move_buttons_dyke
 	{
 		point loc <- #user_location;
-		explored_buttons <- buttons first_with (each overlaps loc);
+		explored_buttons <- buttons first_with (each overlaps loc and each.display_name=DIKE_DISPLAY);
 	}
+	
+	action mouse_move_buttons_unam
+	{
+		point loc <- #user_location;
+		explored_buttons <- buttons first_with (each overlaps loc and each.display_name!=DIKE_DISPLAY);
+	}
+	
 	action history_click //(point loc, list selected_agents)
 	{
 		point loc <- #user_location;
@@ -1829,7 +1843,7 @@ experiment game type: gui
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
-					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
+					draw explored_buttons.my_help at: target2 + { 30#px, 35#px } font: regular color: # white;
 					draw "Coût de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
 				}
 				
@@ -1898,8 +1912,8 @@ experiment game type: gui
 					point target4 <- {target3.x,target2.y - 15#px };
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 				//	draw rectangle(target2,target4)   empty: false border: false color: #red ; //transparency:0.5;
-					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #green;
-					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
+					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
+					draw explored_buttons.my_help at: target2 + { 30#px, 35#px } font: regular color: # white;
 					draw "Coût de l'action : "+explored_buttons.cost() at: target2 + { 30#px, 55#px} font: regular color: # white;
 				}
 			}
