@@ -358,7 +358,7 @@ global
 			command <- ACTION_INSPECT_LAND_USE;
 			label <- "Inspecter une unité d'aménagement";
 			action_cost <- 0;
-			my_help <- "Glissez le pointeur sur les cellules à inspecter";
+			my_help <- "Glissez le pointeur sur les cellules à inspecter.";
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
@@ -372,9 +372,8 @@ global
 			label <- "Construire une digue";
 			action_cost <- ACTION_COST_DIKE_CREATE;
 			shape <- square(button_size);
-			my_help <- "Cliquez aux deux extrémités du linéaire de digue que vous voulez construire";
 			display_name <- DIKE_DISPLAY;
-			my_help <- "Cliquer sur le point de départ et d'arrivée pour construire";
+			my_help <- "Cliquez aux deux extrémités du linéaire de digue.";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/icones/digue_validation.png");
 		}
@@ -387,7 +386,7 @@ global
 			shape <- square(button_size);
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
-			my_help <- "Cliquer sur la digue à réparer";
+		//	my_help <- "Cliquez sur la digue à réparer";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/icones/digue_entretien.png");
 			
@@ -401,7 +400,7 @@ global
 			shape <- square(button_size);
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
-			my_help <- "Cliquer sur la digue à supprimer";
+		//	my_help <- "Cliquer sur la digue à supprimer";
 			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_suppression.png");
@@ -416,7 +415,7 @@ global
 			shape <- square(button_size);
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
-			my_help <- "Cliquer sur la digue à réhausser";
+		//	my_help <- "Cliquer sur la digue à réhausser";
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_rehausse_plus.png");
 			
@@ -428,9 +427,9 @@ global
 			label <- "Installer des ganivelles";
 			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
 			shape <- square(button_size);
-			my_help <- "Cliquez sur la dune à modifier";
+		//	my_help <- "Cliquez sur la dune à modifier";
 			display_name <- DIKE_DISPLAY;
-			my_help <- "Cliquer sur la dune où vous souhaitez installer une ganivelle";
+			my_help <- "Cliquez sur la dune pour installer une ganivelle.";
 			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
 			my_icon <- image_file("../images/icones/ganivelle.png");
@@ -442,7 +441,7 @@ global
 			label <- "Inspecter un ouvrage de défense";
 			action_cost <- 0;
 			shape <- square(button_size);
-			my_help <- "Glissez le pointeur sur les digues et dunes à inspecter";
+			my_help <- "Glissez le pointeur sur les digues et dunes.";
 			display_name <- DIKE_DISPLAY;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/Loupe.png");
