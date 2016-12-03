@@ -79,7 +79,6 @@ global
 	int ACTION_INSPECT_LAND_USE <-26;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
-	/*int ACTION_CLOSE_PENDING_REQUEST <- 30;*/
 	
 	
 	//// action display map layers
@@ -772,14 +771,8 @@ global
 			ask (cell_tmp)
 			{
 				if(selected_button.command = ACTION_INSPECT_LAND_USE)
-				{
-					/*NE RIEN FAIRE SI ON CLIC AVEC L'OUTIL LOUPE
-					 bool res <- false;
-					list<cell> cls <- cell overlapping self;
-					string chain <- "Caractéristiques de l'unité d'aménagement \n Occupation : "+ ua_name+ (ua_name="U"?( "\n Cout d'expropriation : "+cout_expro):""); // + " \n "+"Elévation : "+ hg+"\n rugosité : " + rg;
-					map<string,unknown> values2 <- user_input("Inspecteur",chain::"");*/
-					return;	
-					
+				{	//NE RIEN FAIRE SI ON CLIC AVEC L'OUTIL LOUPE
+					return;		
 				}
 				if((ua_name ="N" and selected_button.command = ACTION_MODIFY_LAND_COVER_N) 
 					or (ua_name ="U" and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
@@ -788,9 +781,7 @@ global
 					or (ua_name ="Us" and selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)
 					or (ua_name ="A" and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
 					or (length((action_done collect(each.location)) inside cell_tmp)>0  ))
-				{
-					//string chain <- "action incohérente";
-					//map<string,unknown> values2 <- user_input("Avertissement",[chain::""]);		
+				{	// Action incohérente -> la case est déjà dans l'état souhaité
 					return;
 				}
 				if (!empty(protected_area where (each intersects (circle(10,shape.centroid))))){
@@ -1179,21 +1170,18 @@ species Network_agent skills:[network]
 			int action_id <- int(data[1]);
 			switch(int(data[0]))
 				{
-		/*
-		  Commenté car j'ai tout le temps un bug ici sinon
-		 match INFORM_ROUND
+		
+		 			match INFORM_ROUND
 					{
 						round<-int(data[2]);
-						ask (action_UA + action_def_cote) where (not(each.is_sent)) {application_round<-application_round+1;}
-						map<string,unknown> values2 <- user_input("Avertissement","Un tour de jeu vient de démarrer ("+ round+")"::"");
-					}*/
-					
-				/*match ACTION_CLOSE_PENDING_REQUEST
-					{
-						int id <- int(data[2]);
-						do action_application_acknowledgment(id);
-						
-					}*/
+						ask action_UA where (not(each.is_sent)) {application_round<-application_round+1;}
+						ask action_def_cote where (not(each.is_sent)) {application_round<-application_round+1;}
+						switch round {
+							match 1 {map<string,unknown> values2 <- user_input("La simulation vient de commencer. C'est le tour 1"::"");}
+							match 0 {}
+							default {map<string,unknown> values2 <- user_input("Le tour "+ round+" vient de démarrer"::"");}
+							}							
+					}
 					
 					match NOTIFY_DELAY
 					{
@@ -1791,11 +1779,11 @@ experiment game type: gui
 					point target <- {explored_cell.location.x  ,explored_cell.location.y };
 					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
-					draw "Information d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
+					draw "Zonage PLU" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
-					if explored_cell.ua_name="U"{
-							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 55#px} font: regular color: # white;
-							draw "population : "+string(explored_cell.population) at: target + { 30#px, 75#px} font: regular color: # white;
+					if explored_cell.ua_name in ["U","Us"]{
+							draw "population : "+string(explored_cell.population) at: target + { 30#px, 55#px} font: regular color: # white;
+							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 75#px} font: regular color: # white;
 							}
 				}
 			}

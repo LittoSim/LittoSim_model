@@ -88,7 +88,6 @@ global  {
 	int INFORM_TAX_GAIN <-24;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
-	/*int ACTION_CLOSE_PENDING_REQUEST <- 30;*/
 
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11; // Not used. Should detele ?
 	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;// Not used. Should detele ?
@@ -368,14 +367,6 @@ action launchFloodPhase
 		stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	}
 
-/*action execute_pending_request(action_done act)
-{
-		string data <- ""+ACTION_CLOSE_PENDING_REQUEST+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+act.id;
-		ask game_controller
-		{
-			do send to:act.doer contents:data;
-		}
-}*/
  	
 action executeLisflood
 	{	timestamp <- machine_time ;
