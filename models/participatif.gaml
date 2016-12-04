@@ -24,6 +24,7 @@ global
 	file defense_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 	file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 	file zone_protegee_shape <- file("../includes/zone_etude/zps_sic.shp");
+	file zone_PPR_shape <- file("../includes/zone_etude/PPR_extract.shp");
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 	matrix<string> all_action_delay <- matrix<string>(csv_file("../includes/delai_action.csv",";"));
 
@@ -84,6 +85,7 @@ global
 	
 	//// action display map layers
 	int ACTION_DISPLAY_PROTECTED_AREA <- 33;
+	int ACTION_DISPLAY_FLOODED_AREA <- 38;
 	
 	// User messages
 	string MSG_POSSIBLE_REGLEMENTATION_DELAY <- "La zone de travaux est soumise à des contraintes réglementaires.\nLe dossier est susceptible d’être retardé.\nSouhaitez vous poursuivre ?";
@@ -171,7 +173,7 @@ global
 		}
 		create road from:road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
-		
+		create flood_risk_area from: zone_PPR_shape;
 		switch (commune_name)
 			{
 			match "lechateau" {commune_name_shpfile <-"Le-Chateau-d'Oleron";}
@@ -498,7 +500,15 @@ global
 			my_icon <- image_file("../images/icones/sans_zones_protegees.png");
 			is_selected <- false;
 		}	
-		
+		create buttons_map number: 1
+		{
+			command <- ACTION_DISPLAY_FLOODED_AREA;
+			label <- "Afficher les zones innondées";
+			shape <- square(850);
+			location <- { 1000,9000 };
+			my_icon <- image_file("../images/icones/sans_zones_innondees.png");
+			is_selected <- false;
+		}
 	}
 	
 	action init_basket
@@ -1016,6 +1026,7 @@ global
 					is_selected <- not(is_selected);
 					switch command {
 						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_protegees.png") :  image_file("../images/icones/sans_zones_protegees.png");}
+						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_innondees.png") :  image_file("../images/icones/sans_zones_innondees.png");}
 					}			
 				}
 			}
@@ -1060,6 +1071,7 @@ global
 					is_selected <- not(is_selected);
 					switch command {
 						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_protegees.png") :  image_file("../images/icones/sans_zones_protegees.png");}
+						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_innondees.png") :  image_file("../images/icones/sans_zones_innondees.png");}
 					}			
 				}
 			}
@@ -1698,6 +1710,16 @@ species protected_area {
 	}
 }
 
+species flood_risk_area {
+	
+	aspect base 
+	{
+		if (buttons_map first_with(each.command =ACTION_DISPLAY_FLOODED_AREA)).is_selected
+		{
+		 draw shape color: rgb (20, 200, 255,120) border:#black;
+		}
+	}
+}
 species UA
 {
 	string ua_name <- "";
@@ -1873,6 +1895,7 @@ experiment game type: gui
 			species action_UA aspect:base;
 			species road aspect:base;
 			species protected_area aspect:base;
+			species flood_risk_area aspect:base;
 			species buttons aspect:UnAm;
 			species buttons_map aspect:base;
 			
@@ -1960,6 +1983,7 @@ experiment game type: gui
 			species action_def_cote aspect:base;
 			species road aspect:base;
 			species protected_area aspect:base;
+			species flood_risk_area aspect:base;
 			species buttons aspect:dike;
 			species buttons_map aspect:base;
 			

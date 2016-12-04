@@ -1765,27 +1765,12 @@ species UA
 		{float val <- 0.0;
 		 switch (a_ua_name)
 			{
-/* Valeur rugosité fournies par Brice
-Urbain (codes CLC 112,123,142) : 				0.12	->U
-Vignes (code CLC 221) : 						0.07	->A
-Prairies (code CLC 241) : 						0.04	->N
-Parcelles agricoles (codes CLC 211,242,243):	0.06	->A
-Forêt feuillus (code CLC 311) : 				0.15
-Forêt conifères (code CLC 312) : 				0.16
-Forêt mixte (code CLC 313) : 					0.17
-Landes (code CLC 322) : 						0.07	->N
-Forêt + arbustes (code CLC 324) : 				0.14
-Plage - dune (code CLC 331) : 				0.03
-Marais intérieur (code CLC 411) : 				0.055
-Marais maritime (code CLC 421) : 				0.05
-Zone intertidale (code CLC 423) : 				0.025
-Mer (code CLC 523) : 						0.02				*/
-				match "N" {val <- 0.05;}//N (entre 0.04 et 0.07 -> 0.05)   ->selon MA et NB 0.11
-				match "U" {val <- 0.12;}//U                                                ->selon MA et NB 0.05
-				match "AU" {val <- 0.1;}//AU							->selon MA et NB  0.09
-				match "A" {val <- 0.06;}//A							->selon MA et NB 0.07
-				match "AUs" {val <- 0.09;}//A						->selon les notes de MAPS9
-				match "Us" {val <- 0.09;}//U                                                ->selon les notes de MAPS9
+				match "N" {val <- 0.11;}	//  Ds la V1 c'était 0.05 mais selon MA et NB ce n'était pas cohérent car N est sensé freiner l'inondation. Selon MA et NB c'est  0.11
+				match "U" {val <- 0.05;}	//  Ds la V1 c'était 0.12 mais selon MA et NB ce n'était pas cohérent car U est sensé faire glisser l'eau. Selon MA et NB c'est 0.05
+				match "AU" {val <- 0.09;} 	//  Ds la V1 c'était 0.1 mais selon MA et NB ce n'était pas cohérent car AU n'est pas sensé freiner autant l'eau que N. Selon MA et NB c'est 0.09							->selon MA et NB  0.09
+				match "A" {val <- 0.07;}	// Ds la V1 c'était 0.06 mais selon MA et NB ce n'était pas cohérent car le A d'oélron correspond plus à Landes (code CLC 322) ou Vignes (code CLC 221) qui font 0.07, et pas vraiement à Prairies (code CLC 241)  qui fait 0.04. Selon MA et NB c'est 0.07
+				match "AUs" {val <- 0.09;}  // Selon MA et NB et la CdC, l'habitat adapté va freiner un peu l'inondation. Donc 0.09
+				match "Us" {val <- 0.09;}   // Selon MA et NB et la CdC, l'habitat adapté va freiner un peu l'inondation. Donc 0.09
 			}
 		return val;}
 
