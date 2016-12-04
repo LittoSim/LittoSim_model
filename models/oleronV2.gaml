@@ -590,6 +590,15 @@ species action_done schedules:[]
 	int round_delay <- 0 ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
+	// attributs ajouté par NB dans la specie action_done (modèle oleronV2.gaml) pour avoir les infos en plus sur les actions réalisés, nécessaires pour que le leader puisse applique des leviers
+	string type <- "dike" ; //can be "dike" or "PLU"
+	string previous_ua_name <-"";  // for PLU action
+	bool isExpropriation <- false; // for PLU action
+	bool inProtectedArea <- false; // for dike action
+	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
+	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
+	
 	
 	action init_from_map(map<string, string> a )
 	{
@@ -605,7 +614,8 @@ species action_done schedules:[]
 	
 	map<string,string> build_map_from_attribute
 	{
-		map<string,string> res <- ["id"::string(id),
+		map<string,string> res <- [
+			"id"::string(id),
 			"chosen_element_id"::string(chosen_element_id),
 			"doer"::string(doer),
 			"command"::string(command),
@@ -618,8 +628,8 @@ species action_done schedules:[]
 	}
 	
 	
-	
-	rgb define_color
+	// NB pas utilisé il me semble
+	/*rgb define_color
 	{
 		switch(command)
 		{
@@ -631,8 +641,8 @@ species action_done schedules:[]
 			 match ACTION_MODIFY_LAND_COVER_N {return #green;}
 		} 
 		return #grey;
-	}
-	
+	}*/
+	// Pas utilisé car remplacé par l'interface Leader
 	action assign_delay(int nb) 
 	{
 		round_delay <- round_delay + nb;
@@ -1257,7 +1267,8 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 		}
 	}
 	
-	action button_click_action
+	// NB Pas utilisé car remplacé par l'interface Leader
+	/*action button_click_action
 	{
 		point loc <- #user_location;
 		list<action_done> list_act <-  action_done overlapping loc; // agts of_species dike;
@@ -1268,7 +1279,7 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 Nombre de tours de retard assigner ?",["nb":: 1]);
 			ask first(list_act) {do assign_delay(int(values at "nb"));}
 		}
-	}
+	}*/
     
     //destruction de la sélection
     action clear_selected_button
@@ -1974,12 +1985,13 @@ experiment oleronV2 type: gui {
 				}
 			}
 			
-		display "Liste Actions"
+		// NB Pas utilsé car remplacé par l'interface Leader
+		/*display "Liste Actions"
 		{
 			species action_done aspect: base;
 			//species highlight_action_button aspect:base;
 			event [mouse_down] action: button_click_action ;
 
-		}
+		}*/
 			}}
 		
