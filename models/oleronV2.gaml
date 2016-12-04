@@ -591,7 +591,7 @@ species action_done schedules:[]
 	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
 	// attributs ajouté par NB dans la specie action_done (modèle oleronV2.gaml) pour avoir les infos en plus sur les actions réalisés, nécessaires pour que le leader puisse applique des leviers
-	string type <- "dike" ; //can be "dike" or "PLU"
+	string action_type <- "dike" ; //can be "dike" or "PLU"
 	string previous_ua_name <-"";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
@@ -985,10 +985,26 @@ species game_controller skills:[network]
 		ask(new_action)
 		{
 			self.command <- int(data[0]);
+			write "New action"+self.command;
 			self.id <- int(data[1]);
 			self.application_round <- int(data[2]);
 			self.doer <- sender;
 			self.my_message <- data;
+			if !(self.command in [ACTION_MESSAGE,REFRESH_ALL]) {
+				self.chosen_element_id <- int(data[3]);
+				self.action_type <- int(data[4]);
+				self.inProtectedArea <- int(data[5]);
+				self.previous_ua_name <- int(data[6]);
+				self.isExpropriation <- int(data[7]);
+				if command = ACTION_CREATE_DIKE
+				{
+					point ori <- {float(data[8]),float(data[9])};
+					point des <- {float(data[10]),float(data[11])};
+					point loc <- {float(data[12]),float(data[13])}; 
+					shape <- polyline([ori,des]);
+					location <- loc; 
+				}
+			}
 			// A CORRIGER POur que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
 			//  DOnc il faut que le paieemnt se fasse au niveau de cette méthode. Et que l'execution soit en effet différée
 			if self.application_round != (round  + (world.delayOfAction(self.command)))
@@ -1007,25 +1023,9 @@ species game_controller skills:[network]
 				else{	write "PROBELEME avec la valeur de l'application round récupéré du client >> self.application_round : "+ self.application_round + " ; round  + (world.delayOfAction(self.command)) : " +(round  + (world.delayOfAction(self.command)));
 						self.application_round <- round  + (world.delayOfAction(self.command));
 				}
-			}
-			switch(self.command)
-			{
-				match ACTION_CREATE_DIKE
-				{
-					point ori <- {float(data[3]),float(data[4])};
-					point des <- {float(data[5]),float(data[6])};
-					point loc <- {float(data[7]),float(data[8])}; 
-					shape <- polyline([ori,des]);
-					location <- loc; 
-				}
-				match ACTION_MESSAGE {}
-				match REFRESH_ALL {}
-				default {
-					self.chosen_element_id <- int(data[3]);
-				}
-				
 			}	
 		}
+		write new_action;
 		ask game_master {do monitor_new_action( new_action);}
 		
 	}

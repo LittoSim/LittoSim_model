@@ -37,6 +37,7 @@ global
 	int ACTION_COST_DIKE_DESTROY <- int(all_action_cost at {2,5});
 	int ACTION_COST_DIKE_RAISE <- int(all_action_cost at {2,6});
 	float ACTION_COST_INSTALL_GANIVELLE <- float(all_action_cost at {2,8}); 
+	float ACTION_COST_INSTALL_GANIVELLE_SUBSIDY <- float(all_action_cost at {2,14}); 
 	int ACTION_COST_LAND_COVER_TO_AUs <- int(all_action_cost at {2,9});
 	int ACTION_COST_LAND_COVER_TO_Us <- int(all_action_cost at {2,10});
 	int ACTION_COST_LAND_COVER_TO_Ui <- int(all_action_cost at {2,13});
@@ -125,6 +126,7 @@ global
 	int minimal_budget <- -5000;
 	int impot_recu <- 0;
 	bool subvention_habitat_adapte <- false;
+	bool subvention_ganivelle <- false;
 	int previous_population;
 	
 	list<action_done> my_basket<-[];
@@ -217,7 +219,6 @@ global
 	action change_subvention_habitat_adapte_with (bool newValue) {
 		subvention_habitat_adapte <- newValue;
 		if subvention_habitat_adapte {
-			write "Hab Adapté Uodated TRUE";
 			ask buttons where (each.command = ACTION_MODIFY_LAND_COVER_AUs)
 				{	action_cost <- ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY;
 					label <- "Changer en zone urbanisée adaptée (Subventionné).";
@@ -225,7 +226,6 @@ global
 			ask world {do user_msg("L'habitat adapté est à présent subventionné : "+ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY+ " au lieu de "+ACTION_COST_LAND_COVER_TO_AUs);}
 		}
 		else {
-			write "Hab Adapté Uodated FALSE";
 			ask buttons where (each.command = ACTION_MODIFY_LAND_COVER_AUs)
 				{	action_cost <- ACTION_COST_LAND_COVER_TO_AUs;
 					label <- "Changer en zone urbanisée adaptée.";
@@ -234,6 +234,24 @@ global
 		}	
 	}
 	
+	action change_subvention_ganivelle_with (bool newValue) {
+		write "YOUOUOU";
+		subvention_ganivelle <- newValue;
+		if subvention_ganivelle {
+			ask buttons where (each.command = ACTION_INSTALL_GANIVELLE)
+				{	action_cost <- ACTION_COST_INSTALL_GANIVELLE_SUBSIDY;
+					label <- "Installer des ganivelles (Subventionné).";
+				}
+			ask world {do user_msg("L'installation de ganivelles est à présent subventionné : "+ACTION_COST_INSTALL_GANIVELLE_SUBSIDY+ " au lieu de "+ACTION_COST_INSTALL_GANIVELLE);}
+		}
+		else {
+			ask buttons where (each.command = ACTION_INSTALL_GANIVELLE)
+				{	action_cost <- ACTION_COST_INSTALL_GANIVELLE;
+					label <- "Installer des ganivelles.";
+				}
+			ask world {do user_msg("L'installation de ganivelles n'est plus subventionné : "+ACTION_COST_INSTALL_GANIVELLE+ " au lieu de "+ACTION_COST_INSTALL_GANIVELLE_SUBSIDY);}
+		}	
+	}
 	int get_action_id
 	{
 		action_id <- action_id + 1;
@@ -684,7 +702,7 @@ global
 			switch(selected_button.command)
 			{
 				match ACTION_CREATE_DIKE { do create_new_dike(loc,selected_button);}
-				match ACTION_INSPECT_DIKE { do inspect_dike(loc,selected_dike,selected_button);}
+				match ACTION_INSPECT_DIKE {/*NE RIEN FAIRE do inspect_dike(loc,selected_dike,selected_button);*/}
 				default {do modify_dike(loc, selected_dike,selected_button);}
 			}
 		}
@@ -744,6 +762,14 @@ global
 		if(length(selected_dike)>0)
 		{
 			def_cote dk<- selected_dike closest_to mloc;
+			if(dk.type ="Naturel" and but.command in [ ACTION_REPAIR_DIKE , ACTION_CREATE_DIKE , ACTION_DESTROY_DIKE , ACTION_RAISE_DIKE])
+				{	// Action incohérente -> NE RIEN FAIRE 
+					return;		
+				}
+			if(dk.type != "Naturel" and but.command in [ ACTION_INSTALL_GANIVELLE ])
+				{	// Action incohérente -> NE RIEN FAIRE 
+					return;
+				}
 			create action_def_cote number:1 returns:action_list
 			 {
 				id <- world.get_action_id();
@@ -1068,6 +1094,12 @@ global
 		//soit on l'écrit ds la console avec une entete ou pas
 		write "USER MSG: "+msg;
 	}
+	
+	/*reflex test {
+		if !subvention_ganivelle {
+			do change_subvention_ganivelle_with(true);
+		}
+	}*/
 }
 
 species del_basket_button
@@ -1115,11 +1147,11 @@ species highlight_action_button
 species action_done
 {
 	int id;
-	int chosen_element_id;
+	int chosen_element_id<-0;
 	//string command_group <- "";
 	int command <- -1;
 	string label <- "no name";
-	float cost <- 0;
+	float cost <- 0.0;
 	int application_round <- -1;
 	int round_delay <- 0 ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0} ;
@@ -1127,8 +1159,8 @@ species action_done
 	bool is_applied <- false;
 	bool is_highlighted <- false;
 	// attributs ajouté par NB dans la specie action_done (modèle oleronV2.gaml) pour avoir les infos en plus sur les actions réalisés, nécessaires pour que le leader puisse applique des leviers
-	string type <- "dike" ; //can be "dike" or "PLU"
-	string previous_ua_name <-"";  // for PLU action
+	string action_type <- "dike" ; //can be "dike" or "PLU"
+	string previous_ua_name <-"nil";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
 	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
@@ -1142,7 +1174,29 @@ species action_done
 		string result <-"";
 		//write "pout poute "+ chosen_element_id;
 		
-		switch(command)
+	result <- ""+
+		command+COMMAND_SEPARATOR+  //0
+		id+COMMAND_SEPARATOR+
+		application_round+COMMAND_SEPARATOR+
+		chosen_element_id+COMMAND_SEPARATOR+			//3
+		action_type +COMMAND_SEPARATOR+
+		inProtectedArea+COMMAND_SEPARATOR+		//5
+		previous_ua_name+COMMAND_SEPARATOR+
+		isExpropriation	;					//7
+		
+	if command = ACTION_CREATE_DIKE  {
+				point end <- last(shape.points);
+				point origin <- first(shape.points);
+				result <- result+
+					COMMAND_SEPARATOR+( origin.x)+	//8
+					COMMAND_SEPARATOR+(origin.y) +
+					COMMAND_SEPARATOR+(end.x)+		//10
+					COMMAND_SEPARATOR+(end.y)+
+					COMMAND_SEPARATOR+location.x+	//12
+					COMMAND_SEPARATOR+location.y;
+		}
+			
+	/*switch(command)
 		{
 			match ACTION_CREATE_DIKE  {
 				point end <- last(shape.points);
@@ -1153,7 +1207,7 @@ species action_done
 			default {
 				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+chosen_element_id;
 			}
-		}
+		}*/
 		
 		return result;	
 	}
@@ -1471,7 +1525,8 @@ species basket_validation
 
 species action_def_cote parent:action_done
 {
-	string type <- "dike";
+	string action_type <- "dike";
+	
 	
 	rgb define_color
 	{
@@ -1512,8 +1567,7 @@ species action_def_cote parent:action_done
 species action_UA parent:action_done
 {
 	int choosen_cell;
-	string type <- "PLU";
-	int cost <- 0;
+	string action_type <- "PLU";
 	
 	rgb define_color
 	{
