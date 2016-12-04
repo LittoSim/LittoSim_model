@@ -17,6 +17,7 @@ global
 	float MOUSE_BUFFER <- 50#m;
 	string COMMAND_SEPARATOR <- ":";
 	string OBSERVER_NAME <- "model_observer";
+	string GAME_LEADER_MANAGER <- "GAME_LEADER_MANAGER";
 	string GROUP_NAME <- "Oleron";  
 	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 	float  STANDARD_DIKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
@@ -87,13 +88,22 @@ global
 	action_done selection_action_done;
 	
 	
-	string current_action <- selected_action!= nil? selected_action.displayName:"NAN";
+	string current_selected_action -> {selected_action!= nil? selected_action.displayName:"NAN"};
 	
 	string REORGANISATION_AFFICHAGE <- "Réorganiser l'affichage";
-	string IMPOSER <- "Imposer";
+	string ABROGER <- "Abroger";
+	string RECETTE <- "Percevoir Recette";
 	string SUBVENTIONNER <- "Subventionner";
+	string RETARDER <- "Retarder";
+	string RETARD_1_AN <- "Retarder pour 1 an";
+	string RETARD_2_ANS <- "Retarder pour 2 ans";
+	string RETARD_3_ANS <- "Retarder pour 3 ans";
 	string LEVER_RETARD <- "Lever les retards";
-	
+	string LEADER_COMMAND <- "leader_command";
+	string AMOUNT <- "amount";
+	string DELAY <- "delay";
+	string ACTION_ID <- "action_id";
+	string COMMUNE <- "COMMUNE_ID";
 	
 	bool reorganisation_affichage -> {selected_action!= nil and selected_action.displayName= "Réorganiser l'affichage"};
 	bool imposer -> {selected_action!= nil and selected_action.displayName= "Imposer"};
@@ -102,12 +112,14 @@ global
 	
 	geometry shape <- square(100#m);
 	
+	game_controller network_agent <- nil;
 	init
 	{
 		create game_controller number:1;
+		network_agent <- first(game_controller);
 		do create_commune;
 		do create_button;
-		
+
 		
 		//pour les test
 		int i <- 0;
@@ -121,7 +133,7 @@ global
 		}
 	}
 	
-	reflex drag_drop when: selection_action_done != nil and  reorganisation_affichage
+	reflex drag_drop when: selection_action_done != nil and  current_selected_action = REORGANISATION_AFFICHAGE
 	{
 			selection_action_done.shape <- rectangle(10#m,5#m);
 			selection_action_done.location	<-	#user_location;	
@@ -130,61 +142,152 @@ global
 	action button_commune 
 	{
 		point loc <- #user_location;
-		
 		selected_commune <- (commune first_with (each overlaps loc ));
-		
-		write selected_commune;
 	}
 	
 	action button_action
 	{
 		point loc <- #user_location;
 		selected_action <- (action_button first_with (each overlaps loc ));
+		switch(selected_action.displayName)
+				{
+					match RECETTE {
+						if(selected_commune != nil)
+						{
+							do percevoir_recette( selected_commune);
+						}
+					}
+					match SUBVENTIONNER {
+						if(selected_commune != nil)
+						{
+							do subventionner( selected_commune);
+						}
+					}					
+				}
 	}
 	
 	action button_action_done
 	{
 		point loc <- #user_location;
-		if(selection_action_done =nil)
-			{
-				if(reorganisation_affichage )
+		
+		write "selection_action " + current_selected_action;
+		
+		action_done local_selection <- (action_done first_with (each overlaps loc ));
+		switch(current_selected_action)
 				{
-					selection_action_done <- (action_done first_with (each overlaps loc ));
+					match REORGANISATION_AFFICHAGE {
+						if(selection_action_done = nil)
+						{
+							selection_action_done <- local_selection;
+						}
+						else
+						{
+							selection_action_done <- nil;
+						}
+						
+					}
+					match RECETTE {
+						if(selected_commune != nil)
+						{
+							do percevoir_recette( selected_commune);
+						}
+					}
+					match RETARD_1_AN
+					{
+						if(local_selection != nil)
+						{
+							do retarder_action(local_selection,1);
+						}	
+					}
+					match RETARD_2_ANS
+					{
+						if(local_selection != nil)
+						{
+							do retarder_action(local_selection,2);
+						}	
+					}
+					match RETARD_3_ANS
+					{
+						if(local_selection != nil)
+						{
+							do retarder_action(local_selection,3);
+						}	
+					}
+					match ABROGER
+					{
+						if(local_selection != nil)
+						{
+							do retarder_action(local_selection,3000);
+						}	
+					}
 				}
-				if(imposer) 
-				{
-					
-				}
-			}
-			else
-			{
-				selection_action_done.shape <- rectangle(10#m,5#m);
-				selection_action_done.location	<-	#user_location;
-				selection_action_done <- nil;
-			}
 	}
 	
-		
+	action percevoir_recette(commune com)
+	{
+		string answere <- "Montant de la recette ";
+		map values <- user_input("Vous allez prélever une recette en provenance de " +com.com_large_name,[answere :: 10000]);
+		map<string, unknown> msg <-map([LEADER_COMMAND::RECETTE,AMOUNT::int(values[answere]),COMMUNE::com.com_id]);
+		do send_message(msg);	
+	}
+
+	action subventionner(commune com)
+	{
+		string answere <- "montant de la subvention";
+		map values <- user_input("Vous allez subventionner la commune de " +com.com_large_name,[ answere :: 10000]);
+		map<string, unknown> msg <-map([LEADER_COMMAND::SUBVENTIONNER,AMOUNT::int(values[answere]),COMMUNE::com.com_id]);
+		do send_message(msg);	
+	}
+	
+	action retarder_action(action_done act_dn, int duree)
+	{
+		map<string, unknown> msg <-map([LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id]);
+		do send_message(msg);	
+	}
+	
+	action lever_retard_action(action_done act_dn)
+	{
+		map<string, unknown> msg <-map([LEADER_COMMAND::LEVER_RETARD,ACTION_ID::act_dn.id]);
+		do send_message(msg);	
+	}
+	
+	action send_message(map<string,unknown> msg)
+	{
+		ask network_agent
+		{
+			do send to:GAME_LEADER_MANAGER contents:msg;
+		}		
+	}
+	
+	action button_action_move
+	{
+		if(selection_action_done != nil and  current_selected_action = REORGANISATION_AFFICHAGE)
+		{
+			selection_action_done.shape <- rectangle(10#m,5#m);
+			selection_action_done.location	<-	#user_location;	
+		}
+	}
+			
 	action create_button
 	{
 		int i <- 0;
 		create action_button number:1
 		{
-			displayName <- "Retarder pour 1 an";	
+			displayName <- RETARD_1_AN;	
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
 		
 		create action_button number:1
 		{
-			displayName <- "Retarder pour 2 ans";
+			displayName <- RETARD_2_ANS;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
 		
 		create action_button number:1
 		{
-			displayName <- "Retarder pour 3 ans";
+			displayName <- RETARD_3_ANS;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 			
@@ -192,35 +295,35 @@ global
 		
 		create action_button number:1
 		{
-			displayName <- "Abroger";
+			displayName <- ABROGER;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
 		
 		create action_button number:1
 		{
-			displayName <- "Lever les retards";
+			displayName <- LEVER_RETARD;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
 		
 		create action_button number:1
 		{
-			displayName <- "Subventionner";
+			displayName <- SUBVENTIONNER;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
 		
 		create action_button number:1
 		{
-			displayName <- "Imposer";
+			displayName <- RECETTE;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
 		
 		create action_button number:1
 		{
-			displayName <- "Réorganiser l'affichage";
+			displayName <- REORGANISATION_AFFICHAGE;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
@@ -438,8 +541,19 @@ experiment lead_the_game
 		}
 		display alive_action_commune
 		{
+			graphics "agile" position:{0,0} 
+			{
+				draw rectangle(20#m,100#m) color:#gray at:{10#m,50#m};
+				draw "A traiter" color:#white at:{5#m,10#m} size:12#px;
+				draw rectangle(40#m,100#m) color:#yellow at:{40#m,50#m};
+				draw "Encours" color:#black at:{35#m,10#m};
+				draw rectangle(40#m,100#m) color:#green at:{80#m,50#m};
+				draw "Achevé" color:#white at:{75#m,10#m};
+			}
 			species action_done aspect:base;
 			event [mouse_down] action: button_action_done;
+			event mouse_move action: button_action_move;
+			
 		}
 		 //toto
 	}

@@ -717,9 +717,63 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 
 species game_leader skills:[network]
 {
+	string ABROGER <- "Abroger";
+	string RECETTE <- "Percevoir Recette";
+	string SUBVENTIONNER <- "Subventionner";
+	string RETARDER <- "Retarder";
+	string LEVER_RETARD <- "Lever les retards";
+	string LEADER_COMMAND <- "leader_command";
+	string AMOUNT <- "amount";
+	string DELAY <- "delay";
+	string ACTION_ID <- "action_id";
+	string COMMUNE <- "COMMUNE_ID";
+	
+	
 	init
 	{
 		 do connect to:"localhost" with_name:GAME_LEADER_MANAGER;
+	}
+	
+	
+	reflex  wait_message when: activemq_connect
+	{
+		loop while:has_more_message()
+		{
+			message msg <- fetch_message();
+			map<string, unknown> m_contents <- msg.contents;
+			
+			string cmd <- m_contents[LEADER_COMMAND];
+			switch(cmd)
+			{
+				match RETARDER
+				{
+					int id_action <- m_contents[ACTION_ID];
+					int delais <- m_contents[DELAY];
+					action_done dd <- action_done first_with(each.id=id_action);
+					do retarder_action(dd,delais);
+				}
+			}
+			
+		}
+		
+	}
+	
+	
+	action retarder_action(action_done act, int duree)
+	{
+		
+	}
+	action appliquer_action(action_done act)
+	{
+		
+	}
+	action subventionner(commune cm, int montant)
+	{
+		
+	}
+	action percevoir(commune cm, int montant)
+	{
+		
 	}
 	
 	reflex send_action_state when: cycle mod 10 = 0
