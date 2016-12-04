@@ -208,14 +208,13 @@ init
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
 		create game_master number:1;
 		
-		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
+		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]
 		{
 			ua_name <- nameOfUAcode(ua_code);
 			my_color <- cell_color();
-			cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
+			//cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
 			if ua_name = "U" and population = 0 {
-					population <- 10;
-					classe_densite <- maj_densite();	}
+					population <- 10;}
 			my_color <- cell_color();
 			if ua_name = "AU"  {
 				AU_to_U_counter <- flip(0.5)?1:0;
@@ -299,7 +298,6 @@ action nextRound{
 		ask shuffle(UA) {pop_updated <- false; do evolve_AU_to_U ;}
 		ask shuffle(UA) {do evolve_U_densification ;}
 		ask shuffle(UA) {do evolve_U_standard ;} 
-		//ask UA sort (each.population - each.floor_ClasseDensity()) {do evolve_U_standard ;} // c'est pas bon car ca ne fait pas cnahger la densité et tout d'un coup toutes les cases de change de clase de densité
 		ask commune where (each.id > 0) {
 			do recevoirImpots; not_updated<-true;
 			}}
@@ -687,7 +685,7 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 {
 	action  monitor_new_action (action_done new_action)
 	{
-		// Cette première mesure n'est pas un levier incitatif a proprpement aprlé mais plutot une contrainte réglementaire qui s'applique automatiqmeent 
+		// Cette première mesure n'est pas un levier incitatif a proprpement parlé mais plutot une contrainte réglementaire qui s'applique automatiqmeent 
 		if new_action.command in [ACTION_CREATE_DIKE , ACTION_RAISE_DIKE ]
 			{	
 				geometry a_shape ;
@@ -697,8 +695,8 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 					}
 				if a_shape = nil {write "PROBLEME  switch new.action.command";
 					}
-					// si à moins de 400 m du zone protégée --> un an de retard
-			if !empty(protected_area overlapping (a_shape+400#m)) 
+					// si dans une zone protégée --> un an de retard
+			if !empty(protected_area overlapping (a_shape)) 
 				{
 					ask new_action {do assign_delay(1);}
 				}
@@ -1448,11 +1446,12 @@ species def_cote
 	
 	//La commune relève la digue
 	action increase_height_by_commune (int a_commune_id) {
+		status <- "bon";
 		cptStatus <- 0;
-		height <- height + 0.5; // le réhaussement d'ouvrage est forcément de 50 centimètres
-		alt <- alt + 0.5;
+		height <- height + 1; // le réhaussement d'ouvrage est forcément de 1 mètre / ds la V1 c'etait 50  centimètres
+		alt <- alt + 1;
 		ask cells {
-			soil_height <- soil_height + 0.5;
+			soil_height <- soil_height + 1;
 			soil_height_before_broken <- soil_height ;
 			}
 		ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage (myself);}
@@ -1542,17 +1541,13 @@ species UA
 	int AU_to_U_counter <- 0;
 	list<cell> cells ;
 	int population ;
-	string classe_densite <- maj_densite() update: maj_densite();
-	int cout_expro ;
+	string classe_densite -> {population =0?"vide":(population <40?"peu dense":(population <80?"densité intermédiaire":"dense"))};
+	int cout_expro -> {round( population * 400* population ^ (-0.5))};
 	bool isUrbanType -> {ua_name in ["U","Us","AU","AUs"] };
 	bool isAdapte -> {ua_name in ["Us","AUs"]};
 	bool isEnDensification <- false;
 	bool not_updated <- false;
 	bool pop_updated <- false;
-	
-//	/*init {	cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
-//			if ua_name = "U" and population = 0 {population <- 10;}
-//		}*/
 	
 	string nameOfUAcode (int a_ua_code) 
 		{ string val <- "" ;
@@ -1580,21 +1575,12 @@ species UA
 					}
 		return val;}
 		
-	string maj_densite {
-		return (population =0?"vide":(population <40?"peu dense":(population <80?"densité intermédiaire":"dense")));
-	}	
-	
-	int floor_ClasseDensity {
-		switch maj_densite {
-				match "peu_dense" {return 1;}
-				match "densité intermédiaire" {return 41;}
-				match "dense" {return 81;}
-		}
-	}	
 		
 	action modify_UA (int a_id_commune, string new_ua_name)
 	{	if  (ua_name in ["U","Us"])and new_ua_name = "N" /*expropriation */
-				{ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}}
+				{	ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}
+					population <-0;
+				}
 		else {	ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}
 				if  ua_name = "N" and (new_ua_name in ["AU","AUs"]) /*dénaturalisation -> requière autorosation du prefet */
 					{switch a_id_commune
@@ -1631,9 +1617,9 @@ species UA
 		}
 	action evolve_U_densification {
 		if !pop_updated and isEnDensification and (ua_name in ["U","Us"]){
-			string previous_d_classe <- maj_densite(); 
+			string previous_d_classe <- classe_densite; 
 			do assign_pop (POP_FOR_U_DENSIFICATION);
-			if previous_d_classe != maj_densite() {isEnDensification <- false;}
+			if previous_d_classe != classe_densite {isEnDensification <- false;}
 				}
 	}
 		
