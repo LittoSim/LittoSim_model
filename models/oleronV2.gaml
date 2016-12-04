@@ -687,7 +687,7 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 {
 	action  monitor_new_action (action_done new_action)
 	{
-		// Cette première mesure n'est pas un levier incitatif a proprpement aprlé mais plutot une contrainte réglementaire qui s'applique automatiqmeent 
+		// Cette première mesure n'est pas un levier incitatif a proprpement parlé mais plutot une contrainte réglementaire qui s'applique automatiqmeent 
 		if new_action.command in [ACTION_CREATE_DIKE , ACTION_RAISE_DIKE ]
 			{	
 				geometry a_shape ;
@@ -697,8 +697,8 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 					}
 				if a_shape = nil {write "PROBLEME  switch new.action.command";
 					}
-					// si à moins de 400 m du zone protégée --> un an de retard
-			if !empty(protected_area overlapping (a_shape+400#m)) 
+					// si dans une zone protégée --> un an de retard
+			if !empty(protected_area overlapping (a_shape)) 
 				{
 					ask new_action {do assign_delay(1);}
 				}
@@ -1448,11 +1448,12 @@ species def_cote
 	
 	//La commune relève la digue
 	action increase_height_by_commune (int a_commune_id) {
+		status <- "bon";
 		cptStatus <- 0;
-		height <- height + 0.5; // le réhaussement d'ouvrage est forcément de 50 centimètres
-		alt <- alt + 0.5;
+		height <- height + 1; // le réhaussement d'ouvrage est forcément de 1 mètre / ds la V1 c'etait 50  centimètres
+		alt <- alt + 1;
 		ask cells {
-			soil_height <- soil_height + 0.5;
+			soil_height <- soil_height + 1;
 			soil_height_before_broken <- soil_height ;
 			}
 		ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage (myself);}

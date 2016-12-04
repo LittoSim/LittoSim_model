@@ -10,7 +10,7 @@ model Commune
 
 global
 {
-	string commune_name <- "lechateau";
+	string commune_name <- "dolus";
 	string MANAGER_NAME <- "model_manager";
 	string log_file_name <- "log_"+machine_time+"csv";
 	int round <- 0;
@@ -84,6 +84,9 @@ global
 	//// action display map layers
 	int ACTION_DISPLAY_PROTECTED_AREA <- 33;
 	
+	// User messages
+	string MSG_POSSIBLE_REGLEMENTATION_DELAY <- "La zone de travaux est soumise à des contraintes réglementaires.\nLe dossier est susceptible d’être retardé.\nSouhaitez vous poursuivre ?";
+	
 	geometry shape <- envelope(emprise);// 1000#m around envelope(communes_UnAm_shape)  ;
 	geometry local_shape <- nil; // envelope(emprise_local);
 	
@@ -122,7 +125,7 @@ global
 	int minimal_budget <- -5000;
 	int impot_recu <- 0;
 	bool subvention_habitat_adapte <- false;
-	
+	int previous_population;
 	
 	list<action_done> my_basket<-[];
 	
@@ -149,7 +152,7 @@ global
 	
 	
 	init
-	{  
+	{
 		do implementation_tests;
 		my_commune <-  commune first_with(each.nom_raccourci = commune_name);
 		create Network_agent number:1 returns:net;
@@ -195,8 +198,9 @@ global
 		//population_area <- smooth(union((cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")) collect (buffer(each.shape,100#m))),0.1);
 		population_area <- union(UA where(each.ua_name = "U" or each.ua_name = "AU"));
 		
-		list<geometry> tmp <- buttons collect(each.shape) accumulate my_commune.shape;
+		previous_population <- current_population();
 		
+		list<geometry> tmp <- buttons collect(each.shape) accumulate my_commune.shape;
 		dike_shape_space <- envelope(tmp);
 		
 	//	population_area <- smooth(union(cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")),0.001); 
@@ -218,9 +222,7 @@ global
 	}
 
 	int delayOfAction (int action_code){
-		
 		//peut-etre convertir en map.... A modifier mais plus tard
-		
 		int rslt <- 9999;
 		loop i from:0 to: length(all_action_delay)/3 {
 			if ((int(all_action_delay at {1,i})) = action_code)
@@ -228,6 +230,10 @@ global
 		}
 		return rslt;
 	}	
+	
+	int current_population {
+		return sum(UA accumulate (each.population));
+	}
 	
 	action remove_selection
 	{
@@ -239,7 +245,7 @@ global
 	
 	action implementation_tests {
 		 if (int(all_action_cost at {0,0}) != 0 or (int(all_action_cost at {0,5}) != 5)) {
-		 		write "Probleme lecture du fichier cout_action";
+		 		write "BUG: Probleme lecture du fichier cout_action";
 		 		write ""+all_action_cost;
 		 }
 	}
@@ -400,8 +406,7 @@ global
 			shape <- square(button_size);
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
-		//	my_help <- "Cliquer sur la digue à supprimer";
-			
+		//	my_help <- "Cliquer sur la digue à supprimer";	
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/icones/digue_suppression.png");
 			
@@ -427,10 +432,8 @@ global
 			label <- "Installer des ganivelles";
 			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
 			shape <- square(button_size);
-		//	my_help <- "Cliquez sur la dune à modifier";
 			display_name <- DIKE_DISPLAY;
-			my_help <- "Cliquez sur la dune pour installer une ganivelle.";
-			
+			my_help <- "Cliquez sur la dune pour installer une ganivelle.";	
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
 			my_icon <- image_file("../images/icones/ganivelle.png");
 		}
@@ -623,21 +626,19 @@ global
 			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
 			{
 				string budget_display <- "Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions";
-				write budget_display;
-				bool bres;
-				map<string,unknown> res <- user_input("Avertissement", budget_display::bres );//[budget_display:: false]);
+				ask world {do user_msg (budget_display);}
+				map<string,unknown> res <- user_input("Avertissement", budget_display::"" );//[budget_display:: false]);
 				return;
 			}
+			/* Ce n'est pas delayOfAction qui permet de savoir si une action peut etre retardé plus que prévu 
+			 * delayOfAction se refère au délai normal de mise en oeuvre de l'action
+			 * Par ailleurs l'avertissement sur un délai supplémentaire possible se fait avant, lorsque le joeur click sur l'éléments où appliquer l'action
+			 * Donc, on retire ce bout de code, et on implémente ces messages d'avertisseement dans les actions change_dike et change_plu  
+			 int nb_delayed <- my_basket count(delayOfAction(each.command) > 0);
+			string action_delayed <- nb_delayed = 0 ? "":"Attention, une ou plusieurs de vos réalisations risquent de faire l'objet d'un retard\n";*/
 			
-			
-			bool choice <- false;
-			
-			int nb_delayed <- my_basket count(delayOfAction(each.command) > 0);
-			
-			string action_delayed <- nb_delayed = 0 ? "":"Attention, une ou plusieurs de vos réalisations risquent de faire l'objet d'un retard\n";
-			
-			string ask_display <- "Vous êtes sur le point de valider votre panier \n"+action_delayed+" Cocher la case, pour accepter le panier et valider";
-			map<string,unknown> res <- user_input("Avertissement", ask_display::choice);
+			string ask_display <- "Vous êtes sur le point de valider votre panier \n"+/*action_delayed+*/" Cocher la case, pour accepter le panier et valider";
+			map<string,bool> res <- user_input("Avertissement", ask_display::false);
 			if(res at ask_display )
 			{
 				ask first(bsk_validation)
@@ -736,6 +737,16 @@ global
 			 }
 			previous_clicked_point <- nil;
 			current_action<- first(action_list);
+			if but.command = ACTION_RAISE_DIKE {
+				if  !empty(protected_area where (each intersects current_action.shape)) {
+					string chain <- MSG_POSSIBLE_REGLEMENTATION_DELAY;
+					map<string,bool> values2 <- user_input(chain::true);
+					if (!(values2 at chain)) {
+						ask current_action{do die;}
+						return;
+					}
+				}
+			}
 			my_basket <- my_basket + current_action; 
 		}
 	}
@@ -760,16 +771,16 @@ global
 				}
 				previous_clicked_point <- nil;
 				current_action<- first(action_list);
-				if  !empty(protected_area where (each intersects current_action.shape)) {
-					bool res<-false;
-					string chain <- "Construire une digue dans une zone proétégée est interdit par la législation";
-					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
-					
-					ask current_action{do die;}
+				if  !empty(protected_area overlapping (current_action.shape)) {
+					string chain <- MSG_POSSIBLE_REGLEMENTATION_DELAY;
+					map<string,bool> values2 <- user_input(chain::true);
+					if (!(values2 at chain)) {
+						ask current_action{do die;}
+						do clear_selected_button;
+						return;
+					}
 				}
-				else {
-					my_basket <- my_basket + current_action; 
-				}
+				my_basket <- my_basket + current_action; 
 				do clear_selected_button;
 		}
 		
@@ -953,7 +964,7 @@ global
 		{
 			list<buttons> current_active_button <- buttons where (each.is_selected);
 			bool clic_deselect <- false;
-			if length (current_active_button) > 1 {write "Problème -> deux boutons sélectionnés en même temps";}
+			if length (current_active_button) > 1 {write "BUG: Problème -> deux boutons sélectionnés en même temps";}
 			if length (current_active_button) = 1 
 				{if (first (current_active_button)).command = (first(cliked_UnAm_button)).command
 					{clic_deselect <-true;}}
@@ -998,7 +1009,7 @@ global
 		{
 			list<buttons> current_active_button <- buttons where (each.is_selected);
 			bool clic_deselect <- false;
-			if length (current_active_button) > 1 {write "Problème -> deux boutons sélectionnés en même temps";}
+			if length (current_active_button) > 1 {write "BUG: Problème -> deux boutons sélectionnés en même temps";}
 			if length (current_active_button) = 1 
 				{if (first (current_active_button)).command = (first(cliked_dike_button)).command
 					{clic_deselect <-true;}}
@@ -1043,6 +1054,13 @@ global
 			txt <- a +"."+b;
 			}
 		return txt;
+	}
+	
+	action user_msg (string msg) {
+		//soit on envoie le msg par un pop UP
+		//map<string,unknown> tmp <- user_input(msg::"");
+		//soit on l'écrit ds la console avec une entete ou pas
+		write "USER MSG: "+msg;
 	}
 }
 
@@ -1183,7 +1201,7 @@ species Network_agent skills:[network]
 		loop while:has_more_message()
 		{
 			message msg <- fetch_message();
-			write msg.contents;
+			//write msg.contents;
 			string my_msg <- msg.contents; 
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
 			int command <- int(data[0]);
@@ -1197,9 +1215,14 @@ species Network_agent skills:[network]
 						ask action_UA where (not(each.is_sent)) {application_round<-application_round+1;}
 						ask action_def_cote where (not(each.is_sent)) {application_round<-application_round+1;}
 						switch round {
-							match 1 {map<string,unknown> values2 <- user_input("La simulation démarre. C'est le tour 1"::"");}
+							match 1 {ask world {do user_msg("La simulation démarre. C'est le tour 1");}}
 							match 0 {}
-							default {map<string,unknown> values2 <- user_input("Le tour "+ round+" a commencé"::"");}
+							default {
+								ask world {do user_msg("Le tour "+ round+" a commencé");}
+								int tmp <- copy(previous_population);
+								previous_population <- world.current_population();
+								ask world {do user_msg(""+((previous_population-tmp)=0?"":("Votre commune accueille "+(previous_population-tmp) + " nouveaux arrivants.\n"))+"La population de votre commune est de "+previous_population+" habitants.");}
+							}
 							}							
 					}
 					
@@ -1208,30 +1231,28 @@ species Network_agent skills:[network]
 						int entityTypeCode<- int(data[2]);
 						int id <- int(data[3]);
 						int nb <- int(data[4]);
-						write ""+entityTypeCode+" "+id + " " +nb;
+						//write ""+entityTypeCode+" "+id + " " +nb;
 						switch entityTypeCode {
 							match ENTITY_TYPE_CODE_DEF_COTE {do action_def_cote_delay_acknowledgment(id, nb);} 
 							match ENTITY_TYPE_CODE_UA {do action_UA_delay_acknowledgment(id, nb);} 
-							default {write "probleme: entityTypeCode pas reconnu : " + entityTypeCode;}
+							default {write "BUG: probleme: entityTypeCode pas reconnu : " + entityTypeCode;}
 						}
 					}
 					
 					match INFORM_TAX_GAIN
 					{	impot_recu <- int(data[2]);
 						round <-int(data[3])+1;
-					// Remplacement du User Input par un Write
-						 write ("Avertissement : Vous avez perçu des impôts locaux à hauteur de "+ world.separateur_milliers(int(data[2]))+ " pour le tour "+data[3] +" \n Le tour "+round+" vient de commencer");
-		
+						ask world {do user_msg ("Vous avez perçu des impôts de "+ world.separateur_milliers(int(data[2]))+ " pour le tour "+data[3]);}
 					}	
 					
 					match INFORM_GRANT_RECEIVED
 					{
-						map<string,unknown> values2 <- user_input("Avertissement",("Vous avez reçu une subvention d'un montant de "+ world.separateur_milliers(int(data[2])))::"");
+						ask world {do user_msg ("Vous avez reçu une subvention d'un montant de "+ world.separateur_milliers(int(data[2])));}
 		
 					}	
 					match INFORM_FINE_RECEIVED
 					{
-						map<string,unknown> values2 <- user_input("Avertissement",("Vous avez reçu une amende d'un montant de "+ world.separateur_milliers(int(data[2])))::"");
+						ask world {do user_msg ("Vous avez reçu une amende d'un montant de "+ world.separateur_milliers(int(data[2])));}
 		
 					}	
 					match UPDATE_BUDGET
@@ -1326,41 +1347,33 @@ species Network_agent skills:[network]
 	}
 	
 	action action_dike_application_acknowledgment(int m_action_id)
-	{write "UPDATE dike " + m_action_id;
+	{//write "UPDATE dike " + m_action_id;
 		ask action_def_cote where(each.chosen_element_id  = m_action_id)
 		{ self.is_applied <- true;
 		}
 	}
 	
 	action action_land_cover_application_acknowledgment(int m_action_id)
-	{write "UPDATE UA " + m_action_id;
+	{//write "UPDATE UA " + m_action_id;
 		ask action_UA where(each.id  = m_action_id)
-		{ write self;
+		{ 
 			self.is_applied <- true;
 		}
 	}
 	
-/*action action_application_acknowledgment(int m_action_id)
-	{
-		ask action_done where(each.id  = m_action_id)
-		{ write "Ca passe ICI ?";
-			self.is_applied <- true;
-		}
-	}*/
-	
 	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
-	{ write m_action_id;
+	{ 
 		ask action_def_cote where(each.id  = m_action_id)
-		{ write "delay dike";
+		{ ask world {do user_msg("Le dossier travaux de digue n°"+m_action_id+" a été retardé de "+nb+" tour"+nb=1?".":"s.");}
 			round_delay <- round_delay + nb;
 			application_round <- application_round + nb;
 		}
 	}
 	
 	action action_UA_delay_acknowledgment(int m_action_id, int nb)
-	{ write m_action_id;
+	{ 
 		ask action_UA where(each.id  = m_action_id)
-		{ write "deay UA";
+		{  ask world {do user_msg("Le dossier travaux de PLU n°"+m_action_id+" a été retardé de "+nb+" tour"+nb=1?".":"s.");}
 			round_delay <- round_delay + nb;
 			application_round <- application_round + nb;
 		}
@@ -1740,7 +1753,7 @@ species def_cote
 				match  "bon" {color <- # green;}
 				match "moyen" {color <-  rgb (255,102,0);} 
 				match "mauvais" {color <- # red;} 
-				default { /*"casse" {color <- # yellow;}*/write "probleee status dike";}
+				default { /*"casse" {color <- # yellow;}*/write "BUG: probleee status dike";}
 				}
 			draw 20#m around shape color: color size:300#m;
 				}
@@ -1748,7 +1761,7 @@ species def_cote
 				match  "bon" {color <- rgb (222, 134, 14,255);}
 				match "moyen" {color <-  rgb (231, 189, 24,255);} 
 				match "mauvais" {color <- rgb (241, 230, 14,255);} 
-				default { write "probleee status dune";}
+				default { write "BUG: probleme status dune";}
 				}
 			draw 50#m around shape color: color;
 			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
@@ -1836,8 +1849,7 @@ experiment game type: gui
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
-
-					draw explored_buttons.my_help at: target2 + { 30#px, 35#px } font: regular color: # white;
+					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					if explored_buttons.command != ACTION_INSPECT_LAND_USE {
 							if explored_buttons.command != ACTION_MODIFY_LAND_COVER_N
 								{draw "Coût de l'action : "+explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;}
@@ -1913,7 +1925,7 @@ experiment game type: gui
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 				//	draw rectangle(target2,target4)   empty: false border: false color: #red ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
-					draw explored_buttons.my_help at: target2 + { 30#px, 35#px } font: regular color: # white;
+					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					if explored_buttons.command != ACTION_INSPECT_DIKE {draw "Coût de l'action : "+explored_buttons.action_cost +"/mètre" at: target2 + { 30#px, 55#px} font: regular color: # white;}
 				}
 			}
