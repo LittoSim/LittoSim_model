@@ -81,18 +81,126 @@ global
 	file communes_shape <- file("../includes/zone_etude/communes.shp");
 	matrix<string> actions_def <- matrix<string>(csv_file("../includes/actions_def.csv",";"));	
 	
+	
+	commune selected_commune <- nil;
+	action_button selected_action <- nil;
+	action_done selection_action_done;
+	
 	geometry shape <- square(100#m);
 	
 	init
 	{
 		create game_controller number:1;
 		do create_commune;
+		do create_button;
+		
+		
+		//pour les test
+		int i <- 0;
+		create action_done number:10
+		{
+			id <-i ;
+			doer<-"dolus";
+
+			i<- i+1;
+			
+		}
+	}
+	
+	reflex drag_drop when: selection_action_done != nil
+	{
+			selection_action_done.location	<-	#user_location;
+		
+	}
+	
+	action button_commune 
+	{
+		point loc <- #user_location;
+		
+		selected_commune <- (commune first_with (each overlaps loc ));
+		
+		write selected_commune;
+	}
+	
+	action button_action
+	{
+		point loc <- #user_location;
+		selected_action <- (action_button first_with (each overlaps loc ));
+	}
+	
+	action button_action_done
+	{
+		point loc <- #user_location;
+		write "coucouc" + loc;
+		if(selection_action_done =nil)
+			{
+				selection_action_done <- (action_done first_with (each overlaps loc ));
+			}
+			else
+			{
+				selection_action_done <- nil;
+			}
+	}
+	
+		
+	action create_button
+	{
+		int i <- 0;
+		create action_button number:1
+		{
+			displayName <- "Retarder pour 1 an";	
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
+		
+		create action_button number:1
+		{
+			displayName <- "Retarder pour 2 ans";
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
+		
+		create action_button number:1
+		{
+			displayName <- "Retarder pour 3 ans";
+			location <- {5, i*10 + 10};
+			i <- i +1;
+			
+		}
+		
+		create action_button number:1
+		{
+			displayName <- "Abroger";
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
+		
+		create action_button number:1
+		{
+			displayName <- "Lever les retards";
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
+		
+		create action_button number:1
+		{
+			displayName <- "Subventionner";
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
+		
+		create action_button number:1
+		{
+			displayName <- "Imposer";
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
 	}
 	
 	action create_commune
 	{
 		int i <- 0;
-		create commune from:communes_shape with: [com_name::string(read("NOM_RAC")),com_id::int(read("id_jeu"))]
+		create commune from:communes_shape with: [com_name::string(read("NOM_RAC")),com_id::int(read("id_jeu")),com_large_name::string(read("NOM"))]
 		{
 			if(com_id = 0)
 			{
@@ -133,6 +241,7 @@ species action_done schedules:[]
 	int round_delay <- 0 ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
+	geometry shape <- rectangle(10#m,5#m);
 	
 	
 	action init_from_map(map<string, string> a )
@@ -160,6 +269,7 @@ species action_done schedules:[]
 			"round_delay"::string(round_delay) ]	;
 			
 	return res;
+	
 	}
 	
 	
@@ -180,16 +290,29 @@ species action_done schedules:[]
 	
 	aspect base
 	{
+		if(selected_commune.com_name = doer)
+		{
+			draw shape color:define_color() ; //is_selected ? #green:#blue;
+			draw label at:{location.x - 4.5#m, location.y} color:#white;			
+		}
 	}
 
 }
 
 
 
-species button
-{
+species action_button
+{	
 	string displayName;
+	int commande;
+	geometry shape <- rectangle(50#m,5#m);
+	bool is_selected -> {selected_action = self};
 	
+	aspect base
+	{
+		draw shape color:is_selected ? #green:#blue;
+		draw displayName at:{location.x - 4.5#m, location.y} color:#white;
+	}
 	
 }
 
@@ -201,15 +324,16 @@ species action_done_by_commune
 species commune
 {
 	string com_name;
+	string com_large_name;
 	string budget;
 	int com_id;
 	bool not_updated <- false;
-	geometry shape <- square(10#m);
-	bool is_selected <- false;
+	geometry shape <- rectangle(50#m,10#m);
+	bool is_selected -> {selected_commune = self};
 	aspect base
 	{
 		draw shape color:is_selected ? #green:#blue;
-		draw com_name at:{location.x - 4.5#m, location.y} color:#white;
+		draw com_large_name at:{location.x - 4.5#m, location.y} color:#white;
 	}
 }
 
@@ -235,14 +359,29 @@ species game_controller skills:[network]
 				match UPDATE_ACTION_DONE { do update_action(m_contents); }
 			}
 			
-		}
-		
-		
+		}	
 	}
 	
 	action update_action(map<string,string> msg)
 	{
-		write msg;
+		int m_id <- int(msg at "id");
+		
+		list<action_done> act_done <- action_done where(each.id = m_id);
+		
+		if(act_done = nil or length(act_done) = 0)
+		{
+			create action_done number:1
+			{
+				do init_from_map(msg);
+			}
+		}
+		else
+		{
+			ask first(act_done) 
+			{
+				do init_from_map(msg);
+			}
+		}
 	}
 	
 }
@@ -252,10 +391,23 @@ experiment lead_the_game
 	float minimum_cycle_duration <- 0.5;
 	output
 	{
-		display controler
+		display commune_control
 		{
 			species commune aspect:base;
+			event [mouse_down] action: button_commune;
 		}
+		
+		display action_control
+		{
+			species action_button aspect:base;
+			event [mouse_down] action: button_action;
+		}
+		display alive_action_commune
+		{
+			species action_done aspect:base;
+			event [mouse_down] action: button_action_done;
+		}
+		
 	}
 
 }
