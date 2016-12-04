@@ -1182,17 +1182,18 @@ species action_done
 		action_type +COMMAND_SEPARATOR+
 		inProtectedArea+COMMAND_SEPARATOR+		//5
 		previous_ua_name+COMMAND_SEPARATOR+
-		isExpropriation	;					//7
+		isExpropriation+COMMAND_SEPARATOR+					//7
+		int(cost)	;					//8
 		
 	if command = ACTION_CREATE_DIKE  {
 				point end <- last(shape.points);
 				point origin <- first(shape.points);
 				result <- result+
-					COMMAND_SEPARATOR+( origin.x)+	//8
+					COMMAND_SEPARATOR+( origin.x)+	//9
 					COMMAND_SEPARATOR+(origin.y) +
-					COMMAND_SEPARATOR+(end.x)+		//10
+					COMMAND_SEPARATOR+(end.x)+		//11
 					COMMAND_SEPARATOR+(end.y)+
-					COMMAND_SEPARATOR+location.x+	//12
+					COMMAND_SEPARATOR+location.x+	//13
 					COMMAND_SEPARATOR+location.y;
 		}
 			

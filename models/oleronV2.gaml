@@ -697,8 +697,13 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 	action  monitor_new_action (action_done new_action)
 	{
 		// Cette première mesure n'est pas un levier incitatif a proprpement parlé mais plutot une contrainte réglementaire qui s'applique automatiqmeent 
-		if new_action.command in [ACTION_CREATE_DIKE , ACTION_RAISE_DIKE ]
-			{	
+		// Ce n'est pas au modèle OleronV2 de faire ça mais c'est au leader/
+		// Par ailleurs il n'y a plus besoi  d'interroger le shape à ce niveau. L'attribut inProtectedArea qui a été rensigné par Participatif.gaml indique si les travaux sont ds une zone protégée
+		// En attendat le basculement , je remet le code ici  // et en dessous il y a l'ancien code qui recalculé l'overlap du shape
+		if new_action.command in [ACTION_CREATE_DIKE , ACTION_RAISE_DIKE ] and new_action.inProtectedArea 
+				{ ask new_action {do assign_delay(1);} }
+		/*if new_action.command in [ACTION_CREATE_DIKE , ACTION_RAISE_DIKE ]
+			{
 				geometry a_shape ;
 				switch new_action.command {
 					match ACTION_RAISE_DIKE{ a_shape <- (def_cote first_with(each.id_ouvrage=new_action.chosen_element_id)).shape ;}
@@ -711,7 +716,7 @@ species game_master // c'est le game master qui va mettre en place les leviers p
 				{
 					ask new_action {do assign_delay(1);}
 				}
-		}
+		}*/
 	}
 }  
 
@@ -985,35 +990,37 @@ species game_controller skills:[network]
 		ask(new_action)
 		{
 			self.command <- int(data[0]);
-			write "New action"+self.command;
 			self.id <- int(data[1]);
 			self.application_round <- int(data[2]);
 			self.doer <- sender;
 			self.my_message <- data;
 			if !(self.command in [ACTION_MESSAGE,REFRESH_ALL]) {
 				self.chosen_element_id <- int(data[3]);
-				self.action_type <- int(data[4]);
-				self.inProtectedArea <- int(data[5]);
-				self.previous_ua_name <- int(data[6]);
-				self.isExpropriation <- int(data[7]);
+				self.action_type <- string(data[4]);
+				self.inProtectedArea <- bool(data[5]);
+				self.previous_ua_name <- string(data[6]);
+				self.isExpropriation <- bool(data[7]);
+				self.cost <- float(data[8]);
 				if command = ACTION_CREATE_DIKE
 				{
-					point ori <- {float(data[8]),float(data[9])};
-					point des <- {float(data[10]),float(data[11])};
-					point loc <- {float(data[12]),float(data[13])}; 
+					point ori <- {float(data[9]),float(data[10])};
+					point des <- {float(data[11]),float(data[12])};
+					point loc <- {float(data[13]),float(data[14])}; 
 					shape <- polyline([ori,des]);
 					location <- loc; 
 				}
 			}
-			// A CORRIGER POur que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
-			//  DOnc il faut que le paieemnt se fasse au niveau de cette méthode. Et que l'execution soit en effet différée
-			if self.application_round != (round  + (world.delayOfAction(self.command)))
+			if isExpropriation {write "Procédure d'expropriation declenchée pour l'UA "+self.id;}
+			
+			
+			/*  ANCIEN CODE QUI PERMETTAT DE VERIFIER QUE LE DELAI POUR LES ACTION DE Expropriatipon était correct
+			 * if self.application_round != (round  + (world.delayOfAction(self.command)))
 			{	if self.command = ACTION_MODIFY_LAND_COVER_N { // c'est possible que ce soit une action d'expropriation; auquel cas il fait appliquer un delai d'execution
 					if (UA first_with(each.id=id)).ua_name in ["U","Us"] {///   ATTENTION, c'est possible qu il y ai une erreur car on interroge id alors qu'on devrait interroger chosen_element_id
 							write "Procédure d'expropriation declenchée pour l'UA "+self.id;
 							if self.application_round != (round  + (world.delayOfAction(ACTION_EXPROPRIATION)))
 								{write "PROBELEME avec la valeur de l'application round récupéré du client >> self.application_round : "+ self.application_round + " ; round  + (world.delayOfAction(self.command)) : " +(round  + (world.delayOfAction(self.command)));
-								/*self.application_round <- round  + (world.delayOfAction(ACTION_EXPROPRIATION));*/
+								//self.application_round <- round  + (world.delayOfAction(ACTION_EXPROPRIATION));
 							}
 					}
 					else{	write "PROBELEME avec la valeur de l'application round récupéré du client >> self.application_round : "+ self.application_round + " ; round  + (world.delayOfAction(self.command)) : " +(round  + (world.delayOfAction(self.command)));
@@ -1023,11 +1030,12 @@ species game_controller skills:[network]
 				else{	write "PROBELEME avec la valeur de l'application round récupéré du client >> self.application_round : "+ self.application_round + " ; round  + (world.delayOfAction(self.command)) : " +(round  + (world.delayOfAction(self.command)));
 						self.application_round <- round  + (world.delayOfAction(self.command));
 				}
-			}	
+			}*/	
 		}
-		write new_action;
 		ask game_master {do monitor_new_action( new_action);}
-		
+		//  le paiement se fait au niveau de cette méthode pour que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
+		int idCom <-world.commune_id(new_action.doer);
+		ask commune first_with(each.id = idCom) {do pay_for_action_done(new_action);}
 	}
 	
 	
@@ -1507,7 +1515,7 @@ species def_cote
 	action repair_by_commune (int a_commune_id) {
 		status <- "bon";
 		cptStatus <- 0;
-		ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage (myself);}
+		//ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage (myself);}
 	}
 	
 	//La commune relève la digue
@@ -1520,13 +1528,13 @@ species def_cote
 			soil_height <- soil_height + 1;
 			soil_height_before_broken <- soil_height ;
 			}
-		ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage (myself);}
+		//ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage (myself);}
 	}
 	
 	//la commune détruit la digue
 	action destroy_by_commune (int a_commune_id) {
 		ask cells {	soil_height <- soil_height - myself.height ;}
-		ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage (myself);}
+		//ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage (myself);}
 		do die;
 	}
 	
@@ -1539,7 +1547,7 @@ species def_cote
 			soil_height <- h + myself.height; ///  Une nouvelle digue fait 1,5 mètre -> STANDARD_DIKE_SIZE
 			soil_height_before_broken <- soil_height ;
 		}
-		ask commune first_with(each.id = a_commune_id) {do payerConstructionOuvrage (myself);}
+		//ask commune first_with(each.id = a_commune_id) {do payerConstructionOuvrage (myself);}
 	}
 	
 	//La commune installe des ganivelles sur la dune
@@ -1547,7 +1555,7 @@ species def_cote
 		cptStatus <- 0;
 		ganivelle <- true;
 		write "INSTALL GANIVELLE";
-		ask commune first_with(each.id = a_commune_id) {do payerGanivelle (myself);}
+		//ask commune first_with(each.id = a_commune_id) {do payerGanivelle (myself);}
 	}
 	
 	
@@ -1644,10 +1652,10 @@ species UA
 		
 	action modify_UA (int a_id_commune, string new_ua_name)
 	{	if  (ua_name in ["U","Us"])and new_ua_name = "N" /*expropriation */
-				{	ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}
+				{	//ask commune first_with (each.id = a_id_commune) {do payerExpropriationPour (myself);}
 					population <-0;
 				}
-		else {	ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}
+		else {	//ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, new_ua_name);}
 				if  ua_name = "N" and (new_ua_name in ["AU","AUs"]) /*dénaturalisation -> requière autorosation du prefet */
 					{switch a_id_commune
 					{	match 1 {world.count_N_to_AU_C1 <-world.count_N_to_AU_C1 +1;}
@@ -1665,7 +1673,7 @@ species UA
 		ask cells {rugosity <- rug;} 	
 	}
 	action apply_Densification (int a_id_commune) {
-		ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, "densification");}
+		//ask commune first_with (each.id = a_id_commune) {do payerModifUA (myself, "densification");}
 		isEnDensification <-true;
 	}	
 	
@@ -1854,8 +1862,14 @@ species commune
 		}
 		not_updated <- true;
 	}
-		
-	action payerExpropriationPour (UA a_UA)
+	
+	action pay_for_action_done (action_done aAction)
+			{
+				budget <- budget - aAction.cost;
+				not_updated <- true;
+	}
+				
+	/*action payerExpropriationPour (UA a_UA)
 			{
 				budget <- budget - a_UA.cout_expro;
 				not_updated <- true;
@@ -1909,7 +1923,7 @@ species commune
 			{
 				budget <- budget - ((int(dk.shape.perimeter)) * ACTION_COST_INSTALL_GANIVELLE);
 				not_updated <- true;
-			}						
+			}*/					
 }
 
 // Definition des boutons générique
