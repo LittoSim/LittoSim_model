@@ -180,13 +180,12 @@ global
 		ask def_cote where(each.commune != commune_name_shpfile)
 			{ do die; }
 		ask def_cote {do init_dike;}
-		create UA from: communes_UnAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c")), cout_expro:: int(get("coutexpr"))]
+		create UA from: communes_UnAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]
 		{
 			ua_name <- nameOfUAcode(ua_code);
-			cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
+			//cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
 			if ua_name = "U" and population = 0 {
-					population <- 10;
-					classe_densite <- maj_densite();	}
+					population <- 10;}
 			my_color <- cell_color(); 
 			
 		}
@@ -1630,8 +1629,8 @@ species UA
 	int ua_code <- 0;
 	rgb my_color <- cell_color() update: cell_color();
 	int population ;
-	string classe_densite <- maj_densite() update: maj_densite();
-	int cout_expro ;
+	string classe_densite -> {population =0?"vide":(population <40?"peu dense":(population <80?"densité intermédiaire":"dense"))};
+	int cout_expro -> {round( population * 400* population ^ (-0.5))};
 	bool isUrbanType -> {["U","Us","AU","AUs"] contains ua_name};
 	bool isAdapte -> {["Us","AUs"] contains ua_name};
 	bool isEnDensification <- false;
@@ -1662,9 +1661,7 @@ species UA
 					}
 		return val;}
 
-	string maj_densite {
-		return (population =0?"vide":(population <40?"peu dense":(population <80?"densité intermédiaire":"dense")));
-	}		
+		
 	string fullNameOfUAname
 	{string result <- "";
 		switch (ua_name)
