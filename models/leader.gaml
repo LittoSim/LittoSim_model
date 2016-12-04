@@ -86,6 +86,20 @@ global
 	action_button selected_action <- nil;
 	action_done selection_action_done;
 	
+	
+	string current_action <- selected_action!= nil? selected_action.displayName:"NAN";
+	
+	string REORGANISATION_AFFICHAGE <- "Réorganiser l'affichage";
+	string IMPOSER <- "Imposer";
+	string SUBVENTIONNER <- "Subventionner";
+	string LEVER_RETARD <- "Lever les retards";
+	
+	
+	bool reorganisation_affichage -> {selected_action!= nil and selected_action.displayName= "Réorganiser l'affichage"};
+	bool imposer -> {selected_action!= nil and selected_action.displayName= "Imposer"};
+	bool subventionner -> {selected_action!= nil and selected_action.displayName= "Subventionner"};
+	bool lever_retard -> {selected_action!= nil and selected_action.displayName= "Lever les retards"}; 
+	
 	geometry shape <- square(100#m);
 	
 	init
@@ -107,10 +121,10 @@ global
 		}
 	}
 	
-	reflex drag_drop when: selection_action_done != nil
+	reflex drag_drop when: selection_action_done != nil and  reorganisation_affichage
 	{
-			selection_action_done.location	<-	#user_location;
-		
+			selection_action_done.shape <- rectangle(10#m,5#m);
+			selection_action_done.location	<-	#user_location;	
 	}
 	
 	action button_commune 
@@ -131,13 +145,21 @@ global
 	action button_action_done
 	{
 		point loc <- #user_location;
-		write "coucouc" + loc;
 		if(selection_action_done =nil)
 			{
-				selection_action_done <- (action_done first_with (each overlaps loc ));
+				if(reorganisation_affichage )
+				{
+					selection_action_done <- (action_done first_with (each overlaps loc ));
+				}
+				if(imposer) 
+				{
+					
+				}
 			}
 			else
 			{
+				selection_action_done.shape <- rectangle(10#m,5#m);
+				selection_action_done.location	<-	#user_location;
 				selection_action_done <- nil;
 			}
 	}
@@ -195,6 +217,13 @@ global
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
+		
+		create action_button number:1
+		{
+			displayName <- "Réorganiser l'affichage";
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
 	}
 	
 	action create_commune
@@ -241,8 +270,12 @@ species action_done schedules:[]
 	int round_delay <- 0 ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
-	geometry shape <- rectangle(10#m,5#m);
 	
+	init
+	{
+		 shape <- rectangle(10#m,5#m);
+	
+	}
 	
 	action init_from_map(map<string, string> a )
 	{
@@ -255,6 +288,7 @@ species action_done schedules:[]
 		self.should_be_applied <- bool(a at "should_be_applied");
 		self.application_round <- int(a at "application_round");
 		self.round_delay <- int(a at "round_delay");
+		
 	}
 	
 	map<string,string> build_map_from_attribute
@@ -292,7 +326,7 @@ species action_done schedules:[]
 	{
 		if(selected_commune.com_name = doer)
 		{
-			draw shape color:define_color() ; //is_selected ? #green:#blue;
+			draw shape color:selection_action_done=self? #green:define_color() ; //is_selected ? #green:#blue;
 			draw label at:{location.x - 4.5#m, location.y} color:#white;			
 		}
 	}
