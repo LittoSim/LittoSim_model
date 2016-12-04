@@ -158,6 +158,8 @@ global  {
 		file communes_shape <- file("../includes/zone_etude/communes.shp");
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 		file zone_protegee_shape <- file("../includes/zone_etude/zps_sic.shp");
+		file zone_PPR_shape <- file("../includes/zone_etude/PPR_extract.shp");
+		file coastline_shape <- file("../includes/zone_etude/la_mer2.shp");
 		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 		// OPTION 1 -> Zone d'étude
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
@@ -207,6 +209,11 @@ init
 		}
 		create road from: road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
+		create flood_risk_area from: zone_PPR_shape;
+		create coast_border_area from: coastline_shape {
+			shape <-  shape + 400#m; }
+		create coast_dike_area from: coastline_shape {
+			shape <-  shape + 600#m; }
 		create game_master number:1;
 		
 		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]
@@ -1009,10 +1016,27 @@ species game_controller skills:[network]
 					shape <- polyline([ori,des]);
 					location <- loc; 
 				}
+				else {
+					if isExpropriation {write "Procédure d'expropriation declenchée pour l'UA "+self.id;}
+					switch self.action_type {
+						match "PLU" {shape <- (UA first_with(each.id = self.chosen_element_id)).shape; }
+						match "dike" {shape <- (def_cote first_with(each.id_ouvrage = self.chosen_element_id)).shape; }
+						default {write "problème reconnaissance du type de action_done";}
+					}
+					write "test "+shape;
+				}
+				// calcul des attributs qui n'ont pas été calculé au niveau de Participatif et qui ne sont donc pas encore renseigné
+				//inLittoralArea  // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+				//inRiskArea  // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
+				//isInlandDike  // for dike action // ce sont les rétro-digues
+				if  !empty(flood_risk_area where (each intersects self.shape))
+					{ current_action.inRiskArea <- true;}
+				if  !empty(coast_border_area where (each intersects self.shape))
+					{ current_action.inLittoralArea <- true;}	
+				if command = ACTION_CREATE_DIKE {
+					if  empty(coast_dike_area where (each intersects self.shape))
+						{ current_action.isInlandDike <- true;}}
 			}
-			if isExpropriation {write "Procédure d'expropriation declenchée pour l'UA "+self.id;}
-			
-			
 			/*  ANCIEN CODE QUI PERMETTAT DE VERIFIER QUE LE DELAI POUR LES ACTION DE Expropriatipon était correct
 			 * if self.application_round != (round  + (world.delayOfAction(self.command)))
 			{	if self.command = ACTION_MODIFY_LAND_COVER_N { // c'est possible que ce soit une action d'expropriation; auquel cas il fait appliquer un delai d'execution
@@ -1603,7 +1627,32 @@ species protected_area {
 		/*}*/
 	}
 }
+species flood_risk_area {
+	
+	aspect base 
+	{
+		/*if (buttons_map first_with(each.command =ACTION_DISPLAY_FLOODED_AREA)).is_selected
+		{*/
+		 draw shape color: rgb (20, 200, 255,120) border:#black;
+		/*}*/
+	}
+}
 
+species coast_border_area {// zone des 400m littoral 
+	
+	aspect base 
+	{
+		 draw shape color: rgb (20, 100, 205,120) border:#black;
+	}
+}
+
+species coast_dike_area {// zone pour identifier les rétro digues // celles qui ne sont pas ds la coast_dike_area  // on retien à 600m de bord de mer
+	
+	aspect base 
+	{
+		 draw shape color: rgb (100, 100, 205,120) border:#black;
+	}
+}
 
 species UA
 {
@@ -1986,7 +2035,9 @@ experiment oleronV2 type: gui {
 			species commune aspect: base;
 			species UA aspect: base;
 			species road aspect:base;
-			species def_cote aspect:base;		
+			species def_cote aspect:base;
+			species coast_dike_area aspect: base;
+			species coast_border_area aspect: base;		
 		}		
 		display Population
 		{	
