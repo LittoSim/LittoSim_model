@@ -20,7 +20,7 @@ global  {
 	string OBSERVER_NAME <- "model_observer";
 	
 	string COMMAND_SEPARATOR <- ":";
-	string GAME_LEADER_MANAGER <- "GAME_LEADER_MANAGER"
+	string GAME_LEADER_MANAGER <- "GAME_LEADER_MANAGER";
 	string MANAGER_NAME <- "model_manager";
 	string GROUP_NAME <- "Oleron";  
 	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
@@ -719,7 +719,7 @@ species game_leader skills:[network]
 {
 	init
 	{
-		 do connect to:"localhost" with_name:MANAGER_NAME;
+		 do connect to:"localhost" with_name:GAME_LEADER_MANAGER;
 	}
 	
 	reflex send_action_state when: cycle mod 10 = 0
@@ -740,7 +740,7 @@ species game_controller skills:[network]
 {
 	init
 	{
-		 do connect to:"localhost" with_name:GAME_LEADER_MANAGER;
+		 do connect to:"localhost" with_name:MANAGER_NAME;
 	}
 	
 	reflex wait_message when: activemq_connect
