@@ -214,6 +214,26 @@ global
 		}
 	}
 	
+	action change_subvention_habitat_adapte_with (bool newValue) {
+		subvention_habitat_adapte <- newValue;
+		if subvention_habitat_adapte {
+			write "Hab Adapté Uodated TRUE";
+			ask buttons where (each.command = ACTION_MODIFY_LAND_COVER_AUs)
+				{	action_cost <- ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY;
+					label <- "Changer en zone urbanisée adaptée (Subventionné).";
+				}
+			ask world {do user_msg("L'habitat adapté est à présent subventionné : "+ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY+ " au lieu de "+ACTION_COST_LAND_COVER_TO_AUs);}
+		}
+		else {
+			write "Hab Adapté Uodated FALSE";
+			ask buttons where (each.command = ACTION_MODIFY_LAND_COVER_AUs)
+				{	action_cost <- ACTION_COST_LAND_COVER_TO_AUs;
+					label <- "Changer en zone urbanisée adaptée.";
+				}
+			ask world {do user_msg("L'habitat adapté n'est plus subventionné : "+ACTION_COST_LAND_COVER_TO_AUs+ " au lieu de "+ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY);}
+		}	
+	}
+	
 	int get_action_id
 	{
 		action_id <- action_id + 1;
@@ -737,7 +757,9 @@ global
 			previous_clicked_point <- nil;
 			current_action<- first(action_list);
 			if but.command = ACTION_RAISE_DIKE {
-				if  !empty(protected_area where (each intersects current_action.shape)) {
+				if  !empty(protected_area where (each intersects current_action.shape))
+				{
+					current_action.inProtectedArea <- true;
 					string chain <- MSG_POSSIBLE_REGLEMENTATION_DELAY;
 					map<string,bool> values2 <- user_input(chain::true);
 					if (!(values2 at chain)) {
@@ -770,7 +792,9 @@ global
 				}
 				previous_clicked_point <- nil;
 				current_action<- first(action_list);
-				if  !empty(protected_area overlapping (current_action.shape)) {
+				if  !empty(protected_area overlapping (current_action.shape))
+				{
+					current_action.inProtectedArea <- true;
 					string chain <- MSG_POSSIBLE_REGLEMENTATION_DELAY;
 					map<string,bool> values2 <- user_input(chain::true);
 					if (!(values2 at chain)) {
@@ -817,8 +841,7 @@ global
 				if (!empty(protected_area where (each intersects (circle(10,shape.centroid))))){
 					bool res<-false;
 					string chain <- "Changer l'occupation dans une zone proétégée est interdit par la législation";
-					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
-					
+					map<string,unknown> values2 <- user_input("Avertissement",chain::"");
 					return;
 				}
 				if(((ua_name ="N") and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
@@ -861,7 +884,7 @@ global
 					if(values2 at chain = false)
 					{
 						return;
-					}	
+					}
 				}
 				if ((ua_name = "A" or ua_name = "N") and (selected_button.command = ACTION_MODIFY_LAND_COVER_AUs))
 				{
@@ -885,11 +908,11 @@ global
 						return;
 					}
 				}
-				if ((ua_name in ["A", "N", "AU"]) and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
+				if ((ua_name in ["A", "N", "AU","AUs"]) and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
 				{
 					return;
 				}
-				if ((ua_name = "U" and classe_densite = "dense") and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
+				if ((ua_name in ["U","Us"] and classe_densite = "dense") and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
 				{	string chain <- "Cette unité urbain est déjà à son niveau de densification maximum";
 					map<string,unknown> values2 <- user_input("Avertissement",chain::"");
 					return;	
@@ -899,44 +922,28 @@ global
 				{
 					id <- world.get_action_id();
 					chosen_element_id <- myself.id;
-					self.command <- selected_button.command;
-					self.application_round <- round  + (world.delayOfAction(self.command));
-					if self.command = ACTION_MODIFY_LAND_COVER_N { // c'est possible que ce soit une action d'expropriation; auquel cas il fait appliquer un delai d'execution
-						if (UA first_with(each.id=chosen_element_id)).ua_name in ["U","Us"] {
-							application_round <- round + world.delayOfAction(ACTION_EXPROPRIATION);}} 
+					command <- selected_button.command;
+					shape <- myself.shape;
+					application_round <- round  + (world.delayOfAction(command));
+					previous_ua_name <- myself.ua_name;
+					label <- selected_button.label;
 					cost <- selected_button.action_cost;
-					self.label <- selected_button.label;
+					// Overwrites in case action d'expropriation (delai d'execution et Cost)
+					if command = ACTION_MODIFY_LAND_COVER_N and previous_ua_name in ["U","Us"] { 
+							application_round <- round + world.delayOfAction(ACTION_EXPROPRIATION);
+							cost <- myself.cout_expro;
+							isExpropriation <- true;} 
 					//overwrite Cost in case A to N
-					if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.ua_name = "A")) 
-						{cost <- ACTION_COST_LAND_COVER_FROM_A_TO_N;} 
-					//overwrite Cost in case U to N / expropriation
-					if(selected_button.command = ACTION_MODIFY_LAND_COVER_N  and (myself.ua_name = "U")) 
-							{cost <- myself.cout_expro;} 
+					if(command = ACTION_MODIFY_LAND_COVER_N  and (previous_ua_name = "A")) 
+						{cost <- ACTION_COST_LAND_COVER_FROM_A_TO_N;}
 					//Check overwrites in case transform to AUs
-					if(selected_button.command = ACTION_MODIFY_LAND_COVER_AUs) 
-							{
-								if (myself.ua_name = "U")
-									{// overwrite command, label and cost in case transforming a U to Us
+					if (command = ACTION_MODIFY_LAND_COVER_AUs and (previous_ua_name = "U")) 
+					{// overwrite command, label and cost in case transforming a U to Us
 									command <-ACTION_MODIFY_LAND_COVER_Us;
-									label <- "Changer en zone urbaine adaptée";
+									label <- "Changer en zone urbaine adaptée"+(subvention_habitat_adapte?"(Subventionné)":"");
 									cost <- subvention_habitat_adapte?ACTION_COST_LAND_COVER_TO_Us_SUBSIDY:ACTION_COST_LAND_COVER_TO_Us;
-								}
-								else{
-									if (myself.ua_name = "AU")
-										{// overwrite  cost in case transforming a AU to AUs
-										cost <- subvention_habitat_adapte?ACTION_COST_LAND_COVER_TO_Us_SUBSIDY:ACTION_COST_LAND_COVER_TO_Us;
-										}
-									else {//// overwrite cost  in case subvention for all other cases (A and N)
-										if subvention_habitat_adapte {
-											cost<-ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY;
-											}
-									}
-								}
-							}							
-					
-					shape <- myself.shape;	
 					}
-				
+				}
 				current_action<- first(action_list);
 				my_basket <- my_basket + current_action; 
 			}
@@ -1112,13 +1119,22 @@ species action_done
 	//string command_group <- "";
 	int command <- -1;
 	string label <- "no name";
-	float cost <- 0.0;
+	float cost <- 0;
 	int application_round <- -1;
 	int round_delay <- 0 ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0} ;
 	bool is_sent <- false;
 	bool is_applied <- false;
 	bool is_highlighted <- false;
+	// attributs ajouté par NB dans la specie action_done (modèle oleronV2.gaml) pour avoir les infos en plus sur les actions réalisés, nécessaires pour que le leader puisse applique des leviers
+	string type <- "dike" ; //can be "dike" or "PLU"
+	string previous_ua_name <-"";  // for PLU action
+	bool isExpropriation <- false; // for PLU action
+	bool inProtectedArea <- false; // for dike action
+	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
+	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
+	
 	action apply;
 	
 	string serialize_command
@@ -1455,6 +1471,8 @@ species basket_validation
 
 species action_def_cote parent:action_done
 {
+	string type <- "dike";
+	
 	rgb define_color
 	{
 		switch(command)
@@ -1494,6 +1512,9 @@ species action_def_cote parent:action_done
 species action_UA parent:action_done
 {
 	int choosen_cell;
+	string type <- "PLU";
+	int cost <- 0;
+	
 	rgb define_color
 	{
 		switch(command)
@@ -1543,7 +1564,7 @@ species buttons
 	int command <- -1;
 	string display_name <- "no name";
 	string label <- "no name";
-	float action_cost<-0.0;
+	float action_cost<-0;
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
 	image_file my_icon;
@@ -1848,10 +1869,18 @@ experiment game type: gui
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					if explored_buttons.command != ACTION_INSPECT_LAND_USE {
-							if explored_buttons.command != ACTION_MODIFY_LAND_COVER_N
-								{draw "Coût de l'action : "+explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;}
-							else {	draw "Coût si appliqué à une parcelle A : "+ACTION_COST_LAND_COVER_FROM_A_TO_N  at: target2 + { 30#px, 55#px} font: regular color: # white;
+							switch explored_buttons.command {
+								default {draw "Coût de l'action : "+explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;}
+								match ACTION_MODIFY_LAND_COVER_N {
+									draw "Coût si appliqué à une parcelle A : "+ACTION_COST_LAND_COVER_FROM_A_TO_N  at: target2 + { 30#px, 55#px} font: regular color: # white;
 									draw "Coût si appliqué à une parcelle AU : "+ACTION_COST_LAND_COVER_FROM_AU_TO_N  at: target2 + { 30#px, 75#px} font: regular color: # white;
+									draw "Coût si appliqué à une parcelle U : coût d'expropriation"  at: target2 + { 30#px, 95#px} font: regular color: # white;
+								}
+								match ACTION_MODIFY_LAND_COVER_AUs {
+									draw "Coût si appliqué à une parcelle AU : "+explored_buttons.action_cost  at: target2 + { 30#px, 55#px} font: regular color: # white;
+									draw "Coût si appliqué à une parcelle U : "+(subvention_habitat_adapte?ACTION_COST_LAND_COVER_TO_Us_SUBSIDY:ACTION_COST_LAND_COVER_TO_Us) at: target2 + { 30#px, 75#px} font: regular color: # white;
+								}
+							
 							}
 					}
 				}
