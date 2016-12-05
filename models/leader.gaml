@@ -123,7 +123,7 @@ global
 		
 		//pour les test
 		int i <- 0;
-		/*create action_done number:10
+		create action_done number:10
 		{
 			location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
 				
@@ -132,7 +132,7 @@ global
 
 			i<- i+1;
 			
-		}*/
+		}
 	}
 	
 	reflex drag_drop when: selection_action_done != nil and  current_selected_action = REORGANISATION_AFFICHAGE
@@ -223,7 +223,12 @@ global
 	{
 		string answere <- "Montant de la recette : ";
 		map values <- user_input("Vous allez prélever une recette en provenance de " +com.com_large_name,["Montant de la recette : " :: "10000"]);
-		map<string, unknown> msg <-map([LEADER_COMMAND::RECETTE,AMOUNT::int(values[answere]),COMMUNE::com.com_id]);
+		map<string, unknown> msg <-[];//LEADER_COMMAND::RECETTE,AMOUNT::int(values[answere]),COMMUNE::com.com_id];
+		put RECETTE key: LEADER_COMMAND in: msg;
+		put int(values[answere]) key: AMOUNT in: msg;
+		put com.com_id key: COMMUNE in: msg;
+		
+		
 		do send_message(msg);	
 	}
 
@@ -231,19 +236,28 @@ global
 	{
 		string answere <- "montant de la subvention : ";
 		map values <- user_input("Vous allez subventionner la commune de " +com.com_large_name,[ "montant de la subvention : " :: "10000"]);
-		map<string, unknown> msg <-map([LEADER_COMMAND::SUBVENTIONNER,AMOUNT::int(values[answere]),COMMUNE::com.com_id]);
+		map<string, unknown> msg <-[]; //LEADER_COMMAND::SUBVENTIONNER,AMOUNT::int(values[answere]),COMMUNE::com.com_id];
+		put SUBVENTIONNER key: LEADER_COMMAND in: msg;
+		put int(values[answere]) key: AMOUNT in: msg;
+		put com.com_id key: COMMUNE in: msg;
 		do send_message(msg);	
 	}
 	
 	action retarder_action(action_done act_dn, int duree)
 	{
-		map<string, unknown> msg <-map([LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id]);
+		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
+		put RETARDER key: LEADER_COMMAND in: msg;
+		put int(duree) key: DELAY in: msg;
+		put act_dn.id key: ACTION_ID in: msg;
 		do send_message(msg);	
 	}
 	
 	action lever_retard_action(action_done act_dn)
 	{
-		map<string, unknown> msg <-map([LEADER_COMMAND::LEVER_RETARD,ACTION_ID::act_dn.id]);
+		map<string, unknown> msg <-[]; //LEADER_COMMAND::LEVER_RETARD,ACTION_ID::act_dn.id];
+		put LEVER_RETARD key: LEADER_COMMAND in: msg;
+		put act_dn.id key: ACTION_ID in: msg;
+		
 		do send_message(msg);	
 	}
 	
