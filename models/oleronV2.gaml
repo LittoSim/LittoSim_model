@@ -747,7 +747,7 @@ species game_leader skills:[network]
 	}
 	
 	
-	reflex  wait_message when: activemq_connect
+	reflex  wait_message 
 	{
 		loop while:has_more_message()
 		{
@@ -755,6 +755,8 @@ species game_leader skills:[network]
 			map<string, unknown> m_contents <- msg.contents;
 			
 			string cmd <- m_contents[LEADER_COMMAND];
+			
+			write "command " + cmd;
 			switch(cmd)
 			{
 				match RETARDER
@@ -764,6 +766,32 @@ species game_leader skills:[network]
 					action_done dd <- action_done first_with(each.id=id_action);
 					do retarder_action(dd,delais);
 				}
+				match SUBVENTIONNER
+				{
+					int id_commune <- m_contents[COMMUNE];
+					int amount <- m_contents[AMOUNT];
+					write "commune " + m_contents[COMMUNE];
+					commune com <- commune first_with(each.id=id_commune);
+					write "commune found " + com;
+
+					do subventionner(com,amount);
+
+				}
+				match RECETTE
+				{
+					int id_commune <- m_contents[COMMUNE];
+					int amount <- m_contents[AMOUNT]; 
+					commune com <- commune first_with(each.id=id_commune);
+					do percevoir(com,amount);
+				}
+				match LEVER_RETARD
+				{
+					int id_action <- m_contents[ACTION_ID];
+					action_done dd <- action_done first_with(each.id=id_action);
+					
+					do appliquer_action(dd);
+				}
+
 			}
 			
 		}
@@ -773,19 +801,54 @@ species game_leader skills:[network]
 	
 	action retarder_action(action_done act, int duree)
 	{
+		ask act
+		{
+			round_delay <- round_delay + duree;
+			application_round <- application_round + duree; 
+			commune cm <-commune first_with (each.nom_raccourci = doer);
+			ask network_agent
+				{
+				string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+duree;
+				do send to:cm.network_name contents:msg;
+				}
+		}
 		
 	}
 	action appliquer_action(action_done act)
 	{
+		ask act
+			{
+				int tmp <- application_round - round;
+				round_delay <- round_delay - tmp;
+				application_round <- round; 
+				commune cm <-commune first_with (each.nom_raccourci = doer);
+				ask network_agent
+				{
+					string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+tmp;
+					do send to:cm.network_name contents:msg;
+				}
+		}
 		
 	}
 	action subventionner(commune cm, int montant)
 	{
-		
+		cm.budget <- cm.budget + montant;
+		ask network_agent
+			{
+			string msg <- ""+INFORM_GRANT_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
+			do send to:cm.network_name contents:msg;
+			}
+		cm.not_updated <- true;
 	}
 	action percevoir(commune cm, int montant)
 	{
-		
+		cm.budget <- cm.budget - montant;
+		ask network_agent
+		{
+			string msg <- ""+INFORM_FINE_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
+			do send to:cm.network_name contents:msg;
+		}
+		cm.not_updated <- true;
 	}
 	
 	reflex send_action_state when: cycle mod 10 = 0
