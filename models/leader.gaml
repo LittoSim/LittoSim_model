@@ -123,14 +123,16 @@ global
 		
 		//pour les test
 		int i <- 0;
-		create action_done number:10
+		/*create action_done number:10
 		{
+			location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
+				
 			id <-i ;
 			doer<-"dolus";
 
 			i<- i+1;
 			
-		}
+		}*/
 	}
 	
 	reflex drag_drop when: selection_action_done != nil and  current_selected_action = REORGANISATION_AFFICHAGE
@@ -186,12 +188,6 @@ global
 						}
 						
 					}
-					match RECETTE {
-						if(selected_commune != nil)
-						{
-							do percevoir_recette( selected_commune);
-						}
-					}
 					match RETARD_1_AN
 					{
 						if(local_selection != nil)
@@ -225,16 +221,16 @@ global
 	
 	action percevoir_recette(commune com)
 	{
-		string answere <- "Montant de la recette ";
-		map values <- user_input("Vous allez prélever une recette en provenance de " +com.com_large_name,[answere :: 10000]);
+		string answere <- "Montant de la recette : ";
+		map values <- user_input("Vous allez prélever une recette en provenance de " +com.com_large_name,["Montant de la recette : " :: "10000"]);
 		map<string, unknown> msg <-map([LEADER_COMMAND::RECETTE,AMOUNT::int(values[answere]),COMMUNE::com.com_id]);
 		do send_message(msg);	
 	}
 
 	action subventionner(commune com)
 	{
-		string answere <- "montant de la subvention";
-		map values <- user_input("Vous allez subventionner la commune de " +com.com_large_name,[ answere :: 10000]);
+		string answere <- "montant de la subvention : ";
+		map values <- user_input("Vous allez subventionner la commune de " +com.com_large_name,[ "montant de la subvention : " :: "10000"]);
 		map<string, unknown> msg <-map([LEADER_COMMAND::SUBVENTIONNER,AMOUNT::int(values[answere]),COMMUNE::com.com_id]);
 		do send_message(msg);	
 	}
@@ -509,6 +505,7 @@ species game_controller skills:[network]
 		{
 			create action_done number:1
 			{
+				location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
 				do init_from_map(msg);
 			}
 		}
