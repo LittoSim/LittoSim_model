@@ -142,9 +142,12 @@ global  {
 	int STEPS_DEGRAD_STATUS_OUVRAGE <- 8; // Sur les ouvrages il faut 8 ans pour que ça change de statut
 	int STEPS_DEGRAD_STATUS_DUNE <-6; // Sur les dunes, sans ganivelle,  il faut 6 ans pour que ça change de statut
 	int STEPS_REGAIN_STATUS_GANIVELLE  <-3; // Avec une ganivelle ça se régénère 2 fois plus vite que ça ne se dégrade
-	int PROBA_RUPTURE_ETAT_MAUVAIS <- 10;
-	int PROBA_RUPTURE_ETAT_MOYEN <- 5;
-	int PROBA_RUPTURE_ETAT_BON <- -1; // si -1, alors  impossible
+	int PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS <- 13;
+	int PROBA_RUPTURE_DIGUE_ETAT_MOYEN <- 6;
+	int PROBA_RUPTURE_DIGUE_ETAT_BON <- -1; // si -1, alors  impossible
+	int PROBA_RUPTURE_DUNE_ETAT_MAUVAIS <- 8;
+	int PROBA_RUPTURE_DUNE_ETAT_MOYEN <- 4;
+	int PROBA_RUPTURE_DUNE_ETAT_BON <- -1; // si -1, alors  impossible
 
 	// Paramètres des dynamique de Population
 	float ANNUAL_POP_GROWTH_RATE <- 0.009;
@@ -161,17 +164,10 @@ global  {
 		file zone_PPR_shape <- file("../includes/zone_etude/PPR_extract.shp");
 		file coastline_shape <- file("../includes/zone_etude/trait_cote.shp");
 		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
-		// OPTION 1 -> Zone d'étude
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		file dem_file <- file("../includes/zone_etude/oleron_dem2016.asc") ;
 		int nb_cols <- 631;
 		int nb_rows <- 906;
-		// OPTION 2 -> Zone restreinte
-		/*file emprise_shape <- file("../includes/zone_restreinte/cadre.shp");
-		file coastline_shape <- file("../includes/zone_restreinte/contour.shp");
-		file dem_file <- file("../includes/zone_restreinte/mnt.asc") ;
-		int nb_cols <- 250;
-		int nb_rows <- 175;	*/
 		
 	//couches joueurs
 		file unAm_shape <- file("../includes/zone_etude/zones241115.shp");	
@@ -194,7 +190,6 @@ init
 		create game_leader number:1;
 		
 		do implementation_tests;
-		/*Les actions contenu dans le bloque init sonr exécuté à l'initialisation du modele*/
 		/* initialisation du bouton */
 		do init_buttons;
 		stateSimPhase <- 'not started';
@@ -228,7 +223,6 @@ init
 				AU_to_U_counter <- flip(0.5)?1:0;
 				not_updated <- true;
 			}
-			
 		}
 		do load_rugosity;
 		ask UA {cells <- cell overlapping self;}
@@ -362,48 +356,63 @@ reflex show_lisflood when: stateSimPhase = 'show lisflood'
 //			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
 	}
 		
-action launchFloodPhase 
+action launchFlood_event (string eventName)
 	{ // déclenchement innondation
 		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
 		if round != 0 {
 			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
 			ask def_cote {do calcRupture;} 
-			do executeLisflood; // comment this line if you only want to read already existing results
+			do executeLisflood(eventName); // comment this line if you only want to read already existing results
 		} 
 		set lisfloodReadingStep <- 0;
 		stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	}
 
+/*reflex test_calcRupture {
+	int tot <-0;
+	ask def_cote where (each.type != 'Naturel') {
+		int p <- 0;
+		
+		if status = "mauvais" {p <- PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS;}
+		if status = "moyen" {p <- PROBA_RUPTURE_DIGUE_ETAT_MOYEN;}
+		if status = "bon" {p <- PROBA_RUPTURE_DIGUE_ETAT_BON;}
+		if rnd (100) <= p {
+			tot <- tot+1;
+			}		
+	}
+	write tot;
+}*/
  	
-action executeLisflood
+action executeLisflood (string eventName)
 	{	timestamp <- machine_time ;
 		do save_dem;  
 		do save_rugosityGrid;
-		do save_lf_launch_files;
+		do save_lf_launch_files(eventName);
 		map values <- user_input(["Input files for flood simulation "+timestamp+" are ready.
 
 BEFORE TO CLICK OK
 -Launch '../includes/lisflood-fp-604/lisflood_oleron_current.bat' to generate outputs
 
-WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: 100]);
+WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: ""]);
  		}
  		
-action save_lf_launch_files {
-		save ("DEMfile         oleron_dem2016_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n2016_t"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron2016.bci\nbdyfile         oleron2016.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron2016_"+timestamp+".par" type: "text"  ;
-		save ("lisflood -dir results"+ timestamp +" oleron2016_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
-		}       
+action save_lf_launch_files (string eventName) {
+	switch eventName {
+		match "Xynthia" {
+			save ("DEMfile         oleron_dem2016_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n2016_t"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron2016.bci\nbdyfile         oleron2016.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron2016_Xynthia_"+timestamp+".par" type: "text"  ;
+			save ("lisflood -dir results"+ timestamp +" oleron2016_Xynthia_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;	
+		}
+		match "Xynthia moins 50cm" {
+			save ("DEMfile         oleron_dem2016_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n2016_t"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron2016.bci\nbdyfile         oleron2016_Xynthia-50.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron2016_Xynthia-50_"+timestamp+".par" type: "text"  ;
+		save ("lisflood -dir results"+ timestamp +" oleron2016_Xynthia-50_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;
+		}
+	}
+}       
 
 action save_dem {
-		string filename <- "../includes/lisflood-fp-604/oleron_dem2016_t" + timestamp + ".asc";
-		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";		
-		loop j from: 0 to: nb_rows- 1 {
-			string text <- "";
-			loop i from: 0 to: nb_cols - 1 {
-				text <- text + " "+ cell[i,j].soil_height;}
-			save text to:filename;
-			}
-		}  
-		
+	save cell to: "../includes/lisflood-fp-604/oleron_dem2016_t" + timestamp + ".asc" type: "asc";
+	}
+
 action save_rugosityGrid {
 		string filename <- "../includes/lisflood-fp-604/oleron_n2016_t" + timestamp + ".asc";
 		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
@@ -411,10 +420,30 @@ action save_rugosityGrid {
 			string text <- "";
 			loop i from: 0 to: nb_cols - 1 {
 				text <- text + " "+ cell[i,j].rugosity;}
-			save text to:filename;
+			save text to: filename rewrite: false ;
 			}
 		}  
 		
+action performance_save_dem {
+	float x <- machine_time;
+	loop times:10 {do save_dem;}
+	write (machine_time - x);
+}
+action performance_save_dem2 {
+	float x <- machine_time;
+	loop times:10 {do save_dem_old;}
+	write (machine_time - x);
+}
+action save_dem_old {
+		string filename <- "../includes/lisflood-fp-604/oleron_dem2016_t" + timestamp + ".asc";
+		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";		
+		loop j from: 0 to: nb_rows- 1 {
+			string text <- "";
+			loop i from: 0 to: nb_cols - 1 {
+				text <- text + " "+ cell[i,j].soil_height;}
+			save text to:filename rewrite:false;
+			}
+		}  	
 	   
 action readLisfloodInRep (string rep)
 	 {  string nb <- lisfloodReadingStep;
@@ -1270,12 +1299,23 @@ species game_controller skills:[network]
 		create buttons number: 1
 		{
 			nb_button <- 3;
-			label <- "Launch Lisflood";
+			label <- "Lisflood Xynthia";
 			shape <- square(button_size);
 			location <- { 5000,1000 };
 			my_icon <- image_file("../images/icones/launch_lisflood.png");
 			display_name <- UNAM_DISPLAY_c;
 		}
+		
+		create buttons number: 1
+		{
+			nb_button <- 5;
+			label <- "Lisflood Xynthia - 50cm";
+			shape <- square(button_size);
+			location <- { 7000,1000 };
+			my_icon <- image_file("../images/icones/launch_lisflood_small.png");
+			display_name <- UNAM_DISPLAY_c;
+		}
+		
 		
 		create buttons number: 1
 		{
@@ -1328,7 +1368,10 @@ species game_controller skills:[network]
 				ask world {do nextRound;}
 			}
 			if (nb_button = 3){
-				ask world {do launchFloodPhase;}
+				ask world {do launchFlood_event("Xynthia");}
+			}
+			if (nb_button = 5){
+				ask world {do launchFlood_event("Xynthia moins 50cm");}
 			}
 			
 			if (nb_button = 1){
@@ -1526,9 +1569,11 @@ species def_cote
 	list<cell> cells ;
 	int cptStatus <-0;
 	int rupture<-0;
+	geometry zoneRupture<-nil;
 	bool not_updated <- false;
 	bool ganivelle <- false;
 	float height_avant_ganivelle;
+	string type_def_cote -> {type = 'Naturel'?"dune":"digue"};
 	
 	action init_dike {
 		if status = "" {status <- "bon";} 
@@ -1590,23 +1635,30 @@ species def_cote
 		
 	action calcRupture {
 		int p <- 0;
-		
-		if status = "mauvais" {p <- PROBA_RUPTURE_ETAT_MAUVAIS;}
-		if status = "moyen" {p <- PROBA_RUPTURE_ETAT_MOYEN;}
-		if status = "bon" {p <- PROBA_RUPTURE_ETAT_BON;}
+		if type != 'Naturel' and status = "mauvais" {p <- PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS;}
+		if type != 'Naturel' and status = "moyen" {p <- PROBA_RUPTURE_DIGUE_ETAT_MOYEN;}
+		if type != 'Naturel' and status = "bon" {p <- PROBA_RUPTURE_DIGUE_ETAT_BON;}
+		if type = 'Naturel' and status = "mauvais" {p <- PROBA_RUPTURE_DUNE_ETAT_MAUVAIS;}
+		if type = 'Naturel' and status = "moyen" {p <- PROBA_RUPTURE_DUNE_ETAT_MOYEN;}
+		if type = 'Naturel' and status = "bon" {p <- PROBA_RUPTURE_DUNE_ETAT_BON;}
 		if rnd (100) <= p {
 				set rupture <- 1;
-				// apply Rupture On Cells
-				ask cells  {/// TODO : a changer: ne pas appliquer sur toutes les cells de l'ouvrage mais que sur une portion
+				// on applique la rupture a peu pres au milieu du linéaire
+				int cIndex <- int(length(cells) /2);
+				// on défini la zone de rupture ds un rayon de 30 mètre autour du point de rupture 
+				zoneRupture <- circle(30#m,(cells[cIndex]).location);
+				// on applique la rupture sur les cells de cette zone
+				ask cells overlapping zoneRupture  {
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 				}
-				write "rupture digue n°" + id_ouvrage + "(état " + status +", type "+type +", hauteur "+height+", commune "+first((commune overlapping self)).nom_raccourci +")"; 
+				write "rupture "+type_def_cote+" n°" + id_ouvrage + "("+first((commune overlapping self)).nom_raccourci +", état " + status +", hauteur "+height+", alt "+alt +")"; 
 		}
 	}
 	
 	action removeRupture {
 		rupture <- 0;
-		ask cells  {if soil_height >= 0 {soil_height <-   soil_height_before_broken;}}
+		ask cells overlapping zoneRupture {if soil_height >= 0 {soil_height <-   soil_height_before_broken;}}
+		zoneRupture <- nil;
 	}
 
 	//La commune répare la digue
@@ -1677,7 +1729,7 @@ species def_cote
 			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
 		}		
 			
-		if rupture  = 1 {draw circle(100) color:#red;} 	
+		if rupture  = 1 {draw (zoneRupture +70#m) color:rgb(240,20,20,200);} 	
 	}
 }
 
