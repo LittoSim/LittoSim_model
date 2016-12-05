@@ -1316,8 +1316,8 @@ species game_controller skills:[network]
 			display_name <- UNAM_DISPLAY_c;
 		}
 		
-		
-		create buttons number: 1
+		// NB Pas utilisé car remplacé par l'interface Leader
+		/*create buttons number: 1
 		{
 			nb_button <- 1;
 			label <- "subvention";
@@ -1335,7 +1335,7 @@ species game_controller skills:[network]
 			location <- { 1000, 6000 };
 			my_icon <- image_file("../images/icones/taxe.png");
 			display_name <- UNAM_DISPLAY_c;
-		}
+		}*/
 		create buttons number: 1
 		{
 			nb_button <- 4;
@@ -1374,7 +1374,8 @@ species game_controller skills:[network]
 				ask world {do launchFlood_event("Xynthia moins 50cm");}
 			}
 			
-			if (nb_button = 1){
+			/*	// NB Pas utilisé car remplacé par l'interface Leader
+			 * if (nb_button = 1){
 				//Bouton Subvention
 				map values <- user_input("Vous allez octroyer une subvention à une commune.
 Choisissez le numéro de la commune :
@@ -1398,10 +1399,10 @@ Et le montant octroyé. ",["id_commune":: 4, "amount" :: 10000]);
 						not_updated <- true;
 					}
 				}
-				}
+				}*/
 
 			
-			if (nb_button = 2){
+/*if (nb_button = 2){
 				// Bouton Amende
 				map values <- user_input("Vous allez mettre une amende à une commune.
 Choisissez le numéro de la commune :
@@ -1425,7 +1426,7 @@ Et le montant de l'amende. ",["id_commune":: 4, "amount" :: 10000]);
 				 }
 				 
 				}
-				}
+				}*/
 		}
 		
 		if(length(selected_UnAm_c)>0)
