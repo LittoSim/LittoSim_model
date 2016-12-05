@@ -159,11 +159,11 @@ global  {
 		file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 		file zone_protegee_shape <- file("../includes/zone_etude/zps_sic.shp");
 		file zone_PPR_shape <- file("../includes/zone_etude/PPR_extract.shp");
-		file coastline_shape <- file("../includes/zone_etude/la_mer2.shp");
+		file coastline_shape <- file("../includes/zone_etude/trait_cote.shp");
 		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 		// OPTION 1 -> Zone d'étude
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
-		file dem_file <- file("../includes/zone_etude/mnt_corrige.asc") ;
+		file dem_file <- file("../includes/zone_etude/oleron_dem2016.asc") ;
 		int nb_cols <- 631;
 		int nb_rows <- 906;
 		// OPTION 2 -> Zone restreinte
@@ -335,7 +335,7 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;
-													cell[c,r].max_water_height <- 0.0;
+													//cell[c,r].max_water_height <- 0.0;
 						}  }
 		// annulation des ruptures de digues				
 		ask def_cote {if rupture = 1 {do removeRupture;}}
@@ -366,6 +366,7 @@ action launchFloodPhase
 	{ // déclenchement innondation
 		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
 		if round != 0 {
+			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
 			ask def_cote {do calcRupture;} 
 			do executeLisflood; // comment this line if you only want to read already existing results
 		} 
@@ -388,16 +389,13 @@ WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close wh
  		}
  		
 action save_lf_launch_files {
-		save ("DEMfile         oleron_dem_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        43400.0\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n_t"+timestamp+".asc\n#roadfile      buscot.road\nbcifile         oleron.bci\nbdyfile         oleron.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron_"+timestamp+".par" type: "text"  ;
-		save ("lisflood -dir results"+ timestamp +" oleron_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
+		save ("DEMfile         oleron_dem2016_t"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n2016_t"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron2016.bci\nbdyfile         oleron2016.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron2016_"+timestamp+".par" type: "text"  ;
+		save ("lisflood -dir results"+ timestamp +" oleron2016_"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;  
 		}       
 
 action save_dem {
-		string filename <- "../includes/lisflood-fp-604/oleron_dem_t" + timestamp + ".asc";
-		//OPTION 1 -> Zone d'étude
-		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
-		//OPTION 2 -> Zone restreinte
-		//save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;			
+		string filename <- "../includes/lisflood-fp-604/oleron_dem2016_t" + timestamp + ".asc";
+		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";		
 		loop j from: 0 to: nb_rows- 1 {
 			string text <- "";
 			loop i from: 0 to: nb_cols - 1 {
@@ -407,11 +405,8 @@ action save_dem {
 		}  
 		
 action save_rugosityGrid {
-		string filename <- "../includes/lisflood-fp-604/oleron_n_t" + timestamp + ".asc";
-		//OPTION 1 -> Zone d'étude
+		string filename <- "../includes/lisflood-fp-604/oleron_n2016_t" + timestamp + ".asc";
 		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
-		//OPTION 2 -> Zone restreinte
-		//save 'ncols        250\nnrows        175\nxllcorner    368987.146666680000\nyllcorner    6545012.565555600400\ncellsize     20.000000000000\nNODATA_value  -9999' to: filename;			
 		loop j from: 0 to: nb_rows- 1 {
 			string text <- "";
 			loop i from: 0 to: nb_cols - 1 {
@@ -1487,11 +1482,12 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 			 {color<-#white;}
 			if water_height > 0.01
 			 { color<- rgb( 0, 0 , 255 - ( ((water_height  / 8) with_precision 1) * 255)) /* hsb(0.66,1.0,((water_height +1) / 8)) */;}
-			 //
 		}
 		aspect elevation_eau
-			{if cell_type = 1 
-				{color<-#white;}
+		{
+			if cell_type = 1 
+				{float tmp <-  ((soil_height  / 10) with_precision 1) * -170;
+					color<- rgb( 80, 80 , 255 - tmp) ; }
 			 else{
 				if water_height = 0			
 				{float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
@@ -1500,7 +1496,22 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 				 {float tmp <-  min([(water_height  / 5) * 255,200]);
 				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
 				 }
-			}	
+			}
+		aspect elevation_eau_max
+		{
+			if cell_type = 1 
+				{float tmp <-  ((soil_height  / 10) with_precision 1) * -170;
+					color<- rgb( 80, 80 , 255 - tmp) ; }
+			 else{
+				if max_water_height = 0			
+				{float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
+					color<- rgb( 255 - tmp, 180 - tmp , 0) ; }
+				else
+				 {float tmp <-  min([(max_water_height  / 5) * 255,200]);
+				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
+				 }
+		}	
+			
 	}
 
 
@@ -2086,7 +2097,16 @@ experiment oleronV2 type: gui {
 			species def_cote aspect:base;
 			species coast_dike_area aspect: base;
 			species coast_border_area aspect: base;		
-		}		
+		}
+		display carte_oleron_water_max
+		{
+			grid cell ;
+			species cell aspect:elevation_eau_max;
+			species commune aspect:outline;
+			species road aspect:base;
+			species def_cote aspect:base;
+			
+		}
 		display Population
 		{	
 			species UA aspect: population;

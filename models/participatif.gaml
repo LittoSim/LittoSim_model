@@ -25,6 +25,7 @@ global
 	file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 	file zone_protegee_shape <- file("../includes/zone_etude/zps_sic.shp");
 	file zone_PPR_shape <- file("../includes/zone_etude/PPR_extract.shp");
+	file sites_non_classes_area_shape <- file("../includes/zone_etude/sites_non_classes.shp"); /// ATTENTION, SHAPE A CHANGER
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 	matrix<string> all_action_delay <- matrix<string>(csv_file("../includes/delai_action.csv",";"));
 
@@ -125,7 +126,7 @@ global
 	
 	//  Attributes of the Commune
 	int budget <- 0;
-	int minimal_budget <- -5000;
+	int minimal_budget <- -2000;
 	int impot_recu <- 0;
 	bool subvention_habitat_adapte <- false;
 	bool subvention_ganivelle <- false;
@@ -174,6 +175,7 @@ global
 		create road from:road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
 		create flood_risk_area from: zone_PPR_shape;
+		create sites_non_classes_area from: sites_non_classes_area_shape;
 		switch (commune_name)
 			{
 			match "lechateau" {commune_name_shpfile <-"Le-Chateau-d'Oleron";}
@@ -551,7 +553,7 @@ global
 	{
 		if(basket_max_size = length(my_basket))
 		{
-			map<string,unknown> values2 <- user_input("Avertissement","Vous avez atteint la capacité maximum de votre panier, veuiller supprimer des action avant de continuer"::true);
+			map<string,unknown> values2 <- user_input("Avertissement","Vous avez atteint la capacité maximum de votre panier, veuillez valider votre panier avant de continuer"::true);
 			return true;
 		}
 		return false;
@@ -870,70 +872,68 @@ global
 					or (ua_name ="AUs" and selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)
 					or (ua_name ="Us" and selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)
 					or (ua_name ="A" and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
+					or (ua_name in ["A", "N", "AU","AUs"] and selected_button.command = ACTION_MODIFY_LAND_COVER_Ui)
 					or (length((action_done collect(each.location)) inside cell_tmp)>0  ))
 				{	// Action incohérente -> la case est déjà dans l'état souhaité
 					return;
 				}
-				if (!empty(protected_area where (each intersects (circle(10,shape.centroid))))){
-					bool res<-false;
-					string chain <- "Changer l'occupation dans une zone proétégée est interdit par la législation";
-					map<string,unknown> values2 <- user_input("Avertissement",chain::"");
-					return;
-				}
-				if(((ua_name ="N") and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
+				/* Contrairement à la V1, ds cette version c'est autorisé. Cf mail de Marianne Rulier du 5-12-2016
+				 if(((ua_name ="N") and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
 				{
 					bool res<-false;
 					string chain <- "Transformer une zone naturelle en zone agricole est interdit par la législation";
 					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
 					
 					return;
-				}
-				if(((ua_name ="U") and selected_button.command = ACTION_MODIFY_LAND_COVER_A))
+				}*/
+				if(ua_name in ["U","Us"] and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
 				{
 					bool res<-false;
-					string chain <- "Transformer une zone urbaine en zone agricole est interdit par la législation";
+					string chain <- "Transformer une zone urbaine en zone agricole n'est pas autorisé.\nVous pouvez la transformer en zone naturelle.";
 					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
 					
 					return;
 				}
-				if(((ua_name="AUs") and selected_button.command = ACTION_MODIFY_LAND_COVER_AU))
-				{
-					bool res<-false;
-					string chain <- "Impossible de supprimer un habitat adapté";
-					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
-					
-					return;
-				}
-				if(((ua_name="Us") and selected_button.command = ACTION_MODIFY_LAND_COVER_AU))
-				{
-					bool res<-false;
-					string chain <- "Impossible de supprimer un habitat adapté";
-					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
-					
-					return;
-				}
-				if((ua_name = "U" or ua_name = "Us") and (selected_button.command = ACTION_MODIFY_LAND_COVER_N))
+				if(ua_name in ["U","Us"] and selected_button.command = ACTION_MODIFY_LAND_COVER_N)
 				{
 					bool res <- false;
-					string chain <- "Vous êtes sur le point d'exproprier des habitants. Souhaitez vous continuer ?";
+					string chain <- "Vous allez entamer une procédure d'expropriation.\nSouhaitez-vous continuer ?";
 					map<string,unknown> values2 <- user_input("Avertissement",chain:: res);		
 					if(values2 at chain = false)
 					{
 						return;
 					}
 				}
-				if ((ua_name = "A" or ua_name = "N") and (selected_button.command = ACTION_MODIFY_LAND_COVER_AUs))
+				if(ua_name in ["AUs","Us"] and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
 				{
-					 if empty(UA at_distance 100 where (each.isUrbanType))
-					 {	string chain <- "Impossible de construire en habitat adapté en dehors d'une périphérie urbaine";
+					bool res<-false;
+					string chain <- "Impossible de supprimer un habitat adapté";
+					map<string,unknown> values2 <- user_input("Avertissement",chain::"");		
+					
+					return;
+				}
+				if (ua_name in ["A","N"] and selected_button.command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs])
+				{
+					if empty(UA at_distance 100 where (each.isUrbanType))
+					{	string chain <- "Impossible de construire en dehors d'une périphérie urbaine";
+						map<string,unknown> values2 <- user_input("Avertissement",chain::"");
+						return;
+					}
+					if (!empty(protected_area where (each intersects (circle(10,shape.centroid)))))
+					{	string chain <- "Construire en zone protégée n'est pas autorisé par la législation";
+						map<string,unknown> values2 <- user_input("Avertissement",chain::"");
+						return;
+					}
+					if (empty(sites_non_classes_area where (each intersects (circle(10,shape.centroid)))))
+					{	string chain <- "Cette parcelle est en dehors de la limite d'expansion urbaine autorisée par les sites classés.";
 						map<string,unknown> values2 <- user_input("Avertissement",chain::"");
 						return;
 					}
 				}
-				if((ua_name = "N") and (selected_button.command = ACTION_MODIFY_LAND_COVER_AU or (selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)) )
+				if(ua_name = "N" and selected_button.command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs])
 				{
 					bool res <- false;
-					string chain <- "Transformer une zone naturelle en zone à urbaniser fait l'objet d'une demande en préfecture. L'avez vous fait ? \n Souhaitez vous continuer la transformation de cette parcelle ?";
+					string chain <- "Transformer une zone naturelle en zone à urbaniser est soumis à des contraintes réglementaire.\nLe dossier est susceptible d’être retardé.\nSouhaitez vous poursuivre ?";
 					map<string,unknown> values2 <- user_input("Avertissement",chain:: res);		
 					ask game_manager
 					{
@@ -944,12 +944,9 @@ global
 						return;
 					}
 				}
-				if ((ua_name in ["A", "N", "AU","AUs"]) and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
-				{
-					return;
-				}
+				
 				if ((ua_name in ["U","Us"] and classe_densite = "dense") and (selected_button.command = ACTION_MODIFY_LAND_COVER_Ui))
-				{	string chain <- "Cette unité urbain est déjà à son niveau de densification maximum";
+				{	string chain <- "Cette unité urbaine est déjà à son niveau de densification maximum";
 					map<string,unknown> values2 <- user_input("Avertissement",chain::"");
 					return;	
 				}
@@ -1720,6 +1717,19 @@ species flood_risk_area {
 		}
 	}
 }
+
+species sites_non_classes_area {
+	string name;
+	
+	aspect base 
+	{
+		/*if (buttons_map first_with(each.command =ACTION_DISPLAY_PROTECTED_AREA)).is_selected
+		{*/
+		 draw shape color: rgb (185, 255, 185,120) border:#black;
+		/*}*/
+	}
+}
+
 species UA
 {
 	string ua_name <- "";
@@ -1887,7 +1897,7 @@ experiment game type: gui
 	parameter "choix de la commune : " var:commune_name <- "dolus" among:["lechateau","dolus","sttrojan", "stpierre"];
 	output
 		{
-		display "Gestion du PLU" focus:my_commune //camera_pos:my_commune
+		display "Aménagement, PLU et habitat" focus:my_commune //camera_pos:my_commune
 		{
 			image 'background' file:"../images/fond/fnt.png"; 
 			species commune aspect: base;
@@ -1898,6 +1908,7 @@ experiment game type: gui
 			species flood_risk_area aspect:base;
 			species buttons aspect:UnAm;
 			species buttons_map aspect:base;
+			//species sites_non_classes_area aspect:base;
 			
 			graphics "Full target" transparency:0.5
 			{
@@ -1971,7 +1982,7 @@ experiment game type: gui
 			event mouse_move action: mouse_move_UnAM;
 		}
 		
-		display "Gestion des digues" focus:my_commune //camera_pos:my_commune
+		display "Défense des côtes" focus:my_commune //camera_pos:my_commune
 		{
 			image 'background' file:"../images/fond/fnt.png"; 
 			species commune aspect:base;
