@@ -148,9 +148,10 @@ global
 	}
 	
 	action button_action
-	{
+	{	if selected_commune = nil {return;}
 		point loc <- #user_location;
 		selected_action <- (action_button first_with (each overlaps loc ));
+		
 		switch(selected_action.displayName)
 				{
 					match RECETTE {
@@ -193,6 +194,7 @@ global
 						if(local_selection != nil)
 						{
 							do retarder_action(local_selection,1);
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
 						}	
 					}
 					match RETARD_2_ANS
@@ -200,6 +202,7 @@ global
 						if(local_selection != nil)
 						{
 							do retarder_action(local_selection,2);
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
 						}	
 					}
 					match RETARD_3_ANS
@@ -207,6 +210,7 @@ global
 						if(local_selection != nil)
 						{
 							do retarder_action(local_selection,3);
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
 						}	
 					}
 					match ABROGER
@@ -214,6 +218,7 @@ global
 						if(local_selection != nil)
 						{
 							do retarder_action(local_selection,3000);
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
 						}	
 					}
 				}
