@@ -158,12 +158,14 @@ global
 						if(selected_commune != nil)
 						{
 							do percevoir_recette( selected_commune);
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
 						}
 					}
 					match SUBVENTIONNER {
 						if(selected_commune != nil)
 						{
 							do subventionner( selected_commune);
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
 						}
 					}					
 				}
