@@ -1443,7 +1443,8 @@ species Network_agent skills:[network]
 	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
 	{ 
 		ask action_def_cote where(each.id  = m_action_id)
-		{ ask world {do user_msg("Le dossier travaux de digue n°"+m_action_id+" a été retardé de "+nb+" tour"+nb=1?".":"s.");}
+		{ 	if (round_delay = 3000) {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
+			else {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été retardé de "+nb+" tour"+(nb=1?"":"s")+" en raison de contraintes réglementaires.");}}
 			round_delay <- round_delay + nb;
 			application_round <- application_round + nb;
 		}
@@ -1452,7 +1453,9 @@ species Network_agent skills:[network]
 	action action_UA_delay_acknowledgment(int m_action_id, int nb)
 	{ 
 		ask action_UA where(each.id  = m_action_id)
-		{  ask world {do user_msg("Le dossier travaux de PLU n°"+m_action_id+" a été retardé de "+nb+" tour"+nb=1?".":"s.");}
+		{  
+			if (round_delay = 3000) {ask world {do user_msg("Le dossier 'aménagement (PLU ou Habitat) n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
+			else {ask world {do user_msg("Le dossier d'aménagement (PLU ou Habitat) n°"+m_action_id+" a été retardé de "+nb+" tour"+(nb=1?"":"s")+" en raison de contraintes réglementaires.");}}
 			round_delay <- round_delay + nb;
 			application_round <- application_round + nb;
 		}
@@ -1536,7 +1539,7 @@ species basket_validation
 species action_def_cote parent:action_done
 {
 	string action_type <- "dike";
-	
+	string type_def_cote -> {command = ACTION_INSTALL_GANIVELLE?"dune":"digue"};
 	
 	rgb define_color
 	{
