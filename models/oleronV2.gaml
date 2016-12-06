@@ -70,6 +70,7 @@ global  {
 			
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DIKE_UPDATE<-10;
+	int ACTION_ACTION_DONE_UPDATE<- 101;
 	int INFORM_ROUND <-34;
 	int NOTIFY_DELAY <-35;
 	int ENTITY_TYPE_CODE_DEF_COTE <-36;
@@ -84,6 +85,7 @@ global  {
 	int UPDATE_BUDGET <- 19;
 	int REFRESH_ALL <- 20;
 	int ACTION_DIKE_LIST <- 21;
+	int ACTION_ACTION_LIST <- 211;
 	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
 	int INFORM_TAX_GAIN <-24;
@@ -613,6 +615,7 @@ species action_done schedules:[]
 	int id;
 	int chosen_element_id;
 	string doer<-"";
+	bool not_updated <- false;
 	//string command_group <- "";
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	string label <- "no name";
@@ -642,6 +645,13 @@ species action_done schedules:[]
 		self.cost <- float(a at "cost");
 		self.application_round <- int(a at "application_round");
 		self.round_delay <- int(a at "round_delay");
+		self.isInlandDike <- bool(a at "isInlandDike");
+		self.inRiskArea <- bool(a at "inRiskArea");
+		self.inLittoralArea <- bool(a at "inLittoralArea");
+		self.isExpropriation <- bool(a at "isExpropriation");
+		self.inProtectedArea <- bool(a at "inProtectedArea");
+		self.previous_ua_name <- string(a at "previous_ua_name");
+		self.action_type <- string(a at "action_type");
 	}
 	
 	map<string,string> build_map_from_attribute
@@ -654,7 +664,15 @@ species action_done schedules:[]
 			"label"::string(label),
 			"cost"::string(cost),
 			"application_round"::string(application_round),
-			"round_delay"::string(round_delay) ]	;
+			"round_delay"::string(round_delay),
+			"isInlandDike"::string(isInlandDike),
+			"inRiskArea"::string(inRiskArea),
+			"inLittoralArea"::string(inLittoralArea),
+			"isExpropriation"::string(isExpropriation),
+			"inProtectedArea"::string(inProtectedArea),
+			"previous_ua_name"::string(previous_ua_name),
+			"action_type"::string(action_type)
+			 ]	;
 			
 	return res;
 	}
@@ -1243,6 +1261,20 @@ species game_controller skills:[network]
 		do send to:m.network_name contents:msg;	
 	}
 	
+	action send_action_list(int m_commune)
+	{
+		string tmp<-"";
+		commune m <- commune first_with(each.id=m_commune);
+		ask action_done where(each.doer = m.nom_raccourci )
+		{
+			tmp <- tmp +  COMMAND_SEPARATOR+id; //XXXX
+		}
+		
+		string msg <- ""+ACTION_ACTION_LIST+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR +m.nom_raccourci+tmp;
+		do send to:m.network_name contents:msg;	
+	}
+	
+	
 	action update_dike
 	{
 		list<string> update_messages <-[]; 
@@ -1271,7 +1303,53 @@ species game_controller skills:[network]
 		}
 	}
 	
-	
+	action update_action_done
+	{
+		list<string> update_messages <-[]; 
+		list<action_done> update_action_done <- [];
+		ask action_done where(each.not_updated)
+		{
+			point p1 <- first(self.shape.points);
+			point p2 <- last(self.shape.points);
+			string msg <- ""+ACTION_ACTION_DONE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +
+			COMMAND_SEPARATOR+self.id+
+			COMMAND_SEPARATOR + self.chosen_element_id +
+			COMMAND_SEPARATOR + self.doer+
+			COMMAND_SEPARATOR + 	self.command +
+			COMMAND_SEPARATOR + self.label+
+			COMMAND_SEPARATOR + self.cost+
+			COMMAND_SEPARATOR + self.application_round +
+			COMMAND_SEPARATOR + self.round_delay +
+			COMMAND_SEPARATOR + self.isInlandDike +
+			COMMAND_SEPARATOR + self.inRiskArea +
+			COMMAND_SEPARATOR + self.inLittoralArea +
+			COMMAND_SEPARATOR + self.isExpropriation +
+			COMMAND_SEPARATOR + self.inProtectedArea +
+			COMMAND_SEPARATOR + self.previous_ua_name +
+			COMMAND_SEPARATOR + self.action_type;
+			
+			
+			
+			
+			
+			update_messages <- update_messages + msg;
+			update_action_done <- update_action_done + self;
+			not_updated <- false;
+		}
+		int i <- 0;
+		loop while: i< length(update_messages)
+		{
+			string msg <- update_messages at i;
+			list<commune> cms <- commune where(each.nom_raccourci = (update_action_done at i).doer);
+			loop cm over:cms
+			{
+				write "message to send "+ msg;
+				do send to:cm.network_name contents:msg;
+			}
+			i <- i + 1;
+			
+		}
+	}
 	action update_commune
 	{
 		list<string> update_messages <-[]; 
