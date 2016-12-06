@@ -123,18 +123,13 @@ global
 		do create_commune;
 		do create_button;
 
-		
 		//pour les test
 		int i <- 0;
-		create action_done number:1
-		{
+		create action_done number:1 {
 			location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
-				
 			id <-i ;
 			doer<-"dolus";
-
 			i<- i+1;
-			
 		}
 	}
 	
@@ -238,8 +233,6 @@ global
 		put RECETTE key: LEADER_COMMAND in: msg;
 		put int(values[answere]) key: AMOUNT in: msg;
 		put com.com_id key: COMMUNE in: msg;
-		
-		
 		do send_message(msg);	
 	}
 

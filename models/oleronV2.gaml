@@ -16,6 +16,7 @@ model oleronV2
 
 global  {
 
+	string SERVER <- "localhost";
 	float MOUSE_BUFFER <- 50#m;
 	string OBSERVER_NAME <- "model_observer";
 	
@@ -185,6 +186,8 @@ global  {
 
 init
 	{
+		create data_retreive number:1;
+		
 		loop i from: 0 to: (length(listC)-1)  {
 		listC[i] <- blend (listC[i], #red , 0.9);
 		}
@@ -199,7 +202,7 @@ init
 			network_agent <- first(ctl); }
 
 		/*Creation des agents a partir des données SIG */
-		create def_cote from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")) ];
+		create def_cote from:defenses_cote_shape  with:[id_ouvrage::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), nom_com::string(read("Commune")) ];
 		create commune from:communes_shape with: [nom_raccourci::string(read("NOM_RAC")),id::int(read("id_jeu"))]
 		{
 			write " commune " + nom_raccourci + " "+id;
@@ -610,12 +613,74 @@ action sauvegarder_resultat //when: sauver_shp and cycle = cycle_sauver
  *  **********************************************************************************************
  */
 
+
+species data_retreive skills:[network] schedules:[]
+{
+	init 
+	{
+		write "start sender ";
+		 do connect to:SERVER with_name:GAME_LEADER_MANAGER+"_retreive";
+	}
+	action send_data_to_commune(commune m)
+	{
+		write "send data.... to "+ m.network_name;
+		do init_dikes(m);
+		do init_cells(m);
+		do init_action(m);
+	}
+	
+	action init_dikes(commune m)
+	{
+		string commune_name_shpfile<- nil;
+		switch (m.nom_raccourci)
+			{
+			match "lechateau" {commune_name_shpfile <-"Le-Chateau-d'Oleron";}
+			match "dolus" {commune_name_shpfile <-"Dolus-d'Oleron";}
+			match "sttrojan" {commune_name_shpfile <-"Saint-Trojan-Les-Bains";}
+			match "stpierre" {commune_name_shpfile <-"Saint-Pierre-d'Oleron";}
+			}  
+		
+		list<def_cote> def_list <- def_cote where(each.nom_com = commune_name_shpfile);
+		def_cote tmp;
+		loop tmp over:def_list
+		{
+			write "send to "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
+			do send 	to:m.network_name+"_retreive" contents:tmp.build_map_from_attribute();
+		}
+		
+	}
+	
+	action init_cells(commune m)
+	{
+		UA tmp<- nil;
+		loop tmp over:m.UAs
+		{
+			write "send to "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
+			do send 	to:m.network_name+"_retreive" contents:tmp.build_map_from_attribute();
+		}
+	}
+
+	action init_action(commune m)
+	{
+		list<action_done> action_list <- action_done where(each.doer = m.nom_raccourci);
+		action_done tmp<- nil;
+		loop tmp over:action_list 	
+		{
+			write "send to "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
+			do send 	to:m.network_name+"_retreive" contents:tmp.build_map_from_attribute();
+		}
+	}
+}
+
+
 species action_done schedules:[]
 {
 	int id;
 	int chosen_element_id;
 	string doer<-"";
 	bool not_updated <- false;
+	bool is_applied <- false;
+	bool is_sent <-true;
 	//string command_group <- "";
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	string label <- "no name";
@@ -633,7 +698,7 @@ species action_done schedules:[]
 	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
-	
+	bool is_alive <- true;
 	
 	action init_from_map(map<string, string> a )
 	{
@@ -652,11 +717,35 @@ species action_done schedules:[]
 		self.inProtectedArea <- bool(a at "inProtectedArea");
 		self.previous_ua_name <- string(a at "previous_ua_name");
 		self.action_type <- string(a at "action_type");
+		self.is_applied<- bool(a at "is_applied");
+		self.is_sent<- bool(a at "is_sent");
+		
+		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		point mpp <- pp;
+		int i <- 0;
+		list<point> all_points <- [];
+		loop while: (pp!=nil)
+		{
+			string xd <- a at ("locationx"+i);
+			if(xd != nil)
+			{
+				pp <- {float(xd), float(a at ("locationy"+i))  };
+				all_points <- all_points + pp;
+			}
+			else
+			{
+				pp<-nil;
+			}
+			i<- i + 1;
+		}
+		shape <- polygon(all_points);
+		location <-mpp;
 	}
 	
 	map<string,string> build_map_from_attribute
 	{
 		map<string,string> res <- [
+			"OBJECT_TYPE"::"action_done",
 			"id"::string(id),
 			"chosen_element_id"::string(chosen_element_id),
 			"doer"::string(doer),
@@ -671,9 +760,20 @@ species action_done schedules:[]
 			"isExpropriation"::string(isExpropriation),
 			"inProtectedArea"::string(inProtectedArea),
 			"previous_ua_name"::string(previous_ua_name),
-			"action_type"::string(action_type)
+			"action_type"::string(action_type),
+			"locationx"::string(location.x),
+			"locationy"::string(location.y),
+			"is_applied"::string(is_applied),
+			"is_sent"::string(is_sent)
 			 ]	;
-			
+			point pp<-nil;
+			int i <- 0;
+			loop pp over:shape.points
+			{
+				put string(pp.x) key:"locationx"+i in: res;
+				put string(pp.y) key:"locationy"+i in: res;
+				i <- i + 1;
+			}
 	return res;
 	}
 	
@@ -788,7 +888,7 @@ species game_leader skills:[network]
 	
 	init
 	{
-		 do connect to:"localhost" with_name:GAME_LEADER_MANAGER;
+		 do connect to:SERVER with_name:GAME_LEADER_MANAGER;
 	}
 	
 	
@@ -852,7 +952,6 @@ species game_leader skills:[network]
 					put NUM_ROUND key:OBSERVER_MESSAGE_COMMAND in:msg ;
 					put string(round) key: "num tour" in: msg;
 					do send to:OBSERVER_NAME contents:msg;
-					write "send message to leader "+ msg;
 				}
 	
 	action retarder_action(action_done act, int duree)
@@ -896,6 +995,7 @@ species game_leader skills:[network]
 			}
 		cm.not_updated <- true;
 	}
+	
 	action percevoir(commune cm, int montant)
 	{
 		cm.budget <- cm.budget - montant;
@@ -955,10 +1055,25 @@ species game_controller skills:[network]
 					}
 					else
 						{
-							if(round>0) 
+							if(REFRESH_ALL = int(data[0]))
+							{
+								int idCom <-world.commune_id(m_sender);
+								write " Update ALL !!!! " + idCom+ " ";
+								commune cm <- first(commune where(each.id=idCom));
+								ask first(data_retreive) 
 								{
+									do send_data_to_commune(cm);
+								}
+							} 
+							else
+							{
+								if(round>0) 
+								{
+									write "read action " + m_contents["stringContents"];
 									do read_action(string(m_contents["stringContents"]),m_sender);
 								}
+								
+							}
 						}
 				}
 				else
@@ -978,9 +1093,9 @@ species game_controller skills:[network]
 		
 	}
 	
-	reflex apply_action when:length(action_done)>0 
+	reflex apply_action when:length(action_done where(each.is_alive))>0 
 	{
-		ask(action_done where(each.should_be_applied))
+		ask(action_done where(each.should_be_applied and each.is_alive))
 		{
 			string tmp <- self.doer;
 			int idCom <-world.commune_id(tmp);
@@ -998,14 +1113,24 @@ species game_controller skills:[network]
 				match REFRESH_ALL
 				{
 					write " Update ALL !!!! " + idCom+ " "+ doer;
+					string dd <- doer;
 					commune cm <- first(commune where(each.id=idCom));
+					ask first(data_retreive) 
+					{
+						do send_data_to_commune(cm);
+					}
+					/*
 					ask def_cote overlapping cm { not_updated <- true;}
+				//	ask action_done where(each.doer=dd)  { not_updated <- true;}
 					ask UA overlapping cm { not_updated <- true;}
 					ask cm {not_updated <- true;}
 					ask game_controller
 					{
 						do send_dike_list(idCom);
+					//	do send_action_list(idCom);
 					}
+					
+					*/
 				}
 				
 				match ACTION_CREATE_DIKE
@@ -1098,7 +1223,10 @@ species game_controller skills:[network]
 			{
 				do execute_pending_request(myself);	
 			}*/
-			do die;
+			write "is_alive to false "+ is_alive;
+			is_alive <- false; 
+			is_applied <- true;
+			//do die;
 		}
 	}
 	
@@ -1188,6 +1316,7 @@ species game_controller skills:[network]
 	{
 		do update_UA;
 		do update_dike;
+	//	do update_action_done_func();
 		do update_commune;
 	}
 	
@@ -1303,7 +1432,7 @@ species game_controller skills:[network]
 		}
 	}
 	
-	action update_action_done
+	action update_action_done_func
 	{
 		list<string> update_messages <-[]; 
 		list<action_done> update_action_done <- [];
@@ -1326,10 +1455,8 @@ species game_controller skills:[network]
 			COMMAND_SEPARATOR + self.isExpropriation +
 			COMMAND_SEPARATOR + self.inProtectedArea +
 			COMMAND_SEPARATOR + self.previous_ua_name +
-			COMMAND_SEPARATOR + self.action_type;
-			
-			
-			
+			COMMAND_SEPARATOR + self.action_type+
+			COMMAND_SEPARATOR + string(self.shape);
 			
 			
 			update_messages <- update_messages + msg;
@@ -1655,6 +1782,7 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 species def_cote
 {	
 	int id_ouvrage;
+	string nom_com;
 	string type;
 	string status;	//  "bon" "moyen" "mauvais"  
 	float height;  // height au pied en mètre
@@ -1668,6 +1796,76 @@ species def_cote
 	bool ganivelle <- false;
 	float height_avant_ganivelle;
 	string type_def_cote -> {type = 'Naturel'?"dune":"digue"};
+	
+	action init_from_map(map<string, unknown> a )
+	{
+		self.id_ouvrage <- int(a at "id_ouvrage");
+		self.type <- string(a at "type");
+		self.status <- string(a at "status");
+		self.height <- float(a at "height");
+		self.alt <- float(a at "alt");
+		self.cptStatus <- int(a at "cptStatus");
+		self.rupture <- int(a at "rupture");
+		self.zoneRupture <- a at "zoneRupture";
+		self.not_updated <- bool(a at "not_updated");
+		self.ganivelle <- bool(a at "ganivelle");
+		self.height_avant_ganivelle <- a at "height_avant_ganivelle";
+		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		point mpp <- pp;
+		int i <- 0;
+		list<point> all_points <- [];
+		loop while: (pp!=nil)
+		{
+			string xd <- a at ("locationx"+i);
+			if(xd != nil)
+			{
+				pp <- {float(xd), float(a at ("locationy"+i))  };
+				all_points <- all_points + pp;
+			}
+			else
+			{
+				pp<-nil;
+			}
+			i<- i + 1;
+		}
+		shape <- polygon(all_points);
+		location <-mpp;
+	}
+	
+	map<string,unknown> build_map_from_attribute
+	{
+		map<string,unknown> res <- [
+			"OBJECT_TYPE"::"def_cote",
+			"id_ouvrage"::string(id_ouvrage),
+			"type"::string(type),
+			"status"::string(status),
+			"height"::string(height),
+			"alt"::string(alt),
+			"rupture"::string(rupture),
+			"zoneRupture"::zoneRupture,
+			"not_updated"::string(not_updated),
+			"ganivelle"::string(ganivelle),
+			"height_avant_ganivelle"::string(height_avant_ganivelle),
+			"locationx"::string(location.x),
+			"locationy"::string(location.y),
+			"locationx1"::string(shape.points[0].x),   
+			"locationy1"::string(shape.points[0].y),
+			"locationx2"::string(shape.points[1].x),
+			"locationy2"::string(shape.points[1].y)
+			];
+			point pp<-nil;
+			int i <- 0;
+			loop pp over:shape.points
+			{
+				put string(pp.x) key:"locationx"+i in: res;
+				put string(pp.y) key:"locationy"+i in: res;
+				i <- i+ 1;
+			}
+		return res;
+	}
+	
+	
+	
 	
 	action init_dike {
 		if status = "" {status <- "bon";} 
@@ -1891,6 +2089,69 @@ species UA
 	bool isEnDensification <- false;
 	bool not_updated <- false;
 	bool pop_updated <- false;
+	
+	action init_from_map(map<string, unknown> a )
+	{
+		self.id <- int(a at "id");
+		self.ua_name <- string(a at "ua_name");
+		self.nb_stepsForAU_toU <- int(a at "nb_stepsForAU_toU");
+		self.AU_to_U_counter <- int(a at "AU_to_U_counter");
+		self.population <- int(a at "population");
+		self.isEnDensification <- bool(a at "isEnDensification");
+		self.not_updated <- bool(a at "not_updated");
+		self.pop_updated <- bool(a at "pop_updated");
+		
+		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		point mpp <- pp;
+		int i <- 0;
+		list<point> all_points <- [];
+		loop while: (pp!=nil)
+		{
+			string xd <- a at ("locationx"+i);
+			if(xd != nil)
+			{
+				pp <- {float(xd), float(a at ("locationy"+i))  };
+				all_points <- all_points + pp;
+			}
+			else
+			{
+				pp<-nil;
+			}
+			i<- i + 1;
+		}
+		shape <- polygon(all_points);
+		location <-mpp;
+		
+	}
+	
+	map<string,unknown> build_map_from_attribute
+	{
+		map<string,string> res <- [
+			"OBJECT_TYPE"::"UA",
+			"id"::string(id),
+			"ua_name"::string(ua_name),
+			"ua_code"::string(ua_code),
+			"nb_stepsForAU_toU"::string(nb_stepsForAU_toU),
+			"AU_to_U_counter"::string(AU_to_U_counter),
+			"population"::string(population),
+			"isEnDensification"::string(isEnDensification),
+			"not_updated"::string(not_updated),
+			"pop_updated"::string(pop_updated),
+			"locationx"::string(location.x),
+			"locationy"::string(location.y)
+			];
+			
+			point pp<-nil;
+			int i <- 0;
+			loop pp over:shape.points
+			{
+				put string(pp.x) key:"locationx"+i in: res;
+				put string(pp.y) key:"locationy"+i in: res;
+				i<-i+1;
+			}
+
+		return res;
+	}
 	
 	string nameOfUAcode (int a_ua_code) 
 		{ string val <- "" ;

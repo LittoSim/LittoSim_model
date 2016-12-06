@@ -10,6 +10,9 @@ model Commune
 
 global
 {
+	string SERVER <- "localhost";
+	
+	
 	string commune_name <- "dolus";
 	string MANAGER_NAME <- "model_manager";
 	string log_file_name <- "log_"+machine_time+"csv";
@@ -137,7 +140,7 @@ global
 	list<action_done> my_basket<-[];
 	
 	
-	list<action_done> my_history<-[];
+	list<action_done> my_history<-[] update: reverse((action_UA where(each.is_sent) + action_def_cote where(each.is_sent) ) sort_by(each.id));
 	list<float> history_location <- [];
 	
 	UA explored_cell <- nil;
@@ -160,6 +163,7 @@ global
 	
 	init
 	{
+		create retrieve_date number:1;
 		do implementation_tests;
 		my_commune <-  commune first_with(each.nom_raccourci = commune_name);
 		create Network_agent number:1 returns:net;
@@ -214,6 +218,12 @@ global
 	}	
 	user_command "Refresh all the map"
 	{
+		write "start refresh all";
+		
+		ask retrieve_date
+		{
+			do clear_simulation();
+		}
 		string msg <- ""+REFRESH_ALL+COMMAND_SEPARATOR+world.get_action_id()+COMMAND_SEPARATOR+commune_name;
 		ask game_manager 
 		{
@@ -241,7 +251,6 @@ global
 	}
 	
 	action change_subvention_ganivelle_with (bool newValue) {
-		write "YOUOUOU";
 		subvention_ganivelle <- newValue;
 		if subvention_ganivelle {
 			ask buttons where (each.command = ACTION_INSTALL_GANIVELLE)
@@ -1155,6 +1164,126 @@ species highlight_action_button
 	
 }
 
+
+species retrieve_date skills:[network]
+{
+	init
+	{
+		do connect to:SERVER with_name:commune_name+"_retreive";
+	}
+	
+	action clear_simulation
+	{
+		ask UA
+		{
+			do die;
+		}
+		ask def_cote
+		{
+			do die;
+		}
+		ask action_done
+		{
+			do die;
+		}
+	}
+	
+	reflex getData
+	{
+		loop while:has_more_message()
+		{
+			message m <- fetch_message();
+			map<string, unknown> mc <- m.contents;
+			
+			switch(mc["OBJECT_TYPE"])
+			{
+				match "action_done"
+				{
+					write "receive message from " +  m.sender+ " " + mc["action_type"];
+					if(mc["action_type"]="dike")
+					{
+						write "receive message from " + m.sender+ " "+ mc["id"] ;
+			
+						action_def_cote tmp <- action_def_cote first_with(each.id =int(mc["id"]) );
+						
+						if(tmp = nil)
+						{
+							create action_def_cote number:1
+							{
+								id <- int(mc["id"]);
+							}
+							tmp<- action_def_cote first_with(each.id =int(mc["id"]) );
+						}
+						
+						ask tmp
+						{
+							do init_from_map(mc);
+						}
+					}
+					else
+					{
+						action_UA tmp <- action_UA first_with(each.id =int(mc["id"]) );
+						
+						if(tmp = nil)
+						{
+							create action_UA number:1
+							{
+								id <- int(mc["id"]);
+							}
+							tmp<- action_UA first_with(each.id =int(mc["id"]) );
+						}
+						
+						ask tmp
+						{
+							do init_from_map(mc);
+						}	
+					}
+						
+				}
+				match "def_cote"
+				{
+					
+					def_cote tmp <- def_cote first_with(each.dike_id= int(mc["id_ouvrage"]));
+					
+					if(tmp = nil)
+						{
+							create def_cote number:1
+							{
+								dike_id<- int(mc["id_ouvrage"]);
+							}
+							tmp<-  def_cote first_with(each.dike_id= int(mc["id_ouvrage"]));
+						}
+					ask tmp
+						{
+							
+							do init_from_map(mc);
+						}	
+				}
+				match("UA")
+				{
+					UA tmp <- UA first_with(each.id= int(mc["id"]));
+					if(tmp = nil)
+						{
+							create UA number:1
+							{
+								id <-  int(mc["id"]);
+							}
+							tmp<-  UA first_with(each.id= int(mc["id"]));
+						}
+						
+						ask tmp
+						{
+							do init_from_map(mc);
+						}	
+					
+				}
+			
+			}
+			
+		}
+	}
+}
+
 species action_done
 {
 	int id;
@@ -1177,6 +1306,60 @@ species action_done
 	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
+	
+	
+	action init_from_map(map<string, unknown> a )
+	{
+		self.id <- int(a at "id");
+		self.chosen_element_id <- int(a at "chosen_element_id");
+		self.command <- int(a at "command");
+		self.label <- a at "label";
+		self.cost <- float(a at "cost");
+		self.application_round <- int(a at "application_round");
+		self.round_delay <- int(a at "round_delay");
+		self.isInlandDike <- bool(a at "isInlandDike");
+		self.inRiskArea <- bool(a at "inRiskArea");
+		self.inLittoralArea <- bool(a at "inLittoralArea");
+		self.isExpropriation <- bool(a at "isExpropriation");
+		self.inProtectedArea <- bool(a at "inProtectedArea");
+		self.previous_ua_name <- string(a at "previous_ua_name");
+		self.action_type <- string(a at "action_type");
+		self.is_applied<- bool(a at "is_applied");
+		self.is_sent<- bool(a at "is_sent");
+		
+		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		point mpp <- pp;
+		int i <- 0;
+		list<point> all_points <- [];
+		loop while: (pp!=nil)
+		{
+			string xd <- a at ("locationx"+i);
+			if(xd != nil)
+			{
+				pp <- {float(xd), float(a at ("locationy"+i))  };
+				all_points <- all_points + pp;
+			}
+			else
+			{
+				pp<-nil;
+			}
+			i<- i + 1;
+		}
+		if(self.action_type="dike")
+		{
+			shape <- polyline(all_points);
+			
+		}
+		else
+		{
+			shape <- polygon(all_points);
+		}
+		location <-mpp;
+		write "load location "+ location + " shape " + shape;
+		
+		
+		
+	}
 	
 	action apply;
 	
@@ -1248,6 +1431,7 @@ species action_done
 	{
 		if(is_sent)
 		{
+			write "history length "+ length(history);
 			int indx <- my_history index_of self;
 			float y_loc <- (indx +1)  * font_size ; //basket_location[indx];
 			float x_loc <- font_interleave + 12* (font_size+font_interleave);
@@ -1269,7 +1453,7 @@ species Network_agent skills:[network]
 {
 	init {
 		
-		do connect to:"localhost" with_name:world.commune_name;	
+		do connect to:SERVER with_name:world.commune_name;	
 		string mm<- ""+CONNECTION_MESSAGE+COMMAND_SEPARATOR+world.commune_name;
 			map<string,string> data <- ["stringContents"::mm];
 			do send to:MANAGER_NAME contents:data;
@@ -1284,6 +1468,7 @@ species Network_agent skills:[network]
 			message msg <- fetch_message();
 			//write msg.contents;
 			string my_msg <- msg.contents; 
+			write "message " + my_msg;
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
 			int command <- int(data[0]);
 			int action_id <- int(data[1]);
@@ -1343,19 +1528,17 @@ species Network_agent skills:[network]
 					}
 					match ACTION_DIKE_LIST
 					{
-						//list<string> all_dike <-   copy_between(data,3,length(data)-1); 
 						do check_dike(data );
 					}
 					
 					match ACTION_ACTION_LIST
 					{
-						//list<string> all_action_done <-   copy_between(data,3,length(data)-1); 
 						do check_action_done_list(data );
 					}
 					
 					match ACTION_ACTION_DONE_UPDATE
 					{
-						do update_action_done(data);
+				//		do update_action_done(data);
 					}
 					
 					match ACTION_DIKE_CREATED
@@ -1419,7 +1602,8 @@ species Network_agent skills:[network]
 		list<int> idata<- mdata collect (int(each));
 		ask(action_done)
 		{
-			//write "compare : "+dike_id+" ---> "+ mdata;
+			
+			write "compare : "+id+" ---> "+ mdata;
 			if( !( idata contains id) )
 			{
 				do die;
@@ -1438,6 +1622,16 @@ species Network_agent skills:[network]
 			act <- action_done first_with(each.id = mdata[2]);
 		}
 		
+		string xx <- "";
+		int i <- 0;
+		loop xx over: mdata
+		{
+			
+			write "["+i+"] -> "+ xx;
+			i <- i + 1;
+		}
+		
+		
 		act.chosen_element_id <- int(mdata[3]);
 		act.command <- int(mdata[5]);
 		act.label <- mdata[6];
@@ -1451,6 +1645,10 @@ species Network_agent skills:[network]
 		act.inProtectedArea <- bool(mdata[14]);
 		act.previous_ua_name <- string(mdata[15]);
 		act.action_type <- string(mdata[16]);
+		string go <- string(mdata[17]);
+		act.shape <- geometry(go);
+		write "go "+ go;
+//		write "shape go "+ act.shape; 
 	}
 	
 	action dike_create_action(list<string> msg)
@@ -1531,7 +1729,7 @@ species Network_agent skills:[network]
 			act.is_sent <- true;
 			map<string,string> data <- ["stringContents"::val];
 			do send to:MANAGER_NAME contents:data;
-			my_history <- []+act +  my_history;
+			//my_history <- []+act +  my_history;
 			
 		}
 		my_basket<-[];
@@ -1593,6 +1791,9 @@ species action_def_cote parent:action_done
 {
 	string action_type <- "dike";
 	string type_def_cote -> {command = ACTION_INSTALL_GANIVELLE?"dune":"digue"};
+	
+	
+
 	
 	rgb define_color
 	{
@@ -1799,6 +2000,39 @@ species UA
 	bool isAdapte -> {["Us","AUs"] contains ua_name};
 	bool isEnDensification <- false;
 
+
+
+	action init_from_map(map<string, unknown> a )
+	{
+		self.id <- int(a at "id");
+		self.ua_code <- int(a at "ua_code");
+		self.ua_name <- string(a at "ua_name");
+		self.population <- int(a at "population");
+		self.isEnDensification <- bool(a at "isEnDensification");
+		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		point mpp <- pp;
+		int i <- 0;
+		list<point> all_points <- [];
+		loop while: (pp!=nil)
+		{
+			string xd <- a at ("locationx"+i);
+			if(xd != nil)
+			{
+				pp <- {float(xd), float(a at ("locationy"+i))  };
+				all_points <- all_points + pp;
+			}
+			else
+			{
+				pp<-nil;
+			}
+			i<- i + 1;
+		}
+		shape <- polygon(all_points);
+		location <-mpp;
+		
+		
+	}
+	
 	string nameOfUAcode (int a_ua_code) 
 		{ string val <- "" ;
 			switch (a_ua_code)
@@ -1887,6 +2121,39 @@ species def_cote
 	bool ganivelle <- false;
 	float elevation <- 0.0;
 	string status;	//  "bon" "moyen" "mauvais" 
+	
+	action init_from_map(map<string, unknown> a )
+	{
+		self.dike_id <- int(a at "id_ouvrage");
+		self.type <- string(a at "type");
+		self.status <- string(a at "status");
+		self.height <- float(a at "height");
+		self.elevation <- float(a at "alt");
+		self.ganivelle <- bool(a at "ganivelle");
+		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		point mpp <- pp;
+		int i <- 0;
+		list<point> all_points <- [];
+		loop while: (pp!=nil)
+		{
+			string xd <- a at ("locationx"+i);
+			if(xd != nil)
+			{
+				pp <- {float(xd), float(a at ("locationy"+i))  };
+				all_points <- all_points + pp;
+			}
+			else
+			{
+				pp<-nil;
+			}
+			i<- i + 1;
+		}
+		shape <- polyline(all_points);
+		location <-mpp;
+		
+
+	}
+	
 	
 	action init_dike {
 		if status = "" {status <- "bon";} 
@@ -2032,8 +2299,6 @@ experiment game type: gui
 				
 				
 			}
-			
-			
 			event mouse_down action: button_click_UnAM;
 			event mouse_move action: mouse_move_UnAM;
 		}
