@@ -60,7 +60,9 @@ global
 	int ACTION_MODIFY_LAND_COVER_Us <-32;
 	int ACTION_MODIFY_LAND_COVER_Ui <-311;
 	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
-
+	int ACTION_ACTION_DONE_UPDATE<- 101;
+	int ACTION_ACTION_LIST <- 211;
+	
 	
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DIKE_UPDATE<-10;
@@ -1341,9 +1343,21 @@ species Network_agent skills:[network]
 					}
 					match ACTION_DIKE_LIST
 					{
-						list<string> all_dike <-   copy_between(data,3,length(data)-1); 
+						//list<string> all_dike <-   copy_between(data,3,length(data)-1); 
 						do check_dike(data );
 					}
+					
+					match ACTION_ACTION_LIST
+					{
+						//list<string> all_action_done <-   copy_between(data,3,length(data)-1); 
+						do check_action_done_list(data );
+					}
+					
+					match ACTION_ACTION_DONE_UPDATE
+					{
+						do update_action_done(data);
+					}
+					
 					match ACTION_DIKE_CREATED
 					{
 						do dike_create_action(data);
@@ -1398,6 +1412,45 @@ species Network_agent skills:[network]
 				do die;
 			}
 		}
+	}
+	
+	action check_action_done_list(list<string> mdata)
+	{
+		list<int> idata<- mdata collect (int(each));
+		ask(action_done)
+		{
+			//write "compare : "+dike_id+" ---> "+ mdata;
+			if( !( idata contains id) )
+			{
+				do die;
+			}
+		}
+	}
+	
+	action update_action_done(list<string> mdata)
+	{
+		action_done act <- action_done first_with(each.id = mdata[2]);
+		if(act = nil) {
+			create action_done number:1
+			{
+				id<-  int(mdata[2]);
+			}
+			act <- action_done first_with(each.id = mdata[2]);
+		}
+		
+		act.chosen_element_id <- int(mdata[3]);
+		act.command <- int(mdata[5]);
+		act.label <- mdata[6];
+		act.cost <- float(mdata[7]);
+		act.application_round <- int(mdata[8]);
+		act.round_delay <- int(mdata[9]);
+		act.isInlandDike <- bool(mdata[10]);
+		act.inRiskArea <- bool(mdata[11]);
+		act.inLittoralArea <- bool(mdata[12]);
+		act.isExpropriation <- bool(mdata[13]);
+		act.inProtectedArea <- bool(mdata[14]);
+		act.previous_ua_name <- string(mdata[15]);
+		act.action_type <- string(mdata[16]);
 	}
 	
 	action dike_create_action(list<string> msg)
@@ -2054,7 +2107,7 @@ experiment game type: gui
 			event mouse_move action: mouse_move_dike;			
 		}
 		
-		display Basket
+		display Panier
 		{
 			species action_def_cote aspect:basket;
 			species action_UA aspect:basket;
@@ -2068,7 +2121,7 @@ experiment game type: gui
 			event [mouse_down] action: basket_click;
 		}
  
- 		display Dossier
+ 		display Dossiers
 		{
 			species action_def_cote aspect:history;
 			species action_UA aspect:history;
