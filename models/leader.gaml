@@ -26,8 +26,7 @@ global
 	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
 	bool activemq_connect <- true;
-	int round<-0;
-		
+	int round<-0;		
 		
 	string UPDATE_ACTION_DONE <- "update_action_done";
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
@@ -106,14 +105,54 @@ global
 	string COMMUNE <- "COMMUNE_ID";
 	string ASK_NUM_ROUND <- "Leader demande numéro du tour";
 	string NUM_ROUND <- "Numéro du tour";
+	int SUBVENTIONNER_GANIVELLE <- 1101;
+	int SUBVENTIONNER_HABITAT_ADAPTE <- 1102;
+	int SANCTION_ELECTORALE <- 1103;
+	int HAUSSE_COUT_DIGUE <- 1104;
+	int HAUSSE_REHAUSSEMENT_DIGUE <- 1105;
+	int HAUSSE_RENOVATION_DIGUE <- 1106;
+	int HAUSSE_COUT_BATI <- 1107;
+	string SUBVENTIONNER_GANIVELLE_NAME <- "Subventionner ganivelle";
+	string SUBVENTIONNER_HABITAT_ADAPTE_NAME <- "Subventionner habitat adapté";
+	/*string SANCTION_ELECTORALE <- "Appliquer une sanction électorale";
+	string HAUSSE_COUT_DIGUE <- "Hausse du coût de construction des digues";
+	string HAUSSE_REHAUSSEMENT_DIGUE <- "Hausse du coût de réhaussement des digues";
+	string HAUSSE_RENOVATION_DIGUE <- "Hausse du coût de rénovation des digues";
+	string HAUSSE_COUT_BATI <- "Hausse du coût de construction du bâti";*/
+	
 
 	
 	bool reorganisation_affichage -> {selected_action!= nil and selected_action.displayName= "Réorganiser l'affichage"};
 	bool imposer -> {selected_action!= nil and selected_action.displayName= "Imposer"};
 	bool subventionner -> {selected_action!= nil and selected_action.displayName= "Subventionner"};
 	bool lever_retard -> {selected_action!= nil and selected_action.displayName= "Lever les retards"}; 
+	bool subventionner_ganivelle -> {selected_action!= nil and selected_action.displayName= "Subventionner ganivelle"};
+	bool subventionner_habitat_adapte -> {selected_action!= nil and selected_action.displayName= "Subventionner habitat adapté"};
 	
 	geometry shape <- square(100#m);
+	
+	string UA_name_of_command (int act) {
+		switch act {
+			match ACTION_MODIFY_LAND_COVER_AU {return "AU";}
+			match ACTION_MODIFY_LAND_COVER_A {return "A";}
+			match ACTION_MODIFY_LAND_COVER_U {return "U";}
+			match ACTION_MODIFY_LAND_COVER_N {return "N";}
+			match ACTION_MODIFY_LAND_COVER_AUs {return "AUs";}
+			match ACTION_MODIFY_LAND_COVER_Us {return "Us";}
+			match ACTION_MODIFY_LAND_COVER_Ui {return "Ui";}
+			match ACTION_EXPROPRIATION {return "N";}
+			}
+	}
+	
+	string dike_label_of_command (int act) {
+		switch act {
+			match ACTION_REPAIR_DIKE {return "Rénover";}
+			match ACTION_CREATE_DIKE {return "Nvl Digue";}
+			match ACTION_DESTROY_DIKE {return "Nvl Digue";}
+			match ACTION_RAISE_DIKE {return "Réhausser";}
+			match ACTION_INSTALL_GANIVELLE {return "Ganivelle";}
+		}
+	}
 	
 	game_controller network_agent <- nil;
 	init
@@ -126,7 +165,7 @@ global
 		
 		//pour les test
 		int i <- 0;
-		create action_done number:1
+		create action_done number:0
 		{
 			location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
 				
@@ -138,6 +177,25 @@ global
 		}
 	}
 	
+	action generate_historique_profils {
+		ask commune {
+			write "<<"+com_name+">>";
+			write world.generate_historique_profils_for(com_name);
+		}
+	}
+	
+	action generate_historique_profils_for (string aCommune) {
+		
+		loop prof over: ["batisseur","defense douce", "retrait"]
+		{
+			list<int> aSerie;
+			list<action_done> lad <- action_done where (each.doer = aCommune and each.tracked_profil = prof);
+			loop i from: 1 to:round {
+				add (length (lad where (each.command_round = i))) to: aSerie ;
+				}	
+			write prof + " : " +aSerie;
+		}
+	}
 	reflex drag_drop when: selection_action_done != nil and  current_selected_action = REORGANISATION_AFFICHAGE
 	{
 			selection_action_done.shape <- rectangle(10#m,5#m);
@@ -168,6 +226,20 @@ global
 						if(selected_commune != nil)
 						{
 							do subventionner( selected_commune);
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
+						}
+					}
+					match SUBVENTIONNER_GANIVELLE_NAME {
+						if(selected_commune != nil)
+						{
+							do subventionner_ganivelle();
+							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
+						}
+					}	
+					match SUBVENTIONNER_HABITAT_ADAPTE_NAME {
+						if(selected_commune != nil)
+						{
+							do subventionner_habitat_adapte();
 							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
 						}
 					}					
@@ -254,6 +326,16 @@ global
 		put com.com_id key: COMMUNE in: msg;
 		do send_message(msg);	
 	}
+	action subventionner_ganivelle
+	{
+		string msg <- ""+SUBVENTIONNER_GANIVELLE+COMMAND_SEPARATOR+999/*pour un mettre un action_id bidon */;
+		do send_message_to_commune(msg,selected_commune.com_name);	
+	}
+	action subventionner_habitat_adapte
+	{	
+		string msg <- ""+SUBVENTIONNER_HABITAT_ADAPTE+COMMAND_SEPARATOR+999/*pour un mettre un action_id bidon */;
+		do send_message_to_commune(msg,selected_commune.com_name);	
+	}
 	
 	action retarder_action(action_done act_dn, int duree)
 	{
@@ -280,6 +362,13 @@ global
 		ask network_agent
 		{
 			do send to:GAME_LEADER_MANAGER contents:msg;
+		}		
+	}
+	action send_message_to_commune(string msg, string aDoer)
+	{
+		ask network_agent
+		{
+			do send to:aDoer contents:msg;
 		}		
 	}
 	
@@ -351,6 +440,19 @@ global
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
+		
+		create action_button number:1
+		{
+			displayName <- SUBVENTIONNER_GANIVELLE_NAME;
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
+		create action_button number:1
+		{
+			displayName <- SUBVENTIONNER_HABITAT_ADAPTE_NAME;
+			location <- {5, i*10 + 10};
+			i <- i +1;
+		}
 	}
 	
 	action create_commune
@@ -391,28 +493,110 @@ species action_done schedules:[]
 	//string command_group <- "";
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	string label <- "no name";
-	string label_with_round -> {label+(is_applied?("(réalisé à "+application_round+")"):("("+(application_round-round)+")"+(is_delayed?"+"+round_delay:"")))};
-	float cost <- 0.0;	
+	int cost <- 0;	
 	bool is_applied  ->{round >= application_round} ;
 	int application_round <- -1;
+	int command_round <- -1;
 	int round_delay <- 0 ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
 	//string action_type <- "dike" ; //can be "dike" or "PLU"
 	// en attendant que action type soit réparé
-	string action_type -> {(command in [ACTION_CREATE_DIKE,ACTION_REPAIR_DIKE,ACTION_DESTROY_DIKE])?"dike":"PLU"};
+	string action_type <-"";//-> {(command in [ACTION_CREATE_DIKE,ACTION_REPAIR_DIKE,ACTION_DESTROY_DIKE])?"dike":"PLU"};
 	string previous_ua_name <-"";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
 	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
+	string tracked_profil <-"";
 	
 	init
 	{
 		 shape <- rectangle(10#m,5#m);
-	
 	}
+	
+	string full_label {
+		string res ;
+		switch action_type {
+				match "dike" {
+					if isInlandDike {res <- "Nvl RetroDigue";}
+					else {res <- world.dike_label_of_command(command);} 
+				}
+				match "PLU" {
+					res <-previous_ua_name + " -> "+(world.UA_name_of_command(command));
+				}
+				default {res <-"error";}
+				}
+		return (res+ " "+(is_applied?("(à T"+application_round+")"):("("+(application_round-round)+")"+(is_delayed?"+"+round_delay:""))));
+	}
+	
+	geometry custom_shape {
+		if is_applied {return circle(5#m);}
+		else {return rectangle(10#m,5#m);} 
+	}
+	bool requestAttention {
+		if action_type = 'dike' and command in [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE] and inProtectedArea
+			{return true;}
+		/*if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inLittoralArea
+			{return true;}
+		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inRiskArea
+			{return true;}
+		if action_type = "dike" and command in [ACTION_INSTALL_GANIVELLE] 
+			{return true;}
+		if action_type = "dike" and isInlandDike 
+			{return true;}
+		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] 
+			{return true;}
+		if action_type = "dike" and command in [ACTION_DESTROY_DIKE] 
+			{return true;}
+		if action_type = "PLU" and isExpropriation
+			{return true;}*/
+		return false;
+		
+	/*
+	 ACTION_REPAIR_DIKE
+	ACTION_CREATE_DIKE
+	ACTION_DESTROY_DIKE
+	ACTION_RAISE_DIKE
+	ACTION_INSTALL_GANIVELLE
+	ACTION_MODIFY_LAND_COVER_AU
+	ACTION_MODIFY_LAND_COVER_A
+	ACTION_MODIFY_LAND_COVER_U
+	ACTION_MODIFY_LAND_COVER_N
+	ACTION_MODIFY_LAND_COVER_AUs	
+	ACTION_MODIFY_LAND_COVER_Us
+	ACTION_MODIFY_LAND_COVER_Ui
+	ACTION_EXPROPRIATION 
+	isExpropriation
+	inProtectedArea
+	inLittoralArea
+	inRiskArea
+	isInlandDike
+	*/ 
+	}
+	string track_profil {
+		// profil batisseur
+		if action_type = 'dike' and command in [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE]
+			{return "batisseur";}
+		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inLittoralArea
+			{return "batisseur";}
+		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inRiskArea
+			{return "batisseur";}
+		// profil def douce
+		if action_type = "dike" and command in [ACTION_INSTALL_GANIVELLE] 
+			{return "défense douce";}
+		if action_type = "dike" and isInlandDike 
+			{return "défense douce";}
+		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] 
+			{return "défense douce";}
+
+		if action_type = "dike" and command in [ACTION_DESTROY_DIKE] 
+			{return "retrait";}
+		if action_type = "PLU" and isExpropriation
+			{return "retrait";}
+		return "";
+		}
 	
 	action init_from_map(map<string, string> a )
 	{
@@ -425,13 +609,17 @@ species action_done schedules:[]
 		//self.should_be_applied <- bool(a at "should_be_applied");  Pas besoin. on le recalcul localement 
 		self.application_round <- int(a at "application_round");
 		self.round_delay <- int(a at "round_delay");
-		//self.action_type <- string(a at "action_type"); // Pour l'instant ca marche pas. je sais pas pourquoi
+		self.action_type <- string(a at "action_type"); // Pour l'instant ca marche pas. je sais pas pourquoi
 		self.previous_ua_name <- string(a at "previous_ua_name");
 		self.isExpropriation <- bool(a at "isExpropriation");
 		self.inProtectedArea <- bool(a at "inProtectedArea");
 		self.inLittoralArea <- bool(a at "inLittoralArea");
 		self.inRiskArea <- bool(a at "inRiskArea");
 		self.isInlandDike <- bool(a at "isInlandDike");
+		self.command_round <-int(a at "command_round");
+		self.tracked_profil <- track_profil();
+		
+		
 	}
 	
 	map<string,string> build_map_from_attribute
@@ -450,7 +638,8 @@ species action_done schedules:[]
 			"inProtectedArea"::bool(inProtectedArea),
 			"inLittoralArea"::bool(inLittoralArea),
 			"inRiskArea"::bool(inRiskArea),
-			"isInlandDike"::bool(isInlandDike)
+			"isInlandDike"::bool(isInlandDike),
+			"command_round"::string(command_round)
 			]	;
 			
 	return res;
@@ -458,7 +647,7 @@ species action_done schedules:[]
 	}
 	
 	
-	rgb define_color
+	rgb color_action_type
 	{
 		switch(command)
 		{
@@ -468,44 +657,63 @@ species action_done schedules:[]
 			 match ACTION_MODIFY_LAND_COVER_A { return #brown;}
 			 match ACTION_MODIFY_LAND_COVER_AU {return #orange;}
 			 match ACTION_MODIFY_LAND_COVER_N {return #green;}
-		} 
-		return #grey;
+		}
+		return #darkgrey;
 	}
 	
+	rgb color_get_attention
+	{
+		if requestAttention() {return #red;}
+		return #black;
+	}
+	
+	rgb color_tracked_profil
+	{
+		switch tracked_profil
+		{
+			match "batisseur" {return #deepskyblue;}
+			match "défense douce" {return #lightgreen;}
+			match "retrait" {return #moccasin;}
+			match "" {return #darkgrey;}
+			default {return #red;}
+		}	
+	}	
 	
 	aspect base
 	{
 		if(selected_commune.com_name = doer)
 		{
-			draw shape color:selection_action_done=self? #green:define_color() border:is_applied?#darkgreen:#black; //is_selected ? #green:#blue;
-			draw label_with_round at:{location.x - 4.5#m, location.y} font: font("Arial", 14 , #bold) color:#black;
-			// pour les action PLU : *previous_ua_name* et 	* isExpropriation* sont à mettre dans le label
-			// pour les action digue : isInlandDike est à mettre ds le label  (et non pas en dessous comme présentement
+			if !is_applied and requestAttention() {draw custom_shape()+0.5#m color: #red;}
+			draw custom_shape() color:selection_action_done=self? #lightyellow:color_tracked_profil() border:#black;
+			draw full_label() at:{location.x - 4.5#m, location.y} font: font("Arial", 14 , #bold) color:#black;
+	
 			switch action_type {
 				match "dike" {
-					draw ("Coût " +string(cost) + " / Longueur "+22 /*Mettre le shape.perimeter de l'ouvrage*/) at:{location.x - 4#m, location.y+4} font: font("Arial", 14 , #plain) color:#black;}
-					int x <-0;
+					int x <-2;
+					draw ("Coût " +string(cost) /*+ " / Longueur "+22 Mettre le shape.perimeter de l'ouvrage*/) at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
+					
 					if inProtectedArea {
-						draw "En zone protégée" at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
 						x<-x+2;
+						draw "En zone protégée" at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
 					}
 					if isInlandDike {
-						draw "Est une rétro-digue"  at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
 						x<-x+2;
+						draw "Est une rétro-digue"  at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
 					}
+				}
 				match "PLU" {
-					draw "Coût " +string(cost) at:{location.x - 4#m, location.y+4} font: font("Arial", 14 , #plain) color:#black;
-					int x <-0;
+					int x <-2;
+					draw "Coût " +string(cost) at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
 					if inProtectedArea {
-						draw "En zone protégée" at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
 						x<-x+2;
+						draw "En zone protégée" at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
 					}
 					if inLittoralArea {
-						draw "Dans les 400m litroal"  at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
 						x<-x+2;
+						draw "Dans les 400m litroal"  at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
 					}
 					if inRiskArea {
-						draw "Dans zone à risque" at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
+						draw "Dans zone à risque" at:{location.x - 4#m, location.y+2+x} font: font("Arial", 14 , #plain) color:#black;
 						x<-x+2;
 					}
 				}
@@ -640,7 +848,7 @@ experiment lead_the_game
 				draw rectangle(20#m,100#m) color:#gray at:{10#m,50#m};
 				draw "A traiter" color:#white at:{5#m,10#m} size:12#px;
 				draw rectangle(40#m,100#m) color:#yellow at:{40#m,50#m};
-				draw "Round "+string(round) color:#black font: font("Arial", 16 , #bold) at:{35#m,3#m};
+				draw "Tour "+string(round) color:#black font: font("Arial", 16 , #bold) at:{35#m,3#m};
 				draw "Encours" color:#black at:{35#m,10#m};
 				draw rectangle(40#m,100#m) color:#green at:{80#m,50#m};
 				draw "Achevé" color:#white at:{75#m,10#m};
