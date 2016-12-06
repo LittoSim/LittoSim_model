@@ -1439,7 +1439,7 @@ species action_done
 	{
 		if(is_sent)
 		{
-			write "history length "+ length(history);
+		//	write "history length "+ length(history);
 			int indx <- my_history index_of self;
 			float y_loc <- (indx +1)  * font_size ; //basket_location[indx];
 			float x_loc <- font_interleave + 12* (font_size+font_interleave);
@@ -1475,8 +1475,7 @@ species Network_agent skills:[network]
 		{
 			message msg <- fetch_message();
 			//write msg.contents;
-			string my_msg <- msg.contents; 
-			write "message " + my_msg;
+			string my_msg <- msg.contents;
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
 			int command <- int(data[0]);
 			int action_id <- int(data[1]);
@@ -1617,8 +1616,7 @@ species Network_agent skills:[network]
 		list<int> idata<- mdata collect (int(each));
 		ask(action_done)
 		{
-			
-			write "compare : "+id+" ---> "+ mdata;
+			//write "compare : "+dike_id+" ---> "+ mdata;
 			if( !( idata contains id) )
 			{
 				do die;
@@ -1642,7 +1640,7 @@ species Network_agent skills:[network]
 		loop xx over: mdata
 		{
 			
-			write "["+i+"] -> "+ xx;
+			//write "["+i+"] -> "+ xx;
 			i <- i + 1;
 		}
 		
@@ -1662,7 +1660,7 @@ species Network_agent skills:[network]
 		act.action_type <- string(mdata[16]);
 		string go <- string(mdata[17]);
 		act.shape <- geometry(go);
-		write "go "+ go;
+		//write "go "+ go;
 //		write "shape go "+ act.shape; 
 	}
 	
@@ -1807,9 +1805,6 @@ species action_def_cote parent:action_done
 {
 	string action_type <- "dike";
 	string type_def_cote -> {command = ACTION_INSTALL_GANIVELLE?"dune":"digue"};
-	
-	
-
 	
 	rgb define_color
 	{
@@ -2182,15 +2177,10 @@ species def_cote
 	
 	string type_ouvrage
 	{
-		string res;
-		switch type
-		{
-			match "inconnu" { res <- "un ouvrage inconnu";}
-			match "Naturel" { res <- "la dune";}
-			match "Ouvrage longitudinal" { res <- "la digue";}
-		}
-		return res;
+		if type = "Naturel" {return "la dune";}
+		else {return  "la digue";}		
 	}
+	
 	aspect base
 	{  	if type != 'Naturel'
 			{switch status {
@@ -2367,8 +2357,13 @@ experiment game type: gui
 					
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Information sur "+explored_dike.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: #white;
-					draw "Altitude "+string(round(100*explored_dike.elevation)/100.0)+"m" at: target + { 30#px, 35#px } font: regular color: # white;
-					draw "Etat "+string(explored_dike.status) at: target + { 30#px, 55#px} font: regular color: # white;
+					int xpx <-0;
+					if explored_dike.type_ouvrage() = "la digue" {
+						draw "Hauteur"+string(round(100*explored_dike.height)/100.0)+"m" at: target + { 30#px, 35#px } font: regular color: # white;
+						xpx <- xpx+20;
+					}
+					draw "Altitude "+string(round(100*explored_dike.elevation)/100.0)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "Etat "+string(explored_dike.status) at: target + { 30#px, xpx#px +55#px} font: regular color: # white;
 				}
 				
 				
@@ -2377,16 +2372,16 @@ experiment game type: gui
 			graphics "explore_dike_icone" 
 			{
 				if (explored_dike != nil)
-				{
+				{if explored_dike.status != "bon" {
 					point image_loc <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dike.location.y + 50#px  };
 					string to_draw <- nil;
 					switch(explored_dike.status)
 					{
-						match "bon" { draw file("../images/icones/conforme.png") at:image_loc size:50#px; }
+						//match "bon" { draw file("../images/icones/conforme.png") at:image_loc size:50#px; }
 						match "moyen" { draw file("../images/icones/danger.png") at:image_loc size:50#px; }
 						match "mauvais" { draw file("../images/icones/rupture.png") at:image_loc size:50#px; }
-						
-					}
+					}	
+				  }
 				}
 			}
 			
