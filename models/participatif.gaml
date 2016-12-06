@@ -88,6 +88,14 @@ global
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
 	
+	// Leviers from leader
+	int SUBVENTIONNER_GANIVELLE <- 1101;
+	int SUBVENTIONNER_HABITAT_ADAPTE <- 1102;
+	int SANCTION_ELECTORALE <- 1103;
+	int HAUSSE_COUT_DIGUE <- 1104;
+	int HAUSSE_REHAUSSEMENT_DIGUE <- 1105;
+	int HAUSSE_RENOVATION_DIGUE <- 1106;
+	int HAUSSE_COUT_BATI <- 1107;
 	
 	//// action display map layers
 	int ACTION_DISPLAY_PROTECTED_AREA <- 33;
@@ -439,7 +447,7 @@ global
 		create buttons number: 1
 		{
 			command <- ACTION_REPAIR_DIKE;
-			label <- "Réparer une digue";
+			label <- "Rénover une digue";
 			action_cost <- ACTION_COST_DIKE_REPAIR;
 			shape <- square(button_size);
 			my_help <- dikeHelpMessage;
@@ -1491,7 +1499,14 @@ species Network_agent skills:[network]
 							}
 							}							
 					}
-					
+					match SUBVENTIONNER_GANIVELLE
+					{
+						ask world {do change_subvention_ganivelle_with(!subvention_ganivelle);}
+					}
+					match SUBVENTIONNER_HABITAT_ADAPTE
+					{
+						ask world {do change_subvention_habitat_adapte_with(!subvention_habitat_adapte);}
+					}
 					match NOTIFY_DELAY
 					{
 						int entityTypeCode<- int(data[2]);
@@ -1694,7 +1709,8 @@ species Network_agent skills:[network]
 	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
 	{ 
 		ask action_def_cote where(each.id  = m_action_id)
-		{ 	if (round_delay = 3000) {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
+		{ 	write nb;
+			if nb = 3000 {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
 			else {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été retardé de "+nb+" tour"+(nb=1?"":"s")+" en raison de contraintes réglementaires.");}}
 			round_delay <- round_delay + nb;
 			application_round <- application_round + nb;
@@ -1705,7 +1721,7 @@ species Network_agent skills:[network]
 	{ 
 		ask action_UA where(each.id  = m_action_id)
 		{  
-			if (round_delay = 3000) {ask world {do user_msg("Le dossier 'aménagement (PLU ou Habitat) n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
+			if nb = 3000 {ask world {do user_msg("Le dossier 'aménagement (PLU ou Habitat) n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
 			else {ask world {do user_msg("Le dossier d'aménagement (PLU ou Habitat) n°"+m_action_id+" a été retardé de "+nb+" tour"+(nb=1?"":"s")+" en raison de contraintes réglementaires.");}}
 			round_delay <- round_delay + nb;
 			application_round <- application_round + nb;
@@ -2179,11 +2195,34 @@ species def_cote
 	{  	if type != 'Naturel'
 			{switch status {
 				match  "bon" {color <- # green;}
-				match "moyen" {color <-  rgb (255,102,0);} 
+				match "moyen" {color <-  rgb (231, 189, 24,255);} 
 				match "mauvais" {color <- # red;} 
 				default { /*"casse" {color <- # yellow;}*/write "BUG: probleee status dike";}
 				}
 			draw 20#m around shape color: color size:300#m;
+			draw shape color: #black;
+				}
+		else {switch status {
+				match  "bon" {color <- # green;}
+				match "moyen" {color <-  rgb (231, 189, 24,255);} 
+				match "mauvais" {color <- # red;} 
+				default { /*"casse" {color <- # yellow;}*/write "BUG: probleee status dike";}
+				}
+			draw 50#m around shape color: color;
+			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
+		}		
+	}
+	/*AVANT CHGT CODE COULEUR 
+	 * aspect base
+	{  	if type != 'Naturel'
+			{switch status {
+				match  "bon" {color <- # green;}
+				match "moyen" {color <-  rgb (255,102,0);} 
+				match "mauvais" {color <- # red;} 
+				default { write "BUG: probleee status dike";}
+				}
+			draw 20#m around shape color: color size:300#m;
+			draw shape color: #black;
 				}
 		else {switch status {
 				match  "bon" {color <- rgb (222, 134, 14,255);}
@@ -2194,7 +2233,7 @@ species def_cote
 			draw 50#m around shape color: color;
 			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
 		}		
-	}	
+	}*/	
 }
 
 species cell schedules:[]

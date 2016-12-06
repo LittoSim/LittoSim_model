@@ -683,6 +683,7 @@ species action_done schedules:[]
 	bool is_sent <-true;
 	//string command_group <- "";
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
+	int command_round<--1;
 	string label <- "no name";
 	float cost <- 0.0;	
 	bool should_be_applied ->{round >= application_round} ;
@@ -717,8 +718,10 @@ species action_done schedules:[]
 		self.inProtectedArea <- bool(a at "inProtectedArea");
 		self.previous_ua_name <- string(a at "previous_ua_name");
 		self.action_type <- string(a at "action_type");
+
 		self.is_applied<- bool(a at "is_applied");
 		self.is_sent<- bool(a at "is_sent");
+		self.command_round <-int(a at "command_round"); 
 		
 		point pp<-{float(a at "locationx"), float(a at "locationy")};
 		point mpp <- pp;
@@ -764,7 +767,8 @@ species action_done schedules:[]
 			"locationx"::string(location.x),
 			"locationy"::string(location.y),
 			"is_applied"::string(is_applied),
-			"is_sent"::string(is_sent)
+			"is_sent"::string(is_sent),
+			"command_round"::string(command_round)
 			 ]	;
 			point pp<-nil;
 			int i <- 0;
@@ -1245,6 +1249,7 @@ species game_controller skills:[network]
 		ask(new_action)
 		{
 			self.command <- int(data[0]);
+			self.command_round <-round; 
 			self.id <- int(data[1]);
 			self.application_round <- int(data[2]);
 			self.doer <- sender;
@@ -1271,19 +1276,22 @@ species game_controller skills:[network]
 						match "dike" {shape <- (def_cote first_with(each.id_ouvrage = self.chosen_element_id)).shape; }
 						default {write "problème reconnaissance du type de action_done";}
 					}
-					write "test "+shape;
 				}
 				// calcul des attributs qui n'ont pas été calculé au niveau de Participatif et qui ne sont donc pas encore renseigné
 				//inLittoralArea  // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 				//inRiskArea  // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 				//isInlandDike  // for dike action // ce sont les rétro-digues
 				if  !empty(flood_risk_area where (each intersects self.shape))
-					{ current_action.inRiskArea <- true;}
+					{inRiskArea <- true;}
 				if  !empty(coast_border_area where (each intersects self.shape))
-					{ current_action.inLittoralArea <- true;}	
+					{inLittoralArea <- true;}	
 				if command = ACTION_CREATE_DIKE {
 					if  empty(coast_dike_area where (each intersects self.shape))
-						{ current_action.isInlandDike <- true;}}
+						{isInlandDike <- true;}}
+				// finallement on recalcul aussi inProtectedArea meme si ca a été calculé au niveau de participatif, car en fait ce n'est pas calculé pour toute les actions 
+				if  !empty(protected_area where (each intersects self.shape))
+					{inProtectedArea <- true;}
+				  
 			}
 			/*  ANCIEN CODE QUI PERMETTAT DE VERIFIER QUE LE DELAI POUR LES ACTION DE Expropriatipon était correct
 			 * if self.application_round != (round  + (world.delayOfAction(self.command)))
@@ -1304,7 +1312,8 @@ species game_controller skills:[network]
 				}
 			}*/	
 		}
-		ask game_master {do monitor_new_action( new_action);}
+		//   On enlève le monitoring par le game_master car on ne souhait plus que des retards soient apploqués systématqiuement 
+		//ask game_master {do monitor_new_action( new_action);}
 		//  le paiement se fait au niveau de cette méthode pour que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
 		int idCom <-world.commune_id(new_action.doer);
 		ask commune first_with(each.id = idCom) {do pay_for_action_done(new_action);}
@@ -1455,9 +1464,10 @@ species game_controller skills:[network]
 			COMMAND_SEPARATOR + self.isExpropriation +
 			COMMAND_SEPARATOR + self.inProtectedArea +
 			COMMAND_SEPARATOR + self.previous_ua_name +
+
 			COMMAND_SEPARATOR + self.action_type+
 			COMMAND_SEPARATOR + string(self.shape);
-			
+
 			
 			update_messages <- update_messages + msg;
 			update_action_done <- update_action_done + self;
