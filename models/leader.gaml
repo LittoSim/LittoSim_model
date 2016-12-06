@@ -26,7 +26,7 @@ global
 	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
 	bool activemq_connect <- true;
-	
+	int round<-0;
 		
 		
 	string UPDATE_ACTION_DONE <- "update_action_done";
@@ -104,6 +104,9 @@ global
 	string DELAY <- "delay";
 	string ACTION_ID <- "action_id";
 	string COMMUNE <- "COMMUNE_ID";
+	string ASK_NUM_ROUND <- "Leader demande numéro du tour";
+	string NUM_ROUND <- "Numéro du tour";
+
 	
 	bool reorganisation_affichage -> {selected_action!= nil and selected_action.displayName= "Réorganiser l'affichage"};
 	bool imposer -> {selected_action!= nil and selected_action.displayName= "Imposer"};
@@ -123,7 +126,7 @@ global
 		
 		//pour les test
 		int i <- 0;
-		create action_done number:10
+		create action_done number:1
 		{
 			location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
 				
@@ -258,7 +261,9 @@ global
 		put RETARDER key: LEADER_COMMAND in: msg;
 		put int(duree) key: DELAY in: msg;
 		put act_dn.id key: ACTION_ID in: msg;
-		do send_message(msg);	
+		do send_message(msg);
+		act_dn.round_delay <- act_dn.round_delay + duree;
+		act_dn.application_round <- act_dn.application_round + duree;	
 	}
 	
 	action lever_retard_action(action_done act_dn)
@@ -386,12 +391,22 @@ species action_done schedules:[]
 	//string command_group <- "";
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	string label <- "no name";
+	string label_with_round -> {label+(is_applied?("(réalisé à "+application_round+")"):("("+(application_round-round)+")"+(is_delayed?"+"+round_delay:"")))};
 	float cost <- 0.0;	
-	bool should_be_applied <-false ;
+	bool is_applied  ->{round >= application_round} ;
 	int application_round <- -1;
 	int round_delay <- 0 ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0} ;
 	list<string> my_message <-[];
+	//string action_type <- "dike" ; //can be "dike" or "PLU"
+	// en attendant que action type soit réparé
+	string action_type -> {(command in [ACTION_CREATE_DIKE,ACTION_REPAIR_DIKE,ACTION_DESTROY_DIKE])?"dike":"PLU"};
+	string previous_ua_name <-"";  // for PLU action
+	bool isExpropriation <- false; // for PLU action
+	bool inProtectedArea <- false; // for dike action
+	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
+	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	
 	init
 	{
@@ -407,10 +422,16 @@ species action_done schedules:[]
 		self.command <- int(a at "command");
 		self.label <- a at "label";
 		self.cost <- float(a at "cost");
-		self.should_be_applied <- bool(a at "should_be_applied");
+		//self.should_be_applied <- bool(a at "should_be_applied");  Pas besoin. on le recalcul localement 
 		self.application_round <- int(a at "application_round");
 		self.round_delay <- int(a at "round_delay");
-		
+		//self.action_type <- string(a at "action_type"); // Pour l'instant ca marche pas. je sais pas pourquoi
+		self.previous_ua_name <- string(a at "previous_ua_name");
+		self.isExpropriation <- bool(a at "isExpropriation");
+		self.inProtectedArea <- bool(a at "inProtectedArea");
+		self.inLittoralArea <- bool(a at "inLittoralArea");
+		self.inRiskArea <- bool(a at "inRiskArea");
+		self.isInlandDike <- bool(a at "isInlandDike");
 	}
 	
 	map<string,string> build_map_from_attribute
@@ -422,7 +443,15 @@ species action_done schedules:[]
 			"label"::string(label),
 			"cost"::string(cost),
 			"application_round"::string(application_round),
-			"round_delay"::string(round_delay) ]	;
+			"round_delay"::string(round_delay), 
+			"action_type"::string(action_type),
+			"previous_ua_name"::string(previous_ua_name),
+			"isExpropriation"::bool(isExpropriation),
+			"inProtectedArea"::bool(inProtectedArea),
+			"inLittoralArea"::bool(inLittoralArea),
+			"inRiskArea"::bool(inRiskArea),
+			"isInlandDike"::bool(isInlandDike)
+			]	;
 			
 	return res;
 	
@@ -448,8 +477,45 @@ species action_done schedules:[]
 	{
 		if(selected_commune.com_name = doer)
 		{
-			draw shape color:selection_action_done=self? #green:define_color() ; //is_selected ? #green:#blue;
-			draw label at:{location.x - 4.5#m, location.y} color:#white;			
+			draw shape color:selection_action_done=self? #green:define_color() border:is_applied?#darkgreen:#black; //is_selected ? #green:#blue;
+			draw label_with_round at:{location.x - 4.5#m, location.y} font: font("Arial", 14 , #bold) color:#black;
+			// pour les action PLU : *previous_ua_name* et 	* isExpropriation* sont à mettre dans le label
+			// pour les action digue : isInlandDike est à mettre ds le label  (et non pas en dessous comme présentement
+			switch action_type {
+				match "dike" {
+					draw ("Coût " +string(cost) + " / Longueur "+22 /*Mettre le shape.perimeter de l'ouvrage*/) at:{location.x - 4#m, location.y+4} font: font("Arial", 14 , #plain) color:#black;}
+					int x <-0;
+					if inProtectedArea {
+						draw "En zone protégée" at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
+						x<-x+2;
+					}
+					if isInlandDike {
+						draw "Est une rétro-digue"  at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
+						x<-x+2;
+					}
+				match "PLU" {
+					draw "Coût " +string(cost) at:{location.x - 4#m, location.y+4} font: font("Arial", 14 , #plain) color:#black;
+					int x <-0;
+					if inProtectedArea {
+						draw "En zone protégée" at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
+						x<-x+2;
+					}
+					if inLittoralArea {
+						draw "Dans les 400m litroal"  at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
+						x<-x+2;
+					}
+					if inRiskArea {
+						draw "Dans zone à risque" at:{location.x - 4#m, location.y+4+x} font: font("Arial", 14 , #plain) color:#black;
+						x<-x+2;
+					}
+				}
+			}
+	/*
+	 * Dike
+	 
+	 * inProtectedArea <- false; // for dike action
+	 * isInlandDike <- false; // for dike action // ce sont les rétro-digues
+	 */			
 		}
 	}
 
@@ -499,6 +565,10 @@ species game_controller skills:[network]
 	init
 	{
 		 do connect to:"localhost" with_name:OBSERVER_NAME;
+		 
+		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
+		put ASK_NUM_ROUND key: LEADER_COMMAND in: msg;
+		do send to:GAME_LEADER_MANAGER contents:msg;
 	}
 	
 	
@@ -510,9 +580,13 @@ species game_controller skills:[network]
 			string m_sender <- msg.sender;
 			map<string, string> m_contents <- msg.contents;
 			string cmd <- m_contents[OBSERVER_MESSAGE_COMMAND];
+			string data <- m_contents[OBSERVER_MESSAGE_COMMAND];
 			switch(cmd)
 			{
 				match UPDATE_ACTION_DONE { do update_action(m_contents); }
+				match NUM_ROUND
+					{ round<-int(m_contents['num tour']);
+					}
 			}
 			
 		}	
@@ -566,6 +640,7 @@ experiment lead_the_game
 				draw rectangle(20#m,100#m) color:#gray at:{10#m,50#m};
 				draw "A traiter" color:#white at:{5#m,10#m} size:12#px;
 				draw rectangle(40#m,100#m) color:#yellow at:{40#m,50#m};
+				draw "Round "+string(round) color:#black font: font("Arial", 16 , #bold) at:{35#m,3#m};
 				draw "Encours" color:#black at:{35#m,10#m};
 				draw rectangle(40#m,100#m) color:#green at:{80#m,50#m};
 				draw "Achevé" color:#white at:{75#m,10#m};

@@ -306,6 +306,7 @@ action nextRound{
 	else {stateSimPhase <- 'game'; write stateSimPhase;}
 	round <- round + 1;
 	ask commune {do informerNumTour;}
+	ask game_leader{do informerLeaderDuNumTour;}
 	do save_budget_data;
 	do save_N_to_AU_data;
 	write "done!";
@@ -763,6 +764,8 @@ species game_leader skills:[network]
 	string DELAY <- "delay";
 	string ACTION_ID <- "action_id";
 	string COMMUNE <- "COMMUNE_ID";
+	string ASK_NUM_ROUND <- "Leader demande numéro du tour";
+	string NUM_ROUND <- "Numéro du tour";
 	
 	
 	init
@@ -815,6 +818,10 @@ species game_leader skills:[network]
 					
 					do appliquer_action(dd);
 				}
+				
+				match ASK_NUM_ROUND {
+					do informerLeaderDuNumTour;
+				}
 
 			}
 			
@@ -822,6 +829,13 @@ species game_leader skills:[network]
 		
 	}
 	
+	action informerLeaderDuNumTour  {
+					map<string,string> msg <- [];
+					put NUM_ROUND key:OBSERVER_MESSAGE_COMMAND in:msg ;
+					put string(round) key: "num tour" in: msg;
+					do send to:OBSERVER_NAME contents:msg;
+					write "send message to leader "+ msg;
+				}
 	
 	action retarder_action(action_done act, int duree)
 	{
@@ -912,13 +926,14 @@ species game_controller skills:[network]
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
 					if(CONNECTION_MESSAGE = int(data[0]))
 					{
-						int idCom <-world.commune_id(m_sender);
-						ask(commune where(each.id= idCom))
-						{
-							not_updated <- true;
-							do informerNumTour;
-						}
-						write "connexion de "+ m_sender + " "+ idCom;
+							int idCom <-world.commune_id(m_sender);
+							ask(commune where(each.id= idCom))
+							{
+								not_updated <- true;
+								do informerNumTour;
+							}
+								write "connexion de "+ m_sender + " "+ idCom;
+						
 					}
 					else
 						{
