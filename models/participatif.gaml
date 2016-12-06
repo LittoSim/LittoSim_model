@@ -1357,7 +1357,7 @@ species Network_agent skills:[network]
 					}
 					match ACTION_DIKE_LIST
 					{
-						//list<string> all_dike <-   copy_between(data,3,length(data)-1); 
+						list<string> all_dike <-   copy_between(data,3,length(data)-1); 
 						do check_dike(data );
 					}
 					
