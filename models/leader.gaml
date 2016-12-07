@@ -230,14 +230,14 @@ global
 						if(selected_commune != nil)
 						{
 							do subventionner_ganivelle();
-							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
+							write "SUBVENTIONNER_GANIVELLE Cliqué";
 						}
 					}	
 					match SUBVENTIONNER_HABITAT_ADAPTE_NAME {
 						if(selected_commune != nil)
 						{
 							do subventionner_habitat_adapte();
-							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
+							write "SUBVENTIONNER_HABITAT_ADAPTE Cliqué";
 						}
 					}					
 				}
