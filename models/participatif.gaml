@@ -1210,11 +1210,9 @@ species retrieve_date skills:[network]
 			{
 				match "action_done"
 				{
-					write "receive message from " +  m.sender+ " " + mc["action_type"];
 					if(mc["action_type"]="dike")
 					{
-						write "receive message from " + m.sender+ " "+ mc["id"] ;
-			
+						
 						action_def_cote tmp <- action_def_cote first_with(each.id =int(mc["id"]) );
 						
 						if(tmp = nil)
@@ -1366,7 +1364,6 @@ species action_done
 			shape <- polygon(all_points);
 		}
 		location <-mpp;
-		write "load location "+ location + " shape " + shape;
 		
 		
 		
@@ -1716,7 +1713,7 @@ species Network_agent skills:[network]
 	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
 	{ 
 		ask action_def_cote where(each.id  = m_action_id)
-		{ 	write nb;
+		{ 	
 			if nb = 3000 {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
 			else {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été retardé de "+nb+" tour"+(nb=1?"":"s")+" en raison de contraintes réglementaires.");}}
 			round_delay <- round_delay + nb;
@@ -2170,9 +2167,6 @@ species def_cote
 		}
 		shape <- polyline(all_points);
 		location <-mpp;
-		
-		write "shape " + mpp+ " "+shape;
-
 	}
 	
 	

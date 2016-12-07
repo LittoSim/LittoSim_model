@@ -333,7 +333,10 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
 		write flood_results;
-		map values <- user_input([ flood_results :: "1"]);	
+		
+		map<string,string> msg <- [];
+		put "1" key:flood_results in:msg;
+		map values <- user_input(msg);	
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;
