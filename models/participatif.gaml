@@ -277,7 +277,10 @@ global
 	}
 	int get_action_id
 	{
-		action_id <- max((action_def_cote + action_UA) collect (each.id)) + 1;
+		list<int> x1 <- action_def_cote collect(each.id);
+		list<int> x2 <- action_UA collect(each.id);
+		action_id <- max( x1 accumulate x2);
+		//action_id <-// max((action_def_cote + action_UA) collect (each.id)) + 1;
 		return action_id;
 	}
 
@@ -1585,8 +1588,8 @@ species Network_agent skills:[network]
 					}
 					match ACTION_LAND_COVER_UPDATE {
 						int d_id <- int(data[2]);	
-						action_done act <- first( action_done overlapping self);
-						do action_land_cover_application_acknowledgment(act.id);
+					//	action_done act <- first( action_done overlapping self);
+						do action_land_cover_application_acknowledgment(d_id);
 							
 						ask UA where(each.id = d_id)
 						{
@@ -2168,6 +2171,7 @@ species def_cote
 		shape <- polyline(all_points);
 		location <-mpp;
 		
+		write "shape " + mpp+ " "+shape;
 
 	}
 	
@@ -2288,7 +2292,7 @@ experiment game type: gui
 			graphics "Action Full target" transparency:0.3
 			{
 				//int size <- length(moved_agents);
-				if(explored_action_UA !=nil)
+				if(explored_action_UA !=nil and explored_action_UA.is_applied=false)
 				{
 					
 					UA mcell <- UA first_with(each.id = explored_action_UA.chosen_element_id);

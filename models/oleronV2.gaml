@@ -332,7 +332,8 @@ int commune_id(string xx)
 reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
-		//map values <- user_input([ flood_results :: ""]);	
+		write flood_results;
+		map values <- user_input([ flood_results :: "1"]);	
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;
@@ -594,6 +595,8 @@ Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +" ha 
 " ;	
 			}
 			flood_results <-  text;
+			
+				
 			write "Surface inondée par commune";
 			ask (commune where (each.id > 0))
 				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ; 
@@ -833,9 +836,20 @@ species action_done schedules:[]
 	def_cote create_dike(action_done act)
 	{
 		int id_ov <- max(def_cote collect(each.id_ouvrage))+1;
+			string commune_name_shpfile;
+			switch (act.doer)
+			{
+			match "lechateau" {commune_name_shpfile <-"Le-Chateau-d'Oleron";}
+			match "dolus" {commune_name_shpfile <-"Dolus-d'Oleron";}
+			match "sttrojan" {commune_name_shpfile <-"Saint-Trojan-Les-Bains";}
+			match "stpierre" {commune_name_shpfile <-"Saint-Pierre-d'Oleron";}
+			}  
+		
+		
 		create def_cote number:1 returns:ovgs
 		{
 			id_ouvrage <- id_ov;
+			nom_com <- commune_name_shpfile;
 			shape <- act.shape;
 			type <- BUILT_DIKE_TYPE ;
 			status <- BUILT_DIKE_STATUS;
@@ -2572,27 +2586,27 @@ experiment oleronV2 type: gui {
 			}
 		display Barplots {
                 
-/*				chart "Zone U" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0} {
-					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
+				chart "Zone U" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0} {
+					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
 				chart "Zone AU" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0} {
-					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
+					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
 				chart "Zone A" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0.5} {
-					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
+					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
 				chart "Zone N" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0.5} {
-					datalist value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] categoriesnames:(((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci); 	
+					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.nom_raccourci) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_maxc)] 
+						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
-				 */
+				 
 			}
 			
 		display "VIDE"
