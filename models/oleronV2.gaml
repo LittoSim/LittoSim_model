@@ -72,6 +72,7 @@ global  {
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DIKE_UPDATE<-10;
 	int ACTION_ACTION_DONE_UPDATE<- 101;
+	int ACTION_IS_APPLIED<- 1011;
 	int INFORM_ROUND <-34;
 	int NOTIFY_DELAY <-35;
 	int ENTITY_TYPE_CODE_DEF_COTE <-36;
@@ -1103,6 +1104,7 @@ species game_controller skills:[network]
 		{
 			string tmp <- self.doer;
 			int idCom <-world.commune_id(tmp);
+			action_done act <- self;
 			if(log_user_action)
 			{
 				list<string> data <- [string(machine_time-START_LOG),tmp]+self.my_message;
@@ -1142,7 +1144,7 @@ species game_controller skills:[network]
 					def_cote ovg <-  create_dike(self);
 					ask network_agent
 					{
-						do send_create_dike_message(ovg);
+						do send_create_dike_message(ovg, act);
 					}
 					ask(ovg) {do new_dike_by_commune (idCom) ;
 					}
@@ -1160,7 +1162,7 @@ species game_controller skills:[network]
 					{
 						ask network_agent
 						{
-							do send_destroy_dike_message(myself);
+							do send_destroy_dike_message(myself,act);
 						}
 						do destroy_by_commune (idCom) ;
 						not_updated <- true;
@@ -1223,17 +1225,31 @@ species game_controller skills:[network]
 			 		 }
 			 	}
 			}
-		/*ask world
+
+		/* 	ask network_agent
 			{
-				do execute_pending_request(myself);	
+				do action_is_applied(act);
 			}*/
-			write "is_alive to false "+ is_alive;
+			
 			is_alive <- false; 
 			is_applied <- true;
 			//do die;
 		}
+		
+		
 	}
 	
+	action action_is_applied(action_done act)
+	{
+		string msg <-""+ ACTION_IS_APPLIED+ COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+act.id;
+		commune cm <- commune first_with(each.nom_raccourci = act.doer);
+		ask network_agent
+		{
+			do send to:cm.network_name contents:msg;
+		}
+	}
+	
+		
 	action read_action(string act, string sender)
 	{
 		list<string> data <- act split_with COMMAND_SEPARATOR;
@@ -1353,9 +1369,9 @@ species game_controller skills:[network]
 		}
 	}
 	
-	action send_destroy_dike_message(def_cote ovg)
+	action send_destroy_dike_message(def_cote ovg, action_done act)
 	{
-		string msg <- ""+ACTION_DIKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage;
+		string msg <- ""+ACTION_DIKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+ COMMAND_SEPARATOR+act.id;
 		
 		list<commune> cms <- commune overlapping ovg;
 		loop cm over:cms
@@ -1366,13 +1382,13 @@ species game_controller skills:[network]
 	
 	}
 	
-	action send_create_dike_message(def_cote ovg)
+	action send_create_dike_message(def_cote ovg, action_done act)
 	{
 		point p1 <- first(ovg.shape.points);
 		point p2 <- last(ovg.shape.points);
 		
 		
-		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status+ COMMAND_SEPARATOR+min_dike_elevation(ovg);
+		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ovg.id_ouvrage+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+ovg.height+COMMAND_SEPARATOR+ovg.type+COMMAND_SEPARATOR+ovg.status+ COMMAND_SEPARATOR+min_dike_elevation(ovg)+ COMMAND_SEPARATOR+act.id;
 		list<commune> cms <- commune overlapping ovg;
 			loop cm over:cms
 			{
