@@ -277,7 +277,7 @@ global
 	}
 	int get_action_id
 	{
-		action_id <- action_id + 1;
+		action_id <- max((action_def_cote + action_UA) collect (each.id)) + 1;
 		return action_id;
 	}
 
@@ -1585,8 +1585,10 @@ species Network_agent skills:[network]
 						}
 					}
 					match ACTION_LAND_COVER_UPDATE {
-						int d_id <- int(data[2]);
-						do action_land_cover_application_acknowledgment(d_id);
+						int d_id <- int(data[2]);	
+						action_done act <- first( action_done overlapping self);
+						do action_land_cover_application_acknowledgment(act.id);
+							
 						ask UA where(each.id = d_id)
 						{
 							ua_code <-int(data[3]);
@@ -1678,6 +1680,7 @@ species Network_agent skills:[network]
 		string st <- msg[9];
 		float elev <- msg[10];
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
+		int df_id <- 0;
 		create def_cote number:1 returns: dikes
 		{
 			shape <- pli;
@@ -1686,8 +1689,10 @@ species Network_agent skills:[network]
 			height<- hg;
 			status<-st;
 			elevation <- elev;
-			ask first(action_def_cote overlapping self) {chosen_element_id <- d_id;}
+			ask first(action_def_cote overlapping self) {chosen_element_id <- d_id;
+			}
 		}	
+		
 		do action_dike_application_acknowledgment(d_id);			
 	}
 	
@@ -1700,12 +1705,13 @@ species Network_agent skills:[network]
 	
 	action action_land_cover_application_acknowledgment(int m_action_id)
 	{//write "UPDATE UA " + m_action_id;
-		ask action_UA where(each.id  = m_action_id)
+		ask action_UA where(each.chosen_element_id = m_action_id)
 		{ 
 			self.is_applied <- true;
 		}
 	}
-	
+	 
+	 
 	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
 	{ 
 		ask action_def_cote where(each.id  = m_action_id)
