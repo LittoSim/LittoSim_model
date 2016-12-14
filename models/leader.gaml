@@ -103,8 +103,8 @@ global
 	string DELAY <- "delay";
 	string ACTION_ID <- "action_id";
 	string COMMUNE <- "COMMUNE_ID";
-	string ASK_NUM_ROUND <- "Leader demande numéro du tour";
-	string NUM_ROUND <- "Numéro du tour";
+	string ASK_NUM_ROUND <- "Leader demande numero du tour";
+	string NUM_ROUND <- "Numero du tour";
 	int SUBVENTIONNER_GANIVELLE <- 1101;
 	int SUBVENTIONNER_HABITAT_ADAPTE <- 1102;
 	int SANCTION_ELECTORALE <- 1103;
@@ -130,6 +130,53 @@ global
 	bool subventionner_habitat_adapte -> {selected_action!= nil and selected_action.displayName= "Subventionner habitat adapté"};
 	
 	geometry shape <- square(100#m);
+	
+	string BATISSEUR <- "batisseur";
+	string DEFENSE_DOUCE <- "défense douce";
+	string RETRAIT <- "retrait";
+	
+	
+	
+	map<string,list<map<string,int>>> profils<-[];
+	
+	action write_profile
+	{
+		int i <- 0;
+
+		string cm<-"";
+		loop cm over:profils.keys
+		{
+			list<map<string,int>> data_commune <- profils[cm];
+			
+			write "commune : "+ cm;
+			loop while:length(data_commune)>i
+			{
+				map<string,int> state <- data_commune[i];
+				write "tour["+i +"] " + BATISSEUR+": "+state[BATISSEUR]+" ; "+DEFENSE_DOUCE+": "+state[DEFENSE_DOUCE]+" ; "+RETRAIT+": "+state[RETRAIT];
+				i<-i+1;
+			}
+				
+		}
+
+	}
+	
+	
+	action add_action_done_to_profile(action_done dd, int act_round)
+	{
+		list<map<string,int>> profil_commune<- profils[dd.doer];
+		loop while:length(profil_commune)<=act_round
+		{
+			map<string,int> state <- [];
+			put 0 key:BATISSEUR in: state;
+			put 0 key:DEFENSE_DOUCE in: state;
+			put 0 key:RETRAIT in: state;
+			add state to:profil_commune;
+		}
+		map<string,int> chosen_round <- profil_commune[act_round];
+		write "profile "+ dd.tracked_profil + "  "+ chosen_round[dd.tracked_profil];
+		put chosen_round[dd.tracked_profil] +1 key:dd.tracked_profil in: chosen_round;
+	}
+	
 	
 	string UA_name_of_command (int act) {
 		switch act {
@@ -162,6 +209,11 @@ global
 		do create_commune;
 		do create_button;
 
+		ask commune
+		{
+			put [] key:self.com_name in:profils;
+		}
+
 		//pour les test
 		int i <- 0;
 
@@ -187,9 +239,11 @@ global
 		{
 			list<int> aSerie;
 			list<action_done> lad <- action_done where (each.doer = aCommune and each.tracked_profil = prof);
+			
+			
 			loop i from: 1 to:round {
 				add (length (lad where (each.command_round = i))) to: aSerie ;
-				}	
+			}	
 			write prof + " : " +aSerie;
 		}
 	}
@@ -506,6 +560,12 @@ species action_done schedules:[]
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	string tracked_profil <-"";
 	
+	reflex save_data
+	{
+		
+		ask world { save action_done to:"/tmp/action_done2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id",cost::"cost",command_round::"cround", application_round::"around", round_delay::"rdelay",is_delayed::"is_delayed", chosen_element_id::"chosenId",doer::"doer",command::"command",label::"label", tracked_profil::"tracked_profil", isInlandDike::"isInlandDike", inRiskArea::"inRiskArea",inLittoralArea::"inLittoralArea",inProtectedArea::"inProtectedArea",isExpropriation::"isExpropriation", previous_ua_name::"previous_ua_name",action_type::"action_type" ] ; }
+	}
+	
 	init
 	{
 		 shape <- rectangle(10#m,5#m);
@@ -525,6 +585,7 @@ species action_done schedules:[]
 				}
 		return (res+ " "+(is_applied?("(à T"+application_round+")"):("("+(application_round-round)+")"+(is_delayed?"+"+round_delay:""))));
 	}
+	
 	
 	geometry custom_shape {
 		if is_applied {return circle(5#m);}
@@ -777,6 +838,7 @@ species game_controller skills:[network]
 	
 	reflex wait_message
 	{
+		
 		loop while:has_more_message()
 		{
 			message msg <- fetch_message();
@@ -789,6 +851,11 @@ species game_controller skills:[network]
 				match UPDATE_ACTION_DONE { do update_action(m_contents); }
 				match NUM_ROUND
 					{ round<-int(m_contents['num tour']);
+						ask world
+						{
+							do write_profile;
+							
+						}
 					}
 			}
 			
@@ -807,6 +874,12 @@ species game_controller skills:[network]
 			{
 				location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
 				do init_from_map(msg);
+				ask world
+				{
+					do add_action_done_to_profile(myself,round);
+					
+				}
+			
 			}
 		}
 		else
@@ -819,6 +892,8 @@ species game_controller skills:[network]
 	}
 	
 }
+
+
 
 experiment lead_the_game
 {
@@ -853,7 +928,10 @@ experiment lead_the_game
 			event mouse_move action: button_action_move;
 			
 		}
-		 //toto
+		display triangle
+		{
+			
+		}
 	}
 
 }

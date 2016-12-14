@@ -10,7 +10,7 @@ model Commune
 
 global
 {
-	string SERVER <- "localhost";
+	string SERVER <- "192.168.1.100";
 	
 	
 	string commune_name <- "dolus";

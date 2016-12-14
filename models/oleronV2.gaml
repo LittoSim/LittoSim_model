@@ -904,8 +904,8 @@ species game_leader skills:[network]
 	string DELAY <- "delay";
 	string ACTION_ID <- "action_id";
 	string COMMUNE <- "COMMUNE_ID";
-	string ASK_NUM_ROUND <- "Leader demande numéro du tour";
-	string NUM_ROUND <- "Numéro du tour";
+	string ASK_NUM_ROUND <- "Leader demande numero du tour";
+	string NUM_ROUND <- "Numero du tour";
 	
 	
 	init
