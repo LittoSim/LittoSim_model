@@ -65,6 +65,7 @@ global
 	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
 	int ACTION_ACTION_DONE_UPDATE<- 101;
 	int ACTION_ACTION_LIST <- 211;
+	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
 	
 	
 	int ACTION_LAND_COVER_UPDATE<-9;
@@ -80,7 +81,6 @@ global
 	int UPDATE_BUDGET <- 19;
 	int REFRESH_ALL <- 20;
 	int ACTION_DIKE_LIST <- 21;
-	int ACTION_MESSAGE <- 22;
 	int CONNECTION_MESSAGE <- 23;
 	int INFORM_TAX_GAIN <-24;
 	int ACTION_INSPECT_DIKE <- 25;
@@ -127,7 +127,6 @@ global
 	string active_display <- nil;
 	action_done current_action <- nil;
 	point previous_clicked_point <- nil;
-	int action_id <- 0;
 	
 	float button_size <- 500#m;
 	
@@ -184,7 +183,7 @@ global
 		do init_pending_request_button;
 		create def_cote from:defense_shape with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune_name_shpfile::string(read("Commune"))]
 		{
-			// name <- "défence numéro "+ self.dike_id;    --> ca sert à rien
+			 name <- "défence numéro "+ self.dike_id;  //  --> ca sert à rien
 		}
 		create road from:road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
@@ -279,9 +278,7 @@ global
 	{
 		list<int> x1 <- action_def_cote collect(each.id);
 		list<int> x2 <- action_UA collect(each.id);
-		action_id <- max( x1 accumulate x2);
-		//action_id <-// max((action_def_cote + action_UA) collect (each.id)) + 1;
-		return action_id;
+		return max(x1 + x2) + 1;
 	}
 
 	int delayOfAction (int action_code){
@@ -755,7 +752,7 @@ global
 			 {
 				id <- 0;
 				shape <- dk.shape;
-				chosen_element_id <- dk.dike_id;
+				element_id <- dk.dike_id;
 			 }
 			 action_def_cote tmp <- first(action_list);
 			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
@@ -778,7 +775,7 @@ global
 			 {
 				id <- 0;
 				shape <- dk.shape;
-				chosen_element_id <- dk.dike_id;
+				element_id <- dk.dike_id;
 			 }
 			 action_def_cote tmp <- first(action_list);
 			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
@@ -808,7 +805,7 @@ global
 			 {
 				id <- world.get_action_id();
 				self.label <- but.label;
-				chosen_element_id <- dk.dike_id;
+				element_id <- dk.dike_id;
 				self.command <- but.command;
 				self.application_round <- round  + (world.delayOfAction(self.command));
 				shape <- dk.shape;
@@ -844,7 +841,7 @@ global
 				{
 					id <- world.get_action_id();
 					self.label <- but.label;
-					chosen_element_id <- -1;
+					element_id <- -1;
 					self.command <- ACTION_CREATE_DIKE;
 					self.application_round <- round  + (world.delayOfAction(self.command));
 					shape <- polyline([previous_clicked_point,loc]);
@@ -949,10 +946,6 @@ global
 					bool res <- false;
 					string chain <- "Transformer une zone naturelle en zone à urbaniser est soumis à des contraintes réglementaire.\nLe dossier est susceptible d’être retardé.\nSouhaitez vous poursuivre ?";
 					map<string,unknown> values2 <- user_input("Avertissement",chain:: res);		
-					ask game_manager
-					{
-						do send_information(chain+"\n response: "+(values2 at chain ));
-					}
 					if(values2 at chain = false)
 					{
 						return;
@@ -968,7 +961,7 @@ global
 				create action_UA number:1 returns:action_list
 				{
 					id <- world.get_action_id();
-					chosen_element_id <- myself.id;
+					element_id <- myself.id;
 					command <- selected_button.command;
 					shape <- myself.shape;
 					application_round <- round  + (world.delayOfAction(command));
@@ -1288,7 +1281,7 @@ species retrieve_date skills:[network]
 species action_done
 {
 	int id;
-	int chosen_element_id<-0;
+	int element_id<-0;
 	//string command_group <- "";
 	int command <- -1;
 	string label <- "no name";
@@ -1312,7 +1305,7 @@ species action_done
 	action init_from_map(map<string, unknown> a )
 	{
 		self.id <- int(a at "id");
-		self.chosen_element_id <- int(a at "chosen_element_id");
+		self.element_id <- int(a at "element_id");
 		self.command <- int(a at "command");
 		self.label <- a at "label";
 		self.cost <- float(a at "cost");
@@ -1366,13 +1359,13 @@ species action_done
 	string serialize_command
 	{
 		string result <-"";
-		//write "pout poute "+ chosen_element_id;
+		//write "pout poute "+ element_id;
 		
 	result <- ""+
 		command+COMMAND_SEPARATOR+  //0
 		id+COMMAND_SEPARATOR+
 		application_round+COMMAND_SEPARATOR+
-		chosen_element_id+COMMAND_SEPARATOR+			//3
+		element_id+COMMAND_SEPARATOR+			//3
 		action_type +COMMAND_SEPARATOR+
 		inProtectedArea+COMMAND_SEPARATOR+		//5
 		previous_ua_name+COMMAND_SEPARATOR+
@@ -1400,7 +1393,7 @@ species action_done
 			}
 			
 			default {
-				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+chosen_element_id;
+				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+element_id;
 			}
 		}*/
 		
@@ -1470,7 +1463,7 @@ species network_player skills:[network]
 			string my_msg <- msg.contents;
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
 			int command <- int(data[0]);
-			int action_id <- int(data[1]);
+			int msg_id <- int(data[1]);
 			switch(int(data[0]))
 				{
 		
@@ -1547,6 +1540,14 @@ species network_player skills:[network]
 				//		do update_action_done(data);
 					}
 					
+					match ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT
+					{
+						int action_id <- int(data[2]);
+						((action_def_cote + action_UA) first_with (each.id = action_id)).is_applied <- true;
+						//A supprimer
+						//list<action_def_cote > alist <- action_def_cote where (each.id = action_id);
+						//if empty(alist) {list<action_UA > alist <- action_def_cote where (each.id = action_id);} 
+					}
 					match ACTION_DIKE_CREATED
 					{
 						do dike_create_action(data);
@@ -1565,22 +1566,23 @@ species network_player skills:[network]
 							type <- data[8];
 							height <-float(data[7]);
 						}
-						do action_dike_application_acknowledgment(d_id);	
+						//do action_def_cote_application_acknowledgment(action_id);	
 					}
 					match ACTION_DIKE_DROPPED {
 						int d_id <- int(data[2]);
-						do action_dike_application_acknowledgment(d_id);	
+//						int action_id <- int(data[3]);
+//						do action_def_cote_application_acknowledgment(action_id);	
 						ask def_cote where(each.dike_id =d_id )
 						{
 							do die;
 						}
 					}
 					match ACTION_LAND_COVER_UPDATE {
-						int d_id <- int(data[2]);	
+						int UA_id <- int(data[2]);	
 					//	action_done act <- first( action_done overlapping self);
-						do action_land_cover_application_acknowledgment(d_id);
+					//	do action_UA_application_acknowledgment(UA_id);
 							
-						ask UA where(each.id = d_id)
+						ask UA where(each.id = UA_id)
 						{
 							ua_code <-int(data[3]);
 							ua_name <- nameOfUAcode(ua_code);
@@ -1639,7 +1641,7 @@ species network_player skills:[network]
 		}
 		
 		
-		act.chosen_element_id <- int(mdata[3]);
+		act.element_id <- int(mdata[3]);
 		act.command <- int(mdata[5]);
 		act.label <- mdata[6];
 		act.cost <- float(mdata[7]);
@@ -1669,8 +1671,8 @@ species network_player skills:[network]
 		string tp <- string(msg[8]);
 		string st <- msg[9];
 		float a_alt <- msg[10];
+		int action_id  <- msg[11];
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
-		int df_id <- 0;
 		create def_cote number:1 returns: dikes
 		{
 			shape <- pli;
@@ -1679,27 +1681,26 @@ species network_player skills:[network]
 			height<- hg;
 			status<-st;
 			alt <- a_alt;
-			ask first(action_def_cote overlapping self) {chosen_element_id <- d_id;
-			}
+			ask action_def_cote first_with(each.id =action_id) {element_id <- d_id;}
 		}	
 		
-		do action_dike_application_acknowledgment(d_id);			
+		//do action_def_cote_application_acknowledgment(action_id);			
 	}
 	
-	action action_dike_application_acknowledgment(int m_action_id)
-	{//write "UPDATE dike " + m_action_id;
-		ask action_def_cote where(each.chosen_element_id  = m_action_id)
-		{ self.is_applied <- true;
-		}
-	}
+//	action action_def_cote_application_acknowledgment(int a_action_def_cote_id)
+//	{//write "UPDATE dike " + m_action_id;
+//		ask action_def_cote where(each.id  = a_action_def_cote_id)
+//		{ self.is_applied <- true;
+//		}
+//	}
 	
-	action action_land_cover_application_acknowledgment(int m_action_id)
-	{//write "UPDATE UA " + m_action_id;
-		ask action_UA where(each.chosen_element_id = m_action_id)
-		{ 
-			self.is_applied <- true;
-		}
-	}
+//	action action_UA_application_acknowledgment(int UA_id)
+//	{//write "UPDATE UA " + m_action_id;
+//		ask action_UA where(each.element_id = UA_id)
+//		{ 
+//			self.is_applied <- true;
+//		}
+//	}
 	 
 	 
 	action action_def_cote_delay_acknowledgment(int m_action_id, int nb)
@@ -1724,13 +1725,6 @@ species network_player skills:[network]
 		}
 	}
 	
-	action send_information(string msg)
-	{
-		string val <-""+ ACTION_MESSAGE + COMMAND_SEPARATOR+world.get_action_id()+ COMMAND_SEPARATOR+msg;
-		map<string,string> data <- ["stringContents"::msg];
-		do send to:MANAGER_NAME contents:data;
-		
-	}
 	
 	action send_basket
 	{
@@ -2133,7 +2127,7 @@ species def_cote
 	
 	action init_from_map(map<string, unknown> a )
 	{
-		self.dike_id <- int(a at "id_ouvrage");
+		self.dike_id <- int(a at "dike_id");
 		self.type <- string(a at "type");
 		self.status <- string(a at "status");
 		self.height <- float(a at "height");
@@ -2260,7 +2254,7 @@ experiment game type: gui
 				if(explored_action_UA !=nil and explored_action_UA.is_applied=false)
 				{
 					
-					UA mcell <- UA first_with(each.id = explored_action_UA.chosen_element_id);
+					UA mcell <- UA first_with(each.id = explored_action_UA.element_id);
 					point target <- {mcell.location.x  ,mcell.location.y };
 					point target2 <- {mcell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),mcell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;

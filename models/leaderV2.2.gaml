@@ -167,7 +167,7 @@ global
 	
 	action add_action_done_to_profile(action_done dd, int act_round)
 	{
-		list<map<string,int>> profil_commune<- profils[dd.doer];
+		list<map<string,int>> profil_commune<- profils[dd.commune_name];
 		loop while:length(profil_commune)<=act_round
 		{
 			map<string,int> state <- [];
@@ -225,7 +225,7 @@ global
 		{
 			location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
 			id <-i ;
-			doer<-"dolus";
+			commune_name<-"dolus";
 			i<- i+1;
 		}
 	}
@@ -242,7 +242,7 @@ global
 		loop prof over: ["batisseur","defense douce", "retrait"]
 		{
 			list<int> aSerie;
-			list<action_done> lad <- action_done where (each.doer = aCommune and each.tracked_profil = prof);
+			list<action_done> lad <- action_done where (each.commune_name = aCommune and each.tracked_profil = prof);
 			
 			
 			loop i from: 1 to:round {
@@ -417,11 +417,11 @@ global
 			do send to:GAME_LEADER_MANAGER contents:msg;
 		}		
 	}
-	action send_message_to_commune(string msg, string aDoer)
+	action send_message_to_commune(string msg, string acommune_name)
 	{
 		ask network_agent
 		{
-			do send to:aDoer contents:msg;
+			do send to:acommune_name contents:msg;
 		}		
 	}
 	
@@ -541,8 +541,8 @@ global
 species action_done schedules:[]
 {
 	int id;
-	int chosen_element_id;
-	string doer<-"";
+	int element_id;
+	string commune_name<-"";
 	//string command_group <- "";
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	string label <- "no name";
@@ -551,8 +551,7 @@ species action_done schedules:[]
 	int application_round <- -1;
 	int command_round <- -1;
 	int round_delay <- 0 ; // nb rounds of delay
-	bool is_delayed ->{round_delay>0} ;
-	list<string> my_message <-[];
+	bool is_delayed ->{round_delay>0};
 	//string action_type <- "dike" ; //can be "dike" or "PLU"
 	// en attendant que action type soit réparé
 	string action_type <-"";//-> {(command in [ACTION_CREATE_DIKE,ACTION_REPAIR_DIKE,ACTION_DESTROY_DIKE])?"dike":"PLU"};
@@ -563,11 +562,12 @@ species action_done schedules:[]
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	string tracked_profil <-"";
+	geometry element_shape;
 	
 	reflex save_data
 	{
 		
-		ask world { save action_done to:"/tmp/action_done2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id",cost::"cost",command_round::"cround", application_round::"around", round_delay::"rdelay",is_delayed::"is_delayed", chosen_element_id::"chosenId",doer::"doer",command::"command",label::"label", tracked_profil::"tracked_profil", isInlandDike::"isInlandDike", inRiskArea::"inRiskArea",inLittoralArea::"inLittoralArea",inProtectedArea::"inProtectedArea",isExpropriation::"isExpropriation", previous_ua_name::"previous_ua_name",action_type::"action_type" ] ; }
+		ask world { save action_done to:"/tmp/action_done2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id",cost::"cost",command_round::"cround", application_round::"around", round_delay::"rdelay",is_delayed::"is_delayed", element_id::"chosenId",commune_name::"commune_name",command::"command",label::"label", tracked_profil::"tracked_profil", isInlandDike::"isInlandDike", inRiskArea::"inRiskArea",inLittoralArea::"inLittoralArea",inProtectedArea::"inProtectedArea",isExpropriation::"isExpropriation", previous_ua_name::"previous_ua_name",action_type::"action_type" ] ; }
 	}
 	
 	init
@@ -661,8 +661,8 @@ species action_done schedules:[]
 	action init_from_map(map<string, string> a )
 	{
 		self.id <- int(a at "id");
-		self.chosen_element_id <- int(a at "chosen_element_id");
-		self.doer <- a at "doer";
+		self.element_id <- int(a at "element_id");
+		self.commune_name <- a at "commune_name";
 		self.command <- int(a at "command");
 		self.label <- a at "label";
 		self.cost <- float(a at "cost");
@@ -678,15 +678,15 @@ species action_done schedules:[]
 		self.isInlandDike <- bool(a at "isInlandDike");
 		self.command_round <-int(a at "command_round");
 		self.tracked_profil <- track_profil();
-		
+		self.element_shape <- geometry(a at "shape");
 		
 	}
 	
 	map<string,string> build_map_from_attribute
 	{
 		map<string,string> res <- ["id"::string(id),
-			"chosen_element_id"::string(chosen_element_id),
-			"doer"::string(doer),
+			"element_id"::string(element_id),
+			"commune_name"::string(commune_name),
 			"command"::string(command),
 			"label"::string(label),
 			"cost"::string(cost),
@@ -741,7 +741,7 @@ species action_done schedules:[]
 	
 	aspect base
 	{
-		if(selected_commune.commune_name = doer)
+		if(selected_commune.commune_name = commune_name)
 		{
 			if !is_applied and requestAttention() {draw custom_shape()+0.5#m color: #red;}
 			draw custom_shape() color:selection_action_done=self? #lightyellow:color_tracked_profil() border:#black;
@@ -806,10 +806,6 @@ species action_button
 	
 }
 
-species action_done_by_commune
-{
-	
-}
 
 species commune
 {
@@ -821,8 +817,7 @@ species commune
 	geometry shape <- rectangle(50#m,10#m);
 	bool is_selected -> {selected_commune = self};
 	
-	// Indicateurs calculés par le Modèle à l’initialisation. Lorsque Leader se connecte, le Modèle lui renvoie la valeur de ces indicateurs en même temps
-	float length_coastline_t0 <- 0#m;  //linéaire de côte / commune
+	// Indicateurs calculés par le Modèle à l’initialisation. Lorsque Leader se connecte, le Modèle lui renvoie la valeur de ces indicateurs en même temps	
 	float length_dikes_t0 <- 0#m; //linéaire de digues existant / commune
 	float length_dunes_t0 <- 0#m; //linéaire de dune existant / commune
 	int count_UA_urban_t0 <-0; //nombre de cellules de bâtis (U , AU), Us et AUs)
@@ -832,26 +827,44 @@ species commune
 	int count_UA_urban_dense_inCoastBorderArea <-0; //nombre de cellules denses en ZL (zone littoral)
 	int count_UA_A <-0; // nombre de cellule A
 	int count_UA_N <- 0; // nombre de cellul N 
+	int count_UA_AU <- 0; // nombre de cellul AU
+	int count_UA_U <- 0; // nombre de cellul U
 	
 	//Indicateurs actualisés par Leader à chaque fois qu’il reçoit une nouvelle action_done
 	float length_dike_created <- 0;//linéaire de digue construit
-//linéaire de rétro-digue construit (au delà de 400m)
+//linéaire de rétro-digue construit (au delà de XXm)
 //linéaire de digues démantelées
+//Linéaires de digue ayant eu une opération de rehaussement.
+//Linéaires de digue ayant eu une opération de rénovation 
 //linéaire de ganivelles
-//Linéaires de digue rehaussement.
-//Linéaires de digue de rénovation 
 //n° du tour de la dernière construction de digue
 //n° du tour du dernier rehaussement de digue
 //n° du tour de la dernière rénovation de digue
-//nombre de cellules construites (non adapté) en zone littorale (<400m)
-//nombre de cellules construites en zone inondable
-//nombre de cellules expropriées
-//nombre de cellules densifiées (en ZL, en ZI et par déduction hors ZL/ZI)
-//nombre de nouvelles cellules en habitat adapté en zone littoral
-//nombre de nouvelles cellules en habitat adapté n’importe où (par soustraction on peut déduire le nombre Zone Inondable ?hors zone littoral)
-//nombre de cellule A (Pour passage de A a N)
-//nombre de cellul N (Pour passage de A a N)
+//nombre d’opérations de construction non adaptée (passage en AU) ou d’opérations de densification en zone littorale (<400m)
+//nombre d’opérations de construction (passage en AU, ou AUs) / ou d’opérations de densification en zone inondable
+//nombre d’opérations de densification hors ZL/ZI
+//nombre d’opérations d’expropriation
+//nombre d’opérations de construction
+//nombre d’opérations de construction en habitat adapté 
+//nombre d’opérations de construction en habitat adapté en zone littoral
+//nombre d’opérations de construction en habitat adapté en zone inondable
+//nombre de cellule A qui passe en N
 
+	action update_indicators_with (action_done act)
+	{	if act.is_applied {write "gros problème. le traitement se fait trop tard";}
+		if act.action_type = 'dike' and act.command = ACTION_CREATE_DIKE
+			{length_dike_created <- length_dike_created + act.element_shape.perimeter;}
+	}
+	
+	action checkLeverActivation 
+	{
+		//le joueur construit des digues
+		if length_dike_created / length_dikes_t0 > 0.2 
+			{
+			//appliquer le levier correspondant
+			write "le joueur construit des digues-> appliquer le levier correspondant";
+			}
+	}
 	
 	aspect base
 	{
@@ -896,8 +909,7 @@ species network_leader skills:[network]
 				match INDICATORS_T0
 					{ write m_contents;
 						ask commune where (each.commune_name = m_contents['commune_name']) 
-						{ 	length_coastline_t0 <- float (m_contents['length_coastline_t0']);
-							length_dikes_t0 <- float (m_contents['length_dikes_t0']);
+						{ 	length_dikes_t0 <- float (m_contents['length_dikes_t0']);
 							length_dunes_t0 <- float (m_contents['length_dunes_t0']);
 							count_UA_urban_t0 <- int (m_contents['count_UA_urban_t0']);
 							count_UA_UandAU_inCoastBorderArea_t0 <- int (m_contents['count_UA_UandAU_inCoastBorderArea_t0']);
@@ -905,7 +917,9 @@ species network_leader skills:[network]
 							count_UA_urban_dense_infloodRiskArea <- int (m_contents['count_UA_urban_dense_infloodRiskArea']);
 							count_UA_urban_dense_inCoastBorderArea <- int (m_contents['count_UA_urban_dense_inCoastBorderArea']);
 							count_UA_A <- int (m_contents['count_UA_A']);
-							count_UA_N <- int (m_contents['count_UA_N']);	
+							count_UA_N <- int (m_contents['count_UA_N']);
+							count_UA_AU <- int (m_contents['count_UA_AU']);
+							count_UA_U <- int (m_contents['count_UA_U']);		
 						}
 					}
 			}
@@ -920,6 +934,8 @@ species network_leader skills:[network]
 		list<action_done> act_done <- action_done where(each.id = m_id);
 		
 		if(act_done = nil or length(act_done) = 0)
+		// Il s'agit d'une nouvelle action commandé par un joueur
+		// Lors de l'arrivée d'une nouvelle action venant d'être commandé, les indicateurs sont mis à jour et les seuils de déclenchement de leviers sont testés
 		{
 			create action_done number:1
 			{
@@ -927,13 +943,17 @@ species network_leader skills:[network]
 				do init_from_map(msg);
 				ask world
 				{
-					do add_action_done_to_profile(myself,round);
-					
+					do add_action_done_to_profile(myself,round);	
 				}
-			
+				ask commune first_with (each.commune_name = commune_name) {
+					do update_indicators_with (myself);
+					do checkLeverActivation;
+				}
 			}
+			
 		}
 		else
+		// Il s'agit d'une mise à jour d'une action qui avait été préalablement commandé par un joueur
 		{
 			ask first(act_done) 
 			{
