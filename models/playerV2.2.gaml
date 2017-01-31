@@ -12,6 +12,12 @@ global
 {
 	string SERVER <- "localhost";//"192.168.1.100"
 	
+	string DISPLAY_FONT_NAME <- "Helvetica Neue";
+	int DISPLAY_FONT_SIZE <- 12;
+	
+	string LEGEND_UNAM <- "Aménagement, PLU et habitat";
+	string LEGEND_DYKE <- "Défense des côtes";
+	
 	
 	string commune_name <- "dolus";
 	string MANAGER_NAME <- "model_manager";
@@ -124,7 +130,7 @@ global
 	int MAX_HISTORY_VIEW_SIZE <- 10;
 	
 	
-	string active_display <- nil;
+	string active_display <- UNAM_DISPLAY;
 	action_done current_action <- nil;
 	point previous_clicked_point <- nil;
 	
@@ -171,6 +177,7 @@ global
 	init
 	{
 		create retrieve_date number:1;
+		do init_background;
 		do implementation_tests;
 		my_commune <-  commune first_with(each.nom_raccourci = commune_name);
 		create network_player number:1 returns:net;
@@ -350,6 +357,30 @@ global
 		return nil;
 	}
 	
+	action init_background
+	{
+		create onglet number:1
+		{
+			point p <- {0.25,0.03};
+			legend_name <- LEGEND_DYKE;
+			display_name <- DIKE_DISPLAY;
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.5 ui_height:0.06;
+		}
+		create onglet number:1
+		{
+			point p <- {0.75,0.03};
+			legend_name <-LEGEND_UNAM;
+			display_name <- UNAM_DISPLAY;
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.5 ui_height:0.06;
+		}	
+		
+		create background_agent number:1
+		{
+			point p <- {0.0,0};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:1 ui_height:1;
+		}
+	}
+	
 	action init_buttons
 	{
 		float interleave <- world.local_shape.height / 20;
@@ -366,8 +397,10 @@ global
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			my_help <- uaHelpMessage;
+			point p <- {0.40,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
-			my_icon <- image_file("../images/icones/agriculture.png");
+			my_icon <- image_file("../images/ihm/I_agricole.png");
 		}
 
 		create buttons number: 1
@@ -378,8 +411,10 @@ global
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			my_help <- uaHelpMessage;
+			point p <- {0.05,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
-			my_icon <- image_file("../images/icones/urban.png");
+			my_icon <- image_file("../images/ihm/I_urbanise.png");
 		}
 		
 		create buttons number: 1
@@ -390,8 +425,11 @@ global
 			my_help <- uaHelpMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
+			point p <- {0.15,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
-			my_icon <- image_file("../images/icones/urban_adapte2.png");
+			my_icon <- image_file("../images/ihm/I_urbanise_adapte.png");
 		}
 		
 		create buttons number: 1
@@ -402,8 +440,11 @@ global
 			my_help <- uaHelpMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
+			point p <- {0.25,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 4*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
-			my_icon <- image_file("../images/icones/urban_intensifie.png");
+			my_icon <- image_file("../images/ihm/I_urbanise_intensifie.png");
 		}
 		
 		
@@ -415,8 +456,10 @@ global
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			my_help <- uaHelpMessage;
+			point p <- {0.50,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
-			my_icon <- image_file("../images/icones/tree_nature.png");
+			my_icon <- image_file("../images/ihm/I_naturel.png");
 			
 		}
 		create buttons number: 1
@@ -427,8 +470,10 @@ global
 			my_help <- "Glissez le pointeur sur les cellules à inspecter.";
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
+			point p <- {0.70,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
-			my_icon <- image_file("../images/icones/Loupe.png");
+			my_icon <- image_file("../images/ihm/I_info.png");
 			
 		}
 		
@@ -1883,7 +1928,7 @@ species action_UA parent:action_done
 	
 }
 
-species buttons
+species buttons skills:[UI_location]
 {
 	int command <- -1;
 	string display_name <- "no name";
@@ -1924,6 +1969,11 @@ species buttons
 			draw shape color:#white border: is_selected ? # red : # white;
 			draw my_icon size:button_size-50#m ;
 		}
+	}
+	
+	aspect carte
+	{
+		draw my_icon size:{ui_height, ui_height};
 	}
 }
 
@@ -2210,6 +2260,48 @@ species cell schedules:[]
 	}	
 }
 
+species background_agent skills:[UI_location]
+{
+	aspect base
+	{
+		geometry rec1 <- polygon([{0,0}, {0,ui_height*0.06}, {ui_width,ui_height*0.06},{ui_width,0},{0,0}]);
+		geometry rec2 <- polygon([{0,0}, {0,ui_height*0.2}, {ui_width,ui_height*0.2},{ui_width,0},{0,0}]);
+		point loc1  <- {location.x+ui_width/2,location.y+ui_height*0.03};
+		point loc2  <- {location.x+ui_width/2,location.y+ui_height*0.1};
+		draw  rec2 at:loc2 color:rgb(219,219,219);
+		draw  rec1 at:loc1 color:rgb(148,148,148);
+	}
+}
+
+species onglet skills:[UI_location]
+{
+	string display_name;
+	string legend_name <- nil;
+	
+	aspect base
+	{
+
+		if(active_display = display_name)
+		{
+			float gem_height <- ui_height;
+			float gem_width <- ui_width;
+			shape <- rectangle(gem_width,gem_height);
+			float x <- location.x - ui_width/2;
+			float y <- location.y - ui_height/2 ;
+			
+			geometry rec2 <- polygon([{x,y}, {x,y+gem_height}, {x+gem_width*0.2,y+gem_height}, {x+gem_width*0.225,y+gem_height*1.2},{x+gem_width*0.25,y+gem_height},{x+gem_width,y+gem_height},{x+gem_width,y},{x,y}]);
+			geometry rec3 <- polygon([{x,y}, {x,y+gem_height}, {x+gem_width,y+gem_height},{x+gem_width,y},{x,y}]);
+			geometry env <- envelope(rec2);
+			self.shape <- rec3;
+			draw rec2 color:rgb(59,124,58);
+		}
+			font var0 <- font (DISPLAY_FONT_NAME,DISPLAY_FONT_SIZE, #bold + #italic); 
+			draw legend_name at:{location.x  - (length(legend_name)*(DISPLAY_FONT_SIZE/2)#px/2), location.y + DISPLAY_FONT_SIZE/3#px} color:#white font:var0;
+	}
+}
+
+
+
 experiment game type: gui
 {
 	font regular <- font("Helvetica", 14, # bold);
@@ -2218,6 +2310,16 @@ experiment game type: gui
 	parameter "choix de la commune : " var:commune_name <- "dolus" among:["lechateau","dolus","sttrojan", "stpierre"];
 	output
 		{
+	
+		display "Carte" background:rgb(0, 188,196)  focus:my_commune
+		{
+			species commune aspect: base;
+			species road aspect:base;
+			species background_agent aspect:base;
+			species onglet aspect:base;
+			species buttons aspect:carte;
+			
+		}
 		display "Aménagement, PLU et habitat" focus:my_commune //camera_pos:my_commune
 		{
 			image 'background' file:"../images/fond/fnt.png"; 
@@ -2363,7 +2465,6 @@ experiment game type: gui
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					point target4 <- {target3.x,target2.y - 15#px };
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
-				//	draw rectangle(target2,target4)   empty: false border: false color: #red ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					if explored_buttons.command != ACTION_INSPECT_DIKE {draw "Coût de l'action : "+explored_buttons.action_cost +"/mètre" at: target2 + { 30#px, 55#px} font: regular color: # white;}

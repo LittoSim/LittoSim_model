@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   id="svg11028"
+   viewBox="0 0 79.9675 64.680878"
+   height="18.254381mm"
+   width="22.568605mm">
+  <defs
+     id="defs11030">
+    <clipPath
+       id="clipPath484"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path486"
+         d="m 0,651.973 898.583,0 L 898.583,0 0,0 0,651.973 Z" />
+    </clipPath>
+    <clipPath
+       id="clipPath500"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path502"
+         d="m 439.239,279.076 c 0,-14.256 11.556,-25.812 25.811,-25.812 l 0,0 c 14.254,0 25.81,11.556 25.81,25.812 l 0,0 c 0,14.255 -11.556,25.811 -25.81,25.811 l 0,0 c -14.255,0 -25.811,-11.556 -25.811,-25.811" />
+    </clipPath>
+  </defs>
+  <metadata
+     id="metadata11033">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     transform="translate(-174.30196,-140.02176)"
+     id="layer1">
+    <g
+       id="g10973"
+       transform="matrix(1.25,0,0,-1.25,-359.30554,521.28264)">
+      <g
+         id="g480">
+        <g
+           id="g482"
+           clip-path="url(#clipPath484)">
+          <g
+             id="g488"
+             transform="translate(464.976,304.8897)">
+            <path
+               d="m 0,0 c -6.32,0 -12.107,-2.275 -16.594,-6.046 -1.893,3.659 -5.706,6.165 -10.111,6.165 -6.288,0 -11.385,-5.097 -11.385,-11.385 0,-6.288 5.097,-11.385 11.385,-11.385 0.372,0 0.738,0.02 1.101,0.055 -0.131,-1.054 -0.207,-2.125 -0.207,-3.215 0,-14.255 11.556,-25.811 25.811,-25.811 14.255,0 25.811,11.556 25.811,25.811 C 25.811,-11.556 14.255,0 0,0"
+               style="fill:#367d34;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path490" />
+          </g>
+          <g
+             id="g492"
+             transform="translate(442.056,295.0958)">
+            <path
+               d="m 0,0 -3.062,0 0,3.062 -2.262,0 0,-3.062 -3.062,0 0,-2.262 3.062,0 0,-3.062 2.262,0 0,3.062 3.062,0 L 0,0 Z"
+               style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path494" />
+          </g>
+        </g>
+      </g>
+      <g
+         id="g496">
+        <g
+           id="g498"
+           clip-path="url(#clipPath500)">
+          <g
+             id="g504"
+             transform="translate(450.6307,247.9135)">
+            <path
+               d="M 0,0 C 5.162,-12.02 23.124,-15.847 40.12,-8.548 57.115,-1.249 66.709,14.411 61.547,26.431 56.385,38.45 38.423,42.277 21.428,34.979 4.432,27.68 -5.162,12.02 0,0"
+               style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path506" />
+          </g>
+          <g
+             id="g508"
+             transform="translate(451.8947,264.2682)">
+            <path
+               d="m 0,0 0,15.117 0.89,0 0.891,-13.803"
+               style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path510" />
+          </g>
+          <g
+             id="g512"
+             transform="translate(458.476,270.2273)">
+            <path
+               d="m 0,0 0,15.117 0.89,0 0.891,-13.803"
+               style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path514" />
+          </g>
+          <g
+             id="g516"
+             transform="translate(465.0573,275.96)">
+            <path
+               d="m 0,0 0,15.117 0.89,0 0.891,-13.803"
+               style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path518" />
+          </g>
+          <g
+             id="g520"
+             transform="translate(471.6386,278.8264)">
+            <path
+               d="m 0,0 0,15.117 0.89,0 0.891,-13.803"
+               style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path522" />
+          </g>
+          <g
+             id="g524"
+             transform="translate(478.2199,281.6927)">
+            <path
+               d="m 0,0 0,15.117 0.89,0 0.891,-13.803"
+               style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               id="path526" />
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
