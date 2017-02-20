@@ -103,11 +103,20 @@ global
 	string AMOUNT <- "amount";
 	string DELAY <- "delay";
 	string ACTION_ID <- "action_id";
+	string DATA <- "data";
+	string PLAYER_MSG <-"player_msg";
 	string COMMUNE <- "COMMUNE_ID";
 	string ASK_NUM_ROUND <- "Leader demande numero du tour";
 	string NUM_ROUND <- "Numero du tour";
 	string ASK_INDICATORS_T0 <- "Leader demande Indicateurs a t0";
 	string INDICATORS_T0 <- 'Indicateurs a t0';
+	string LEVER_DIKE_CREATION <- "Construit des digues";
+	string LEVER_RAISE_DIKE <- "Rehausse les digues";
+	string LEVER_REPAIR_DIKE <- "Renove les digues";
+	string LEVER_AUorUi_inCoastBorderArea <- "Construit ou densifie non adapté en ZL";
+	string LEVER_AUorUi_inRiskArea <- "Construit ou densifie en ZI";
+	string LEVER_GANIVELLE <- "Construit des ganivelles";
+	string LEVER_Us_outCoastBorderOrRiskArea <- "Habitat adapté hors ZL et ZI";
 	
 	int SUBVENTIONNER_GANIVELLE <- 1101;
 	int SUBVENTIONNER_HABITAT_ADAPTE <- 1102;
@@ -165,9 +174,9 @@ global
 	}
 	
 	
-	action add_action_done_to_profile(action_done dd, int act_round)
+	action add_action_done_to_profile(action_done act_dn, int act_round)
 	{
-		list<map<string,int>> profil_commune<- profils[dd.commune_name];
+		list<map<string,int>> profil_commune<- profils[act_dn.commune_name];
 		loop while:length(profil_commune)<=act_round
 		{
 			map<string,int> state <- [];
@@ -177,8 +186,8 @@ global
 			add state to:profil_commune;
 		}
 		map<string,int> chosen_round <- profil_commune[act_round];
-		write "profile "+ dd.tracked_profil + "  "+ chosen_round[dd.tracked_profil];
-		put chosen_round[dd.tracked_profil] +1 key:dd.tracked_profil in: chosen_round;
+	//	write "action de type "+ act_dn.tracked_profil + " : "+ chosen_round[act_dn.tracked_profil]; // ToDO NM A voir si il n'y a pas un bug ici
+		put chosen_round[act_dn.tracked_profil] +1 key:act_dn.tracked_profil in: chosen_round;
 	}
 	
 	
@@ -210,7 +219,7 @@ global
 	{
 		create network_leader number:1;
 		network_agent <- first(network_leader);
-		do create_commune;
+		do create_commune; 
 		do create_button;
 
 		ask commune
@@ -321,38 +330,38 @@ global
 						}
 						
 					}
-					match RETARD_1_AN
-					{
-						if(local_selection != nil)
-						{
-							do retarder_action(local_selection,1);
-							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
-						}	
-					}
-					match RETARD_2_ANS
-					{
-						if(local_selection != nil)
-						{
-							do retarder_action(local_selection,2);
-							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
-						}	
-					}
-					match RETARD_3_ANS
-					{
-						if(local_selection != nil)
-						{
-							do retarder_action(local_selection,3);
-							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
-						}	
-					}
-					match ABROGER
-					{
-						if(local_selection != nil)
-						{
-							do retarder_action(local_selection,3000);
-							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
-						}	
-					}
+//					match RETARD_1_AN
+//					{
+//						if(local_selection != nil)
+//						{
+//							do retarder_action(local_selection,1);
+//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
+//						}	
+//					}
+//					match RETARD_2_ANS
+//					{
+//						if(local_selection != nil)
+//						{
+//							do retarder_action(local_selection,2);
+//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
+//						}	
+//					}
+//					match RETARD_3_ANS
+//					{
+//						if(local_selection != nil)
+//						{
+//							do retarder_action(local_selection,3);
+//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
+//						}	
+//					}
+//					match ABROGER
+//					{
+//						if(local_selection != nil)
+//						{
+//							do retarder_action(local_selection,3000);
+//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
+//						}	
+//					}
 				}
 	}
 	
@@ -390,25 +399,25 @@ global
 		do send_message_to_commune(msg,selected_commune.commune_name);	
 	}
 	
-	action retarder_action(action_done act_dn, int duree)
-	{
-		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
-		put RETARDER key: LEADER_COMMAND in: msg;
-		put int(duree) key: DELAY in: msg;
-		put act_dn.id key: ACTION_ID in: msg;
-		do send_message(msg);
-		act_dn.round_delay <- act_dn.round_delay + duree;
-		act_dn.application_round <- act_dn.application_round + duree;	
-	}
-	
-	action lever_retard_action(action_done act_dn)
-	{
-		map<string, unknown> msg <-[]; //LEADER_COMMAND::LEVER_RETARD,ACTION_ID::act_dn.id];
-		put LEVER_RETARD key: LEADER_COMMAND in: msg;
-		put act_dn.id key: ACTION_ID in: msg;
-		
-		do send_message(msg);	
-	}
+//	action retarder_action(action_done act_dn, int duree)
+//	{
+//		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
+//		put RETARDER key: LEADER_COMMAND in: msg;
+//		put int(duree) key: DELAY in: msg;
+//		put act_dn.id key: ACTION_ID in: msg;
+//		do send_message(msg);
+//		act_dn.round_delay <- act_dn.round_delay + duree;
+//		act_dn.application_round <- act_dn.application_round + duree;	
+//	}
+//	
+//	action lever_retard_action(action_done act_dn)
+//	{
+//		map<string, unknown> msg <-[]; //LEADER_COMMAND::LEVER_RETARD,ACTION_ID::act_dn.id];
+//		put LEVER_RETARD key: LEADER_COMMAND in: msg;
+//		put act_dn.id key: ACTION_ID in: msg;
+//		
+//		do send_message(msg);	
+//	}
 	
 	action send_message(map<string,unknown> msg)
 	{
@@ -416,6 +425,15 @@ global
 		{
 			do send to:GAME_LEADER_MANAGER contents:msg;
 		}		
+	}
+	
+	action send_message_lever (activated_lever lev)
+	{
+		
+		ask network_agent
+		{
+			do send to: "activated_lever" contents:lev.build_map_from_attribute();
+		}	
 	}
 	action send_message_to_commune(string msg, string acommune_name)
 	{
@@ -521,8 +539,28 @@ global
 			write " commune " + commune_name + " "+com_id;
 			location <- {5, i*20 + 10};
 			i <- i +1;
-		}		
 		
+   			create lever_raise_dike number:1 {	my_commune <- myself;}
+   			create lever_dike_creation number:1 {my_commune <- myself;}
+   			create lever_repair_dike number:1 {my_commune <- myself;}	
+	 		create lever_AUorUi_inCoastBorderArea number:1 {my_commune <- myself;}
+	 		create lever_AUorUi_inRiskArea number:1 {my_commune <- myself;}
+	 		create lever_ganivelle number:1 {my_commune <- myself;}
+	 		create lever_Us_outCoastBorderOrRiskArea number:1 {my_commune <- myself;}
+		}
+		ask lever_dike_creation+lever_raise_dike+lever_repair_dike+lever_AUorUi_inCoastBorderArea+lever_AUorUi_inRiskArea
+				+lever_ganivelle+lever_Us_outCoastBorderOrRiskArea
+		{
+			add self to: my_commune.levers ;
+			switch my_commune.commune_name
+		 	{
+				match "stpierre" {vertical_position <- 5;}
+		 		match "dolus" {vertical_position <- 20;}
+		 		match "lechateau" {vertical_position <- 35;}
+				match "sttrojan" {vertical_position <- 50;}
+			}
+			location <- point(horizontal_position, vertical_position);
+	 	}
 	}
 	
 	
@@ -540,17 +578,17 @@ global
 
 species action_done schedules:[]
 {
-	int id;
+	string id;
 	int element_id;
 	string commune_name<-"";
 	//string command_group <- "";
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	string label <- "no name";
 	int cost <- 0;	
-	bool is_applied  ->{round >= application_round} ;
-	int application_round <- -1;
+	bool is_applied  ->{round >= initial_application_round} ;
+	int initial_application_round <- -1;
 	int command_round <- -1;
-	int round_delay <- 0 ; // nb rounds of delay
+	int round_delay -> {activated_levers sum_of (each.nb_rounds_delay)} ; // nb rounds of delay
 	bool is_delayed ->{round_delay>0};
 	//string action_type <- "dike" ; //can be "dike" or "PLU"
 	// en attendant que action type soit réparé
@@ -558,16 +596,18 @@ species action_done schedules:[]
 	string previous_ua_name <-"";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
-	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+	bool inCoastBorderArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	string tracked_profil <-"";
 	geometry element_shape;
+	float lever_activation_time;
+	list<activated_lever> activated_levers <-[];
 	
 	reflex save_data
 	{
 		
-		ask world { save action_done to:"/tmp/action_done2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id",cost::"cost",command_round::"cround", application_round::"around", round_delay::"rdelay",is_delayed::"is_delayed", element_id::"chosenId",commune_name::"commune_name",command::"command",label::"label", tracked_profil::"tracked_profil", isInlandDike::"isInlandDike", inRiskArea::"inRiskArea",inLittoralArea::"inLittoralArea",inProtectedArea::"inProtectedArea",isExpropriation::"isExpropriation", previous_ua_name::"previous_ua_name",action_type::"action_type" ] ; }
+		ask world { save action_done to:"/tmp/action_done2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id",cost::"cost",command_round::"cround", initial_application_round::"around", round_delay::"rdelay",is_delayed::"is_delayed", element_id::"chosenId",commune_name::"commune_name",command::"command",label::"label", tracked_profil::"tracked_profil", isInlandDike::"isInlandDike", inRiskArea::"inRiskArea",inCoastBorderArea::"inCoastBorderArea",inProtectedArea::"inProtectedArea",isExpropriation::"isExpropriation", previous_ua_name::"previous_ua_name",action_type::"action_type" ] ; }
 	}
 	
 	init
@@ -587,7 +627,7 @@ species action_done schedules:[]
 				}
 				default {res <-"error";}
 				}
-		return (res+ " "+(is_applied?("(à T"+application_round+")"):("("+(application_round-round)+")"+(is_delayed?"+"+round_delay:""))));
+		return (res+ " "+(is_applied?("(à T"+initial_application_round+")"):("("+(initial_application_round-round)+")"+(is_delayed?"+"+round_delay:""))));
 	}
 	
 	
@@ -598,7 +638,7 @@ species action_done schedules:[]
 	bool requestAttention {
 		if action_type = 'dike' and command in [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE] and inProtectedArea
 			{return true;}
-		/*if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inLittoralArea
+		/*if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inCoastBorderArea
 			{return true;}
 		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inRiskArea
 			{return true;}
@@ -630,7 +670,7 @@ species action_done schedules:[]
 	ACTION_EXPROPRIATION 
 	isExpropriation
 	inProtectedArea
-	inLittoralArea
+	inCoastBorderArea
 	inRiskArea
 	isInlandDike
 	*/ 
@@ -639,7 +679,7 @@ species action_done schedules:[]
 		// profil batisseur
 		if action_type = 'dike' and command in [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE]
 			{return "batisseur";}
-		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inLittoralArea
+		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inCoastBorderArea
 			{return "batisseur";}
 		if action_type = "PLU" and command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U] and inRiskArea
 			{return "batisseur";}
@@ -660,43 +700,69 @@ species action_done schedules:[]
 	
 	action init_from_map(map<string, string> a )
 	{
-		self.id <- int(a at "id");
+		self.id <- string(a at "id");
 		self.element_id <- int(a at "element_id");
 		self.commune_name <- a at "commune_name";
 		self.command <- int(a at "command");
 		self.label <- a at "label";
 		self.cost <- float(a at "cost");
 		//self.should_be_applied <- bool(a at "should_be_applied");  Pas besoin. on le recalcul localement 
-		self.application_round <- int(a at "application_round");
-		self.round_delay <- int(a at "round_delay");
+		self.initial_application_round <- int(a at "initial_application_round");
 		self.action_type <- string(a at "action_type"); // Pour l'instant ca marche pas. je sais pas pourquoi
 		self.previous_ua_name <- string(a at "previous_ua_name");
 		self.isExpropriation <- bool(a at "isExpropriation");
 		self.inProtectedArea <- bool(a at "inProtectedArea");
-		self.inLittoralArea <- bool(a at "inLittoralArea");
+		self.inCoastBorderArea <- bool(a at "inCoastBorderArea");
 		self.inRiskArea <- bool(a at "inRiskArea");
 		self.isInlandDike <- bool(a at "isInlandDike");
 		self.command_round <-int(a at "command_round");
 		self.tracked_profil <- track_profil();
 		self.element_shape <- geometry(a at "shape");
-		
+//		if action_type = 'dike'
+//		{
+//			geometry tt <- a at "shape";
+//			write tt;
+//			write tt.points;
+//			write geometry(tt.points[0]);
+//						write tt.points[1];
+////			list<point> ltt ;
+////			loop aa over: tt.points {
+////				write "eee  "+aa;
+////				write "rrr "+geometry(aa);
+////				write {float(aa.x),float(aa.y),0};
+////				add point([float(aa.x),float(aa.y),0]) to: ltt;
+////			} 
+////			self.element_shape <- polyline (ltt,0.1);
+////			write element_shape;
+////			write (a at "shape")[0];
+//			
+////		point ori <- {float(data[9]),float(data[10])};
+////					point des <- {float(data[11]),float(data[12])};
+////					point loc <- {float(data[13]),float(data[14])}; 
+////					shape <- polyline([ori,des]);
+//		self.element_shape <- geometry(a at "shape");}
+//		else
+//		{
+//			self.element_shape <- geometry(a at "shape");
+//		} 		
 	}
 	
 	map<string,string> build_map_from_attribute
 	{
-		map<string,string> res <- ["id"::string(id),
+		map<string,string> res <- [
+			"OBJECT_TYPE"::"action_done",
+			"id"::string(id),
 			"element_id"::string(element_id),
 			"commune_name"::string(commune_name),
 			"command"::string(command),
 			"label"::string(label),
 			"cost"::string(cost),
-			"application_round"::string(application_round),
-			"round_delay"::string(round_delay), 
+			"initial_application_round"::string(initial_application_round),
 			"action_type"::string(action_type),
 			"previous_ua_name"::string(previous_ua_name),
 			"isExpropriation"::bool(isExpropriation),
 			"inProtectedArea"::bool(inProtectedArea),
-			"inLittoralArea"::bool(inLittoralArea),
+			"inCoastBorderArea"::bool(inCoastBorderArea),
 			"inRiskArea"::bool(inRiskArea),
 			"isInlandDike"::bool(isInlandDike),
 			"command_round"::string(command_round)
@@ -768,7 +834,7 @@ species action_done schedules:[]
 						x<-x+2;
 						draw "En zone protégée" at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
 					}
-					if inLittoralArea {
+					if inCoastBorderArea {
 						x<-x+2;
 						draw "Dans les 400m litroal"  at:{location.x - 4#m, location.y+x} font: font("Arial", 14 , #plain) color:#black;
 					}
@@ -816,55 +882,122 @@ species commune
 	bool not_updated <- false;
 	geometry shape <- rectangle(50#m,10#m);
 	bool is_selected -> {selected_commune = self};
+	list<lever> levers ;
 	
 	// Indicateurs calculés par le Modèle à l’initialisation. Lorsque Leader se connecte, le Modèle lui renvoie la valeur de ces indicateurs en même temps	
-	float length_dikes_t0 <- 0#m; //linéaire de digues existant / commune
-	float length_dunes_t0 <- 0#m; //linéaire de dune existant / commune
+	int length_dikes_t0 <- 0#m; //linéaire de digues existant / commune
+	int length_dunes_t0 <- 0#m; //linéaire de dune existant / commune
 	int count_UA_urban_t0 <-0; //nombre de cellules de bâtis (U , AU), Us et AUs)
 	int count_UA_UandAU_inCoastBorderArea_t0 <-0; //nombre de cellules de bâtis (non adapté) en zone littoral (<400m) ZL
-	int count_UA_urban_infloodRiskArea <-0; //nombre de cellules de bâtis en zone inondable (ZI)
-	int count_UA_urban_dense_infloodRiskArea <-0; //nombre de cellules denses en ZI
-	int count_UA_urban_dense_inCoastBorderArea <-0; //nombre de cellules denses en ZL (zone littoral)
-	int count_UA_A <-0; // nombre de cellule A
-	int count_UA_N <- 0; // nombre de cellul N 
-	int count_UA_AU <- 0; // nombre de cellul AU
-	int count_UA_U <- 0; // nombre de cellul U
+	int count_UA_urban_infloodRiskArea_t0 <-0; //nombre de cellules de bâtis en zone inondable (ZI)
+	int count_UA_urban_dense_infloodRiskArea_t0 <-0; //nombre de cellules denses en ZI
+	int count_UA_urban_dense_inCoastBorderArea_t0 <-0; //nombre de cellules denses en ZL (zone littoral)
+	int count_UA_A_t0 <-0; // nombre de cellule A
+	int count_UA_N_t0 <- 0; // nombre de cellul N 
+	int count_UA_AU_t0 <- 0; // nombre de cellul AU
+	int count_UA_U_t0 <- 0; // nombre de cellul U
 	
 	//Indicateurs actualisés par Leader à chaque fois qu’il reçoit une nouvelle action_done
-	float length_dike_created <- 0;//linéaire de digue construit
+	int length_dike_created <- 0;//linéaire de digue construit
+	int length_dike_raised <- 0; //Linéaires de digue ayant eu une opération de rehaussement.
+	int length_dike_repaired <- 0;//Linéaires de digue ayant eu une opération de rénovation 
+	int count_AUorUi_inCoastBorderArea <- 0; //nombre d’opérations de construction non adaptée (passage en AU) ou d’opérations de densification en zone littorale (<400m)
+	int count_AUorUi_inRiskArea <- 0; //	nombre d’opérations de construction (passage en AU, ou AUs) / ou d’opérations de densification en zone inondable
+	int length_ganivelle_created <- 0; //linéaire de ganivelles
+	int count_Us <- 0; //nombre d’opérations de construction en habitat adapté 
+	int count_Us_outCoastBorderOrRiskArea <- 0; //nombre d’opérations de construction en habitat adapté hors ZL ou ZI
+	int count_Us_inCoastBorderArea <- 0; //nombre d’opérations de construction en habitat adapté en zone littoral
+	int count_Us_inRiskArea <- 0; //nombre d’opérations de construction en habitat adapté en zone inondable
+
 //linéaire de rétro-digue construit (au delà de XXm)
 //linéaire de digues démantelées
-//Linéaires de digue ayant eu une opération de rehaussement.
-//Linéaires de digue ayant eu une opération de rénovation 
-//linéaire de ganivelles
 //n° du tour de la dernière construction de digue
 //n° du tour du dernier rehaussement de digue
 //n° du tour de la dernière rénovation de digue
-//nombre d’opérations de construction non adaptée (passage en AU) ou d’opérations de densification en zone littorale (<400m)
-//nombre d’opérations de construction (passage en AU, ou AUs) / ou d’opérations de densification en zone inondable
 //nombre d’opérations de densification hors ZL/ZI
 //nombre d’opérations d’expropriation
 //nombre d’opérations de construction
-//nombre d’opérations de construction en habitat adapté 
-//nombre d’opérations de construction en habitat adapté en zone littoral
-//nombre d’opérations de construction en habitat adapté en zone inondable
+
 //nombre de cellule A qui passe en N
 
+	
+	
 	action update_indicators_with (action_done act)
 	{	if act.is_applied {write "gros problème. le traitement se fait trop tard";}
-		if act.action_type = 'dike' and act.command = ACTION_CREATE_DIKE
-			{length_dike_created <- length_dike_created + act.element_shape.perimeter;}
+		if act.command = ACTION_CREATE_DIKE
+			{	//write ""+polyline(act.element_shape );
+				//write  act.element_shape.perimeter;
+				length_dike_created <- length_dike_created + act.element_shape.perimeter;
+				ask lever_dike_creation where(each.my_commune = self) {
+					do register_and_check_activation(act);
+				}
+			}
+		if act.command = ACTION_RAISE_DIKE
+			{
+				length_dike_raised <- length_dike_raised + act.element_shape.perimeter;
+				ask lever_raise_dike where(each.my_commune = self) {
+					do register_and_check_activation(act);
+				}
+			}
+		if act.command = ACTION_REPAIR_DIKE
+			{
+				length_dike_repaired <- length_dike_repaired + act.element_shape.perimeter;
+				ask lever_repair_dike where(each.my_commune = self) {
+					do register_and_check_activation(act);
+				}
+			}	
+		if  act.inCoastBorderArea and act.command in [ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_AU] and act.previous_ua_name != "Us"
+		{
+			count_AUorUi_inCoastBorderArea <- count_AUorUi_inCoastBorderArea+1;
+			ask lever_AUorUi_inCoastBorderArea where(each.my_commune = self) {
+					do register_and_check_activation(act);
+				}
+		}
+		if  act.inRiskArea and act.command in [ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_AU]
+		{
+			count_AUorUi_inRiskArea <- count_AUorUi_inRiskArea+1;
+			ask lever_AUorUi_inRiskArea where(each.my_commune = self) {
+					do register_and_check_activation(act);
+				}
+		}
+		if act.command = ACTION_INSTALL_GANIVELLE
+		{
+			length_ganivelle_created <- length_ganivelle_created + act.element_shape.perimeter;
+			ask lever_ganivelle where(each.my_commune = self) {
+				do register_and_check_activation(act);
+			}
+		}
+		if act.command = ACTION_MODIFY_LAND_COVER_Us
+		{
+			count_Us <- count_Us +1;
+			if act.inCoastBorderArea {
+				count_Us_inCoastBorderArea <- count_Us_inCoastBorderArea +1;
+				}
+			if act.inRiskArea {
+				count_Us_inRiskArea <- count_Us_inRiskArea +1;
+			}
+			if (!act.inRiskArea) and (!act.inCoastBorderArea) {
+				count_Us_outCoastBorderOrRiskArea <- count_Us_outCoastBorderOrRiskArea +1;
+				ask lever_Us_outCoastBorderOrRiskArea where(each.my_commune = self) {
+						do register_and_check_activation(act);
+					}
+			} 
+		}
 	}
 	
-	action checkLeverActivation 
-	{
-		//le joueur construit des digues
-		if length_dike_created / length_dikes_t0 > 0.2 
-			{
-			//appliquer le levier correspondant
-			write "le joueur construit des digues-> appliquer le levier correspondant";
-			}
-	}
+//	FINALLELENT LE REGSITER EST INTERGRE DS L UPDATE_INDICATORS
+// action register_action_in_levers (action_done act_done)
+//	{
+//		ask levers {do register_and_check_activation(act_done);}
+//		 
+//	}
+//		//le joueur construit des digues
+//		if length_dike_created / length_dikes_t0 > 0.2 
+//			{
+//			//appliquer le levier correspondant
+//			write "le joueur construit des digues-> appliquer le levier correspondant";
+//			}
+//	}
 	
 	aspect base
 	{
@@ -872,6 +1005,387 @@ species commune
 		draw com_large_name at:{location.x - 4.5#m, location.y} color:#white;
 	}
 }
+
+
+species activated_lever 
+{
+	action_done act_done;
+	float activation_time;
+	bool applied <- false;
+	
+	//attributes sent through network
+	int id <- length(activated_lever);
+	string commune_name;
+	string lever_type;
+	string lever_explanation <- "";
+	string act_done_id <- "";
+	int nb_rounds_delay <-0;
+	int added_cost <- 0;
+	
+	action init_from_map(map<string, string> m )
+	{
+		id <- int(m["id"]);
+		lever_type <- m["lever_type"];
+		commune_name <- m["commune_name"];
+		act_done_id <- m["act_done_id"];
+		added_cost <- int(m["added_cost"]);
+		nb_rounds_delay <- int(m["nb_rounds_delay"]);
+		lever_explanation <- m["lever_explanation"];
+	}
+	
+	map<string,string> build_map_from_attribute
+	{
+		map<string,string> res <- [
+			"OBJECT_TYPE"::"activated_lever",
+			"id"::id,
+			"lever_type"::lever_type,
+			"commune_name"::commune_name,
+			"act_done_id"::string(act_done_id),
+			"added_cost"::string(added_cost),
+			"nb_rounds_delay"::int(nb_rounds_delay),
+			"lever_explanation"::lever_explanation
+			 ]	;
+		return res;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+//////////					LEVER 
+//////////////////////////////////////////////////////////////
+
+species lever 
+{
+	commune my_commune ;
+	bool status_on <- true  ;// can be on or off . If off then the checkLeverActivation is not performed
+	float threshold;
+	float indicator;
+	bool should_be_activated -> {indicator > threshold };
+	bool threshold_reached <- false;
+	bool timer_activated -> {!empty(activation_queue)};
+	bool has_activated_levers -> {!empty(activated_levers)};
+	float timer_duration <- 5000;// 1 minute = 60000 milliseconds
+	list<action_done> associated_actions;
+	list<activated_lever> activation_queue;
+	list<activated_lever> activated_levers;
+	string profile_name<-"";
+	string lever_type <-"";
+	string progression_bar<-"";
+	string help_lever_msg <-"";
+	string player_msg;
+	int horizontal_position<-0;
+	int vertical_position ;
+	string activation_label_L1<-"";
+	string activation_label_L2<-"";
+	geometry shape <- rectangle (9,3);
+	point origin -> { location - {4.2,0.9} } ;
+	
+	action register_and_check_activation (action_done act_done)
+	{
+		add act_done to: associated_actions;
+		if  status_on
+		{
+			if should_be_activated
+			{
+				threshold_reached <- true;
+				do queue_activated_lever(act_done);
+			}
+			else {threshold_reached <- false;}	
+		}
+	} 
+	
+	
+	action apply_lever(activated_lever lev){}
+	string info_of_next_activated_lever {return"";}
+	
+	action queue_activated_lever( action_done a_act_done)
+	{
+		create activated_lever number: 1 
+		{
+			lever_type <- myself.lever_type;
+			commune_name <- myself.my_commune.commune_name;
+			self.act_done <- a_act_done;
+			act_done_id <- a_act_done.id;
+			activation_time <-  machine_time + myself.timer_duration ;
+			add self to: myself.activation_queue;
+		}
+	}
+
+	action toogle_status 
+	{
+		status_on <- !status_on ;
+		if !status_on {
+			activation_queue <-[];
+		}
+	}
+	user_command "activer/désactiver le levier"action: toogle_status;
+	
+	float activation_time
+	{
+		return activation_queue[0].activation_time;
+	}
+	
+	reflex check_timer when: timer_activated
+	{
+		if machine_time > activation_time()
+		{
+			activated_lever act_lever <- activation_queue[0];
+			remove index: 0 from: activation_queue ;
+			add act_lever to: activated_levers;
+			do apply_lever(act_lever);
+		}
+	}
+	
+	int remaining_seconds 
+	{
+		return (int((activation_time() -machine_time) / 1000));
+	}
+	
+	int tot_lever_amont 
+	{
+		return activated_levers sum_of (each.added_cost);
+	}
+	
+	action cancel_next_activated_action
+	{		
+			remove index: 0 from: activation_queue ;
+	}
+
+	user_command "Annuler la prochaine application du levier"action: cancel_next_activated_action;	
+
+	rgb color_profile
+	{
+		switch profile_name
+		{
+			match "batisseur" {return #deepskyblue;}
+			match "défense douce" {return #lightgreen;}
+			match "retrait" {return #moccasin;}
+			match "" {return #darkgrey;}
+			default {return #red;}
+		}	
+	}
+	aspect base
+	{
+		if timer_activated {draw shape+0.2#m color: #red;}
+		draw shape color: color_profile() border:#black;
+		draw lever_type +' ('+length(associated_actions)+')' at:{origin.x, origin.y} font: font("Arial", 14 , #bold) color:#black;
+		float v_pos <-0.5;
+		draw progression_bar at:{origin.x , origin.y+v_pos} font: font("Arial", 14 , #plain) color: threshold_reached?#red:#black;
+		v_pos<-v_pos+0.4;
+		if timer_activated {
+				draw string(remaining_seconds())+" sec "+(length(activation_queue)=1?"":"("+length(activation_queue)+")")+"-> " + info_of_next_activated_lever() at:{origin.x, origin.y+v_pos} font: font("Arial", 14 , #plain) color:#black;
+			}
+		v_pos<-v_pos+0.4;
+		if has_activated_levers {
+				draw activation_label_L1 at:{origin.x, origin.y+v_pos} font: font("Arial", 14 , #plain) color:#black;
+				v_pos<-v_pos+0.4;
+				draw activation_label_L2 at:{origin.x, origin.y+v_pos} font: font("Arial", 14 , #plain) color:#black;
+			}
+		if !status_on {draw shape+0.1#m color: rgb(200,200,200,160) ;}
+	}
+}
+
+
+species cost_lever parent: lever
+{
+	float added_cost_percentage;
+	int last_lever_amount <-0; 
+	
+	string info_of_next_activated_lever 
+	{
+		return ""+int(activation_queue[0].act_done.element_shape.perimeter) + " m. (" + int(activation_queue[0].act_done.cost * added_cost_percentage) + ' Bs.)';
+	}
+	
+	action apply_lever(activated_lever lev)
+	{
+		lev.applied <- true;
+		write help_lever_msg;
+		lev.lever_explanation <- player_msg;
+		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
+		
+		ask world {do send_message_lever(lev) ;}
+		
+		last_lever_amount <-lev.added_cost;
+		activation_label_L1 <- "Dernier prélevement : "+last_lever_amount+ ' Bs.';
+		activation_label_L2 <- 'total prélevé : '+string(tot_lever_amont())+' Bs';
+	}
+}
+
+species lever_dike_creation parent: cost_lever
+{
+	float indicator -> {my_commune.length_dike_created / my_commune.length_dikes_t0};
+	string progression_bar -> {""+my_commune.length_dike_created+ " m. construits  / "+ my_commune.length_dikes_t0+" m. à t0"};
+	
+	init
+		{
+		horizontal_position <- 5;
+		lever_type <- LEVER_DIKE_CREATION;
+		profile_name<-"batisseur";
+		threshold <- 0.2;
+		added_cost_percentage <- 0.25 ;
+		help_lever_msg <-"prélevement de la commune au prorata du linéaire construit : "+int(100*added_cost_percentage)+"% du prix de construction";
+		player_msg <- "Les autorites reorientent leur politique : vos actions vous coutent plus cher que prevu";	
+		}
+}
+
+species lever_raise_dike parent: cost_lever
+{
+	float indicator -> {my_commune.length_dike_raised / my_commune.length_dikes_t0};
+	string progression_bar -> {""+my_commune.length_dike_raised+ " m. réhaussés / "+ my_commune.length_dikes_t0+" m. à t0"};
+	init
+		{
+		horizontal_position <- 15;
+		lever_type <- LEVER_RAISE_DIKE;
+		profile_name<-"batisseur";
+		threshold <- 0.2;
+		added_cost_percentage <- 0.25 ;
+		help_lever_msg <-"prélevement de la commune au prorata du linéaire réhaussé : "+int(100*added_cost_percentage)+"% du prix de réhaussement";
+		player_msg <- "Les autorites reorientent leur politique : vos actions vous coutent plus cher que prevu";
+		}
+}
+
+species lever_repair_dike parent: cost_lever
+{
+	float indicator -> {my_commune.length_dike_repaired / my_commune.length_dikes_t0};
+	bool should_be_activated -> {indicator > threshold and (my_commune.length_dike_created != 0 or my_commune.length_dike_raised != 0)};
+	string progression_bar -> {""+my_commune.length_dike_repaired+ " m. réparés / "+ my_commune.length_dikes_t0+" m. à t0"};
+	
+	init
+		{
+		horizontal_position <- 25;
+		lever_type <- LEVER_REPAIR_DIKE;
+		profile_name<-"batisseur";
+		threshold <- 0.2;
+		added_cost_percentage <- 0.25 ;
+		help_lever_msg <-"prélevement de la commune au prorata du linéaire rénové : "+int(100*added_cost_percentage)+"% du prix de rénovation ; si a aussi construit ou réhaussé";
+		player_msg <- "Les coûts dans les BTP augmentent considérablement";
+		}
+}
+
+species lever_AUorUi_inCoastBorderArea parent: lever
+{
+	int rounds_delay_added <- 2;
+	
+	string progression_bar -> {""+indicator + " actions / "+ int(threshold) + " max"};
+	int indicator -> {my_commune.count_AUorUi_inCoastBorderArea};
+	
+	init
+		{
+		horizontal_position <- 35;
+		lever_type <- LEVER_AUorUi_inCoastBorderArea;
+		profile_name<-"batisseur";
+		threshold <- 2;
+		help_lever_msg <-"Retard de "+rounds_delay_added+" tours";
+		player_msg <- "Un renforcement de la loi Littoral retarde vos projets";	
+		}
+		
+	string info_of_next_activated_lever 
+	{
+		switch activation_queue[0].act_done.command 
+		{
+			match ACTION_MODIFY_LAND_COVER_AU {return "Prochaine action : Construction";}
+			match ACTION_MODIFY_LAND_COVER_Ui {return "Prochaine action : Densification";}
+		} 
+	}
+	
+	action apply_lever(activated_lever lev)
+	{
+		lev.applied <- true;
+		write help_lever_msg;
+		lev.lever_explanation <- player_msg;
+		lev.nb_rounds_delay <- rounds_delay_added;
+		
+		ask world {do send_message_lever(lev) ;}
+		
+		activation_label_L1 <- "Cas de construction : "+length(activated_levers where(each.act_done.command = ACTION_MODIFY_LAND_COVER_AU) );
+		activation_label_L2 <- "Cas de densification : "+length(activated_levers where(each.act_done.command = ACTION_MODIFY_LAND_COVER_Ui) );
+	}
+}
+
+species lever_AUorUi_inRiskArea parent: cost_lever
+{
+	string progression_bar -> {""+indicator + " actions / "+ int(threshold) + " max"};
+	int indicator -> {my_commune.count_AUorUi_inRiskArea};
+	
+	init
+		{
+		horizontal_position <- 45;
+		lever_type <- LEVER_AUorUi_inRiskArea;
+		profile_name<-"batisseur";
+		threshold <- 2;
+		added_cost_percentage <- 0.5 ;
+		help_lever_msg <-"prélevement de la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de construction";
+		player_msg <- "Les coûts dans les BTP augmentent considérablement";	
+		}
+		
+	string info_of_next_activated_lever 
+	{
+		switch activation_queue[0].act_done.command 
+		{
+			match ACTION_MODIFY_LAND_COVER_AU {return "Prochaine action : Construction";}
+			match ACTION_MODIFY_LAND_COVER_Ui {return "Prochaine action : Densification";}
+		} 
+	}
+}
+
+species lever_ganivelle parent: cost_lever
+{
+	string progression_bar -> {""+my_commune.length_ganivelle_created+ " m. ganivelles / "+ my_commune.length_dunes_t0+" m. dunes"};
+	int indicator -> {my_commune.length_ganivelle_created / my_commune.length_dunes_t0};
+	
+	init
+		{
+		horizontal_position <- 55;
+		lever_type <- LEVER_GANIVELLE;
+		profile_name<-"défense douce";
+		threshold <- 0.1;
+		added_cost_percentage <- -0.25 ;
+		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de ganivelle/m";
+		player_msg <- "Le gouvernement encourage les pratiques vertueuses de gestion intégrée des risques";
+		}
+}
+
+species lever_Us_outCoastBorderOrRiskArea parent: cost_lever
+{
+	string progression_bar -> {""+indicator + " actions / "+ int(threshold) + " max"};
+	int indicator -> {my_commune.count_Us_outCoastBorderOrRiskArea};
+	int rounds_delay_added <- -2;
+	
+	init
+		{
+		horizontal_position <- 65;
+		lever_type <- LEVER_Us_outCoastBorderOrRiskArea;
+		profile_name<-"défense douce";
+		threshold <- 2;
+		added_cost_percentage <- -0.25 ;
+		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût d'adaptation ET avance de "+rounds_delay_added+" tours le dossier";
+		player_msg <- "Le gouvernement encourage les pratiques vertueuses de gestion intégrée des risques";
+		}
+	
+	string info_of_next_activated_lever 
+	{
+		switch activation_queue[0].act_done.command 
+		{
+			match ACTION_MODIFY_LAND_COVER_AU {return "Prochaine action : Construction";}
+			match ACTION_MODIFY_LAND_COVER_Ui {return "Prochaine action : Densification";}
+		} 
+	}
+	action apply_lever(activated_lever lev)
+	{
+		lev.applied <- true;
+		write help_lever_msg;
+		lev.lever_explanation <- player_msg;
+		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
+		lev.nb_rounds_delay <- rounds_delay_added;
+		
+		ask world {do send_message_lever(lev) ;}
+		
+		last_lever_amount <-lev.added_cost;
+		activation_label_L1 <- "Dernier versement : "+(-1*last_lever_amount)+ ' Bs.';
+		activation_label_L2 <- 'Total versé : '+string((-1*tot_lever_amont()))+' Bs';
+	}
+}
+
+///////////////////////////////////////
 
 
 species network_leader skills:[network]
@@ -885,6 +1399,9 @@ species network_leader skills:[network]
 		do send to:GAME_LEADER_MANAGER contents:msg;
 		map<string, unknown> msg <-[]; 
 		put ASK_INDICATORS_T0 key: LEADER_COMMAND in: msg;
+		do send to:GAME_LEADER_MANAGER contents:msg;
+		map<string, unknown> msg <-[]; 
+		put "RETREIVE_ACTION_DONE" key: LEADER_COMMAND in: msg;
 		do send to:GAME_LEADER_MANAGER contents:msg;
 	}
 	
@@ -913,13 +1430,13 @@ species network_leader skills:[network]
 							length_dunes_t0 <- float (m_contents['length_dunes_t0']);
 							count_UA_urban_t0 <- int (m_contents['count_UA_urban_t0']);
 							count_UA_UandAU_inCoastBorderArea_t0 <- int (m_contents['count_UA_UandAU_inCoastBorderArea_t0']);
-							count_UA_urban_infloodRiskArea <- int (m_contents['count_UA_urban_infloodRiskArea']);
-							count_UA_urban_dense_infloodRiskArea <- int (m_contents['count_UA_urban_dense_infloodRiskArea']);
-							count_UA_urban_dense_inCoastBorderArea <- int (m_contents['count_UA_urban_dense_inCoastBorderArea']);
-							count_UA_A <- int (m_contents['count_UA_A']);
-							count_UA_N <- int (m_contents['count_UA_N']);
-							count_UA_AU <- int (m_contents['count_UA_AU']);
-							count_UA_U <- int (m_contents['count_UA_U']);		
+							count_UA_urban_infloodRiskArea_t0 <- int (m_contents['count_UA_urban_infloodRiskArea_t0']);
+							count_UA_urban_dense_infloodRiskArea_t0 <- int (m_contents['count_UA_urban_dense_infloodRiskArea_t0']);
+							count_UA_urban_dense_inCoastBorderArea_t0<- int (m_contents['count_UA_urban_dense_inCoastBorderArea_t0']);
+							count_UA_A_t0 <- int (m_contents['count_UA_A_t0']);
+							count_UA_N_t0 <- int (m_contents['count_UA_N_t0']);
+							count_UA_AU_t0 <- int (m_contents['count_UA_AU_t0']);
+							count_UA_U_t0 <- int (m_contents['count_UA_U_t0']);		
 						}
 					}
 			}
@@ -929,9 +1446,9 @@ species network_leader skills:[network]
 	
 	action update_action(map<string,string> msg)
 	{
-		int m_id <- int(msg at "id");
-		
-		list<action_done> act_done <- action_done where(each.id = m_id);
+		string m_id <- (msg at "id");
+		list<action_done> act_done <- action_done where(each.id = (msg at "id"));
+		//write "action correspondant à id '"+m_id+"' : " +act_done;
 		
 		if(act_done = nil or length(act_done) = 0)
 		// Il s'agit d'une nouvelle action commandé par un joueur
@@ -947,7 +1464,7 @@ species network_leader skills:[network]
 				}
 				ask commune first_with (each.commune_name = commune_name) {
 					do update_indicators_with (myself);
-					do checkLeverActivation;
+					//  do register_action_in_levers (myself);  FINLALEMENT INTERGER DSN LE UPDATE_INDCIATORS
 				}
 			}
 			
@@ -999,9 +1516,18 @@ experiment lead_the_game
 			event mouse_move action: button_action_move;
 			
 		}
-		display triangle
+		display levers 
 		{
-			
+			graphics "leviers" position:{0,0} 
+			{
+			}
+			species lever_dike_creation aspect:base;
+			species lever_AUorUi_inCoastBorderArea aspect: base;
+			species lever_AUorUi_inRiskArea aspect: base;
+			species lever_raise_dike aspect: base;
+			species lever_repair_dike aspect: base;
+			species lever_ganivelle aspect: base;
+			species lever_Us_outCoastBorderOrRiskArea aspect: base;
 		}
 	}
 

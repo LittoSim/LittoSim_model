@@ -190,13 +190,16 @@ init
 		listC[i] <- blend (listC[i], #red , 0.9);
 		}
 		
-		if activemq_connect {create network_leader number:1;}
+		if activemq_connect {
+			create network_leader number:1;
+			create network_player number:1 ;
+			create network_activated_lever number: 1;
+		}
 		
 		do implementation_tests;
 		/* initialisation du bouton */
 		do init_buttons;
 		stateSimPhase <- 'not started';
-		if activemq_connect {create network_player number:1 ; }
 
 		/*Creation des agents a partir des données SIG */
 		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), commune_name_shpfile::string(read("Commune"))
@@ -642,12 +645,13 @@ species data_retreive skills:[network] schedules:[]
 	action send_data_to_commune(commune m)
 	{
 		write "send data.... to "+ m.network_name;
-		do init_dikes(m);
-		do init_cells(m);
-		do init_action(m);
+		do retreive_def_cote(m);
+		do retreive_UA(m);
+		do retreive_action_done(m);
+		do retreive_activated_lever(m);
 	}
 	
-	action init_dikes(commune aCommune)
+	action retreive_def_cote(commune aCommune)
 	{	
 		list<def_cote> def_list <- def_cote where(each.commune_name_shpfile = world.commune_name_shpfile_of_commune_name(aCommune.commune_name));
 		def_cote tmp;
@@ -659,7 +663,7 @@ species data_retreive skills:[network] schedules:[]
 		
 	}
 	
-	action init_cells(commune m)
+	action retreive_UA(commune m)
 	{
 		UA tmp<- nil;
 		loop tmp over:m.UAs
@@ -669,11 +673,22 @@ species data_retreive skills:[network] schedules:[]
 		}
 	}
 
-	action init_action(commune m)
+	action retreive_action_done(commune m)
 	{
 		list<action_done> action_list <- action_done where(each.commune_name = m.commune_name);
 		action_done tmp<- nil;
 		loop tmp over:action_list 	
+		{
+			write "send to "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
+			do send 	to:m.network_name+"_retreive" contents:tmp.build_map_from_attribute();
+		}
+	}
+	
+	action retreive_activated_lever(commune m)
+	{
+		list<activated_lever> lever_list <- activated_lever where(each.commune_name = m.commune_name);
+		activated_lever tmp<- nil;
+		loop tmp over:lever_list 	
 		{
 			write "send to "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
 			do send 	to:m.network_name+"_retreive" contents:tmp.build_map_from_attribute();
@@ -684,44 +699,47 @@ species data_retreive skills:[network] schedules:[]
 
 species action_done schedules:[]
 {
-	int id;
+	string id;
 	int element_id;
 	string commune_name<-"";
 	bool not_updated <- false;
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	int command_round<- -1;
 	string label <- "no name";
-	float cost <- 0.0;	
-	int application_round <- -1;
-	int round_delay <- 0 ; // nb rounds of delay
+	int initial_application_round <- -1;
+	int round_delay -> {activated_levers sum_of (each.nb_rounds_delay)} ; // nb rounds of delay
+	int actual_application_round -> {initial_application_round+round_delay};
 	bool is_delayed ->{round_delay>0} ;
+	float cost <- 0.0;
+	int added_cost -> {activated_levers sum_of (each.added_cost)} ;
+	float actual_cost -> {cost+added_cost};
+	bool has_added_cost ->{added_cost>0} ;
 	bool is_sent <-true;
+	bool is_sent_to_leader <-false;
 	bool is_applied <- false;
-	//string command_group <- "";
-	bool should_be_applied ->{round >= application_round} ;
-	// attributs ajouté par NB dans la specie action_done (modèle oleronV2.gaml) pour avoir les infos en plus sur les actions réalisés, nécessaires pour que le leader puisse applique des leviers
+	bool should_be_applied ->{round >= actual_application_round} ;
 	string action_type <- "dike" ; //can be "dike" or "PLU"
 	string previous_ua_name <-"";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
-	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+	bool inCoastBorderArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	bool is_alive <- true;
+	list<activated_lever> activated_levers <-[];
 	
 	action init_from_map(map<string, string> a )
 	{
-		self.id <- int(a at "id");
+		self.id <- string(a at "id");
 		self.element_id <- int(a at "element_id");
 		self.commune_name <- a at "commune_name";
 		self.command <- int(a at "command");
 		self.label <- a at "label";
 		self.cost <- float(a at "cost");
-		self.application_round <- int(a at "application_round");
-		self.round_delay <- int(a at "round_delay");
+		self.initial_application_round <- int(a at "initial_application_round");
 		self.isInlandDike <- bool(a at "isInlandDike");
 		self.inRiskArea <- bool(a at "inRiskArea");
-		self.inLittoralArea <- bool(a at "inLittoralArea");
+		self.inCoastBorderArea <- bool(a at "inCoastBorderArea");
 		self.isExpropriation <- bool(a at "isExpropriation");
 		self.inProtectedArea <- bool(a at "inProtectedArea");
 		self.previous_ua_name <- string(a at "previous_ua_name");
@@ -763,11 +781,10 @@ species action_done schedules:[]
 			"command"::string(command),
 			"label"::string(label),
 			"cost"::string(cost),
-			"application_round"::string(application_round),
-			"round_delay"::string(round_delay),
+			"initial_application_round"::string(initial_application_round),
 			"isInlandDike"::string(isInlandDike),
 			"inRiskArea"::string(inRiskArea),
-			"inLittoralArea"::string(inLittoralArea),
+			"inCoastBorderArea"::string(inCoastBorderArea),
 			"isExpropriation"::string(isExpropriation),
 			"inProtectedArea"::string(inProtectedArea),
 			"previous_ua_name"::string(previous_ua_name),
@@ -801,7 +818,7 @@ species action_done schedules:[]
 			shape <- rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} );
 			draw shape color:#white;
 			string txt <- commune_name+": "+ label;
-			txt <- txt +" ("+string(application_round-round)+")"; 
+			txt <- txt +" ("+string(initial_application_round-round)+")"; 
 			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
 			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
 		
@@ -865,13 +882,13 @@ species network_leader skills:[network]
 			write "command " + cmd;
 			switch(cmd)
 			{
-				match RETARDER
-				{
-					int id_action <- m_contents[ACTION_ID];
-					int delais <- m_contents[DELAY];
-					action_done dd <- action_done first_with(each.id=id_action);
-					do retarder_action(dd,delais);
-				}
+//				match RETARDER
+//				{
+//					int id_action <- m_contents[ACTION_ID];
+//					int delais <- m_contents[DELAY];
+//					action_done dd <- action_done first_with(each.id=id_action);
+//					do retarder_action(dd,delais);
+//				}
 				match SUBVENTIONNER
 				{
 					int id_commune <- m_contents[COMMUNE];
@@ -890,13 +907,13 @@ species network_leader skills:[network]
 					commune com <- commune first_with(each.id=id_commune);
 					do percevoir(com,amount);
 				}
-				match LEVER_RETARD
-				{
-					int id_action <- m_contents[ACTION_ID];
-					action_done dd <- action_done first_with(each.id=id_action);
-					
-					do appliquer_action(dd);
-				}
+//				match LEVER_RETARD
+//				{
+//					int id_action <- m_contents[ACTION_ID];
+//					action_done dd <- action_done first_with(each.id=id_action);
+//					
+//					do appliquer_action(dd);
+//				}
 				
 				match ASK_NUM_ROUND {
 					do informLeader_round_number;
@@ -904,6 +921,9 @@ species network_leader skills:[network]
 
 				match ASK_INDICATORS_T0 {
 					do informLeader_Indicators_t0;
+				}
+				match "RETREIVE_ACTION_DONE" {
+					ask action_done {is_sent_to_leader <- false ;}
 				}
 			}
 			
@@ -927,48 +947,48 @@ species network_leader skills:[network]
 					put length_dunes_t0 key: "length_dunes_t0" in: msg;
 					put count_UA_urban_t0 key: "count_UA_urban_t0" in: msg;
 					put count_UA_UandAU_inCoastBorderArea_t0 key: "count_UA_UandAU_inCoastBorderArea_t0" in: msg;
-					put count_UA_urban_infloodRiskArea key: "count_UA_urban_infloodRiskArea" in: msg;
-					put count_UA_urban_dense_infloodRiskArea key: "count_UA_urban_dense_infloodRiskArea" in: msg;
-					put count_UA_urban_dense_inCoastBorderArea key: "count_UA_urban_dense_inCoastBorderArea" in: msg;
-					put count_UA_A key: "count_UA_A" in: msg;
-					put count_UA_N key: "count_UA_N" in: msg;
-					put count_UA_AU key: "count_UA_AU" in: msg;
-					put count_UA_U key: "count_UA_U" in: msg;
+					put count_UA_urban_infloodRiskArea_t0 key: "count_UA_urban_infloodRiskArea_t0" in: msg;
+					put count_UA_urban_dense_infloodRiskArea_t0 key: "count_UA_urban_dense_infloodRiskArea_t0" in: msg;
+					put count_UA_urban_dense_inCoastBorderArea_t0 key: "count_UA_urban_dense_inCoastBorderArea_t0" in: msg;
+					put count_UA_A_t0 key: "count_UA_A_t0" in: msg;
+					put count_UA_N_t0 key: "count_UA_N_t0" in: msg;
+					put count_UA_AU_t0 key: "count_UA_AU_t0" in: msg;
+					put count_UA_U_t0 key: "count_UA_U_t0" in: msg;
 					ask myself {do send to:OBSERVER_NAME contents:msg;}
 					}		
 				}
 	
-	action retarder_action(action_done act, int duree)
-	{
-		ask act
-		{
-			round_delay <- round_delay + duree;
-			application_round <- application_round + duree; 
-			commune cm <-commune first_with (each.commune_name = commune_name);
-			ask network_player
-				{
-				string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+duree;
-				do send to:cm.network_name contents:msg;
-				}
-		}
-		
-	}
-	action appliquer_action(action_done act)
-	{
-		ask act
-			{
-				int tmp <- application_round - round;
-				round_delay <- round_delay - tmp;
-				application_round <- round; 
-				commune cm <-commune first_with (each.commune_name = commune_name);
-				ask network_player
-				{
-					string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+tmp;
-					do send to:cm.network_name contents:msg;
-				}
-		}
-		
-	}
+//	action retarder_action(action_done act, int duree)
+//	{
+//		ask act
+//		{
+//			round_delay <- round_delay + duree;
+//			initial_application_round <- initial_application_round + duree; 
+//			commune cm <-commune first_with (each.commune_name = commune_name);
+//			ask network_player
+//				{
+//				string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+duree;
+//				do send to:cm.network_name contents:msg;
+//				}
+//		}
+//		
+//	}
+//	action appliquer_action(action_done act)
+//	{
+//		ask act
+//			{
+//				int tmp <- initial_application_round - round;
+//				round_delay <- round_delay - tmp;
+//				initial_application_round <- round; 
+//				commune cm <-commune first_with (each.commune_name = commune_name);
+//				ask network_player
+//				{
+//					string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+tmp;
+//					do send to:cm.network_name contents:msg;
+//				}
+//		}
+//		
+//	}
 	action subventionner(commune cm, int montant)
 	{
 		cm.budget <- cm.budget + montant;
@@ -993,11 +1013,12 @@ species network_leader skills:[network]
 	
 	reflex send_action_state when: cycle mod 10 = 0
 	{
-		loop act_done over: action_done
+		loop act_done over: action_done where (!each.is_sent_to_leader)
 		{
 			map<string,string> msg <- act_done.build_map_from_attribute();
 			put UPDATE_ACTION_DONE key:OBSERVER_MESSAGE_COMMAND in:msg ;
 			do send to:OBSERVER_NAME contents:msg;
+			act_done.is_sent_to_leader <- true;
 			write "send message to leader "+ msg;
 			
 		}
@@ -1087,7 +1108,7 @@ species network_player skills:[network]
 			switch(command)
 			{
 				match REFRESH_ALL
-				{////  Pourquoi est ce que c'est dans Action_done ??
+				{////  Pourquoi est ce que REFRESH_ALL est une  Action_done ??
 					write " Update ALL !!!! " + idCom+ " "+ commune_name;
 					string dd <- commune_name;
 					commune cm <- first(commune where(each.id=idCom));
@@ -1251,8 +1272,8 @@ species network_player skills:[network]
 		{
 			self.command <- int(data[0]);
 			self.command_round <-round; 
-			self.id <- int(data[1]);
-			self.application_round <- int(data[2]);
+			self.id <- string(data[1]);
+			self.initial_application_round <- int(data[2]);
 			self.commune_name <- sender;
 			if !(self.command in [REFRESH_ALL])
 			{
@@ -1279,13 +1300,13 @@ species network_player skills:[network]
 					}
 				}
 				// calcul des attributs qui n'ont pas été calculé au niveau de Participatif et qui ne sont donc pas encore renseigné
-				//inLittoralArea  // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+				//inCoastBorderArea  // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 				//inRiskArea  // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 				//isInlandDike  // for dike action // ce sont les rétro-digues
 				if  self.shape intersects all_flood_risk_area 
 					{inRiskArea <- true;}
 				if  self.shape intersects first(coast_border_area)
-					{inLittoralArea <- true;}	
+					{inCoastBorderArea <- true;}	
 				if command = ACTION_CREATE_DIKE and not(self.shape intersects first(coast_dike_area))
 						{isInlandDike <- true;}
 				// finallement on recalcul aussi inProtectedArea meme si ca a été calculé au niveau de participatif, car en fait ce n'est pas calculé pour toutes les actions 
@@ -1368,9 +1389,12 @@ species network_player skills:[network]
 	
 	action acknowledge_application_of_action_done (action_done act)
 	{
-		string msg <- ""+ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+act.id;
-		commune aCommune <- commune first_with (each.commune_name = act.commune_name);
-		do send  to:aCommune.network_name contents:msg;
+		map<string,string> msg <- [
+			"TOPIC"::"action_done is_applied",
+			"commune_name"::act.commune_name,
+			"id"::act.id
+			];
+		do send  to:act.commune_name+"_map_msg" contents:msg;
 	}
 	
 	float min_dike_elevation(def_cote ovg)
@@ -1422,11 +1446,11 @@ species network_player skills:[network]
 			COMMAND_SEPARATOR + self.command +
 			COMMAND_SEPARATOR + self.label+
 			COMMAND_SEPARATOR + self.cost+
-			COMMAND_SEPARATOR + self.application_round +
+			COMMAND_SEPARATOR + self.initial_application_round +
 			COMMAND_SEPARATOR + self.round_delay +
 			COMMAND_SEPARATOR + self.isInlandDike +
 			COMMAND_SEPARATOR + self.inRiskArea +
-			COMMAND_SEPARATOR + self.inLittoralArea +
+			COMMAND_SEPARATOR + self.inCoastBorderArea +
 			COMMAND_SEPARATOR + self.isExpropriation +
 			COMMAND_SEPARATOR + self.inProtectedArea +
 			COMMAND_SEPARATOR + self.previous_ua_name +
@@ -1474,6 +1498,76 @@ species network_player skills:[network]
 }
 	
 
+species activated_lever 
+{
+	action_done act_done;
+	float activation_time;
+	bool applied <- false;
+	
+	//attributes sent through network
+	int id;
+	string commune_name;
+	string lever_type;
+	string lever_explanation <- "";
+	string act_done_id <- "";
+	int nb_rounds_delay <-0;
+	int added_cost <- 0;
+	
+	action init_from_map(map<string, string> m )
+	{
+		id <- int(m["id"]);
+		lever_type <- m["lever_type"];
+		commune_name <- m["commune_name"];
+		act_done_id <- m["act_done_id"];
+		added_cost <- int(m["added_cost"]);
+		nb_rounds_delay <- int(m["nb_rounds_delay"]);
+		lever_explanation <- m["lever_explanation"];
+	}
+	
+	map<string,string> build_map_from_attribute
+	{
+		map<string,string> res <- [
+			"OBJECT_TYPE"::"activated_lever",
+			"id"::id,
+			"lever_type"::lever_type,
+			"commune_name"::commune_name,
+			"act_done_id"::string(act_done_id),
+			"added_cost"::string(added_cost),
+			"nb_rounds_delay"::int(nb_rounds_delay),
+			"lever_explanation"::lever_explanation
+			 ]	;
+		return res;
+	}
+}
+
+species network_activated_lever skills:[network]
+{
+	init
+	{
+		do connect to:SERVER with_name:"activated_lever";	
+	}
+	
+	reflex wait_message
+	{
+		loop while:has_more_message()
+		{
+			message msg <- fetch_message();
+			string m_sender <- msg.sender;
+			map<string, string> m_contents <- msg.contents;
+			if empty(activated_lever where (each.id = int(m_contents["id"])))
+			{
+				create activated_lever number:1
+				{
+					do init_from_map(m_contents);
+					act_done <- action_done first_with (each.id = act_done_id);
+					commune aCommune <- commune first_with (each.commune_name = commune_name);
+					aCommune.budget <-aCommune.budget - added_cost; 
+					add self to:act_done.activated_levers;
+				}
+			}			
+		}	
+	}
+}
 	
 	
 /*
@@ -2215,13 +2309,13 @@ species commune
 	float length_dunes_t0 <- 0#m; //linéaire de dune existant / commune
 	int count_UA_urban_t0 <-0; //nombre de cellules de bâtis (U , AU), Us et AUs)
 	int count_UA_UandAU_inCoastBorderArea_t0 <-0; //nombre de cellules de bâtis (non adapté) en zone littoral (<400m) ZL
-	int count_UA_urban_infloodRiskArea <-0; //nombre de cellules de bâtis en zone inondable (ZI)
-	int count_UA_urban_dense_infloodRiskArea <-0; //nombre de cellules denses en ZI
-	int count_UA_urban_dense_inCoastBorderArea <-0; //nombre de cellules denses en ZL (zone littoral)
-	int count_UA_A <-0; // nombre de cellule A
-	int count_UA_N <- 0; // nombre de cellul N 
-	int count_UA_AU <- 0; // nombre de cellul AU
-	int count_UA_U <- 0; // nombre de cellul U
+	int count_UA_urban_infloodRiskArea_t0 <-0; //nombre de cellules de bâtis en zone inondable (ZI)
+	int count_UA_urban_dense_infloodRiskArea_t0 <-0; //nombre de cellules denses en ZI
+	int count_UA_urban_dense_inCoastBorderArea_t0 <-0; //nombre de cellules denses en ZL (zone littoral)
+	int count_UA_A_t0 <-0; // nombre de cellule A
+	int count_UA_N_t0 <- 0; // nombre de cellul N 
+	int count_UA_AU_t0 <- 0; // nombre de cellul AU
+	int count_UA_U_t0 <- 0; // nombre de cellul U
 
 	aspect base
 	{
@@ -2252,13 +2346,13 @@ species commune
 			length_dunes_t0 <- my_def_cote where (each.type_def_cote = 'dune') sum_of (each.shape.perimeter);
 			count_UA_urban_t0 <- length (UAs where (each.isUrbanType));
 			count_UA_UandAU_inCoastBorderArea_t0 <- length (UAs where (each.isUrbanType and not(each.isAdapte) and each intersects first(coast_border_area)));
-			count_UA_urban_infloodRiskArea <- length (UAs where (each.isUrbanType and each intersects all_flood_risk_area));
-			count_UA_urban_dense_infloodRiskArea <- length (UAs where (each.isUrbanType and each.classe_densite = 'dense' and each intersects all_flood_risk_area));
-			count_UA_urban_dense_inCoastBorderArea <- length (UAs where (each.isUrbanType and each.classe_densite = 'dense' and each intersects union(coast_border_area)));
-			count_UA_A <- length (UAs where (each.ua_name = 'A'));
-			count_UA_N <- length (UAs where (each.ua_name = 'N'));
-			count_UA_AU <- length (UAs where (each.ua_name = 'AU'));
-			count_UA_U <- length (UAs where (each.ua_name = 'U'));
+			count_UA_urban_infloodRiskArea_t0 <- length (UAs where (each.isUrbanType and each intersects all_flood_risk_area));
+			count_UA_urban_dense_infloodRiskArea_t0 <- length (UAs where (each.isUrbanType and each.classe_densite = 'dense' and each intersects all_flood_risk_area));
+			count_UA_urban_dense_inCoastBorderArea_t0 <- length (UAs where (each.isUrbanType and each.classe_densite = 'dense' and each intersects union(coast_border_area)));
+			count_UA_A_t0 <- length (UAs where (each.ua_name = 'A'));
+			count_UA_N_t0 <- length (UAs where (each.ua_name = 'N'));
+			count_UA_AU_t0 <- length (UAs where (each.ua_name = 'AU'));
+			count_UA_U_t0 <- length (UAs where (each.ua_name = 'U'));
 	
 	}
 	action recevoirImpots {
