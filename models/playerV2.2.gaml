@@ -13,7 +13,7 @@ global
 	string SERVER <- "localhost";//"192.168.1.100"
 	
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
-	int DISPLAY_FONT_SIZE <- 12;
+	int DISPLAY_FONT_SIZE <- 20;
 	
 	string LEGEND_UNAM <- "Aménagement, PLU et habitat";
 	string LEGEND_DYKE <- "Défense des côtes";
@@ -102,6 +102,17 @@ global
 	int HAUSSE_REHAUSSEMENT_DIGUE <- 1105;
 	int HAUSSE_RENOVATION_DIGUE <- 1106;
 	int HAUSSE_COUT_BATI <- 1107;
+	string ACTION_ID <- "action_id";
+	string LEADER_COMMAND <- "leader_command";
+	string DATA <- "data";
+	string PLAYER_MSG <-"player_msg";
+//	string LEVER_DIKE_CREATION <- "Construit des digues";
+//	string LEVER_RAISE_DIKE <- "Rehausse les digues";
+//	string LEVER_REPAIR_DIKE <- "Renove les digues";
+//	string LEVER_AUorUi_inCoastBorderArea <- "Construit ou densifie non adapté en ZL";
+//	string LEVER_AUorUi_inRiskArea <- "Construit ou densifie en ZI";
+//	string LEVER_GANIVELLE <- "Construit des ganivelles";
+//	string LEVER_Us_outCoastBorderOrRiskArea <- "Habitat adapté hors ZL et ZI";
 	
 	//// action display map layers
 	int ACTION_DISPLAY_PROTECTED_AREA <- 33;
@@ -176,12 +187,14 @@ global
 	
 	init
 	{
-		create retrieve_date number:1;
+		create data_retrieve number:1;
+		create network_activated_lever number:1;
 		do init_background;
 		do implementation_tests;
 		my_commune <-  commune first_with(each.nom_raccourci = commune_name);
 		create network_player number:1 returns:net;
 		game_manager <- first(net);
+		create network_player_new number:1 ;
 		create commune from: communes_shape with:[nom_raccourci::string(read("NOM_RAC"))];
 		my_commune <- commune first_with(each.nom_raccourci = commune_name);
 		local_shape <-envelope(my_commune);
@@ -234,7 +247,7 @@ global
 	{
 		write "start refresh all";
 		
-		ask retrieve_date
+		ask data_retrieve
 		{
 			do clear_simulation();
 		}
@@ -281,11 +294,19 @@ global
 			ask world {do user_msg("L'installation de ganivelles n'est plus subventionné : "+ACTION_COST_INSTALL_GANIVELLE+ " au lieu de "+ACTION_COST_INSTALL_GANIVELLE_SUBSIDY);}
 		}	
 	}
-	int get_action_id
+	
+	int id_number_of_action_id (string act_id)
 	{
-		list<int> x1 <- action_def_cote collect(each.id);
-		list<int> x2 <- action_UA collect(each.id);
-		return max(x1 + x2) + 1;
+		if act_id = "" {return 0;}
+		else {return int((act_id split_with "_")[1]);}
+		
+	}
+	
+	string get_action_id
+	{
+		list<int> x1 <- action_def_cote collect(id_number_of_action_id(each.id));
+		list<int> x2 <- action_UA collect(id_number_of_action_id(each.id));
+		return commune_name + "_"+(max(x1 + x2) + 1);
 	}
 
 	int delayOfAction (int action_code){
@@ -852,7 +873,7 @@ global
 				self.label <- but.label;
 				element_id <- dk.dike_id;
 				self.command <- but.command;
-				self.application_round <- round  + (world.delayOfAction(self.command));
+				self.initial_application_round <- round  + (world.delayOfAction(self.command));
 				shape <- dk.shape;
 				cost <- but.action_cost*shape.perimeter;
 			 }
@@ -888,7 +909,7 @@ global
 					self.label <- but.label;
 					element_id <- -1;
 					self.command <- ACTION_CREATE_DIKE;
-					self.application_round <- round  + (world.delayOfAction(self.command));
+					self.initial_application_round <- round  + (world.delayOfAction(self.command));
 					shape <- polyline([previous_clicked_point,loc]);
 					cost <- but.action_cost*shape.perimeter; 
 				}
@@ -930,12 +951,10 @@ global
 				{	//NE RIEN FAIRE SI ON CLIC AVEC L'OUTIL LOUPE
 					return;		
 				}
-				if((ua_name ="N" and selected_button.command = ACTION_MODIFY_LAND_COVER_N) 
-					or (ua_name ="U" and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
-					or (ua_name ="AU" and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
-					or (ua_name ="AUs" and selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)
-					or (ua_name ="Us" and selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)
+				if((ua_name ="N" and selected_button.command = ACTION_MODIFY_LAND_COVER_N)
 					or (ua_name ="A" and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
+					or (ua_name in["U","AU"] and selected_button.command = ACTION_MODIFY_LAND_COVER_AU)
+					or (ua_name in["A", "N", "AUs","Us"] and selected_button.command = ACTION_MODIFY_LAND_COVER_AUs)
 					or (ua_name in ["A", "N", "AU","AUs"] and selected_button.command = ACTION_MODIFY_LAND_COVER_Ui)
 					or (length((action_done collect(each.location)) inside cell_tmp)>0  ))
 				{	// Action incohérente -> la case est déjà dans l'état souhaité
@@ -1009,13 +1028,13 @@ global
 					element_id <- myself.id;
 					command <- selected_button.command;
 					shape <- myself.shape;
-					application_round <- round  + (world.delayOfAction(command));
+					initial_application_round <- round  + (world.delayOfAction(command));
 					previous_ua_name <- myself.ua_name;
 					label <- selected_button.label;
 					cost <- selected_button.action_cost;
 					// Overwrites in case action d'expropriation (delai d'execution et Cost)
 					if command = ACTION_MODIFY_LAND_COVER_N and previous_ua_name in ["U","Us"] { 
-							application_round <- round + world.delayOfAction(ACTION_EXPROPRIATION);
+							initial_application_round <- round + world.delayOfAction(ACTION_EXPROPRIATION);
 							cost <- myself.cout_expro;
 							isExpropriation <- true;} 
 					//overwrite Cost in case A to N
@@ -1205,8 +1224,115 @@ species highlight_action_button
 	
 }
 
+species activated_lever 
+{
+	action_done act_done;
+	float activation_time;
+	bool applied <- false;
+	
+	//attributes sent through network
+	int id;
+	string commune_name;
+	string lever_type;
+	string lever_explanation <- "";
+	string act_done_id <- "";
+	int nb_rounds_delay <-0;
+	int added_cost <- 0;
+	
+	action init_from_map(map<string, string> m )
+	{
+		id <- int(m["id"]);
+		lever_type <- m["lever_type"];
+		commune_name <- m["commune_name"];
+		act_done_id <- m["act_done_id"];
+		added_cost <- int(m["added_cost"]);
+		nb_rounds_delay <- int(m["nb_rounds_delay"]);
+		lever_explanation <- m["lever_explanation"];
+	}
+	
+	map<string,string> build_map_from_attribute
+	{
+		map<string,string> res <- [
+			"OBJECT_TYPE"::"activated_lever",
+			"id"::id,
+			"lever_type"::lever_type,
+			"commune_name"::commune_name,
+			"act_done_id"::string(act_done_id),
+			"added_cost"::string(added_cost),
+			"nb_rounds_delay"::int(nb_rounds_delay),
+			"lever_explanation"::lever_explanation
+			 ]	;
+		return res;
+	}
+}
 
-species retrieve_date skills:[network]
+species network_activated_lever skills:[network]
+{
+	init
+	{
+		do connect to:SERVER with_name:"activated_lever";	
+	}
+
+	reflex wait_message
+	{
+		loop while:has_more_message()
+		{
+			message msg <- fetch_message();
+			string m_sender <- msg.sender;
+			map<string, string> m_contents <- msg.contents;
+			if string(m_contents["commune_name"]) = commune_name and empty(activated_lever where (each.id = int(m_contents["id"])))
+			{
+				create activated_lever number:1
+				{
+					do init_from_map(m_contents);
+					act_done <- (action_UA + action_def_cote) first_with (each.id = act_done_id);
+					ask world
+					{
+						do user_msg (myself.lever_explanation);
+					}
+					if added_cost != 0
+					{
+						budget <- budget - added_cost;
+						ask world
+						{
+							do user_msg ("Vous avez été "+(myself.added_cost>0?"prélevé":"approvisionné")+" de "+abs(myself.added_cost)+ " Bs. pour le dossier '"+myself.act_done.label+"'");
+						}	
+					}
+					if nb_rounds_delay != 0
+					{
+						ask world
+						{
+							do user_msg ("Le dossier '"+myself.act_done.label+ "' a été retardé de "+ myself.nb_rounds_delay + " tours");
+						}
+					}
+//					switch(lever_type)
+//					{
+//						match_one [LEVER_DIKE_CREATION,LEVER_RAISE_DIKE,LEVER_REPAIR_DIKE,LEVER_AUorUi_inRiskArea,LEVER_GANIVELLE,LEVER_Us_outCoastBorderOrRiskArea]
+//						{
+//							budget <- budget - added_cost;
+//							ask world
+//							{
+//								do user_msg (myself.lever_explanation);
+//								do user_msg ("Votre budget a été "+(myself.added_cost>0?"prélevé":"approvisionné")+" de "+myself.added_cost+ " Bs.");
+//							}
+//						}	
+//						match_one [LEVER_AUorUi_inCoastBorderArea]
+//						{
+//							ask world
+//							{
+//								do user_msg (myself.lever_explanation);
+//								do user_msg ("Le dossier  "+myself.act_done.label+ " a été retardé de "+ myself.nb_rounds_delay + " tours");
+//							}
+//						}
+//					}
+					add self to: act_done.activated_levers;
+				}	
+			}
+		}	
+	}
+}
+
+species data_retrieve skills:[network]
 {
 	init
 	{
@@ -1243,15 +1369,15 @@ species retrieve_date skills:[network]
 					if(mc["action_type"]="dike")
 					{
 						
-						action_def_cote tmp <- action_def_cote first_with(each.id =int(mc["id"]) );
+						action_def_cote tmp <- action_def_cote first_with(each.id =mc["id"] );
 						
 						if(tmp = nil)
 						{
 							create action_def_cote number:1
 							{
-								id <- int(mc["id"]);
+								id <- mc["id"];
 							}
-							tmp<- action_def_cote first_with(each.id =int(mc["id"]) );
+							tmp<- action_def_cote first_with(each.id =mc["id"] );
 						}
 						
 						ask tmp
@@ -1261,15 +1387,15 @@ species retrieve_date skills:[network]
 					}
 					else
 					{
-						action_UA tmp <- action_UA first_with(each.id =int(mc["id"]) );
+						action_UA tmp <- action_UA first_with(each.id =mc["id"] );
 						
 						if(tmp = nil)
 						{
 							create action_UA number:1
 							{
-								id <- int(mc["id"]);
+								id <- mc["id"];
 							}
-							tmp<- action_UA first_with(each.id =int(mc["id"]) );
+							tmp<- action_UA first_with(each.id =mc["id"] );
 						}
 						
 						ask tmp
@@ -1316,6 +1442,15 @@ species retrieve_date skills:[network]
 						}	
 					
 				}
+				match("activated_lever")
+				{
+					create activated_lever number:1
+					{
+						do init_from_map(mc);
+						act_done <- (action_UA + action_def_cote) first_with (each.id = act_done_id);
+						add self to: act_done.activated_levers;
+					}				
+				}
 			
 			}
 			
@@ -1325,15 +1460,20 @@ species retrieve_date skills:[network]
 
 species action_done
 {
-	int id;
+	string id <-"";
 	int element_id<-0;
 	//string command_group <- "";
 	int command <- -1;
 	string label <- "no name";
-	float cost <- 0.0;
-	int application_round <- -1;
-	int round_delay <- 0 ; // nb rounds of delay
+	int initial_application_round <- -1;
+	int round_delay -> {activated_levers sum_of (each.nb_rounds_delay)} ; // nb rounds of delay
+	int actual_application_round -> {initial_application_round+round_delay};
 	bool is_delayed ->{round_delay>0} ;
+	float cost <- 0.0;
+	int added_cost -> {activated_levers sum_of (each.added_cost)} ;
+	float actual_cost -> {cost+added_cost};
+	bool has_added_cost ->{added_cost>0} ;
+	bool has_diminished_cost ->{added_cost<0} ;
 	bool is_sent <- false;
 	bool is_applied <- false;
 	bool is_highlighted <- false;
@@ -1342,23 +1482,24 @@ species action_done
 	string previous_ua_name <-"nil";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
-	bool inLittoralArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+	bool inCoastBorderArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
+	bool has_activated_levers -> {!empty(activated_levers)};
+	list<activated_lever> activated_levers <-[];
 	
 	
 	action init_from_map(map<string, unknown> a )
 	{
-		self.id <- int(a at "id");
+		self.id <- string(a at "id");
 		self.element_id <- int(a at "element_id");
 		self.command <- int(a at "command");
 		self.label <- a at "label";
 		self.cost <- float(a at "cost");
-		self.application_round <- int(a at "application_round");
-		self.round_delay <- int(a at "round_delay");
+		self.initial_application_round <- int(a at "initial_application_round");
 		self.isInlandDike <- bool(a at "isInlandDike");
 		self.inRiskArea <- bool(a at "inRiskArea");
-		self.inLittoralArea <- bool(a at "inLittoralArea");
+		self.inCoastBorderArea <- bool(a at "inCoastBorderArea");
 		self.isExpropriation <- bool(a at "isExpropriation");
 		self.inProtectedArea <- bool(a at "inProtectedArea");
 		self.previous_ua_name <- string(a at "previous_ua_name");
@@ -1394,9 +1535,36 @@ species action_done
 			shape <- polygon(all_points);
 		}
 		location <-mpp;
-		
-		
-		
+	}
+	
+	map<string,string> build_map_from_attribute
+	{
+		map<string,string> res <- [
+			"OBJECT_TYPE"::"action_done",
+			"id"::string(id),
+			"element_id"::string(element_id),
+			"commune_name"::string(commune_name),
+			"command"::string(command),
+			"label"::string(label),
+			"cost"::string(cost),
+			"initial_application_round"::string(initial_application_round),
+			"action_type"::string(action_type),
+			"previous_ua_name"::string(previous_ua_name),
+			"isExpropriation"::string(isExpropriation),
+			"isInlandDike"::string(isInlandDike),
+			"inRiskArea"::string(inRiskArea),
+			"inCoastBorderArea"::string(inCoastBorderArea),
+			"inProtectedArea"::string(inProtectedArea),
+			"is_applied"::string(is_applied),
+			"is_sent"::string(is_sent),
+			"shape"::string(shape)
+			 ]	;
+		return res;
+	}
+	
+	int nb_rounds_before_activation 
+	{
+		return actual_application_round - world.round ;
 	}
 	
 	action apply;
@@ -1404,12 +1572,10 @@ species action_done
 	string serialize_command
 	{
 		string result <-"";
-		//write "pout poute "+ element_id;
-		
 	result <- ""+
 		command+COMMAND_SEPARATOR+  //0
 		id+COMMAND_SEPARATOR+
-		application_round+COMMAND_SEPARATOR+
+		initial_application_round+COMMAND_SEPARATOR+
 		element_id+COMMAND_SEPARATOR+			//3
 		action_type +COMMAND_SEPARATOR+
 		inProtectedArea+COMMAND_SEPARATOR+		//5
@@ -1454,7 +1620,7 @@ species action_done
 			float y_loc <- basket_location[indx];
 			float x_loc <- font_interleave + 12* (font_size+font_interleave);
 			
-			draw label +" ("+string(application_round-round)+")" at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
+			draw label +" ("+string(nb_rounds_before_activation())+")" at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
 			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
 			if((indx +1) = length(my_basket))
 			{
@@ -1479,14 +1645,46 @@ species action_done
 				draw rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} ) color:#yellow;
 			}
 			string txt <- label;
-			if !self.is_applied {txt <- txt +" ("+string(application_round-round)+")"+(self.is_delayed?" (+"+string(round_delay)+")":""); }
-			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:(self.is_delayed?#red:#orange);
-			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:(self.is_delayed?#red:#orange);
+			if !self.is_applied {txt <- txt +" ("+string(nb_rounds_before_activation())+")"+(self.is_delayed?" (+"+string(round_delay)+")":""); }
+			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:((self.has_activated_levers)?#red:#orange);
+			txt <- "    "+ round(actual_cost);
+			if self.has_added_cost {txt<-txt +" (+"+string(added_cost)+")"; }
+			if self.has_diminished_cost {txt<-txt +" ("+string(added_cost)+")"; }
+			draw txt at:{x_loc,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:((self.has_activated_levers)?#red:#orange);
 		}
 	}
 	
 }
 
+species network_player_new skills:[network]
+{
+	init
+	{
+		do connect to:SERVER with_name:world.commune_name+"_map_msg";
+	}
+	
+	reflex wait_message
+	{
+		loop while:has_more_message()
+		{
+			message msg <- fetch_message();
+			string m_sender <- msg.sender;
+			map<string, string> m_contents <- msg.contents;
+			if string(m_contents["commune_name"]) = commune_name
+			{
+				switch m_contents["TOPIC"]
+				{
+					match "action_done is_applied" // remplace ancien ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT
+					{
+						string act_done_id <- m_contents["id"];
+						((action_def_cote + action_UA) first_with (each.id = act_done_id)).is_applied <- true;
+					}
+				}
+			}
+		}
+	}
+}
+	
 species network_player skills:[network]
 {
 	init {
@@ -1515,8 +1713,8 @@ species network_player skills:[network]
 		 			match INFORM_ROUND
 					{
 						round<-int(data[2]);
-						ask action_UA where (not(each.is_sent)) {application_round<-application_round+1;}
-						ask action_def_cote where (not(each.is_sent)) {application_round<-application_round+1;}
+						ask action_UA where (not(each.is_sent)) {initial_application_round<-initial_application_round+1;}
+						ask action_def_cote where (not(each.is_sent)) {initial_application_round<-initial_application_round+1;}
 						switch round {
 							match 1 {ask world {do user_msg("La simulation démarre. C'est le tour 1");}}
 							match 0 {}
@@ -1587,11 +1785,8 @@ species network_player skills:[network]
 					
 					match ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT
 					{
-						int action_id <- int(data[2]);
+						string action_id <- string(data[2]);
 						((action_def_cote + action_UA) first_with (each.id = action_id)).is_applied <- true;
-						//A supprimer
-						//list<action_def_cote > alist <- action_def_cote where (each.id = action_id);
-						//if empty(alist) {list<action_UA > alist <- action_def_cote where (each.id = action_id);} 
 					}
 					match ACTION_DIKE_CREATED
 					{
@@ -1685,16 +1880,16 @@ species network_player skills:[network]
 			i <- i + 1;
 		}
 		
-		
+		/////////////  PARSING A CHANGER!!
 		act.element_id <- int(mdata[3]);
 		act.command <- int(mdata[5]);
 		act.label <- mdata[6];
 		act.cost <- float(mdata[7]);
-		act.application_round <- int(mdata[8]);
-		act.round_delay <- int(mdata[9]);
+		act.initial_application_round <- int(mdata[8]);
+		//act.round_delay <- int(mdata[9]);////   VA FALLOIR EENLEVER CA
 		act.isInlandDike <- bool(mdata[10]);
 		act.inRiskArea <- bool(mdata[11]);
-		act.inLittoralArea <- bool(mdata[12]);
+		act.inCoastBorderArea <- bool(mdata[12]);
 		act.isExpropriation <- bool(mdata[13]);
 		act.inProtectedArea <- bool(mdata[14]);
 		act.previous_ua_name <- string(mdata[15]);
@@ -1716,7 +1911,7 @@ species network_player skills:[network]
 		string tp <- string(msg[8]);
 		string st <- msg[9];
 		float a_alt <- msg[10];
-		int action_id  <- msg[11];
+		string action_id  <- msg[11];
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
 		create def_cote number:1 returns: dikes
 		{
@@ -1754,8 +1949,6 @@ species network_player skills:[network]
 		{ 	
 			if nb = 3000 {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
 			else {ask world {do user_msg("Le dossier travaux de "+myself.type_def_cote+" n°"+m_action_id+" a été retardé de "+nb+" tour"+(nb=1?"":"s")+" en raison de contraintes réglementaires.");}}
-			round_delay <- round_delay + nb;
-			application_round <- application_round + nb;
 		}
 	}
 	
@@ -1765,8 +1958,6 @@ species network_player skills:[network]
 		{  
 			if nb = 3000 {ask world {do user_msg("Le dossier 'aménagement (PLU ou Habitat) n°"+m_action_id+" a été abrogé pour non conformité réglementaire.");}}
 			else {ask world {do user_msg("Le dossier d'aménagement (PLU ou Habitat) n°"+m_action_id+" a été retardé de "+nb+" tour"+(nb=1?"":"s")+" en raison de contraintes réglementaires.");}}
-			round_delay <- round_delay + nb;
-			application_round <- application_round + nb;
 		}
 	}
 	
@@ -1970,7 +2161,6 @@ species buttons skills:[UI_location]
 			draw my_icon size:button_size-50#m ;
 		}
 	}
-	
 	aspect carte
 	{
 		draw my_icon size:{ui_height, ui_height};
@@ -2340,7 +2530,7 @@ experiment game type: gui
 				{
 					point target <- {explored_cell.location.x  ,explored_cell.location.y };
 					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
-					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw rectangle(target,target2)   empty: false border: false color: #black ; 
 					draw "Zonage PLU" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
 					if explored_cell.ua_name in ["U","Us"]{
@@ -2359,11 +2549,11 @@ experiment game type: gui
 					UA mcell <- UA first_with(each.id = explored_action_UA.element_id);
 					point target <- {mcell.location.x  ,mcell.location.y };
 					point target2 <- {mcell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),mcell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
-					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw rectangle(target,target2)   empty: false border: false color: #black ; 
 					draw "Changement d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
 					
 					draw file("../images/icones/fleche.png") at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px}  size:50#px;
-					draw ""+ (explored_action_UA.application_round)   at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size:20#px; 
+					draw ""+ (explored_action_UA.initial_application_round)   at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size:20#px; 
 					draw world.chooseActionIcone(explored_action_UA.command) at:  { target2.x - 50#px, target.y +50#px} size:50#px;
 					draw world.au_icone(mcell) at:  { target.x +50#px,target.y + 50#px} size:50#px;
 				}
@@ -2377,7 +2567,7 @@ experiment game type: gui
 					point target <- {explored_buttons.location.x  ,explored_buttons.location.y };
 					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
-					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
+					draw rectangle(target2,target3)   empty: false border: false color: #black ; 
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					if explored_buttons.command != ACTION_INSPECT_LAND_USE {
@@ -2426,7 +2616,7 @@ experiment game type: gui
 					point target <- {explored_dike.location.x  ,explored_dike.location.y };
 					point target2 <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					
-					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw rectangle(target,target2)   empty: false border: false color: #black ; 
 					draw "Information sur "+explored_dike.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: #white;
 					int xpx <-0;
 					if explored_dike.type_ouvrage() = "la digue" {
@@ -2464,7 +2654,7 @@ experiment game type: gui
 					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
 					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					point target4 <- {target3.x,target2.y - 15#px };
-					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
+					draw rectangle(target2,target3)   empty: false border: false color: #black ; 
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
 					if explored_buttons.command != ACTION_INSPECT_DIKE {draw "Coût de l'action : "+explored_buttons.action_cost +"/mètre" at: target2 + { 30#px, 55#px} font: regular color: # white;}
