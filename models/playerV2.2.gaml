@@ -123,7 +123,6 @@ global
 	string GROUP_NAME <- "Oleron";
 	
 	list<float> basket_location <- [];
-	list<del_basket_button> del_buttons <-[];
 	
 	int basket_max_size <- 15;
 	int font_size <- int(shape.height/30);
@@ -159,9 +158,6 @@ global
 	
 	list<action_done> my_basket<-[];
 	
-	
-	list<float> history_location <- [];
-	
 	UA explored_cell <- nil;
 	def_cote explored_dike <- nil;
 	action_UA explored_action_UA<- nil;
@@ -182,9 +178,9 @@ global
 	
 	basket game_basket <-nil;
 	console game_console <-nil;
-	work_in_progress_list game_directory <- nil; 
+	work_in_progress_list game_history <- nil; 
 
-	
+	action_done highlight_action;
 	
 	init
 	{
@@ -209,7 +205,7 @@ global
 		create console number:1 returns:lcons;
 		game_console <- first(lcons);
 		create work_in_progress_list number:1 returns:workInPro;
-		game_directory <- first(workInPro);
+		game_history <- first(workInPro);
 		
 		
 		create data_retrieve number:1;
@@ -223,7 +219,6 @@ global
 		create commune from: communes_shape with:[nom_raccourci::string(read("NOM_RAC"))];
 		my_commune <- commune first_with(each.nom_raccourci = commune_name);
 		local_shape <-envelope(my_commune);
-		do init_basket;
 		do init_buttons;
 		do init_pending_request_button;
 		create def_cote from:defense_shape with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune_name_shpfile::string(read("Commune"))]
@@ -369,16 +364,16 @@ global
 		
 		switch(cmd)
 		{
-			match ACTION_MODIFY_LAND_COVER_A { return image_file("../images/icones/agriculture.png");}
-			match ACTION_MODIFY_LAND_COVER_AU { return image_file("../images/icones/urban.png");}
-			match ACTION_MODIFY_LAND_COVER_AUs { return image_file("../images/icones/urban_adapte2.png");}
-			match ACTION_MODIFY_LAND_COVER_Ui { return image_file("../images/icones/urban_intensifie.png");}
-			match ACTION_MODIFY_LAND_COVER_N { return image_file("../images/icones/tree_nature.png");}
-			match ACTION_CREATE_DIKE { return image_file("../images/icones/digue_validation.png");}
-			match ACTION_REPAIR_DIKE { return image_file("../images/icones/digue_entretien.png");}
-			match ACTION_RAISE_DIKE { return image_file("../images/icones/digue_rehausse_plus.png");}
-			match ACTION_DESTROY_DIKE { return image_file("../images/icones/tree_nature.png");}
-			match ACTION_INSTALL_GANIVELLE { return image_file("../images/icones/ganivelle.png");}
+			match ACTION_MODIFY_LAND_COVER_A { return image_file("../images/ihm/S_agricole.png");}
+			match ACTION_MODIFY_LAND_COVER_AU { return image_file("../images/ihm/S_urbanise.png");}
+			match ACTION_MODIFY_LAND_COVER_AUs { return image_file("../images/ihm/S_urbanise_adapte.png");}
+			match ACTION_MODIFY_LAND_COVER_Ui { return image_file("../images/ihm/S_urbanise_intensifie.png");}
+			match ACTION_MODIFY_LAND_COVER_N { return image_file("../images/ihm/S_naturel.png");}
+			match ACTION_CREATE_DIKE { return image_file("../images/ihm/S_creation_digue.png");}
+			match ACTION_REPAIR_DIKE { return image_file("../images/ihm/S_reparation_digue.png");}
+			match ACTION_RAISE_DIKE { return image_file("../images/ihm/S_elevation_digue.png");}
+			match ACTION_DESTROY_DIKE { return image_file("../images/ihm/S_suppression_digue.png");}
+			match ACTION_INSTALL_GANIVELLE { return image_file("../images/ihm/S_ganivelle.png");}
 		}
 		return nil;
 	}
@@ -645,25 +640,6 @@ global
 	}
 	
 	
-	action init_basket
-	{
-		int i <- 0;
-		loop while: (i< basket_max_size)
-		{
-			float y_location <- font_size+ font_interleave/2 + i* (font_size + font_interleave);
-			basket_location <- basket_location + y_location;
-			create del_basket_button number:1 returns:mb
-			{
-				location <- {font_interleave+ font_size/2,y_location};
-				my_index<- i;
-			}
-			
-			i<-i+1;
-		}
-		
-		create basket_validation number:1;
-		}
-
 
 	action init_pending_request_button
 	{
@@ -841,60 +817,6 @@ global
 		}
 	}
 	
-	action basket_click //(point loc, list selected_agents)
-	{
-		point loc <- #user_location;
-		
-		do remove_selection;
-		list<del_basket_button> bsk_del <-  del_basket_button overlapping loc; // agts of_species dike;
-		
-		if(length(bsk_del)>0)
-		{
-			del_basket_button but<-first(bsk_del);
-			action_done act <- my_basket at but.my_index;
-			ask act
-			{
-				do die;
-			}
-			remove act from:my_basket;
-		}
-		list<basket_validation> bsk_validation <-  basket_validation  overlapping loc;
-		
-		basket_validation btt <- first(basket_validation);
-		bool valid <-  btt overlaps loc;
-		if(valid)
-		{	
-			
-			if round = 0
-			{
-				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
-				return;
-			}
-			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
-			{
-				string budget_display <- "Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions";
-				ask world {do user_msg (budget_display);}
-				map<string,unknown> res <- user_input("Avertissement", budget_display::"" );//[budget_display:: false]);
-				return;
-			}
-			/* Ce n'est pas delayOfAction qui permet de savoir si une action peut etre retardé plus que prévu 
-			 * delayOfAction se refère au délai normal de mise en oeuvre de l'action
-			 * Par ailleurs l'avertissement sur un délai supplémentaire possible se fait avant, lorsque le joeur click sur l'éléments où appliquer l'action
-			 * Donc, on retire ce bout de code, et on implémente ces messages d'avertisseement dans les actions change_dike et change_plu  
-			 int nb_delayed <- my_basket count(delayOfAction(each.command) > 0);
-			string action_delayed <- nb_delayed = 0 ? "":"Attention, une ou plusieurs de vos réalisations risquent de faire l'objet d'un retard\n";*/
-			
-			string ask_display <- "Vous êtes sur le point de valider votre panier \n"+/*action_delayed+*/" Cocher la case, pour accepter le panier et valider";
-			map<string,bool> res <- user_input("Avertissement", ask_display::false);
-			if(res at ask_display )
-			{
-				ask first(bsk_validation)
-				{
-					do send_basket;
-				}
-			}
-		}
-	}
 	
 	action change_dike// (point loc, list selected_agents)
 	{
@@ -1599,6 +1521,8 @@ species basket parent:displayed_list
 	  	create basket_element number:1 returns:ele
 		{
 			label <- act.label;
+			
+			icone <- world.chooseActionIcone(act.command);
 			current_action <- act;
 		}
 		do add_item(first(ele));
@@ -1662,6 +1586,13 @@ species basket parent:displayed_list
 	action validation_panier
 	{
 		write "valider le panier";
+				
+				//A supprimer
+				ask game_manager
+				{
+					do send_basket;
+				}
+				
 						
 			if round = 0
 			{
@@ -1833,6 +1764,19 @@ species work_in_progress_list parent:displayed_list schedules:[]
 		do navigation_item;
 		
 	}
+	
+	action add_action_in_history(action_done act)
+	{
+	  	create work_in_progress_element number:1 returns:ele
+		{
+			label <- act.label;
+			
+			icone <- world.chooseActionIcone(act.command);
+			current_action <- act;
+		}
+		do add_item(first(ele));
+	}
+	
 } 
 
 
@@ -1899,17 +1843,29 @@ species console_left_icon skills:[UI_location]
 
 species work_in_progress_element parent:displayed_list_element schedules:[]
 {
-	int delay <- 3;
-	int round_to_apply <- 0;
+	int delay ->{current_action.round_delay};
+	int round_to_apply ->{current_action.actual_application_round};
 	
-	int final_price <- 0;
-	int initialx_price <- 0;
+	float final_price ->{current_action.actual_cost};
+	float initialx_price ->{float(current_action.cost)};
 	
 	point bullet_size -> {point({ui_height*0.6,ui_height*0.6})};
 	
 	point delay_location -> {point({location.x+2.2*ui_width/5,location.y})};
 	point round_apply_location -> {point({location.x+1.5*ui_width/5,location.y})};
+	action_done current_action;
 	
+	action on_mouse_down
+	{
+		if(highlight_action =current_action )
+		{
+			highlight_action <- nil;
+		}
+		else
+		{
+			highlight_action <- current_action;
+		}
+	}
 	
 	
 	action draw_element
@@ -1923,7 +1879,12 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 		}
 		draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
 		draw ""+round_to_apply at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
-		
+		if(highlight_action = current_action)
+		{
+			
+			geometry rec <-  polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
+			draw rec  at:{location.x,location.y}  empty:true border:#red;
+		}
 		
 //		draw close_button at:button_location size:button_size;
 	}
@@ -1956,40 +1917,30 @@ species basket_element parent:displayed_list_element
 			{
 				do die;
 			}
-			write "suppression element";
 			do die;
 		}
-		write "mouse down " + label;
+		else
+		{
+			if(highlight_action =current_action )
+			{
+				highlight_action <- nil;
+			}
+			else
+			{
+				highlight_action <- current_action;
+			}
+		}
 	}
 	
 	
 	action draw_element
 	{
 		draw close_button at:button_location size:button_size;
-	}
-}
-
-// fin des ajouts
-species del_basket_button
-{
-	int my_index <- 0;
-	init
-	{
-		shape <- square(font_size);
-	}
-	
-	action del_action
-	{
-		
-	}
-	
-	aspect base
-	{
-		if(my_index < length(my_basket))
+		if(highlight_action = current_action)
 		{
-			draw image_file("../images/icones/suppression.png") size:font_size;
+			geometry rec <-  polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
+			draw rec  at:{location.x,location.y}  empty:true border:#red;
 		}
-		
 	}
 }
 
@@ -2753,6 +2704,12 @@ species network_player skills:[network]
 			act <- basket_element(bsk_el).current_action;
 			string val <- act.serialize_command();
 			act.is_sent <- true;
+			ask(game_history)
+			{
+				do add_action_in_history(act);
+			} 
+			//ajout à l'historique
+			
 			map<string,string> data <- ["stringContents"::val];
 			do send to:MANAGER_NAME contents:data;
 		}
@@ -2764,57 +2721,7 @@ species network_player skills:[network]
 	
 }
 
-species history
-{
-	point location <- {0,0} update:{font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
-	list<action_done> all_action;
-	init {
-		shape <- square(button_size);
-		all_action <- [];
-	}
-}
 
-
-
-
-species basket_validation
-{
-	
-	reflex update_loc
-	{
-		location <-  {font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
-		shape <- square(world.shape.width/8);
-	}
-	init {
-		shape <- square(world.shape.width/8);
-	}
-	
-	action send_basket
-	{
-		ask game_manager
-		{
-			do send_basket;
-		}
-	}
-	aspect base
-	{
-		float x_loc <- font_interleave + 12* (font_size + font_interleave);
-		float y_loc <- font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave);
-	//	location <- {font_interleave + 12* (font_size + font_interleave),font_size+ font_interleave/2 + (length(my_basket) +2)* (font_size + font_interleave)};
-	
-		if(length(my_basket) = 0)
-		{
-			draw "Aucune action enregistrée" size:font_size color:#black at:{0 , y_loc };
-		}
-		else
-		{
-			draw image_file("../images/icones/validation.png") at:location size:world.shape.width/8 ;
-		}
-		
-		//draw "Budget : "+ budget color:#black size:font_size at:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) } ;
-		//draw "Budget restant : " + (budget - round(sum(my_basket collect(each.cost)))) color:#black  size:font_size at:{0 , font_size+ font_interleave/2 + (length(my_basket) +5)* (font_size + font_interleave) } ;
-	}
-}
 
 species action_def_cote parent:action_done
 {
@@ -2876,9 +2783,9 @@ species action_UA parent:action_done
 	{
 		switch(command)
 		{
-			 match ACTION_MODIFY_LAND_COVER_A { return #brown;}
-			 match_one [ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui] {return #black;}
-			 match ACTION_MODIFY_LAND_COVER_N {return #green;}
+			 match ACTION_MODIFY_LAND_COVER_A { return rgb(245,147,49);}
+			 match_one [ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui] {return rgb(0,129,161);}
+			 match ACTION_MODIFY_LAND_COVER_N {return rgb(11,103,59);}
 		} 
 		return #grey;
 	}
@@ -2890,8 +2797,13 @@ species action_UA parent:action_done
 	{
 		if ( !is_applied) {
 			
-			draw shape  color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red) ;
-
+			bool highlighted <- self = highlight_action;
+			
+			geometry triangle <- polygon([shape.points[3],shape.points[1],shape.points[0],shape.points[3] ]);
+			
+			draw triangle  color:highlighted?#yellow:(define_color()) border:highlighted?#yellow:define_color() ;
+			draw shape  empty:true border:highlighted?#yellow:((is_sent)?define_color():#red) ;
+			
 			if(ACTION_MODIFY_LAND_COVER_Ui = command)
 			{
 				draw file("../images/icones/crowd.png") size:self.shape.width;
@@ -3687,30 +3599,6 @@ experiment game type: gui
 		
 		}
 		
-		
-		/*
-		display Panier2
-		{
-			species action_def_cote aspect:basket;
-			species action_UA aspect:basket;
-			species del_basket_button aspect:base;
-			species basket_validation aspect:base;
-			graphics budget position:{0 , font_size+ font_interleave/2 + (length(my_basket) +4)* (font_size + font_interleave) }
-			{
-				draw "Budget : "+ world.separateur_milliers(budget) color:#black size:font_size  ;
-				draw "Budget restant : " +  world.separateur_milliers(budget - round(sum(my_basket collect(each.cost)))) color:#black  size:font_size at:{0 , font_size+ font_interleave/2 } ;// + (length(my_basket) +5)* (font_size + font_interleave)	
-			}
-			event [mouse_down] action: basket_click;
-		}
- 
- 		display Dossiers2
-		{
-			species action_def_cote aspect:history;
-			species action_UA aspect:history;
-			species highlight_action_button aspect:base;
-			event [mouse_down] action: history_click;
-		}
-		*  */
 		
  	}
 }
