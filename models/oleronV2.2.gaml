@@ -167,6 +167,7 @@ global  {
 		file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
 		file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
 		file dem_file <- file("../includes/zone_etude/oleron_dem2016.asc") ;
+		file contour_ile_moins_100m_shape <- file("../includes/zone_etude/contour_ile_moins_100m.shp");
 		int nb_cols <- 631;
 		int nb_rows <- 906;
 		
@@ -215,8 +216,7 @@ init
 		all_flood_risk_area <- union(flood_risk_area);
 		create coast_border_area from: coastline_shape {
 			shape <-  shape + 400#m; }
-		create coast_dike_area from: coastline_shape {
-			shape <-  shape + 600#m; }
+		create inland_dike_area from: contour_ile_moins_100m_shape;
 		
 		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]
 		{
@@ -1307,7 +1307,7 @@ species network_player skills:[network]
 					{inRiskArea <- true;}
 				if  self.shape intersects first(coast_border_area)
 					{inCoastBorderArea <- true;}	
-				if command = ACTION_CREATE_DIKE and not(self.shape intersects first(coast_dike_area))
+				if command = ACTION_CREATE_DIKE and (self.shape.centroid overlaps first(inland_dike_area))
 						{isInlandDike <- true;}
 				// finallement on recalcul aussi inProtectedArea meme si ca a été calculé au niveau de participatif, car en fait ce n'est pas calculé pour toutes les actions 
 				if  self.shape intersects all_protected_area
@@ -2037,13 +2037,15 @@ species coast_border_area {// zone des 400m littoral
 	}
 }
 
-species coast_dike_area {// zone pour identifier les rétro digues // celles qui ne sont pas ds la coast_dike_area  // on retien à 600m de bord de mer
+species inland_dike_area {// zone au delà des 100 m par rapport au trait de cote, à l'intérieur des terres // zone pour identifier les rétro digues 
 	
 	aspect base 
 	{
-		 draw shape color: rgb (100, 100, 205,120) border:#black;
+		draw shape color: rgb (100, 100, 205,120) border:#black;
 	}
 }
+
+
 
 species UA
 {
@@ -2453,7 +2455,7 @@ experiment oleronV2 type: gui {
 			species UA aspect: base;
 			species road aspect:base;
 			species def_cote aspect:base;
-			species coast_dike_area aspect: base;
+			species inland_dike_area aspect: base;
 			species coast_border_area aspect: base;		
 			species flood_risk_area aspect: base;
 		}
