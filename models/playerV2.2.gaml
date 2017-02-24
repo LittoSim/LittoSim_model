@@ -13,7 +13,7 @@ global
 	string SERVER <- "localhost";//"192.168.1.100"
 	
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
-	int DISPLAY_FONT_SIZE <- 20;
+	int DISPLAY_FONT_SIZE <- 16;
 	
 	string LEGEND_UNAM <- "Aménagement, PLU et habitat";
 	string LEGEND_DYKE <- "Défense des côtes";
@@ -73,6 +73,8 @@ global
 	int ACTION_ACTION_LIST <- 211;
 	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
 	
+	bool is_shown_protected_area <- false;
+	bool is_shown_flooded_area <- false;
 	
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DIKE_UPDATE<-10;
@@ -106,13 +108,6 @@ global
 	string LEADER_COMMAND <- "leader_command";
 	string DATA <- "data";
 	string PLAYER_MSG <-"player_msg";
-//	string LEVER_DIKE_CREATION <- "Construit des digues";
-//	string LEVER_RAISE_DIKE <- "Rehausse les digues";
-//	string LEVER_REPAIR_DIKE <- "Renove les digues";
-//	string LEVER_AUorUi_inCoastBorderArea <- "Construit ou densifie non adapté en ZL";
-//	string LEVER_AUorUi_inRiskArea <- "Construit ou densifie en ZI";
-//	string LEVER_GANIVELLE <- "Construit des ganivelles";
-//	string LEVER_Us_outCoastBorderOrRiskArea <- "Habitat adapté hors ZL et ZI";
 	
 	//// action display map layers
 	int ACTION_DISPLAY_PROTECTED_AREA <- 33;
@@ -136,6 +131,7 @@ global
 	
 	string UNAM_DISPLAY <- "UnAm";
 	string DIKE_DISPLAY <- "sloap";
+	string BOTH_DISPLAY <- "both";
 	
 
 	int MAX_HISTORY_VIEW_SIZE <- 10;
@@ -164,7 +160,6 @@ global
 	list<action_done> my_basket<-[];
 	
 	
-	list<action_done> my_history<-[] update: reverse((action_UA where(each.is_sent) + action_def_cote where(each.is_sent) ) sort_by(each.id));
 	list<float> history_location <- [];
 	
 	UA explored_cell <- nil;
@@ -182,11 +177,41 @@ global
 	geometry dike_shape_space <- nil;
 	geometry unam_shape_space <- nil;
 	
+	list<action_done> ordered_action <- nil;
+	list<action_done> my_history<-[] update: ordered_action where(each.is_sent); //reverse((action_UA where(each.is_sent) + action_def_cote where(each.is_sent) ) sort_by(each.id));
+	
+	basket game_basket <-nil;
+	console game_console <-nil;
+	work_in_progress_list game_directory <- nil; 
 
 	
 	
 	init
 	{
+		/*
+		 * ajout 
+		 * 
+		 */
+		create work_in_progress_left_icon number:1
+		{
+			point p <- {0.15,0.5};
+			do lock_agent_at ui_location:p display_name:"Dossier" ui_width:0.30 ui_height:1.0 ;
+		}
+		create console_left_icon number:1
+		{
+			point p <- {0.15,0.5};
+			do lock_agent_at ui_location:p display_name:"Console" ui_width:0.30 ui_height:1.0 ;
+		}
+		
+		
+		create basket number:1 returns:lbsk;
+		game_basket <- first(lbsk);
+		create console number:1 returns:lcons;
+		game_console <- first(lcons);
+		create work_in_progress_list number:1 returns:workInPro;
+		game_directory <- first(workInPro);
+		
+		
 		create data_retrieve number:1;
 		create network_activated_lever number:1;
 		do init_background;
@@ -415,11 +440,11 @@ global
 			command <- ACTION_MODIFY_LAND_COVER_A;
 			label <- "Changer en zone agricole";
 			action_cost <- ACTION_COST_LAND_COVER_TO_A;
-			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			my_help <- uaHelpMessage;
 			point p <- {0.40,0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+			shape <- square(button_size);
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/ihm/I_agricole.png");
 		}
@@ -506,8 +531,10 @@ global
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquez aux deux extrémités du linéaire de digue.";
+			point p <- {0.05,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
-			my_icon <- image_file("../images/icones/digue_validation.png");
+			my_icon <- image_file("../images/ihm/i_creation_digue.png");
 		}
 
 		create buttons number: 1
@@ -518,9 +545,10 @@ global
 			shape <- square(button_size);
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
-		//	my_help <- "Cliquez sur la digue à réparer";
+			point p <- {0.15,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
-			my_icon <- image_file("../images/icones/digue_entretien.png");
+			my_icon <- image_file("../images/ihm/I_reparation_digue.png");
 			
 		}
 
@@ -533,8 +561,11 @@ global
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
 		//	my_help <- "Cliquer sur la digue à supprimer";	
+			point p <- {0.35,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
-			my_icon <- image_file("../images/icones/digue_suppression.png");
+			my_icon <- image_file("../images/ihm/I_suppression_digue.png");
 			
 		}
 		
@@ -547,8 +578,10 @@ global
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
 		//	my_help <- "Cliquer sur la digue à réhausser";
+			point p <- {0.25,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
-			my_icon <- image_file("../images/icones/digue_rehausse_plus.png");
+			my_icon <- image_file("../images/ihm/I_elevation_digue.png");
 			
 		}
 		
@@ -559,9 +592,11 @@ global
 			action_cost <- ACTION_COST_INSTALL_GANIVELLE;
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
-			my_help <- "Cliquez sur la dune pour installer une ganivelle.";	
+			my_help <- "Cliquez sur la dune pour installer une ganivelle.";
+			point p <- {0.45,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
-			my_icon <- image_file("../images/icones/ganivelle.png");
+			my_icon <- image_file("../images/ihm/I_ganivelle.png");
 		}
 		
 		create buttons number: 1
@@ -572,8 +607,10 @@ global
 			shape <- square(button_size);
 			my_help <- "Glissez le pointeur sur les digues et dunes.";
 			display_name <- DIKE_DISPLAY;
+			point p <- {0.70,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
-			my_icon <- image_file("../images/icones/Loupe.png");
+			my_icon <- image_file("../images/ihm/I_info.png");
 			
 		}
 
@@ -582,21 +619,31 @@ global
 		{
 			command <- ACTION_DISPLAY_PROTECTED_AREA;
 			label <- "Afficher les zones proétégées";
+			display_name <-BOTH_DISPLAY;
 			shape <- square(850);
 			location <- { 1000,8000 };
-			my_icon <- image_file("../images/icones/sans_zones_protegees.png");
+			point p <- {0.80,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+			
+			my_icon <- image_file("../images/ihm/I_oeil_rouge.png");
 			is_selected <- false;
 		}	
 		create buttons_map number: 1
 		{
 			command <- ACTION_DISPLAY_FLOODED_AREA;
 			label <- "Afficher les zones innondées";
+			display_name <-BOTH_DISPLAY;
+			
 			shape <- square(850);
 			location <- { 1000,9000 };
-			my_icon <- image_file("../images/icones/sans_zones_innondees.png");
+			point p <- {0.90,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+			
+			my_icon <- image_file("../images/icones/avec_zones_innondees.png");
 			is_selected <- false;
 		}
 	}
+	
 	
 	action init_basket
 	{
@@ -642,6 +689,70 @@ global
 			return true;
 		}
 		return false;
+	}
+	
+		action button_click_general
+	{
+		point loc <- #user_location;
+		list<onglet> clicked_onglet_button <- (onglet overlapping loc);
+		
+		
+		if(length(clicked_onglet_button)>0)
+		{
+			active_display <- first(clicked_onglet_button).display_name;
+			do clear_selected_button;
+			current_action <- nil;
+		}
+		
+		if(!show_hide_maps_click())
+		{
+			if(active_display = UNAM_DISPLAY)
+			{
+				do button_click_UnAM;
+			}
+			else
+			{
+				do button_click_dike;
+			}
+				
+		}
+		
+		
+	}
+		bool show_hide_maps_click
+	{
+		point loc <- #user_location;
+		list<buttons> cliked_button <- (buttons where(each.display_name=BOTH_DISPLAY )) overlapping loc   ;
+		if(length(cliked_button)>0)
+		{
+			buttons a_map_buton <- first(cliked_button);
+			is_shown_protected_area <- false;
+			is_shown_flooded_area <- false;
+	
+			switch a_map_buton.command {
+						match ACTION_DISPLAY_PROTECTED_AREA { is_shown_protected_area <- true;
+											a_map_buton.my_icon <-  image_file("../images/ihm/I_oeil_rouge.png") ;
+						}
+						match ACTION_DISPLAY_FLOODED_AREA {
+							is_shown_flooded_area <- false;
+							a_map_buton.my_icon <-   image_file("../images/icones/sans_zones_innondees.png") ;
+						}
+					}			
+			return true;
+		}
+		return false;
+		
+	}
+	
+	
+	
+	action mouse_move_general
+	{
+		switch(active_display)
+		{
+			match UNAM_DISPLAY { do mouse_move_UnAM; }
+			match DIKE_DISPLAY {do mouse_move_dike;}
+		}
 	}
 	
 	action mouse_move_UnAM //(point loc, list selected_agents)
@@ -752,7 +863,9 @@ global
 		basket_validation btt <- first(basket_validation);
 		bool valid <-  btt overlaps loc;
 		if(valid)
-		{	if round = 0
+		{	
+			
+			if round = 0
 			{
 				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
 				return;
@@ -892,6 +1005,11 @@ global
 				}
 			}
 			my_basket <- my_basket + current_action; 
+			ordered_action <- ordered_action + current_action;
+			ask(game_basket)
+			{
+				do  add_action_in_basket(current_action);
+			}	
 		}
 	}
 	
@@ -927,6 +1045,11 @@ global
 					}
 				}
 				my_basket <- my_basket + current_action; 
+				ordered_action <- ordered_action + current_action;
+				ask(game_basket)
+				{
+					do  add_action_in_basket(current_action);
+				}	
 				do clear_selected_button;
 		}
 		
@@ -1050,6 +1173,11 @@ global
 				}
 				current_action<- first(action_list);
 				my_basket <- my_basket + current_action; 
+				ordered_action <- ordered_action + current_action;
+				ask(game_basket)
+				{
+					do  add_action_in_basket(current_action);
+				}	
 			}
 		}
 	}
@@ -1180,8 +1308,668 @@ global
 			do change_subvention_ganivelle_with(true);
 		}
 	}*/
+	
+	
+	/**
+	 * Nouvelle action de l'interface V2
+	 */
+	bool basket_event <- false update:false;
+	action move_down_event
+	{
+		if(basket_event)
+		{
+			return;
+		}
+		basket_event<- true;
+		ask basket
+		{
+			do move_down_event;
+		}
+	}
+	action move_down_event_dossier
+	{
+		ask work_in_progress_list
+		{
+			do move_down_event;
+		}
+	}	
+	action move_down_event_console
+	{
+		ask console
+		{
+			do move_down_event;
+		}
+	}
+	
 }
 
+/**
+ * 
+ * Espèce de l'interface V2
+ * 
+ */
+species displayed_list skills:[UI_location] schedules:[]
+{
+	int max_size <- 7;
+	bool over_sized -> {length(elements)> max_size};
+	float header_height <- 0.2;
+	float element_height <- 0.08;
+	
+	string legend_name <- "ma légende";
+	int budget <- 2000;
+	int start_index <- 0;
+	list<displayed_list_element> elements <- [];
+	system_list_element up_item <- nil;
+	system_list_element down_item <- nil;
+	string display_name <-"Panier";
+	bool show_header <- true;
+	
+	action move_down_event
+	{
+		if(up_item.is_displayed)
+		{
+			ask up_item
+			{
+				do move_down_event;
+				
+			}
+			ask down_item
+			{
+				do move_down_event;
+			}
+			
+		}
+		
+		ask elements where(each.is_displayed = true)
+		{
+			if(move_down_event())
+			{
+				return;
+			}
+		}
+		do on_mouse_down;
+	}
+	action on_mouse_down;
+	
+	action add_item(displayed_list_element bsk_el)
+	{
+		int index <- length(elements) ;
+		elements <- elements + bsk_el;
+		point p <- get_location(index); //{0.5,index *element_height + header_height+element_height/2 };
+		ask(bsk_el)
+		{
+			is_displayed <- true;
+			my_parent <- myself; 
+			//do move_agent_at ui_location:p;
+			do lock_agent_at ui_location:p display_name:myself.display_name ui_width:myself.locked_ui_width ui_height:myself.element_height ;
+			shape <- rectangle(ui_width, ui_height);
+		
+		}
+		if(length(elements) >= max_size)
+		{
+			do go_to_end;
+			up_item.is_displayed <- true;
+			down_item.is_displayed <-true;
+		}
+		else
+		{
+			up_item.is_displayed <- false;
+			down_item.is_displayed <-false;
+		}
+		
+	}
+	
+	point get_location(int idx)
+	{
+		float header_size <- show_header?header_height:0.0;
+		idx <- min([idx,max_size-1]);
+		point p <- {locked_location.x+locked_ui_width/2,idx *element_height + header_size+element_height/2 };
+		return p;
+	}
+	
+	action go_to_end
+	{
+		start_index <- length(elements)-max_size+2;
+		do change_start_index(start_index);
+	}
+	action change_start_index(int idx)
+	{
+		write "change star index " + idx;
+		displayed_list_element ele <- nil;
+		int i <- 0;
+		int j <- 1;
+		loop ele over:elements
+		{
+			if(i>=idx and i < idx+ max_size-2)
+			{
+				point p <- get_location(j); //{0.5,index *element_height + header_height+element_height/2 };
+				j <- j + 1;
+				ask(ele)
+				{
+					do move_agent_at ui_location:p;
+					is_displayed <- true;
+				}
+			}
+			else
+			{
+				ele.is_displayed <- false;
+			}	
+			i <- i+1;
+		}
+		
+	}
+	action change_location_to_all
+	{
+		int i <- 0;
+		loop ele over:elements
+		{
+			point p <- get_location(i); //{0.5,index *element_height + header_height+element_height/2 };
+				i <- i + 1;
+				ask(ele)
+				{
+					do move_agent_at ui_location:p;
+					is_displayed <- true;
+				}
+		}
+	}
+	
+	action change_location
+	{
+		if(length(elements)<= max_size)
+		{
+			do change_location_to_all;
+		}
+		else
+		{
+			do change_start_index(start_index);
+		}
+		
+	}
+	
+	action navigation_item
+	{
+		create system_list_element number:1
+		{
+			label <- "<< Précédent";
+			write "cers "+myself.display_name;
+			point p <- myself.get_location(0);
+			do lock_agent_at ui_location:p display_name:myself.display_name ui_width:myself.locked_ui_width ui_height:myself.element_height ;
+			myself.up_item <- self;
+			self.is_displayed <- false;
+			direction <- 1;
+			my_parent <- myself;
+		}
+		create system_list_element number:1
+		{
+			label <- "                 Suivant >>";
+			point p <- myself.get_location(myself.max_size-1);
+			do lock_agent_at ui_location:p display_name:myself.display_name ui_width:myself.locked_ui_width ui_height:myself.element_height ;
+			myself.down_item <- self;
+			self.is_displayed <- false;
+			direction <- 2;
+			
+			my_parent <- myself;
+		}
+		 
+	}
+	
+	action go_up
+	{
+		start_index <- min([length(elements)-max_size+2,start_index + 1]);	
+		do change_start_index(start_index);
+	}
+	
+	action go_down
+	{
+		start_index <- max([0,start_index - 1]);	
+		do change_start_index(start_index);	
+	}
+	
+	action draw_my_header
+	{
+		geometry rec2 <- polygon([{0,0}, {0,ui_height*header_height}, {ui_width,ui_height*header_height},{ui_width,0},{0,0}]);
+		point loc2  <- {location.x+ui_width/2,location.y+ui_height*header_height/2};
+		draw  rec2 at:loc2 color:rgb(219,219,219);
+		float gem_height <- ui_height*header_height/2;
+		float gem_width <- ui_width;
+		shape <- rectangle(gem_width,gem_height);
+		float x <- location.x; // - ui_width/2;
+		float y <- location.y; // - ui_height/2 ;
+		geometry rec3 <- polygon([{x,y}, {x,y+gem_height}, {x+gem_width*0.2,y+gem_height}, {x+gem_width*0.25,y+gem_height*1.2},{x+gem_width*0.3,y+gem_height},{x+gem_width,y+gem_height},{x+gem_width,y},{x,y}]);
+		draw rec3 color:rgb(59,124,58);
+		font var0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
+		draw legend_name at:{location.x + gem_width /2 - (length(legend_name)*6#px/2), location.y + gem_height/2 + 4#px} color:#white font:var0;
+	}
+	
+	action draw_list
+	{
+		point loc1 <- {location.x+ui_width/2,location.y+ui_height/2};
+		geometry rec1 <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
+		draw rec1 at:loc1 color:#white;
+		if(show_header = true)
+		{
+			do draw_my_header;
+		}
+	}
+	action remove_all_elements
+	{
+		ask(elements)
+		{
+			do die;
+		}
+		elements <- [];
+		up_item.is_displayed <- false;
+		down_item.is_displayed <- false;
+	}
+	action remove_element(displayed_list_element ele)
+	{
+		//int idx <- elements index_of ele;
+		remove ele from:elements;
+		do change_location;
+	}
+	
+	aspect base
+	{
+		do draw_list;
+	}
+}
+
+species basket parent:displayed_list 
+{
+	
+	int budget -> {world.budget};
+	float final_budget -> {world.budget - sum(elements collect((basket_element(each).current_action).actual_cost))};
+	
+	point validation_button_size <- {0,0};
+	
+	init
+	{
+		show_header <- true;
+		legend_name <- "€   Actions envisagées";
+		point p <- {0.0,0.0};
+		display_name <- "Panier";
+		do lock_agent_at ui_location:p display_name:display_name ui_width:1.0 ui_height:1.0 ;
+		do navigation_item;
+	}
+	
+
+	
+	action add_action_in_basket(action_done act)
+	{
+	  	create basket_element number:1 returns:ele
+		{
+			label <- act.label;
+			current_action <- act;
+		}
+		do add_item(first(ele));
+	}
+	
+
+	
+	
+	action draw_budget
+	{
+		float gem_height <- ui_height*header_height/2;
+		float gem_width <- ui_width;
+		int mfont_size <- DISPLAY_FONT_SIZE - 2;
+		font font0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE-4, #plain ); 
+		draw "Budget initial" font:font0 color:rgb(101,101,101) at:{location.x + ui_width - 150#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		font font1 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
+		draw ""+world.separateur_milliers(int(budget)) font:font1 color:rgb(101,101,101) at:{location.x + ui_width - 70#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+	}
+	
+	action draw_foot
+	{
+		point loc1 <- {location.x+ui_width/2,location.y+ui_height-header_height/4*ui_height};
+		geometry rec1 <- polygon([{0,0}, {0,0.1*ui_height}, {ui_width,header_height/2*ui_height},{ui_width,0},{0,0}]);
+		draw rec1 at:loc1 color:rgb(219,219,219);
+		int mfont_size <- DISPLAY_FONT_SIZE - 2;
+		font font0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE-4, #plain ); 
+		draw "Budget restant" font:font0 color:rgb(101,101,101) at:{location.x + ui_width - 170#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		font font1 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
+		draw ""+world.separateur_milliers(int(final_budget)) font:font1 color:#black at:{location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+	}
+	
+	point validation_button_location
+	{
+		int index <- min([length(elements),max_size]) ;
+		float sz <- element_height*ui_height;
+		
+		point p <- {ui_width-sz*0.75,location.y+(index *sz) + (header_height*ui_height)+ (0.75*element_height*ui_height) };
+		return p;
+	}
+	
+	action draw_valid_button
+	{
+		point pt <- validation_button_location();
+		float sz <- element_height*ui_height;
+		image_file icone <- file("../images/ihm/I_valider.png");
+		validation_button_size <- {sz*0.8,sz*0.8};
+		draw icone at:pt size:validation_button_size;
+		int mfont <- DISPLAY_FONT_SIZE - 2;
+		int mfont2 <- DISPLAY_FONT_SIZE - 4;
+		font font1 <- font ('Helvetica Neue',mfont, #plain ); 
+		font font2 <- font ('Helvetica Neue',mfont2, #plain ); 
+		draw "Valider" at:{location.x + ui_width - 130#px,pt.y+(mfont2/2)#px} size:{sz*0.8,sz*0.8} font:font2;
+		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 80#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1;
+		//draw "-"+final_budget font:font1 color:#black at:{location.x + ui_width - 70#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		
+		//draw "Valider" at:{pt.x - 100#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1;
+		
+	}
+	
+	
+	action validation_panier
+	{
+		write "valider le panier";
+						
+			if round = 0
+			{
+				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
+				return;
+			}
+			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
+			{
+				string budget_display <- "Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions";
+				ask world {do user_msg (budget_display);}
+				map<string,unknown> res <- user_input("Avertissement", budget_display::"" );//[budget_display:: false]);
+				return;
+			}
+			/* Ce n'est pas delayOfAction qui permet de savoir si une action peut etre retardé plus que prévu 
+			 * delayOfAction se refère au délai normal de mise en oeuvre de l'action
+			 * Par ailleurs l'avertissement sur un délai supplémentaire possible se fait avant, lorsque le joeur click sur l'éléments où appliquer l'action
+			 * Donc, on retire ce bout de code, et on implémente ces messages d'avertisseement dans les actions change_dike et change_plu  
+			 int nb_delayed <- my_basket count(delayOfAction(each.command) > 0);
+			string action_delayed <- nb_delayed = 0 ? "":"Attention, une ou plusieurs de vos réalisations risquent de faire l'objet d'un retard\n";*/
+			
+			string ask_display <- "Vous êtes sur le point de valider votre panier \n"+/*action_delayed+*/" Cocher la case, pour accepter le panier et valider";
+			map<string,bool> res <- user_input("Avertissement", ask_display::false);
+			if(res at ask_display )
+			{
+				ask game_manager
+				{
+					do send_basket;
+				}
+			}
+	}
+	action on_mouse_down
+	{
+		if(validation_button_location() distance_to #user_location < validation_button_size.x)
+		{
+			do validation_panier;
+		}
+	}
+	aspect base
+	{
+		do draw_list;
+		do draw_budget;
+		do draw_valid_button;
+		do draw_foot;
+	}
+}
+
+
+species system_list_element parent:displayed_list_element
+{
+	int direction <- 0;
+	
+	bool move_down_event
+	{
+		point loc <- #user_location;
+		if ! (self overlaps loc)
+		{
+			return false;
+		}
+		switch (direction)
+		{
+			match 2 {
+				ask my_parent
+				{
+					do go_up;
+				}
+			}
+			match 1
+			{
+				ask my_parent
+				{
+					do go_down;
+				}
+			}		
+		}
+		return true;
+	}
+	action draw_element
+	{
+		
+	}
+	
+	aspect dossier
+	{
+		if(is_displayed = true and my_parent.display_name = "Dossier")
+		{
+			do draw_item;
+			do draw_element;
+		}
+	}
+	aspect basket
+	{
+		if(is_displayed = true and my_parent.display_name = "Panier")
+		{
+			do draw_item;
+			do draw_element;
+		}
+	}
+	aspect console
+	{
+		if(is_displayed = true and my_parent.display_name = "Console")
+		{
+			do draw_item;
+			do draw_element;
+		}
+	}
+	
+	
+	
+}
+
+species displayed_list_element skills:[UI_location] schedules:[]
+{
+	bool event <- false update:false;
+	string label <- "my label";
+	displayed_list my_parent;
+	bool is_displayed;
+	int display_index;
+	image_file icone <- nil; //file("../images/ihm/I_arbre.png");
+	
+	action draw_item
+	{
+		font var0 <- font ('Helvetica Neue',14, #bold); 
+		point pt <- location;
+		geometry rec2 <-  polyline([{0,0}, {ui_width,0}]);
+		
+		geometry rec <-  polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
+		shape <- rec;
+		location <- pt;
+		draw rec  at:{location.x,location.y} color:rgb(233,233,233);
+		draw rec2  at:{location.x,location.y+ui_height/2} color:#black;
+		draw label at:{location.x - 1.5 *ui_width/5 , location.y + 4#px} font:var0 color:#black;
+		if( icone !=nil)
+		{
+			draw icone at:{location.x-2*ui_width/5,location.y} size:{ui_height*0.8,ui_height*0.8};
+		}
+	}
+	
+	bool move_down_event
+	{
+		point loc <- #user_location;
+		if self overlaps loc and is_displayed
+		{
+			do on_mouse_down;
+			return true;
+		}
+		
+		return false;
+	}
+	
+	action on_mouse_down;
+	action draw_element;
+	aspect base
+	{
+		if(is_displayed = true)
+		{
+			do draw_item;
+			do draw_element;
+		}
+	}
+}	
+
+species work_in_progress_list parent:displayed_list schedules:[]
+{
+	init{
+		show_header <- false;
+		display_name <- "Dossier";
+		point p <- {0.30,0.0};
+		do lock_agent_at ui_location:p display_name:display_name ui_width:0.7 ui_height:1.0 ;
+		do navigation_item;
+		
+	}
+} 
+
+
+species console parent:displayed_list schedules:[]
+{
+	int INFORMATION_MESSAGE <- 0;
+	int BUDGET_MESSAGE <- 1;
+	int POPULATION_MESSAGE <- 2;
+	
+	init{
+		show_header <- false;
+		display_name <- "Console";
+		point p <- {0.30,0.0};
+		do lock_agent_at ui_location:p display_name:display_name ui_width:0.7 ui_height:1.0 ;
+		do navigation_item;
+	}
+	
+	image_file choose_icone(int message_type)
+	{
+		switch(message_type)
+		{
+			match INFORMATION_MESSAGE { return file("../images/ihm/I_quote.png"); }
+			match POPULATION_MESSAGE { return file("../images/ihm/I_population.png"); }
+			match BUDGET_MESSAGE { return file("../images/ihm/I_BY.png"); }
+		}
+		return file("../images/ihm/I_quote.png");
+	}
+	
+	action write_message(string msg, int type )
+	{
+		create console_element number:1 returns:ele
+		{
+			label <- msg;
+			icone <- myself.choose_icone(type);
+		}
+		do add_item(first(ele));
+	}	
+}
+species console_element parent:displayed_list_element schedules:[]
+{}
+
+species work_in_progress_left_icon skills:[UI_location] 
+{
+	image_file directory_icon <- file("../images/ihm/I_dossier.png");
+	aspect base
+	{
+		geometry rec <- polygon([{0,0},{0,ui_height},{ui_width,ui_height},{ui_width,0},{0,0}]);
+		draw rec color:rgb(59,124,58) at:location;
+		draw directory_icon at:{location.x,location.y-ui_height/4} size:{0.7*ui_width,0.7*ui_width};
+	}
+}
+species console_left_icon skills:[UI_location] 
+{
+	image_file directory_icon <- file("../images/ihm/I_quote.png");
+	aspect base
+	{
+		geometry rec <- polygon([{0,0},{0,ui_height},{ui_width,ui_height},{ui_width,0},{0,0}]);
+		draw rec color:rgb(59,124,58) at:location;
+		draw directory_icon at:{location.x,location.y-ui_height/4} size:{0.7*ui_width,0.7*ui_width};
+	}
+}
+
+
+
+species work_in_progress_element parent:displayed_list_element schedules:[]
+{
+	int delay <- 3;
+	int round_to_apply <- 0;
+	
+	int final_price <- 0;
+	int initialx_price <- 0;
+	
+	point bullet_size -> {point({ui_height*0.6,ui_height*0.6})};
+	
+	point delay_location -> {point({location.x+2.2*ui_width/5,location.y})};
+	point round_apply_location -> {point({location.x+1.5*ui_width/5,location.y})};
+	
+	
+	
+	action draw_element
+	{
+		int mfont <- DISPLAY_FONT_SIZE - 2;
+		font font1 <- font ('Helvetica Neue',mfont, #italic ); 
+		if(delay != 0)
+		{
+			draw circle(bullet_size.x/2) at:delay_location color:rgb(235,33,46);
+			draw ""+delay at:{delay_location.x -(mfont/6)#px ,delay_location.y +(mfont/3)#px } color:#white font:font1;
+		}
+		draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
+		draw ""+round_to_apply at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
+		
+		
+//		draw close_button at:button_location size:button_size;
+	}
+	
+} 
+
+species basket_element parent:displayed_list_element
+{
+	point button_location -> {point({location.x+2*ui_width/5,location.y})};
+	point button_size -> {point({ui_height*0.6,ui_height*0.6})};
+	action_done current_action <- nil;
+	image_file close_button <- file("../images/ihm/I_close.png");
+	
+	action remove_action
+	{
+		ask my_parent
+		{
+			do remove_element(myself);
+			
+		}
+	}
+	
+	action on_mouse_down
+	{
+		if(button_location distance_to #user_location <= button_size.x)
+		{
+			remove current_action from: ordered_action;
+			do remove_action;
+			ask current_action
+			{
+				do die;
+			}
+			write "suppression element";
+			do die;
+		}
+		write "mouse down " + label;
+	}
+	
+	
+	action draw_element
+	{
+		draw close_button at:button_location size:button_size;
+	}
+}
+
+// fin des ajouts
 species del_basket_button
 {
 	int my_index <- 0;
@@ -1488,6 +2276,11 @@ species action_done
 	bool has_activated_levers -> {!empty(activated_levers)};
 	list<activated_lever> activated_levers <-[];
 	
+	init 
+	{
+		//ordered_action <- ordered_action + self;
+	}
+	
 	
 	action init_from_map(map<string, unknown> a )
 	{
@@ -1595,18 +2388,6 @@ species action_done
 					COMMAND_SEPARATOR+location.y;
 		}
 			
-	/*switch(command)
-		{
-			match ACTION_CREATE_DIKE  {
-				point end <- last(shape.points);
-				point origin <- first(shape.points);
-				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+( origin.x)+COMMAND_SEPARATOR+(origin.y) +COMMAND_SEPARATOR+(end.x)+COMMAND_SEPARATOR+(end.y)+COMMAND_SEPARATOR+location.x+COMMAND_SEPARATOR+location.y;
-			}
-			
-			default {
-				result <- ""+command+COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+application_round+COMMAND_SEPARATOR+element_id;
-			}
-		}*/
 		
 		return result;	
 	}
@@ -1964,17 +2745,21 @@ species network_player skills:[network]
 	
 	action send_basket
 	{
+		basket_element bsk_el <- nil;
 		action_done act <-nil;
-		loop act over:my_basket
+		
+		loop bsk_el over:game_basket.elements //my_basket
 		{
+			act <- basket_element(bsk_el).current_action;
 			string val <- act.serialize_command();
 			act.is_sent <- true;
 			map<string,string> data <- ["stringContents"::val];
 			do send to:MANAGER_NAME contents:data;
-			//my_history <- []+act +  my_history;
-			
 		}
-		my_basket<-[];
+		ask game_basket
+		{
+			do remove_all_elements;
+		}
 	}
 	
 }
@@ -1988,6 +2773,8 @@ species history
 		all_action <- [];
 	}
 }
+
+
 
 
 species basket_validation
@@ -2046,10 +2833,22 @@ species action_def_cote parent:action_done
 		} 
 		return #grey;
 	}
-	
+	action draw_display
+	{
+		if !is_applied {
+			draw  20#m around shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);
+		}
+	}
+	aspect carte
+	{
+		if(active_display = DIKE_DISPLAY)
+		{
+			do draw_display;
+		}
+	}
 	aspect base
 	{
-		if !is_applied {draw  20#m around shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);}
+		do draw_display;	
 	}
 	
 	aspect basket
@@ -2061,8 +2860,6 @@ species action_def_cote parent:action_done
 	{
 		do draw_history;
 	}
-	
-	
 	action apply
 	{
 		//creer une digue
@@ -2089,9 +2886,9 @@ species action_UA parent:action_done
 	{
 		//creer une digue
 	}
-	aspect base
+	action draw_display
 	{
-		if !is_applied {
+		if ( !is_applied) {
 			
 			draw shape  color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red) ;
 
@@ -2104,7 +2901,17 @@ species action_UA parent:action_done
 			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command {draw file("../images/icones/wave.png") size:self.shape.width;}
 
 		}
-		
+	}
+	aspect carte
+	{
+		if (active_display = UNAM_DISPLAY ) {
+			
+			do draw_display;
+		}
+	}
+	aspect base
+	{
+		do draw_display;
 	}
 	aspect basket
 	{
@@ -2163,7 +2970,19 @@ species buttons skills:[UI_location]
 	}
 	aspect carte
 	{
-		draw my_icon size:{ui_height, ui_height};
+		float select_size <- min([ui_width,ui_height]);
+		shape <- rectangle(select_size, select_size);
+		if(display_name = active_display or display_name = BOTH_DISPLAY)
+		{
+			draw my_icon size:{select_size, select_size};
+			if(is_selected = true)
+			{
+				draw shape empty:true border: # red ;
+			}
+			
+		}
+
+		
 	}
 }
 
@@ -2336,21 +3155,32 @@ species UA
 		return res;
 	}
 	
+	action draw_display
+	{
+			draw shape color: my_color;
+			if(isAdapte)
+				{
+					draw file("../images/icones/wave.png") size:self.shape.width;
+				}
+			if(isEnDensification)
+			{
+					draw file("../images/icones/crowd.png") size:self.shape.width;
+			}	
+	}
+	
+	aspect carte
+	{
+		if(active_display = UNAM_DISPLAY )
+		{
+			do draw_display;	
+		}			
+	}
 	aspect base
 	{
-		draw shape color: my_color;
-		if(isAdapte)
-			{
-				draw file("../images/icones/wave.png") size:self.shape.width;
-			}
-		if(isEnDensification)
-		{
-				draw file("../images/icones/crowd.png") size:self.shape.width;
-		}
-		
+		do draw_display;		
 //		if isAdapte {draw "A" color:#black;}
 //		if isEnDensification {draw "D" color:#black;}
-	}
+	}	
 
 }
 
@@ -2411,8 +3241,9 @@ species def_cote
 		else {return  "la digue";}		
 	}
 	
-	aspect base
-	{  	if type != 'Naturel'
+	action draw_display
+	{
+			if type != 'Naturel'
 			{switch status {
 				match  "bon" {color <- # green;}
 				match "moyen" {color <-  rgb (231, 189, 24,255);} 
@@ -2433,6 +3264,19 @@ species def_cote
 		}		
 	}
 	
+	
+	aspect carte
+	{
+		if(active_display = DIKE_DISPLAY )
+		{
+			do draw_display;
+		}
+	}
+	aspect base
+	{  
+		
+		do draw_display;
+	}	
 }
 
 species cell schedules:[]
@@ -2470,19 +3314,18 @@ species onglet skills:[UI_location]
 	
 	aspect base
 	{
-
-		if(active_display = display_name)
-		{
+		
 			float gem_height <- ui_height;
 			float gem_width <- ui_width;
-			shape <- rectangle(gem_width,gem_height);
 			float x <- location.x - ui_width/2;
 			float y <- location.y - ui_height/2 ;
+			shape <- polygon([{x,y}, {x,y+gem_height}, {x+gem_width,y+gem_height},{x+gem_width,y},{x,y}]);
+			
+			
+		if(active_display = display_name)
+		{
 			
 			geometry rec2 <- polygon([{x,y}, {x,y+gem_height}, {x+gem_width*0.2,y+gem_height}, {x+gem_width*0.225,y+gem_height*1.2},{x+gem_width*0.25,y+gem_height},{x+gem_width,y+gem_height},{x+gem_width,y},{x,y}]);
-			geometry rec3 <- polygon([{x,y}, {x,y+gem_height}, {x+gem_width,y+gem_height},{x+gem_width,y},{x,y}]);
-			geometry env <- envelope(rec2);
-			self.shape <- rec3;
 			draw rec2 color:rgb(59,124,58);
 		}
 			font var0 <- font (DISPLAY_FONT_NAME,DISPLAY_FONT_SIZE, #bold + #italic); 
@@ -2501,13 +3344,157 @@ experiment game type: gui
 	output
 		{
 	
+		display "Panier" background:#black
+		{
+			species displayed_list aspect:base;
+			species displayed_list_element aspect:base;
+		}
+		
 		display "Carte" background:rgb(0, 188,196)  focus:my_commune
 		{
 			species commune aspect: base;
+			species UA aspect:carte;
+			species action_UA aspect:carte;
+			
+			//DIGUE
+			species def_cote aspect:carte;
+			species action_def_cote aspect:carte;
+		
 			species road aspect:base;
+			species protected_area aspect:base;
+			species flood_risk_area aspect:base;
+
 			species background_agent aspect:base;
 			species onglet aspect:base;
 			species buttons aspect:carte;
+			species buttons_map aspect:carte;
+
+
+			graphics "Full target dike" transparency:0.3
+			{
+				if (explored_dike != nil)
+				{
+					point target <- {explored_dike.location.x  ,explored_dike.location.y };
+					point target2 <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					
+					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw "Information sur "+explored_dike.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: #white;
+					int xpx <-0;
+					if explored_dike.type_ouvrage() = "la digue" {
+						draw "Hauteur"+string(round(100*explored_dike.height)/100.0)+"m" at: target + { 30#px, 35#px } font: regular color: # white;
+						xpx <- xpx+20;
+					}
+					draw "Altitude "+string(round(100*explored_dike.alt)/100.0)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "Etat "+string(explored_dike.status) at: target + { 30#px, xpx#px +55#px} font: regular color: # white;
+				}
+				
+				
+			}
+			
+			
+			
+			
+			
+			graphics "explore_dike_icone" 
+			{
+				if (explored_dike != nil)
+				{if explored_dike.status != "bon" {
+					point image_loc <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dike.location.y + 50#px  };
+					string to_draw <- nil;
+					switch(explored_dike.status)
+					{
+						//match "bon" { draw file("../images/icones/conforme.png") at:image_loc size:50#px; }
+						match "moyen" { draw file("../images/icones/danger.png") at:image_loc size:50#px; }
+						match "mauvais" { draw file("../images/icones/rupture.png") at:image_loc size:50#px; }
+					}	
+				  }
+				}
+			}
+			
+			graphics "Dike Button information" transparency:0.5
+			{
+				if (active_display = DIKE_DISPLAY and explored_buttons != nil)
+				{
+					point target <- {explored_buttons.location.x  , explored_buttons.location.y };
+					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
+					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					point target4 <- {target3.x,target2.y - 15#px };
+					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
+					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
+					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
+					if explored_buttons.command != ACTION_INSPECT_DIKE {draw "Coût de l'action : "+explored_buttons.action_cost +"/mètre" at: target2 + { 30#px, 55#px} font: regular color: # white;}
+				}
+			}
+// LEGENDE AMENAGEMENT
+
+			graphics "Full target UNAM" transparency:0.5
+			{
+				//int size <- length(moved_agents);
+				if (explored_cell != nil and explored_action_UA = nil)
+				{
+					point target <- {explored_cell.location.x  ,explored_cell.location.y };
+					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw "Zonage PLU" at: target + { 0#px, 15#px } font: regular color: # white;
+					draw string(explored_cell.fullNameOfUAname()) at: target + { 30#px, 35#px } font: regular color: # white;
+					if explored_cell.ua_name in ["U","Us"]{
+							draw "population : "+string(explored_cell.population) at: target + { 30#px, 55#px} font: regular color: # white;
+							draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 75#px} font: regular color: # white;
+							}
+				}
+			}
+			
+			graphics "Action Full target UNAM" transparency:0.3
+			{
+				//int size <- length(moved_agents);
+				if(explored_action_UA !=nil and explored_action_UA.is_applied=false)
+				{
+					
+					UA mcell <- UA first_with(each.id = explored_action_UA.element_id);
+					point target <- {mcell.location.x  ,mcell.location.y };
+					point target2 <- {mcell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),mcell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw "Changement d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
+					
+					draw file("../images/icones/fleche.png") at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px}  size:50#px;
+					draw ""+ (explored_action_UA.actual_application_round)   at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size:20#px; 
+					draw world.chooseActionIcone(explored_action_UA.command) at:  { target2.x - 50#px, target.y +50#px} size:50#px;
+					draw world.au_icone(mcell) at:  { target.x +50#px,target.y + 50#px} size:50#px;
+				}
+			}
+			
+			
+			graphics "Button information UNAM" transparency:0.5
+			{
+				if (active_display = UNAM_DISPLAY and explored_buttons != nil)
+				{
+					point target <- {explored_buttons.location.x  ,explored_buttons.location.y };
+					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
+					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
+					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
+					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
+					if explored_buttons.command != ACTION_INSPECT_LAND_USE {
+							switch explored_buttons.command {
+								default {draw "Coût de l'action : "+explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;}
+								match ACTION_MODIFY_LAND_COVER_N {
+									draw "Coût si appliqué à une parcelle A : "+ACTION_COST_LAND_COVER_FROM_A_TO_N  at: target2 + { 30#px, 55#px} font: regular color: # white;
+									draw "Coût si appliqué à une parcelle AU : "+ACTION_COST_LAND_COVER_FROM_AU_TO_N  at: target2 + { 30#px, 75#px} font: regular color: # white;
+									draw "Coût si appliqué à une parcelle U : coût d'expropriation"  at: target2 + { 30#px, 95#px} font: regular color: # white;
+								}
+								match ACTION_MODIFY_LAND_COVER_AUs {
+									draw "Coût si appliqué à une parcelle AU : "+explored_buttons.action_cost  at: target2 + { 30#px, 55#px} font: regular color: # white;
+									draw "Coût si appliqué à une parcelle U : "+(subvention_habitat_adapte?ACTION_COST_LAND_COVER_TO_Us_SUBSIDY:ACTION_COST_LAND_COVER_TO_Us) at: target2 + { 30#px, 75#px} font: regular color: # white;
+								}
+							
+							}
+					}
+				}
+				
+				
+			}
+			event [mouse_down] action: button_click_general;
+			event mouse_move action: mouse_move_general;
 			
 		}
 		display "Aménagement, PLU et habitat" focus:my_commune //camera_pos:my_commune
@@ -2666,7 +3653,43 @@ experiment game type: gui
 			event mouse_move action: mouse_move_dike;			
 		}
 		
-		display Panier
+		/**
+		 * 
+		 * 
+		 * ajout V2
+		 */
+	
+		display "Panier" background:#black
+		{
+			species basket aspect:base;
+			species basket_element aspect:base;
+			species system_list_element aspect:basket;
+			event mouse_down action:move_down_event;
+			
+		}
+		
+		display "Dossier" background:#black
+		{
+			species work_in_progress_left_icon aspect:base;
+			species work_in_progress_list aspect:base;
+			species work_in_progress_element aspect:base;
+			species system_list_element aspect:dossier;
+			event mouse_down action:move_down_event_dossier;
+		}
+		
+		display "Console"
+		{
+			species console_left_icon aspect:base;
+			species console aspect:base;
+			species console_element aspect:base;
+			species system_list_element aspect:console;
+			event mouse_down action:move_down_event_console;
+		
+		}
+		
+		
+		/*
+		display Panier2
 		{
 			species action_def_cote aspect:basket;
 			species action_UA aspect:basket;
@@ -2680,13 +3703,14 @@ experiment game type: gui
 			event [mouse_down] action: basket_click;
 		}
  
- 		display Dossiers
+ 		display Dossiers2
 		{
 			species action_def_cote aspect:history;
 			species action_UA aspect:history;
 			species highlight_action_button aspect:base;
 			event [mouse_down] action: history_click;
-
 		}
+		*  */
+		
  	}
 }
