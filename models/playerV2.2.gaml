@@ -35,7 +35,7 @@ global
 	file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
 	file zone_protegee_shape <- file("../includes/zone_etude/zps_sic.shp");
 	file zone_PPR_shape <- file("../includes/zone_etude/PPR_extract.shp");
-	file sites_non_classes_area_shape <- file("../includes/zone_etude/sites_non_classes.shp"); /// ATTENTION, SHAPE A CHANGER
+	file sites_non_classes_area_shape <- file("../includes/zone_etude/sites_non_classes.shp");
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));
 	matrix<string> all_action_delay <- matrix<string>(csv_file("../includes/delai_action.csv",";"));
 
@@ -627,7 +627,7 @@ global
 			point p <- {0.80,0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			
-			my_icon <- image_file("../images/ihm/I_oeil_rouge.png");
+			my_icon <- image_file("../images/ihm/I_afficher_zone_protegee.png");
 			is_selected <- false;
 		}	
 		create buttons_map number: 1
@@ -641,7 +641,7 @@ global
 			point p <- {0.90,0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			
-			my_icon <- image_file("../images/icones/avec_zones_innondees.png");
+			my_icon <- image_file("../images/ihm/I_afficher_PPR.png");
 			is_selected <- false;
 		}
 	}
@@ -713,12 +713,11 @@ global
 			is_shown_flooded_area <- false;
 	
 			switch a_map_buton.command {
-						match ACTION_DISPLAY_PROTECTED_AREA { is_shown_protected_area <- true;
-											a_map_buton.my_icon <-  image_file("../images/ihm/I_oeil_rouge.png") ;
+						match ACTION_DISPLAY_PROTECTED_AREA {
+							is_shown_protected_area <- true;
 						}
 						match ACTION_DISPLAY_FLOODED_AREA {
 							is_shown_flooded_area <- false;
-							a_map_buton.my_icon <-   image_file("../images/icones/sans_zones_innondees.png") ;
 						}
 					}			
 			return true;
@@ -1150,8 +1149,8 @@ global
 				ask a_MAP_button {
 					is_selected <- not(is_selected);
 					switch command {
-						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_protegees.png") :  image_file("../images/icones/sans_zones_protegees.png");}
-						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_innondees.png") :  image_file("../images/icones/sans_zones_innondees.png");}
+						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png");}
+						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") :  image_file("../images/ihm/I_afficher_PPR.png");}
 					}			
 				}
 			}
