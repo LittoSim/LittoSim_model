@@ -18,11 +18,10 @@ global  {
 
 	string SERVER <- "localhost";
 	float MOUSE_BUFFER <- 50#m;
-	string OBSERVER_NAME <- "model_observer";
-	
 	string COMMAND_SEPARATOR <- ":";
-	string GAME_LEADER_MANAGER <- "GAME_LEADER_MANAGER";
-	string MANAGER_NAME <- "model_manager";
+	string GAME_LEADER <- "GAME_LEADER";
+	string GAME_MANAGER <- "GAME_MANAGER";
+	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
 	string GROUP_NAME <- "Oleron";  
 	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 	float  STANDARD_DIKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
@@ -192,7 +191,7 @@ init
 		}
 		
 		if activemq_connect {
-			create network_leader number:1;
+			create network_listen_to_leader number:1;
 			create network_player number:1 ;
 			create network_activated_lever number: 1;
 		}
@@ -322,12 +321,13 @@ action nextRound{
 		ask shuffle(UA) {do evolve_U_densification ;}
 		ask shuffle(UA) {do evolve_U_standard ;} 
 		ask commune where (each.id > 0) {
-			do recevoirImpots; not_updated<-true;
+			do calcul_impots;
 			}}
 	else {stateSimPhase <- 'game'; write stateSimPhase;}
 	round <- round + 1;
-	ask commune {do informerNumTour;}
-	ask network_leader{do informLeader_round_number;}
+	ask network_player {do send_space_update;}
+	ask commune {do inform_new_round;}
+	ask network_listen_to_leader{do informLeader_round_number;}
 	do save_budget_data;
 	write "done!";
 	} 	
@@ -640,11 +640,12 @@ species data_retreive skills:[network] schedules:[]
 	init 
 	{
 		write "start sender ";
-		 do connect to:SERVER with_name:GAME_LEADER_MANAGER+"_retreive";
+		 do connect to:SERVER with_name:GAME_MANAGER+"_retreive";
 	}
 	action send_data_to_commune(commune m)
 	{
 		write "send data.... to "+ m.network_name;
+		ask m {do send_player_commune_update();}
 		do retreive_def_cote(m);
 		do retreive_UA(m);
 		do retreive_action_done(m);
@@ -847,17 +848,12 @@ species action_done schedules:[]
 }
 
 
-species network_leader skills:[network]
+species network_listen_to_leader skills:[network]
 {
-	string ABROGER <- "Abroger";
-	string RECETTE <- "Percevoir Recette";
-	string SUBVENTIONNER <- "Subventionner";
-	string RETARDER <- "Retarder";
-	string LEVER_RETARD <- "Lever les retards";
+	string PRELEVER <- "Percevoir Recette";
+	string CREDITER <- "Subventionner";
 	string LEADER_COMMAND <- "leader_command";
 	string AMOUNT <- "amount";
-	string DELAY <- "delay";
-	string ACTION_ID <- "action_id";
 	string COMMUNE <- "COMMUNE_ID";
 	string ASK_NUM_ROUND <- "Leader demande numero du tour";
 	string NUM_ROUND <- "Numero du tour";
@@ -866,7 +862,7 @@ species network_leader skills:[network]
 	
 	init
 	{
-		 do connect to:SERVER with_name:GAME_LEADER_MANAGER;
+		 do connect to:SERVER with_name:MSG_FROM_LEADER;
 	}
 	
 	
@@ -878,34 +874,22 @@ species network_leader skills:[network]
 			map<string, unknown> m_contents <- msg.contents;
 			
 			string cmd <- m_contents[LEADER_COMMAND];
-			
 			write "command " + cmd;
 			switch(cmd)
 			{
-//				match RETARDER
-//				{
-//					int id_action <- m_contents[ACTION_ID];
-//					int delais <- m_contents[DELAY];
-//					action_done dd <- action_done first_with(each.id=id_action);
-//					do retarder_action(dd,delais);
-//				}
-				match SUBVENTIONNER
+				match CREDITER
 				{
-					int id_commune <- m_contents[COMMUNE];
+					string commune_name <- m_contents[COMMUNE];
 					int amount <- m_contents[AMOUNT];
-					write "commune " + m_contents[COMMUNE];
-					commune com <- commune first_with(each.id=id_commune);
-					write "commune found " + com;
-
-					do subventionner(com,amount);
-
+					commune cm <- commune first_with(each.commune_name=commune_name);
+					cm.budget <- cm.budget + amount;
 				}
-				match RECETTE
+				match PRELEVER
 				{
-					int id_commune <- m_contents[COMMUNE];
+					string commune_name <- m_contents[COMMUNE];
 					int amount <- m_contents[AMOUNT]; 
-					commune com <- commune first_with(each.id=id_commune);
-					do percevoir(com,amount);
+					commune cm <- commune first_with(each.commune_name=commune_name);
+					cm.budget <- cm.budget - amount;
 				}
 //				match LEVER_RETARD
 //				{
@@ -935,7 +919,7 @@ species network_leader skills:[network]
 					map<string,string> msg <- [];
 					put NUM_ROUND key:OBSERVER_MESSAGE_COMMAND in:msg ;
 					put string(round) key: "num tour" in: msg;
-					do send to:OBSERVER_NAME contents:msg;
+					do send to:GAME_LEADER contents:msg;
 				}
 				
 	action informLeader_Indicators_t0  {
@@ -954,7 +938,7 @@ species network_leader skills:[network]
 					put count_UA_N_t0 key: "count_UA_N_t0" in: msg;
 					put count_UA_AU_t0 key: "count_UA_AU_t0" in: msg;
 					put count_UA_U_t0 key: "count_UA_U_t0" in: msg;
-					ask myself {do send to:OBSERVER_NAME contents:msg;}
+					ask myself {do send to:GAME_LEADER contents:msg;}
 					}		
 				}
 	
@@ -989,27 +973,27 @@ species network_leader skills:[network]
 //		}
 //		
 //	}
-	action subventionner(commune cm, int montant)
-	{
-		cm.budget <- cm.budget + montant;
-		ask network_player
-			{
-			string msg <- ""+INFORM_GRANT_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
-			do send to:cm.network_name contents:msg;
-			}
-		cm.not_updated <- true;
-	}
+//	action subventionner(commune cm, int montant)
+//	{
+//		cm.budget <- cm.budget + montant;
+//		ask network_player
+//			{
+//			string msg <- ""+INFORM_GRANT_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
+//			do send to:cm.network_name contents:msg;
+//			}
+//		cm.not_updated <- true;
+//	}
 	
-	action percevoir(commune cm, int montant)
-	{
-		cm.budget <- cm.budget - montant;
-		ask network_player
-		{
-			string msg <- ""+INFORM_FINE_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
-			do send to:cm.network_name contents:msg;
-		}
-		cm.not_updated <- true;
-	}
+//	action percevoir(commune cm, int montant)
+//	{
+//		cm.budget <- cm.budget - montant;
+//		ask network_player
+//		{
+//			string msg <- ""+INFORM_FINE_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
+//			do send to:cm.network_name contents:msg;
+//		}
+//		cm.not_updated <- true;
+//	}
 	
 	reflex send_action_state when: cycle mod 10 = 0
 	{
@@ -1017,7 +1001,7 @@ species network_leader skills:[network]
 		{
 			map<string,string> msg <- act_done.build_map_from_attribute();
 			put UPDATE_ACTION_DONE key:OBSERVER_MESSAGE_COMMAND in:msg ;
-			do send to:OBSERVER_NAME contents:msg;
+			do send to:GAME_LEADER contents:msg;
 			act_done.is_sent_to_leader <- true;
 			write "send message to leader "+ msg;
 			
@@ -1030,7 +1014,7 @@ species network_player skills:[network]
 {
 	init
 	{
-		 do connect to: SERVER with_name:MANAGER_NAME;
+		 do connect to: SERVER with_name:GAME_MANAGER;
 	}
 	
 	reflex wait_message when: activemq_connect
@@ -1040,7 +1024,7 @@ species network_player skills:[network]
 			message msg <- fetch_message();
 			string m_sender <- msg.sender;
 			map<string, unknown> m_contents <- msg.contents;
-			if(m_sender!=MANAGER_NAME )
+			if(m_sender!=GAME_MANAGER )
 			{
 				
 				if(m_contents["stringContents"]!= nil)
@@ -1052,10 +1036,10 @@ species network_player skills:[network]
 							int idCom <-world.commune_id(m_sender);
 							ask(commune where(each.id= idCom))
 							{
-								not_updated <- true;
-								do informerNumTour;
+								do inform_current_round;
+								do send_player_commune_update;
 							}
-								write "connexion de "+ m_sender + " "+ idCom;
+							write "connexion de "+ m_sender + " "+ idCom;
 						
 					}
 					else
@@ -1326,12 +1310,11 @@ species network_player skills:[network]
 	
 	
 	
-	reflex send_space_update
+	action send_space_update
 	{
 		do update_UA;
 		do update_dike;
 	//	do update_action_done_func();
-		do update_commune;
 	}
 	
 	action update_UA
@@ -1477,24 +1460,7 @@ species network_player skills:[network]
 			
 		}
 	}
-	action update_commune
-	{
-		list<string> update_messages <-[]; 
-		ask commune where(each.not_updated)
-		{
-			string msg <- ""+UPDATE_BUDGET+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+ budget;
-			not_updated <- false;
-			ask first(network_player)
-			{
-				do send  to:myself.network_name contents:msg;
-				
-			}
-		}
-	}
-	
-	
-	
-	
+
 }
 	
 
@@ -2288,7 +2254,6 @@ species UA
 species commune
 {	
 	int id<-0;
-	bool not_updated<- true;
 	string commune_name;
 	string network_name;
 	int budget;
@@ -2333,11 +2298,38 @@ species commune
 		return sum(aC.UAs accumulate (each.population));
 	}
 	
-	action informerNumTour {
+	action inform_current_round {  //  USED WHEN A COMMUNE CONNECTS TO INFORM IT WHICH ROUND IT IS
 		ask network_player
 		{
-			string msg <- ""+INFORM_ROUND+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+round;
-			do send to:myself.network_name contents:msg;
+			map<string,string> msg <- [
+			"TOPIC"::"INFORM_CURRENT_ROUND",
+			"commune_name"::myself.commune_name,
+			"round"::round
+			];
+			do send  to:myself.commune_name+"_map_msg" contents:msg;
+		}
+	}
+
+	action send_player_commune_update  //  USED WHEN A COMMUNE CONNECTS TO GIVE THE CURRENT STATE OF THE COMMNUNE
+	{
+		ask network_player
+		{
+			map<string,string> msg <- [
+			"TOPIC"::"COMMUNE_UPDATE",
+			"commune_name"::myself.commune_name,
+			"budget"::myself.budget
+			];
+			do send  to:myself.commune_name+"_map_msg" contents:msg;
+		}
+	}
+	action inform_new_round {  // INFORM THAT A NEW ROUND HAS PASS
+		ask network_player
+		{
+			map<string,string> msg <- [
+			"TOPIC"::"INFORM_NEW_ROUND",
+			"commune_name"::myself.commune_name
+			];
+			do send  to:myself.commune_name+"_map_msg" contents:msg;
 		}
 	}
 	
@@ -2357,22 +2349,21 @@ species commune
 			count_UA_U_t0 <- length (UAs where (each.ua_name = 'U'));
 	
 	}
-	action recevoirImpots {
+	action calcul_impots {
 		impot_recu <- current_population(self) * impot_unit;
 		budget <- budget + impot_recu;
 		write commune_name + "->" + budget;
-		ask network_player
-		{
-			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+myself.impot_recu+COMMAND_SEPARATOR+round;
-			do send to:myself.network_name contents:msg;
-		}
-		not_updated <- true;
+//		ask network_player
+//		{
+//			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+myself.impot_recu+COMMAND_SEPARATOR+round;
+//			do send to:myself.network_name contents:msg;
+//		}
+//		not_updated <- true;
 	}
 	
 	action pay_for_action_done (action_done aAction)
 			{
 				budget <- budget - aAction.cost;
-				not_updated <- true;
 	}
 							
 }

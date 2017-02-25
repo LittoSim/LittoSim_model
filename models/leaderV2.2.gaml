@@ -17,8 +17,8 @@ global
 	string SERVER <- "localhost";
 	float MOUSE_BUFFER <- 50#m;
 	string COMMAND_SEPARATOR <- ":";
-	string OBSERVER_NAME <- "model_observer";
-	string GAME_LEADER_MANAGER <- "GAME_LEADER_MANAGER";
+	string GAME_LEADER <- "GAME_LEADER";
+	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
 	string GROUP_NAME <- "Oleron";  
 	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 	float  STANDARD_DIKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
@@ -92,8 +92,8 @@ global
 	
 	string REORGANISATION_AFFICHAGE <- "Réorganiser l'affichage";
 	string ABROGER <- "Abroger";
-	string RECETTE <- "Percevoir Recette";
-	string SUBVENTIONNER <- "Subventionner";
+	string PRELEVER <- "Percevoir Recette";
+	string CREDITER <- "Subventionner";
 	string RETARDER <- "Retarder";
 	string RETARD_1_AN <- "Retarder pour 1 an";
 	string RETARD_2_ANS <- "Retarder pour 2 ans";
@@ -105,6 +105,7 @@ global
 	string ACTION_ID <- "action_id";
 	string DATA <- "data";
 	string PLAYER_MSG <-"player_msg";
+	string MSG_TO_PLAYER <-"Message au joueur";
 	string COMMUNE <- "COMMUNE_ID";
 	string ASK_NUM_ROUND <- "Leader demande numero du tour";
 	string NUM_ROUND <- "Numero du tour";
@@ -215,15 +216,12 @@ global
 		}
 	}
 	
-	network_leader network_agent <- nil;
-	
-	
 	init
 	{
 		create network_leader number:1;
-		network_agent <- first(network_leader);
 		do create_commune; 
 		do create_button;
+		do create_commune_action_buttons;
 
 		ask commune
 		{
@@ -282,14 +280,14 @@ global
 		if selected_action = nil {return;} 
 		switch(selected_action.displayName)
 				{
-					match RECETTE {
+					match PRELEVER {
 						if(selected_commune != nil)
 						{
 							do percevoir_recette( selected_commune);
 							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
 						}
 					}
-					match SUBVENTIONNER {
+					match CREDITER {
 						if(selected_commune != nil)
 						{
 							do subventionner( selected_commune);
@@ -368,28 +366,36 @@ global
 				}
 	}
 	
+	action user_click
+	{
+		point loc <- #user_location;
+		unknown aButtonT <- ((all_levers + commune_action_button) first_with (each overlaps loc ));
+		if aButtonT = nil {return;} 
+		if aButtonT in commune_action_button {ask commune_action_button where (each = aButtonT){do button_cliked();}  
+		}
+	}
 	action percevoir_recette(commune com)
 	{
 		string answere <- "Montant de la recette : ";
 		map values <- user_input("Vous allez prélever une recette en provenance de " +com.com_large_name+"\nMettre un montan de 0 pour annuler",["Montant de la recette : " :: "2000"]);
 		map<string, unknown> msg <-[];//LEADER_COMMAND::RECETTE,AMOUNT::int(values[answere]),COMMUNE::com.com_id];
 		if int(values[answere])=0 {return;}// permet d'annuler l'action si le leader change d'avis ou est arriver la par hazard
-		put RECETTE key: LEADER_COMMAND in: msg;
+		put PRELEVER key: LEADER_COMMAND in: msg;
 		put int(values[answere]) key: AMOUNT in: msg;
 		put com.com_id key: COMMUNE in: msg;
-		do send_message(msg);	
+		do send_message_from_leader(msg);	
 	}
 
 	action subventionner(commune com)
 	{
 		string answere <- "montant de la subvention : ";
-		map values <- user_input("Vous allez subventionner la commune de " +com.com_large_name+"\nMettre un montan de 0 pour annuler",[ "montant de la subvention : " :: "2000"]);
+		map values <- user_input("Vous allez subventionner la commune de " +com.com_large_name+"\nMettre un montant de 0 pour annuler",[ "montant de la subvention : " :: "2000"]);
 		map<string, unknown> msg <-[]; //LEADER_COMMAND::SUBVENTIONNER,AMOUNT::int(values[answere]),COMMUNE::com.com_id];
 		if int(values[answere])=0 {return;}// permet d'annuler l'action si le leader change d'avis ou est arriver la par hazard
-		put SUBVENTIONNER key: LEADER_COMMAND in: msg;
+		put CREDITER key: LEADER_COMMAND in: msg;
 		put int(values[answere]) key: AMOUNT in: msg;
 		put com.com_id key: COMMUNE in: msg;
-		do send_message(msg);	
+		do send_message_from_leader(msg);	
 	}
 	action subventionner_ganivelle
 	{
@@ -422,25 +428,24 @@ global
 //		do send_message(msg);	
 //	}
 	
-	action send_message(map<string,unknown> msg)
+	action send_message_from_leader(map<string,unknown> msg)
 	{
-		ask network_agent
+		ask network_leader
 		{
-			do send to:GAME_LEADER_MANAGER contents:msg;
+			do send to:MSG_FROM_LEADER contents:msg;
 		}		
 	}
 	
 	action send_message_lever (activated_lever lev)
 	{
-		
-		ask network_agent
+		ask network_leader
 		{
 			do send to: "activated_lever" contents:lev.build_map_from_attribute();
 		}	
 	}
 	action send_message_to_commune(string msg, string acommune_name)
 	{
-		ask network_agent
+		ask network_leader
 		{
 			do send to:acommune_name contents:msg;
 		}		
@@ -496,14 +501,14 @@ global
 		
 		create action_button number:1
 		{
-			displayName <- SUBVENTIONNER;
+			displayName <- CREDITER;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
 		
 		create action_button number:1
 		{
-			displayName <- RECETTE;
+			displayName <- PRELEVER;
 			location <- {5, i*10 + 10};
 			i <- i +1;
 		}
@@ -544,8 +549,6 @@ global
 			{
 				do die;
 			}
-				
-			write " commune " + commune_name + " "+com_id;
 			location <- {5, i*20 + 10};
 			i <- i +1;
 		
@@ -584,13 +587,6 @@ global
 		string previous_comm_name<-"";
 		ask all_levers{
 			add self to: my_commune.levers ;
-			switch my_commune.commune_name
-		 	{
-				match "stpierre" {vertical_position <- 5;}
-		 		match "dolus" {vertical_position <- 20;}
-		 		match "lechateau" {vertical_position <- 35;}
-				match "sttrojan" {vertical_position <- 50;}
-			}
 			pos <-pos +1;
 			num_column <- num_column +1;
 			if previous_comm_name != my_commune.commune_name
@@ -607,8 +603,37 @@ global
 			previous_comm_name <- my_commune.commune_name;
 			location <- point(10+(num_column-1) * column_spacing, 10+(num_row - 1 )*row_spacing );
 	 	}
+	 	
 	}
 	
+action create_commune_action_buttons
+	{
+		ask commune {
+			point aP <- (levers first_with(each.tout_a_gauche_a_l_affichage)).location;
+			
+			create commune_action_button number: 1
+			{
+	 			displayName <- "Envoyer de l'argent";
+	 			command <- "give_money";
+	 			my_commune <- myself;
+	 			location <- {aP.x+2,aP.y-2.1};
+	 		}
+	 		create commune_action_button number: 1
+			{
+	 			displayName <- "Prélever de l'argent";
+	 			command <- "take_money";
+	 			my_commune <- myself;
+	 			location <- {aP.x+8,aP.y-2.1};
+	 		}
+	 		create commune_action_button number: 1
+			{
+	 			displayName <- "Envoyer un message";
+	 			command <- "send_msg";
+	 			my_commune <- myself;
+	 			location <- {aP.x+14,aP.y-2.1};
+	 		}
+	 	}
+	}
 	
 	string labelOfAction (int action_code)
 	{
@@ -928,6 +953,8 @@ species action_button
 }
 
 
+
+
 species commune
 {
 	string commune_name;
@@ -1128,6 +1155,79 @@ species commune
 }
 
 
+species commune_action_button
+{
+	string displayName;
+	string command;
+	commune my_commune;
+	geometry shape <- rectangle(5.4,0.8);
+	
+	aspect base
+	{
+		draw shape color: rgb(176,97,188) border: #black;
+		draw displayName at:{location.x-2.5, location.y+0.2} font: font("Arial", 14 , #plain) color:#white;
+	}
+	
+	action button_cliked 
+	{
+		switch(displayName)
+		{
+			match "Prélever de l'argent"
+			{
+				map values <- user_input("Indiquer le montant prélevé à " +my_commune.com_large_name+"\n(0 pour annuler)",
+						[	"Montant :" :: "2000",
+							"Message :" :: "L'agence vous preleve un montant de : "
+						]);
+				map<string, unknown> msg <-[];
+				if int(values["Montant :"])=0 {return;}
+				put PRELEVER key: LEADER_COMMAND in: msg;
+				put my_commune.commune_name key: COMMUNE in: msg;
+				put int(values["Montant :"]) key: AMOUNT in: msg;
+				put values["Message :"] key: PLAYER_MSG in:msg;
+				write msg;
+				ask world {do send_message_from_leader(msg);}			
+			}
+			match "Envoyer de l'argent"
+			{
+				map values <- user_input("Indiquer le montant envoyé à " +my_commune.com_large_name+"\n(0 pour annuler)",
+						[	"Montant :" :: "2000",
+							"Message :" :: "L'agence vous envoie un montant de : "
+						]);
+				map<string, unknown> msg <-[];
+//				map<string,unknown> values2 <- user_input("Enter numer of agents and locations",["Number" :: 100, "Name" :: "bbb"]);
+//				write "nombre " + (values2 at "Number") + " et point "+(string(values2 at "Name"));
+				map<string,unknown> values2 <- user_input("Enter a string",[ "Name" :: "bbb"]);
+				write "Name "+(string(values2 at "Name"));
+				int bbb;
+				
+				
+				
+				if int(values["Montant :"])=0 {return;}
+				put CREDITER key: LEADER_COMMAND in: msg;
+				put my_commune.commune_name key: COMMUNE in: msg;
+				put int(values["Montant :"]) key: AMOUNT in: msg;
+				put values["Message :"] key: PLAYER_MSG in:msg;
+				write msg;
+				ask world {do send_message_from_leader(msg);}			
+			}
+			match "Envoyer un message"
+			{
+				map values <- user_input("Indiquer le message envoyé à " +my_commune.com_large_name+"\n('' pour annuler)",
+						[	
+							"Message :" :: "L'agence dit Bonjour"
+						]);
+				map<string, string> msg <-[];
+				write values["Message :"];
+				if (values["Message :"])in["","L'agence signale que..."] {return;}
+				put MSG_TO_PLAYER key: LEADER_COMMAND in: msg;
+				put my_commune.commune_name key: COMMUNE in: msg;
+				put values["Message :"] key: PLAYER_MSG in:msg;
+				ask world {do send_message_from_leader(msg);}			
+			}			
+		}		
+	}
+}
+
 species activated_lever 
 {
 	action_done act_done;
@@ -1193,8 +1293,6 @@ species lever
 	string progression_bar<-"";
 	string help_lever_msg <-"";
 	string player_msg;
-	int horizontal_position<-0;
-	int vertical_position ;
 	string activation_label_L1<-"";
 	string activation_label_L2<-"";
 	geometry shape <- rectangle (9,3);
@@ -1395,7 +1493,6 @@ species lever_create_dike parent: cost_lever
 	
 	init
 		{
-		horizontal_position <- 5;
 		lever_type <- "Construit des digues";
 		profile_name<-"batisseur";
 		threshold <- 0.2;
@@ -1411,7 +1508,6 @@ species lever_raise_dike parent: cost_lever
 	string progression_bar -> {""+my_commune.length_dike_raised+ " m. réhaussés / "+ my_commune.length_dikes_t0+" m. à t0"};
 	init
 		{
-		horizontal_position <- 15;
 		lever_type <- "Rehausse les digues";
 		profile_name<-"batisseur";
 		threshold <- 0.2;
@@ -1429,7 +1525,6 @@ species lever_repair_dike parent: cost_lever
 	
 	init
 		{
-		horizontal_position <- 25;
 		lever_type <- "Renove les digues";
 		profile_name<-"batisseur";
 		threshold <- 0.2;
@@ -1448,7 +1543,6 @@ species lever_AUorUi_inCoastBorderArea parent: lever
 	
 	init
 		{
-		horizontal_position <- 35;
 		lever_type <- "Construit ou densifie non adapté en ZL";
 		profile_name<-"batisseur";
 		threshold <- 2;
@@ -1489,7 +1583,6 @@ species lever_AUorUi_inRiskArea parent: cost_lever
 	
 	init
 		{
-		horizontal_position <- 45;
 		lever_type <- "Construit ou densifie en ZI";
 		profile_name<-"batisseur";
 		threshold <- 2;
@@ -1515,7 +1608,6 @@ species lever_ganivelle parent: cost_lever
 	
 	init
 		{
-		horizontal_position <- 55;
 		lever_type <- "Construit des ganivelles";
 		profile_name<-"défense douce";
 		threshold <- 0.1;
@@ -1533,7 +1625,6 @@ species lever_Us_outCoastBorderOrRiskArea parent: cost_lever
 	
 	init
 		{
-		horizontal_position <- 65;
 		lever_type <- "Habitat adapté hors ZL et ZI";
 		profile_name<-"défense douce";
 		threshold <- 2;
@@ -1573,7 +1664,6 @@ species lever_Us_inCoastBorderArea parent: cost_lever
 	
 	init
 		{
-		horizontal_position <- 75;
 		lever_type <- "Habitat adapté en ZL";
 		profile_name<-"défense douce";
 		threshold <- 2;
@@ -1590,7 +1680,6 @@ species lever_Us_inRiskArea parent: cost_lever
 	
 	init
 		{
-		horizontal_position <- 85;
 		lever_type <- "Habitat adapté en ZI";
 		profile_name<-"défense douce";
 		threshold <- 2;
@@ -1610,7 +1699,6 @@ species lever_inland_dike parent: lever
 	
 	init
 		{
-		horizontal_position <- 95;
 		lever_type <- "Construit des rétrodigues";
 		profile_name<-"défense douce";
 		threshold <- 0.01;
@@ -1768,17 +1856,16 @@ species network_leader skills:[network]
 {
 	init
 	{
-		 do connect to: SERVER with_name:OBSERVER_NAME;
-		 
+		 do connect to: SERVER with_name:GAME_LEADER;
 		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
 		put ASK_NUM_ROUND key: LEADER_COMMAND in: msg;
-		do send to:GAME_LEADER_MANAGER contents:msg;
+		ask world {do send_message_from_leader(msg);}
 		map<string, unknown> msg <-[]; 
 		put ASK_INDICATORS_T0 key: LEADER_COMMAND in: msg;
-		do send to:GAME_LEADER_MANAGER contents:msg;
+		ask world {do send_message_from_leader(msg);}
 		map<string, unknown> msg <-[]; 
 		put "RETREIVE_ACTION_DONE" key: LEADER_COMMAND in: msg;
-		do send to:GAME_LEADER_MANAGER contents:msg;
+		ask world {do send_message_from_leader(msg);}
 	}
 	
 	
@@ -1866,39 +1953,37 @@ experiment lead_the_game
 	float minimum_cycle_duration <- 0.5;
 	output
 	{
-		display commune_control
-		{
-			species commune aspect:base;
-			event [mouse_down] action: button_commune;
-		}
-		
-		display action_control
-		{
-			species action_button aspect:base;
-			event [mouse_down] action: button_action;
-		}
-		display alive_action_commune
-		{
-			graphics "agile" position:{0,0} 
-			{
-				draw rectangle(20#m,100#m) color:#gray at:{10#m,50#m};
-				draw "A traiter" color:#white at:{5#m,10#m} size:12#px;
-				draw rectangle(40#m,100#m) color:#yellow at:{40#m,50#m};
-				draw "Tour "+string(round) color:#black font: font("Arial", 16 , #bold) at:{35#m,3#m};
-				draw "Encours" color:#black at:{35#m,10#m};
-				draw rectangle(40#m,100#m) color:#green at:{80#m,50#m};
-				draw "Achevé" color:#white at:{75#m,10#m};
-			}
-			species action_done aspect:base;
-			event [mouse_down] action: button_action_done;
-			event mouse_move action: button_action_move;
-			
-		}
+//		display commune_control
+//		{
+//			species commune aspect:base;
+//			event [mouse_down] action: button_commune;
+//		}
+//		
+//		display action_control
+//		{
+//			species action_button aspect:base;
+//			event [mouse_down] action: button_action;
+//		}
+//		display alive_action_commune
+//		{
+//			graphics "agile" position:{0,0} 
+//			{
+//				draw rectangle(20#m,100#m) color:#gray at:{10#m,50#m};
+//				draw "A traiter" color:#white at:{5#m,10#m} size:12#px;
+//				draw rectangle(40#m,100#m) color:#yellow at:{40#m,50#m};
+//				draw "Tour "+string(round) color:#black font: font("Arial", 16 , #bold) at:{35#m,3#m};
+//				draw "Encours" color:#black at:{35#m,10#m};
+//				draw rectangle(40#m,100#m) color:#green at:{80#m,50#m};
+//				draw "Achevé" color:#white at:{75#m,10#m};
+//			}
+//			species action_done aspect:base;
+//			event [mouse_down] action: button_action_done;
+//			event mouse_move action: button_action_move;
+//			
+//		}
 		display levers 
 		{
-			graphics "leviers" position:{0,0} 
-			{
-			}
+			graphics "leviers" position:{0,0} {}
 			species lever_create_dike aspect:base;
 			species lever_AUorUi_inCoastBorderArea aspect: base;
 			species lever_AUorUi_inRiskArea aspect: base;
@@ -1916,6 +2001,9 @@ experiment lead_the_game
 			species lever_densification_outCoastBorderAndRiskArea aspect: base;
 			species lever_expropriation aspect: base;
 			species lever_destroy_dike aspect: base;
+			
+			species commune_action_button aspect: base;
+			event [mouse_down] action: user_click;
 		}
 	}
 
