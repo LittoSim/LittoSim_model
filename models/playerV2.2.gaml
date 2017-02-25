@@ -1493,7 +1493,6 @@ species displayed_list skills:[UI_location] schedules:[]
 	}
 	action remove_element(displayed_list_element ele)
 	{
-		//int idx <- elements index_of ele;
 		remove ele from:elements;
 		do change_location;
 	}
@@ -1598,8 +1597,11 @@ species basket parent:displayed_list
 				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
 				return;
 			}
-			write  round(sum(my_basket collect(each.cost)));
-			write budget - round(sum(my_basket collect(each.cost)));
+			if empty(game_basket.elements)
+			{
+				map<string,unknown> res <- user_input("Avertissement", "Votre panier est vide"::"" );
+				return;
+			}
 			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost)))))
 			{
 				string budget_display <- "Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions";
@@ -1607,13 +1609,6 @@ species basket parent:displayed_list
 				map<string,unknown> res <- user_input("Avertissement", budget_display::"" );//[budget_display:: false]);
 				return;
 			}
-			/* Ce n'est pas delayOfAction qui permet de savoir si une action peut etre retardé plus que prévu 
-			 * delayOfAction se refère au délai normal de mise en oeuvre de l'action
-			 * Par ailleurs l'avertissement sur un délai supplémentaire possible se fait avant, lorsque le joeur click sur l'éléments où appliquer l'action
-			 * Donc, on retire ce bout de code, et on implémente ces messages d'avertisseement dans les actions change_dike et change_plu  
-			 int nb_delayed <- my_basket count(delayOfAction(each.command) > 0);
-			string action_delayed <- nb_delayed = 0 ? "":"Attention, une ou plusieurs de vos réalisations risquent de faire l'objet d'un retard\n";*/
-			
 			string ask_display <- "Vous êtes sur le point de valider votre panier \n"+/*action_delayed+*/" Cocher la case, pour accepter le panier et valider";
 			map<string,bool> res <- user_input("Avertissement", ask_display::false);
 			if(res at ask_display )
@@ -1908,6 +1903,8 @@ species basket_element parent:displayed_list_element
 	{
 		if(button_location distance_to #user_location <= button_size.x)
 		{
+			// Le joueur vient de cliquer sur le bouton pour supprimer l'action_done de la liste du panier
+			remove current_action from:my_basket;
 			remove current_action from: ordered_action;
 			do remove_action;
 			ask current_action
@@ -2828,7 +2825,7 @@ species action_def_cote parent:action_done
 	action draw_display
 	{
 		if !is_applied {
-			draw  20#m around shape color:is_highlighted?#yellow:((is_sent)?#orange:define_color()) border:is_highlighted?#yellow:((is_sent)?#orange:#red);
+			draw  20#m around shape color:is_highlighted?#red:(define_color()) border:is_highlighted?#red:((is_sent)?#orange:#red);
 		}
 	}
 	aspect carte
@@ -2886,8 +2883,8 @@ species action_UA parent:action_done
 			
 			geometry triangle <- polygon([shape.points[3],shape.points[1],shape.points[0],shape.points[3] ]);
 			
-			draw triangle  color:highlighted?#yellow:(define_color()) border:highlighted?#yellow:define_color() ;
-			draw shape  empty:true border:highlighted?#yellow:((is_sent)?define_color():#red) ;
+			draw triangle  color:(define_color()) border:define_color() ;
+			draw shape  empty:true border:highlighted?#red:((is_sent)?define_color():#black) ;
 			
 			if(ACTION_MODIFY_LAND_COVER_Ui = command)
 			{
