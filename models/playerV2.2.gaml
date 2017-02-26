@@ -2204,7 +2204,7 @@ species action_done
 	string id <-"";
 	int element_id<-0;
 	geometry element_shape;
-	float shape_width <-35#m;
+	float shape_width <-0;
 	//string command_group <- "";
 	int command <- -1;
 	string label <- "no name";
@@ -2820,6 +2820,7 @@ species action_def_cote parent:action_done
 {
 	string action_type <- "dike";
 	string type_def_cote -> {command = ACTION_INSTALL_GANIVELLE?"dune":"digue"};
+	float shape_width -> {type_def_cote = "digue"?35#m:65#m};
 	
 	rgb define_color
 	{
