@@ -194,12 +194,12 @@ global
 		 */
 		create work_in_progress_left_icon number:1
 		{
-			point p <- {0.75,0.5};
+			point p <- {0.075,0.5};
 			do lock_agent_at ui_location:p display_name:"Dossiers" ui_width:0.15 ui_height:1.0 ; // OU 0.1
 		}
 		create console_left_icon number:1
 		{
-			point p <- {0.75,0.5};
+			point p <- {0.075,0.5};
 			do lock_agent_at ui_location:p display_name:"Messages" ui_width:0.15 ui_height:1.0 ;
 		}
 		
@@ -283,6 +283,18 @@ global
 		}
 	}
 	
+	point button_box_location(point my_button, int box_width)
+	{
+		if(world.shape.width*0.6>my_button.x)
+		{
+			
+			return point({min([my_button.x+box_width,world.shape.width-10#px]),my_button.y});
+		}
+
+		return my_button;
+	}
+	
+	
 //	action change_subvention_habitat_adapte_with (bool newValue) {
 //		subvention_habitat_adapte <- newValue;
 //		if subvention_habitat_adapte {
@@ -347,14 +359,7 @@ global
 		return sum(UA accumulate (each.population));
 	}
 	
-	action remove_selection
-	{
-		ask(highlight_action_button where(each.my_action != nil))
-		{
-			self.my_action.is_highlighted <- false;	
-		}
-	}
-	
+
 	action implementation_tests {
 		 if (int(all_action_cost at {0,0}) != 0 or (int(all_action_cost at {0,5}) != 5)) {
 		 		write "BUG: Probleme lecture du fichier cout_action";
@@ -666,6 +671,10 @@ global
 		{
 			active_display <- first(clicked_onglet_button).display_name;
 			do clear_selected_button;
+			explored_buttons <- nil;
+			explored_cell <- nil;
+			explored_dike <- nil;
+			explored_action_UA<- nil;
 			current_action <- nil;
 		}
 		
@@ -790,21 +799,6 @@ global
 		point loc <- #user_location;
 		explored_buttons <- buttons first_with (each overlaps loc and each.display_name!=DIKE_DISPLAY);
 	}
-	
-	action history_click //(point loc, list selected_agents)
-	{
-		point loc <- #user_location;
-		
-		do remove_selection;
-		list<highlight_action_button> bsk <-  highlight_action_button overlapping loc; // agts of_species dike;
-		
-		if(length(bsk)>0)
-		{
-			highlight_action_button but <- first(bsk);
-			but.my_action.is_highlighted<-true;
-		}
-	}
-	
 	
 	action change_dike// (point loc, list selected_agents)
 	{
@@ -1216,11 +1210,10 @@ global
 	}
 	
 	action user_msg (string msg, string type_msg) {
-		//soit on envoie le msg par un pop UP
-		//map<string,unknown> tmp <- user_input(msg::"");
-		//soit on l'écrit ds la console avec une entete ou pas
 		write "USER MSG: "+msg;
-		ask game_console{do write_message(msg, type_msg );}
+		ask game_console{
+			do write_message(msg, type_msg );
+		}
 		
 	}
 	
@@ -1320,7 +1313,7 @@ species displayed_list skills:[UI_location] schedules:[]
 			shape <- rectangle(ui_width, ui_height);
 		
 		}
-		if(length(elements) >= max_size)
+		if(length(elements) > max_size)
 		{
 			do go_to_end;
 			up_item.is_displayed <- true;
@@ -1349,7 +1342,6 @@ species displayed_list skills:[UI_location] schedules:[]
 	}
 	action change_start_index(int idx)
 	{
-		write "change star index " + idx;
 		displayed_list_element ele <- nil;
 		int i <- 0;
 		int j <- 1;
@@ -1576,11 +1568,6 @@ species basket parent:displayed_list
 	
 	action validation_panier
 	{
-				ask game_manager
-				{
-					do send_basket;
-				}
-		
 			if round = 0
 			{
 				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
@@ -1682,10 +1669,7 @@ species system_list_element parent:displayed_list_element
 			do draw_item;
 			do draw_element;
 		}
-	}
-	
-	
-	
+	}	
 }
 
 species displayed_list_element skills:[UI_location] schedules:[]
@@ -1745,6 +1729,7 @@ species displayed_list_element skills:[UI_location] schedules:[]
 species work_in_progress_list parent:displayed_list schedules:[]
 {
 	init{
+		max_size <- 10;
 		show_header <- false;
 		display_name <- "Dossiers";
 		point p <- {0.15,0.0};
@@ -1769,12 +1754,12 @@ species work_in_progress_list parent:displayed_list schedules:[]
 
 species console parent:displayed_list schedules:[]
 {
-	
 	init{
 		font_size <- 11;
+		max_size <- 10;
 		show_header <- false;
 		display_name <- "Messages";
-		point p <- {0.30,0.0};
+		point p <- {0.15,0.0};
 		do lock_agent_at ui_location:p display_name:display_name ui_width:0.85 ui_height:1.0 ;
 		do navigation_item;
 	}
@@ -1838,9 +1823,9 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 	
 	point bullet_size -> {point({ui_height*0.6,ui_height*0.6})};
 	
-	point delay_location -> {point({location.x+2.2*ui_width/5,location.y})};
-	point round_apply_location -> {point({location.x+1.5*ui_width/5,location.y})};
-	point price_location -> {point({location.x+ui_width/2-35#px,location.y})};
+	point delay_location -> {point({location.x+2*ui_width/5,location.y})};
+	point round_apply_location -> {point({location.x+1.3*ui_width/5,location.y})};
+	point price_location -> {point({location.x+ui_width/2-40#px,location.y})};
 	action_done current_action;
 	
 	action on_mouse_down
@@ -1878,8 +1863,6 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 			geometry rec <-  polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
 			draw rec  at:{location.x,location.y}  empty:true border:#red;
 		}
-		
-//		draw close_button at:button_location size:button_size;
 	}
 	
 } 
@@ -1946,25 +1929,7 @@ species basket_element parent:displayed_list_element
 	}
 }
 
-species highlight_action_button
-{
-	int my_index <- 0;
-	action_done my_action -> {my_index<length(my_history)? my_history[my_index]:nil};
-	init
-	{
-		int fon-size <- 12;
-		shape <- square(font_size);
-	}
-	aspect base
-	{
-		if(my_index < min([MAX_HISTORY_VIEW_SIZE,length(my_history)]))
-		{
-			draw image_file("../images/icones/Loupe.png") size:font_size/2;
-		}
-		
-	}
-	
-}
+
 
 species activated_lever 
 {
@@ -3348,7 +3313,7 @@ experiment game type: gui
 			
 			graphics "explore_dike_icone" 
 			{
-				if (explored_dike != nil)
+				if (explored_dike != nil )
 				{if explored_dike.status != "bon" {
 					point image_loc <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dike.location.y + 50#px  };
 					string to_draw <- nil;
@@ -3364,11 +3329,13 @@ experiment game type: gui
 			
 			graphics "Dike Button information" transparency:0.5
 			{
-				if (active_display = DIKE_DISPLAY and explored_buttons != nil)
+				if (active_display = DIKE_DISPLAY and explored_buttons != nil  and explored_cell= nil and explored_dike = nil and explored_action_UA = nil)
 				{
-					point target <- {explored_buttons.location.x  , explored_buttons.location.y };
-					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
-					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					
+					point loc <- world.button_box_location(explored_buttons.location,2*(INFORMATION_BOX_SIZE.x#px));
+					point target <-loc;
+					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y};
+					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					point target4 <- {target3.x,target2.y - 15#px };
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
@@ -3380,7 +3347,6 @@ experiment game type: gui
 
 			graphics "Full target UNAM" transparency:0.5
 			{
-				//int size <- length(moved_agents);
 				if (explored_cell != nil and explored_action_UA = nil)
 				{
 					point target <- {explored_cell.location.x  ,explored_cell.location.y };
@@ -3417,11 +3383,12 @@ experiment game type: gui
 			
 			graphics "Button information UNAM" transparency:0.5
 			{
-				if (active_display = UNAM_DISPLAY and explored_buttons != nil)
+				if (active_display = UNAM_DISPLAY and explored_buttons != nil and explored_cell= nil and explored_dike = nil and explored_action_UA = nil)
 				{
-					point target <- {explored_buttons.location.x  ,explored_buttons.location.y };
-					point target2 <- {explored_buttons.location.x - 2*(INFORMATION_BOX_SIZE.x#px),explored_buttons.location.y};
-					point target3 <- {explored_buttons.location.x ,  explored_buttons.location.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					point loc <- world.button_box_location(explored_buttons.location,2*(INFORMATION_BOX_SIZE.x#px));
+					point target <-loc;
+					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y};
+					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
@@ -3628,7 +3595,7 @@ experiment game type: gui
 			event mouse_down action:move_down_event_dossier;
 		}
 		
-		display "Messages"
+		display "Messages" background:#black
 		{
 			species console_left_icon aspect:base;
 			species console aspect:base;
