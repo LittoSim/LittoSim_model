@@ -602,20 +602,20 @@ global
 			my_icon <- image_file("../images/ihm/I_ganivelle.png");
 		}
 		
-//		create buttons number: 1
-//		{
-//			command <- ACTION_INSPECT_DIKE;
-//			label <- "Inspecter un ouvrage de défense";
-//			action_cost <- 0;
-//			shape <- square(button_size);
-//			my_help <- "Glissez le pointeur sur les digues et dunes.";
-//			display_name <- DIKE_DISPLAY;
-//			point p <- {0.70,0.13};
-//			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
-//			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
-//			my_icon <- image_file("../images/ihm/I_info.png");
-//			
-//		}
+		create buttons number: 1
+		{
+			command <- ACTION_INSPECT_DIKE;
+			label <- "Inspecter un ouvrage de défense";
+			action_cost <- 0;
+			shape <- square(button_size);
+			my_help <- "Glissez le pointeur sur les digues et dunes.";
+			display_name <- DIKE_DISPLAY;
+			point p <- {0.70,0.13};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
+			my_icon <- image_file("../images/ihm/I_info.png");
+			
+		}
 
 		//////////   Boutons d'affichage de couches d'infos	
 		create buttons_map number: 1
@@ -841,7 +841,7 @@ global
 			switch(selected_button.command)
 			{
 				match ACTION_CREATE_DIKE { do create_new_dike(loc,selected_button);}
-				//match ACTION_INSPECT_DIKE {/*NE RIEN FAIRE do inspect_dike(loc,selected_dike,selected_button);*/}
+				match ACTION_INSPECT_DIKE {/*NE RIEN FAIRE do inspect_dike(loc,selected_dike,selected_button);*/}
 				default {do modify_dike(loc, selected_dike,selected_button);}
 			}
 		}
@@ -922,7 +922,6 @@ global
 				self.initial_application_round <- round  + (world.delayOfAction(self.command));
 				element_shape <- dk.shape;
 				shape <- element_shape+shape_width;//shape_width around element_shape;
-				write"ici2";
 				cost <- but.action_cost*shape.perimeter;
 			 }
 			previous_clicked_point <- nil;
@@ -1171,7 +1170,6 @@ global
 	action button_click_dike 
 	{
 		point loc <- #user_location;
-		write "ici1";
 		if(active_display != DIKE_DISPLAY)
 		{
 			current_action <- nil;
