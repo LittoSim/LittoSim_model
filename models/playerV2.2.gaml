@@ -1590,8 +1590,8 @@ species basket parent:displayed_list
 		int mfont2 <- DISPLAY_FONT_SIZE - 4;
 		font font1 <- font ('Helvetica Neue',mfont, #plain ); 
 		font font2 <- font ('Helvetica Neue',mfont2, #plain ); 
-		draw "Valider" at:{location.x + ui_width - 130#px,pt.y+(mfont2/2)#px} size:{sz*0.8,sz*0.8} font:font2;
-		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 80#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1;
+		draw "Valider" at:{location.x + ui_width - 130#px,pt.y+(mfont2/2)#px} size:{sz*0.8,sz*0.8} font:font2 color:#black;
+		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 80#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1 color:#black;
 		//draw "-"+final_budget font:font1 color:#black at:{location.x + ui_width - 70#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 		
 		//draw "Valider" at:{pt.x - 100#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1;
@@ -3147,17 +3147,17 @@ species UA
 		rgb res <- nil;
 		switch (ua_name)
 		{
-			match "N" {res <- # palegreen;} // naturel
+			match "N" {res <-rgb(11,103,59);} // naturel
 			match_one ["U","Us"] { //  urbanisé
 				switch classe_densite {
 					match "vide" {res <- # red; } // Problème
-					match "peu dense" {res <-  rgb( 150, 150, 150 ); }
-					match "densité intermédiaire" {res <- rgb( 120, 120, 120 ) ;}
-					match "dense" {res <- rgb( 80,80,80 ) ;}
+					match "peu dense" {res <-  rgb( 0, 171, 214 ); }
+					match "densité intermédiaire" {res <- rgb( 0, 129, 161 ) ;}
+					match "dense" {res <- rgb( 0,77,97 ) ;}
 				}
 			} 
 			match_one ["AU","AUs"] {res <- # yellow;} // à urbaniser
-			match "A" {res <- rgb (225, 165,0);} // agricole
+			match "A" {res <- rgb (245,147,49);} // agricole
 		}
 		return res;
 	}
