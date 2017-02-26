@@ -129,9 +129,7 @@ global
 	
 	list<float> basket_location <- [];
 	
-	int basket_max_size <- 15;
-	int font_size <- int(shape.height/30);
-	int font_interleave <- int(shape.width/60);
+	int BASKET_MAX_SIZE <- 7;
 	
 	string UNAM_DISPLAY <- "UnAm";
 	string DIKE_DISPLAY <- "sloap";
@@ -196,13 +194,13 @@ global
 		 */
 		create work_in_progress_left_icon number:1
 		{
-			point p <- {0.15,0.5};
-			do lock_agent_at ui_location:p display_name:"Dossiers" ui_width:0.30 ui_height:1.0 ; // OU 0.1
+			point p <- {0.75,0.5};
+			do lock_agent_at ui_location:p display_name:"Dossiers" ui_width:0.15 ui_height:1.0 ; // OU 0.1
 		}
 		create console_left_icon number:1
 		{
-			point p <- {0.15,0.5};
-			do lock_agent_at ui_location:p display_name:"Messages" ui_width:0.30 ui_height:1.0 ;
+			point p <- {0.75,0.5};
+			do lock_agent_at ui_location:p display_name:"Messages" ui_width:0.15 ui_height:1.0 ;
 		}
 		
 		
@@ -227,7 +225,6 @@ global
 		my_commune <- commune first_with(each.commune_name = commune_name);
 		local_shape <-envelope(my_commune);
 		do init_buttons;
-		do init_pending_request_button;
 		create def_cote from:defense_shape with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune_name_shpfile::string(read("Commune"))]
 		{
 			 name <- "défence numéro "+ self.dike_id;  //  --> ca sert à rien
@@ -648,25 +645,10 @@ global
 	
 	
 
-	action init_pending_request_button
-	{
-		int i <- 0;
-		loop while: (i< 	MAX_HISTORY_VIEW_SIZE )
-		{
-			float y_location <- font_size+ font_interleave/2 + i* (font_size);
-			//basket_location <- basket_location + y_location;
-			create highlight_action_button number:1 returns:mb
-			{
-				location <- {font_interleave+ font_size/2,y_location};
-				my_index<- i;
-			}
-			i<-i+1;
-		}
-		
-	}
+
 	bool basket_overflow
 	{
-		if(basket_max_size = length(my_basket))
+		if(BASKET_MAX_SIZE = length(my_basket))
 		{
 			map<string,unknown> values2 <- user_input("Avertissement","Vous avez atteint la capacité maximum de votre panier, veuillez valider votre panier avant de continuer"::true);
 			return true;
@@ -1242,13 +1224,6 @@ global
 		
 	}
 	
-	/*reflex test {
-		if !subvention_ganivelle {
-			do change_subvention_ganivelle_with(true);
-		}
-	}*/
-	
-	
 	/**
 	 * Nouvelle action de l'interface V2
 	 */
@@ -1290,6 +1265,7 @@ global
 species displayed_list skills:[UI_location] schedules:[]
 {
 	int max_size <- 7;
+	int font_size <- 12;
 	bool over_sized -> {length(elements)> max_size};
 	float header_height <- 0.2;
 	float element_height <- 0.08;
@@ -1517,7 +1493,7 @@ species displayed_list skills:[UI_location] schedules:[]
 
 species basket parent:displayed_list 
 {
-	
+	int my_font_size <- DISPLAY_FONT_SIZE - 14;
 	int budget -> {world.budget};
 	float final_budget -> {world.budget - sum(elements collect((basket_element(each).current_action).actual_cost))};
 	
@@ -1554,10 +1530,10 @@ species basket parent:displayed_list
 	{
 		float gem_height <- ui_height*header_height/2;
 		float gem_width <- ui_width;
-		int mfont_size <- DISPLAY_FONT_SIZE - 2;
-		font font0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE-4, #plain ); 
+		int mfont_size <- my_font_size - 2;
+		font font0 <- font ('Helvetica Neue',my_font_size-4, #plain ); 
 		draw "Budget initial" font:font0 color:rgb(101,101,101) at:{location.x + ui_width - 150#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
-		font font1 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
+		font font1 <- font ('Helvetica Neue',my_font_size, #bold ); 
 		draw ""+world.separateur_milliers(int(budget)) font:font1 color:rgb(101,101,101) at:{location.x + ui_width - 70#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 	}
 	
@@ -1566,7 +1542,7 @@ species basket parent:displayed_list
 		point loc1 <- {location.x+ui_width/2,location.y+ui_height-header_height/4*ui_height};
 		geometry rec1 <- polygon([{0,0}, {0,0.1*ui_height}, {ui_width,header_height/2*ui_height},{ui_width,0},{0,0}]);
 		draw rec1 at:loc1 color:rgb(219,219,219);
-		int mfont_size <- DISPLAY_FONT_SIZE - 2;
+		int mfont_size <- my_font_size - 2;
 		font font0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE-4, #plain ); 
 		draw "Budget restant" font:font0 color:rgb(101,101,101) at:{location.x + ui_width - 170#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 		font font1 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
@@ -1595,15 +1571,16 @@ species basket parent:displayed_list
 		font font2 <- font ('Helvetica Neue',mfont2, #plain ); 
 		draw "Valider" at:{location.x + ui_width - 140#px,pt.y+(mfont2/2)#px} size:{sz*0.8,sz*0.8} font:font2 color:#black;
 		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 90#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1 color:#black;
-		//draw "-"+final_budget font:font1 color:#black at:{location.x + ui_width - 70#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
-		
-		//draw "Valider" at:{pt.x - 100#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1;
-		
 	}
 	
 	
 	action validation_panier
 	{
+				ask game_manager
+				{
+					do send_basket;
+				}
+		
 			if round = 0
 			{
 				map<string,unknown> res <- user_input("Avertissement", "La simulation n'a pas encore commencée"::"" );
@@ -1713,6 +1690,8 @@ species system_list_element parent:displayed_list_element
 
 species displayed_list_element skills:[UI_location] schedules:[]
 {
+	int font_size <- DISPLAY_FONT_SIZE - 4;
+	
 	bool event <- false update:false;
 	string label <- "my label";
 	displayed_list my_parent;
@@ -1722,7 +1701,7 @@ species displayed_list_element skills:[UI_location] schedules:[]
 	
 	action draw_item
 	{
-		int mfont <- 14;
+		int mfont <- font_size;
 		font var0 <- font ('Helvetica Neue',mfont, #bold); 
 		point pt <- location;
 		geometry rec2 <-  polyline([{0,0}, {ui_width,0}]);
@@ -1732,10 +1711,10 @@ species displayed_list_element skills:[UI_location] schedules:[]
 		location <- pt;
 		draw rec  at:{location.x,location.y} color:rgb(233,233,233);
 		draw rec2  at:{location.x,location.y+ui_height/2} color:#black;
-		draw label at:{location.x - 1.5 *ui_width/5 , location.y + (mfont/2)#px} font:var0 color:#black;
+		draw label at:{location.x - ui_width/2+ 2*ui_height , location.y + (mfont/2)#px} font:var0 color:#black;
 		if( icone !=nil)
 		{
-			draw icone at:{location.x-2*ui_width/5,location.y} size:{ui_height*0.8,ui_height*0.8};
+			draw icone at:{location.x-ui_width/2+ui_height,location.y} size:{ui_height*0.8,ui_height*0.8};
 		}
 	}
 	
@@ -1768,8 +1747,8 @@ species work_in_progress_list parent:displayed_list schedules:[]
 	init{
 		show_header <- false;
 		display_name <- "Dossiers";
-		point p <- {0.30,0.0};
-		do lock_agent_at ui_location:p display_name:display_name ui_width:0.7 ui_height:1.0 ;//0U 0.9
+		point p <- {0.15,0.0};
+		do lock_agent_at ui_location:p display_name:display_name ui_width:0.85 ui_height:1.0 ;//0U 0.9
 		do navigation_item;
 		
 	}
@@ -1792,10 +1771,11 @@ species console parent:displayed_list schedules:[]
 {
 	
 	init{
+		font_size <- 11;
 		show_header <- false;
 		display_name <- "Messages";
 		point p <- {0.30,0.0};
-		do lock_agent_at ui_location:p display_name:display_name ui_width:0.7 ui_height:1.0 ;
+		do lock_agent_at ui_location:p display_name:display_name ui_width:0.85 ui_height:1.0 ;
 		do navigation_item;
 	}
 	
@@ -1848,6 +1828,8 @@ species console_left_icon skills:[UI_location]
 
 species work_in_progress_element parent:displayed_list_element schedules:[]
 {
+	int font_size <- 12;
+		
 	int delay ->{current_action.round_delay};
 	int rounds_before_application ->{current_action.nb_rounds_before_activation()};
 	
@@ -1858,6 +1840,7 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 	
 	point delay_location -> {point({location.x+2.2*ui_width/5,location.y})};
 	point round_apply_location -> {point({location.x+1.5*ui_width/5,location.y})};
+	point price_location -> {point({location.x+ui_width/2-35#px,location.y})};
 	action_done current_action;
 	
 	action on_mouse_down
@@ -1875,8 +1858,13 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 	
 	action draw_element
 	{
-		int mfont <- DISPLAY_FONT_SIZE - 2;
+		int mfont <- font_size;
 		font font1 <- font ('Helvetica Neue',mfont, #italic ); 
+		
+		
+		rgb mc <- (final_price = initialx_price) ? rgb(87,87,87): rgb(235,33,46);
+		draw ""+int(initialx_price) at:{price_location.x ,price_location.y +(mfont/3)#px } color:#black font:font1;
+			
 		if(delay != 0)
 		{
 			draw circle(bullet_size.x/2) at:delay_location color:rgb(235,33,46);
@@ -1898,7 +1886,7 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 
 species basket_element parent:displayed_list_element
 {
-
+	int font_size <- 12;
 	point button_size -> {point({ui_height*0.6,ui_height*0.6})};
 	point button_location -> {point({location.x+ui_width/2- (button_size.x),location.y})};
 	action_done current_action <- nil;
@@ -1944,7 +1932,7 @@ species basket_element parent:displayed_list_element
 	action draw_element
 	{
 		draw close_button at:button_location size:button_size ;
-		int mfont <- DISPLAY_FONT_SIZE - 2;
+		int mfont <- font_size;
 		font font1 <- font ('Helvetica Neue',mfont, #bold ); 
 		
 		draw ""+world.separateur_milliers(int(current_action.cost))  at:{button_location.x - 50#px, button_location.y+(mfont/2)#px}  color:#black font:font1;
@@ -1964,6 +1952,7 @@ species highlight_action_button
 	action_done my_action -> {my_index<length(my_history)? my_history[my_index]:nil};
 	init
 	{
+		int fon-size <- 12;
 		shape <- square(font_size);
 	}
 	aspect base
@@ -2361,47 +2350,8 @@ species action_done
 	}
 	
 	
-	action draw_action
-	{
-		if(!is_sent)
-		{
-			int indx <- my_basket index_of self;
-			float y_loc <- basket_location[indx];
-			float x_loc <- font_interleave + 12* (font_size+font_interleave);
-			
-			draw label +" ("+string(nb_rounds_before_activation())+")" at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
-			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
-			if((indx +1) = length(my_basket))
-			{
-				string text<- "---------------";
-				draw text at: {x_loc,font_size+ font_interleave/2 + (indx +1)* (font_size + font_interleave)} size:font_size color:#black;
-				draw "    "+round(sum(my_basket collect(each.cost))) at: {x_loc,font_size+ font_interleave/2 + (indx +2)* (font_size + font_interleave)} size:font_size color:#black;
-			}
-		}
-	}
-	
-	action draw_history
-	{
-		if(is_sent)
-		{
-		//	write "history length "+ length(history);
-			int indx <- my_history index_of self;
-			float y_loc <- (indx +1)  * font_size ; //basket_location[indx];
-			float x_loc <- font_interleave + 12* (font_size+font_interleave);
-			float x_loc2 <- font_interleave + 20* (font_size+font_interleave);
-			if(self.is_highlighted)
-			{
-				draw rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} ) color:#yellow;
-			}
-			string txt <- label;
-			if !self.is_applied {txt <- txt +" ("+string(nb_rounds_before_activation())+")"+(self.is_delayed?" (+"+string(round_delay)+")":""); }
-			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:((self.has_activated_levers)?#red:#orange);
-			txt <- "    "+ round(actual_cost);
-			if self.has_added_cost {txt<-txt +" (+"+string(added_cost)+")"; }
-			if self.has_diminished_cost {txt<-txt +" ("+string(added_cost)+")"; }
-			draw txt at:{x_loc,y_loc+font_size/2} size:font_size#m color:self.is_applied?#black:((self.has_activated_levers)?#red:#orange);
-		}
-	}
+		
+
 	
 }
 
@@ -2864,15 +2814,7 @@ species action_def_cote parent:action_done
 		do draw_display;	
 	}
 	
-	aspect basket
-	{
-		do draw_action;
-	}
-	
-	aspect history
-	{
-		do draw_history;
-	}
+
 	action apply
 	{
 		//creer une digue
@@ -2931,16 +2873,7 @@ species action_UA parent:action_done
 	{
 		do draw_display;
 	}
-	aspect basket
-	{
-		do draw_action;
-	}
-	
-	aspect history
-	{
-		do draw_history;
-	}
-	
+
 	
 }
 
