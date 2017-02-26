@@ -702,6 +702,7 @@ species action_done schedules:[]
 {
 	string id;
 	int element_id;
+	geometry element_shape;
 	string commune_name<-"";
 	bool not_updated <- false;
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
@@ -768,7 +769,7 @@ species action_done schedules:[]
 			}
 			i<- i + 1;
 		}
-		shape <- polygon(all_points);
+		element_shape <- polygon(all_points);
 		location <-mpp;
 	}
 	
@@ -795,7 +796,7 @@ species action_done schedules:[]
 			"is_applied"::string(is_applied),
 			"is_sent"::string(is_sent),
 			"command_round"::string(command_round),
-			"shape"::string(shape)
+			"element_shape"::string(element_shape)
 			 ]	;
 			point pp<-nil;
 			int i <- 0;

@@ -797,7 +797,7 @@ species action_done schedules:[]
 		self.isInlandDike <- bool(a at "isInlandDike");
 		self.command_round <-int(a at "command_round");
 		self.tracked_profil <- track_profil();
-		self.element_shape <- geometry(a at "shape");
+		self.element_shape <- geometry(a at "element_shape");
 //		if action_type = 'dike'
 //		{
 //			geometry tt <- a at "shape";

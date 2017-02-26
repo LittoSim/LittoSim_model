@@ -374,6 +374,7 @@ global
 			match ACTION_MODIFY_LAND_COVER_A { return image_file("../images/ihm/S_agricole.png");}
 			match ACTION_MODIFY_LAND_COVER_AU { return image_file("../images/ihm/S_urbanise.png");}
 			match ACTION_MODIFY_LAND_COVER_AUs { return image_file("../images/ihm/S_urbanise_adapte.png");}
+			match ACTION_MODIFY_LAND_COVER_Us { return image_file("../images/ihm/S_urbanise_adapte.png");}
 			match ACTION_MODIFY_LAND_COVER_Ui { return image_file("../images/ihm/S_urbanise_intensifie.png");}
 			match ACTION_MODIFY_LAND_COVER_N { return image_file("../images/ihm/S_naturel.png");}
 			match ACTION_CREATE_DIKE { return image_file("../images/ihm/S_creation_digue.png");}
@@ -601,20 +602,20 @@ global
 			my_icon <- image_file("../images/ihm/I_ganivelle.png");
 		}
 		
-		create buttons number: 1
-		{
-			command <- ACTION_INSPECT_DIKE;
-			label <- "Inspecter un ouvrage de défense";
-			action_cost <- 0;
-			shape <- square(button_size);
-			my_help <- "Glissez le pointeur sur les digues et dunes.";
-			display_name <- DIKE_DISPLAY;
-			point p <- {0.70,0.13};
-			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
-			my_icon <- image_file("../images/ihm/I_info.png");
-			
-		}
+//		create buttons number: 1
+//		{
+//			command <- ACTION_INSPECT_DIKE;
+//			label <- "Inspecter un ouvrage de défense";
+//			action_cost <- 0;
+//			shape <- square(button_size);
+//			my_help <- "Glissez le pointeur sur les digues et dunes.";
+//			display_name <- DIKE_DISPLAY;
+//			point p <- {0.70,0.13};
+//			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
+//			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
+//			my_icon <- image_file("../images/ihm/I_info.png");
+//			
+//		}
 
 		//////////   Boutons d'affichage de couches d'infos	
 		create buttons_map number: 1
@@ -840,59 +841,62 @@ global
 			switch(selected_button.command)
 			{
 				match ACTION_CREATE_DIKE { do create_new_dike(loc,selected_button);}
-				match ACTION_INSPECT_DIKE {/*NE RIEN FAIRE do inspect_dike(loc,selected_dike,selected_button);*/}
+				//match ACTION_INSPECT_DIKE {/*NE RIEN FAIRE do inspect_dike(loc,selected_dike,selected_button);*/}
 				default {do modify_dike(loc, selected_dike,selected_button);}
 			}
 		}
 	}
 	
-	action inspect_UNAM//(point mloc, list agts, buttons but)
-	{
-		point mloc <- #user_location;
-		
-		list<def_cote> selected_dike <-   def_cote where (each distance_to mloc < MOUSE_BUFFER); // agts of_species dike;
-		
-		if(length(selected_dike)>0)
-		{
-			def_cote dk<- selected_dike closest_to mloc;
-			create action_def_cote number:1 returns:action_list
-			 {
-				id <- 0;
-				shape <- dk.shape;
-				element_id <- dk.dike_id;
-			 }
-			 action_def_cote tmp <- first(action_list);
-			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::"");		
-			ask(tmp)
-			{
-				do die;
-			}
-		}
-	}
-	
-	action inspect_dike(point mloc, list<def_cote> agts, buttons but)
-	{
-		list<def_cote> selected_dike <- agts ;
-		
-		if(length(selected_dike)>0)
-		{
-			def_cote dk<- selected_dike closest_to mloc;
-			create action_def_cote number:1 returns:action_list
-			 {
-				id <- 0;
-				shape <- dk.shape;
-				element_id <- dk.dike_id;
-			 }
-			 action_def_cote tmp <- first(action_list);
-			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::string(dk.dike_id));		
-			ask(tmp)
-			{
-				do die;
-			}
-		}
-	}
+//	action inspect_UNAM//(point mloc, list agts, buttons but)
+//	{
+//		point mloc <- #user_location;
+//		
+//		list<def_cote> selected_dike <-   def_cote where (each distance_to mloc < MOUSE_BUFFER); // agts of_species dike;
+//		
+//		if(length(selected_dike)>0)
+//		{
+//			def_cote dk<- selected_dike closest_to mloc;
+//			create action_def_cote number:1 returns:action_list
+//			 {
+//				id <- 0;
+//				shape <- dk.shape;
+//				element_id <- dk.dike_id;
+//			 }
+//			 action_def_cote tmp <- first(action_list);
+//			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
+//			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::"");		
+//			ask(tmp)
+//			{
+//				do die;
+//			}
+//		}
+//	}
+
+
+	/////////////   C'est quoi cette action ???	
+//	action inspect_dike(point mloc, list<def_cote> agts, buttons but)
+//	{
+//		list<def_cote> selected_dike <- agts ;
+//		
+//		if(length(selected_dike)>0)
+//		{
+//			def_cote dk<- selected_dike closest_to mloc;
+//			create action_def_cote number:1 returns:action_list
+//			 {
+//			 	write "C'est quoi cette action ???";
+//				id <- 0;
+//				shape <- dk.shape;
+//				element_id <- dk.dike_id;
+//			 }
+//			 action_def_cote tmp <- first(action_list);
+//			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
+//			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::string(dk.dike_id));		
+//			ask(tmp)
+//			{
+//				do die;
+//			}
+//		}
+//	}
 	action modify_dike(point mloc, list<def_cote> agts, buttons but)
 	{
 		list<def_cote> selected_dike <- agts ;
@@ -910,12 +914,15 @@ global
 				}
 			create action_def_cote number:1 returns:action_list
 			 {
+				
 				id <- world.get_action_id();
 				self.label <- but.label;
 				element_id <- dk.dike_id;
 				self.command <- but.command;
 				self.initial_application_round <- round  + (world.delayOfAction(self.command));
-				shape <- dk.shape;
+				element_shape <- dk.shape;
+				shape <- element_shape+shape_width;//shape_width around element_shape;
+				write"ici2";
 				cost <- but.action_cost*shape.perimeter;
 			 }
 			previous_clicked_point <- nil;
@@ -956,7 +963,8 @@ global
 					element_id <- -1;
 					self.command <- ACTION_CREATE_DIKE;
 					self.initial_application_round <- round  + (world.delayOfAction(self.command));
-					shape <- polyline([previous_clicked_point,loc]);
+					element_shape <- polyline([previous_clicked_point,loc]);
+					shape <-  element_shape+shape_width;//shape_width around element_shape;
 					cost <- but.action_cost*shape.perimeter; 
 				}
 				previous_clicked_point <- nil;
@@ -1078,7 +1086,8 @@ global
 					id <- world.get_action_id();
 					element_id <- myself.id;
 					command <- selected_button.command;
-					shape <- myself.shape;
+					element_shape <- myself.shape;
+					shape <- element_shape;
 					initial_application_round <- round  + (world.delayOfAction(command));
 					previous_ua_name <- myself.ua_name;
 					label <- selected_button.label;
@@ -1162,6 +1171,7 @@ global
 	action button_click_dike 
 	{
 		point loc <- #user_location;
+		write "ici1";
 		if(active_display != DIKE_DISPLAY)
 		{
 			current_action <- nil;
@@ -2195,6 +2205,8 @@ species action_done
 {
 	string id <-"";
 	int element_id<-0;
+	geometry element_shape;
+	float shape_width <-35#m;
 	//string command_group <- "";
 	int command <- -1;
 	string label <- "no name";
@@ -2265,12 +2277,13 @@ species action_done
 		}
 		if(self.action_type="dike")
 		{
-			shape <- polyline(all_points);
-			
+			element_shape <- polyline(all_points);
+			shape <-  element_shape+shape_width; //shape_width around element_shape;
 		}
 		else
 		{
-			shape <- polygon(all_points);
+			element_shape <- polygon(all_points);
+			shape <- element_shape;
 		}
 		location <-mpp;
 	}
@@ -2814,18 +2827,19 @@ species action_def_cote parent:action_done
 	{
 		switch(command)
 		{
-			 match ACTION_CREATE_DIKE { return #blue;}
+			 match ACTION_CREATE_DIKE { return #black;}
 			 match ACTION_REPAIR_DIKE {return #green;}
-			 match ACTION_DESTROY_DIKE {return #brown;}
-			 match ACTION_RAISE_DIKE {return #yellow;}
+			 match ACTION_DESTROY_DIKE {return #orange;}
+			 match ACTION_RAISE_DIKE {return #blue;}
 			 match ACTION_INSTALL_GANIVELLE {return #indigo;}
 		} 
 		return #grey;
 	}
 	action draw_display
 	{
+		bool highlighted <- self = highlight_action;
 		if !is_applied {
-			draw  20#m around shape color:is_highlighted?#red:(define_color()) border:is_highlighted?#red:((is_sent)?#orange:#red);
+			draw shape color:highlighted?#red:((is_sent)?define_color():#black);
 		}
 	}
 	aspect carte
@@ -3351,8 +3365,8 @@ experiment game type: gui
 			species action_UA aspect:carte;
 			
 			//DIGUE
-			species def_cote aspect:carte;
 			species action_def_cote aspect:carte;
+			species def_cote aspect:carte;
 		
 			species road aspect:base;
 			species protected_area aspect:base;
