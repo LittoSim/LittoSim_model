@@ -1593,8 +1593,8 @@ species basket parent:displayed_list
 		int mfont2 <- DISPLAY_FONT_SIZE - 4;
 		font font1 <- font ('Helvetica Neue',mfont, #plain ); 
 		font font2 <- font ('Helvetica Neue',mfont2, #plain ); 
-		draw "Valider" at:{location.x + ui_width - 130#px,pt.y+(mfont2/2)#px} size:{sz*0.8,sz*0.8} font:font2 color:#black;
-		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 80#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1 color:#black;
+		draw "Valider" at:{location.x + ui_width - 140#px,pt.y+(mfont2/2)#px} size:{sz*0.8,sz*0.8} font:font2 color:#black;
+		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 90#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1 color:#black;
 		//draw "-"+final_budget font:font1 color:#black at:{location.x + ui_width - 70#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 		
 		//draw "Valider" at:{pt.x - 100#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1;
@@ -1722,7 +1722,8 @@ species displayed_list_element skills:[UI_location] schedules:[]
 	
 	action draw_item
 	{
-		font var0 <- font ('Helvetica Neue',14, #bold); 
+		int mfont <- 14;
+		font var0 <- font ('Helvetica Neue',mfont, #bold); 
 		point pt <- location;
 		geometry rec2 <-  polyline([{0,0}, {ui_width,0}]);
 		
@@ -1731,7 +1732,7 @@ species displayed_list_element skills:[UI_location] schedules:[]
 		location <- pt;
 		draw rec  at:{location.x,location.y} color:rgb(233,233,233);
 		draw rec2  at:{location.x,location.y+ui_height/2} color:#black;
-		draw label at:{location.x - 1.5 *ui_width/5 , location.y + 4#px} font:var0 color:#black;
+		draw label at:{location.x - 1.5 *ui_width/5 , location.y + (mfont/2)#px} font:var0 color:#black;
 		if( icone !=nil)
 		{
 			draw icone at:{location.x-2*ui_width/5,location.y} size:{ui_height*0.8,ui_height*0.8};
@@ -1897,8 +1898,9 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 
 species basket_element parent:displayed_list_element
 {
-	point button_location -> {point({location.x+2*ui_width/5,location.y})};
+
 	point button_size -> {point({ui_height*0.6,ui_height*0.6})};
+	point button_location -> {point({location.x+ui_width/2- (button_size.x),location.y})};
 	action_done current_action <- nil;
 	image_file close_button <- file("../images/ihm/I_close.png");
 	
@@ -1941,9 +1943,15 @@ species basket_element parent:displayed_list_element
 	
 	action draw_element
 	{
-		draw close_button at:button_location size:button_size;
+		draw close_button at:button_location size:button_size ;
+		int mfont <- DISPLAY_FONT_SIZE - 2;
+		font font1 <- font ('Helvetica Neue',mfont, #bold ); 
+		
+		draw ""+world.separateur_milliers(int(current_action.cost))  at:{button_location.x - 50#px, button_location.y+(mfont/2)#px}  color:#black font:font1;
+		
 		if(highlight_action = current_action)
 		{
+			
 			geometry rec <-  polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
 			draw rec  at:{location.x,location.y}  empty:true border:#red;
 		}
