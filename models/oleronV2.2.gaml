@@ -352,9 +352,9 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
 		write flood_results;
-		map<string,string> msg <- [];
-		put "1" key:flood_results in:msg;
-		map values <- user_input(msg);	
+//		map<string,string> msg <- [];
+//		put "1" key:flood_results in:msg;
+//		map values <- user_input(msg);	
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;} 
@@ -543,11 +543,11 @@ action readLisflood
 	     else { // fin innondation
 	     		lisfloodReadingStep <-  9999999;
 	     		if nb = "0000" {
-	     			map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);
+	     			map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: ""]);
 	     			stateSimPhase <- 'game';
 	     			write stateSimPhase + " - Tour "+round;
 	     		}
-	     		else{map values <- user_input(["L'innondation est terminée" :: 100]);
+	     		else{map values <- user_input(["L'innondation est terminée" :: ""]);
 					stateSimPhase <- 'calculate flood stats'; write stateSimPhase;}   }	   
 	}
 	
@@ -563,118 +563,125 @@ action load_rugosity
 
 action calculate_communes_results
 		{	string text <- "";
-			ask (commune where (each.id > 0))
+			ask ((commune where (each.id > 0)) sort_by (each.id))
 			{  	int tot <- length(cells) ;
 				int myid <-  self.id; 
 				int U_0_5 <-0;	int U_1 <-0;	int U_max <-0;
+				int Us_0_5 <-0;	int Us_1 <-0;	int Us_max <-0;
+				int Udense_0_5 <-0;	int Udense_1 <-0;	int Udense_max <-0;
 				int AU_0_5 <-0;	int AU_1 <-0;	int AU_max <-0;
 				int A_0_5 <-0;	int A_1 <-0;	int A_max <-0;
 				int N_0_5 <-0;	int N_1 <-0;	int N_max <-0;
 				ask UAs
-					{ 
-				ask cells {
+					{
+					ask cells {
 						if max_water_height > 0
-						{ switch myself.ua_name
+						{ switch myself.ua_name //"U","Us","AU","N","A"    -> et  "AUs" impossible normallement
 							{
-							match "U" {
+							match "AUs" {
+								write "STOP :  AUs impossible normallement";
+							}
+								match "U" {
 									if max_water_height <= 0.5 {
 										U_0_5 <- U_0_5 +1;
-										ask commune where(each.id = myid){
-											U_0_5c <- U_0_5 * 0.04;
+										if myself.classe_densite = "dense" {
+											Udense_0_5 <- Udense_0_5 +1;
 										}
 									}
 									if between (max_water_height ,0.5, 1.0) {
 										U_1 <- U_1 +1;
-										ask commune where(each.id = myid){
-											U_1c <- U_1 * 0.04;
+										if myself.classe_densite = "dense" {
+											Udense_1 <- Udense_1 +1;
 										}
 									}
 									if max_water_height >= 1{
 										U_max <- U_max +1 ;
-										ask commune where(each.id = myid){
-											U_maxc <- U_max * 0.04;
+										if myself.classe_densite = "dense" {
+											Udense_0_5 <- Udense_0_5 +1;
 										}
+									}
+								}
+							match "Us" {
+									if max_water_height <= 0.5 {
+										Us_0_5 <- Us_0_5 +1;
+									}
+									if between (max_water_height ,0.5, 1.0) {
+										Us_1 <- Us_1 +1;
+									}
+									if max_water_height >= 1{
+										Us_max <- Us_max +1 ;
 									}
 								}
 							match "AU" {
 									if max_water_height <= 0.5 {
 										AU_0_5 <- AU_0_5 +1;
-										ask commune where(each.id = myid){
-											AU_0_5c <- AU_0_5 * 0.04;
-										}
 									}
 									if between (max_water_height ,0.5, 1.0) {
 										AU_1 <- AU_1 +1;
-										ask commune where(each.id = myid){
-											AU_1c <- AU_1 * 0.04;
-										}
 									}
 									if max_water_height >= 1.0 {
 										AU_max <- AU_max +1 ;
-										ask commune where(each.id = myid){
-											AU_maxc <- AU_max * 0.04;
-										}
 									}
 								}
 							match "N" {
 									if max_water_height <= 0.5 {
 										N_0_5 <- N_0_5 +1;
-										ask commune where(each.id = myid){
-											N_0_5c <- N_0_5 * 0.04;
-										}
 									}
 									if between (max_water_height ,0.5, 1.0) {
 										N_1 <- N_1 +1;
-										ask commune where(each.id = myid){
-											N_1c <- N_1 * 0.04;
-										}
 									}
 									if max_water_height >= 1.0 {
 										N_max <- N_max +1 ;
-										ask commune where(each.id = myid){
-											N_maxc <- N_max * 0.04;
-										}
 									}
 								}
 							match "A" {
 								if max_water_height <= 0.5 {
 									A_0_5 <- A_0_5 +1;
-									ask commune where(each.id = myid){
-											A_0_5c <- A_0_5 * 0.04;
-										}
 								}
 								if between (max_water_height ,0.5, 1.0) {
 									A_1 <- A_1 +1;
-									ask commune where(each.id = myid){
-											A_1c <- A_1 * 0.04;
-										}
 								}
 								if max_water_height >= 1.0 {
 									A_max <- A_max +1 ;
-									ask commune where(each.id = myid){
-											A_maxc <- A_max * 0.04;
-										}
 								}
-								}	
+							}	
 							}
-							
-							}
+						}
 					}
 					}
+				U_0_5c <- U_0_5 * 0.04;
+				U_1c <- U_1 * 0.04;
+				U_maxc <- U_max * 0.04;
+				Us_0_5c <- Us_0_5 * 0.04;
+				Us_1c <- Us_1 * 0.04;
+				Us_maxc <- Us_max * 0.04;
+				Udense_0_5c <- Udense_0_5 * 0.04;
+				Udense_1c <- Udense_1 * 0.04;
+				Udense_maxc <- Udense_max * 0.04;
+				AU_0_5c <- AU_0_5 * 0.04;
+				AU_1c <- AU_1 * 0.04;
+				AU_maxc <- AU_max * 0.04;
+				A_0_5c <- A_0_5 * 0.04;
+				A_1c <- A_1 * 0.04;
+				A_maxc <- A_max * 0.04;
+				N_0_5c <- N_0_5 * 0.04;
+				N_1c <- N_1 * 0.04;
+				N_maxc <- N_max * 0.04;
 				text <- text + "Résultats commune " + commune_name +"
-Surface U innondée : moins de 50cm " + ((U_0_5 * 0.04) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((U_1 * 0.04) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_max * 0.04) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
-Surface AU innondée : moins de 50cm " + ((AU_0_5 * 0.04) with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((AU_1 * 0.04) with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((AU_max * 0.04) with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
-Surface A innondée : moins de 50cm " + ((A_0_5 * 0.04) with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((A_1 * 0.04) with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((A_max * 0.04) with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
-Surface N innondée : moins de 50cm " + ((N_0_5 * 0.04) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m" + ((N_1 * 0.04) with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((N_max * 0.04) with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
+Surface U innondée : moins de 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
+Surface Us innondée : moins de 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
+Surface Udense innondée : moins de 50cm " + ((Udense_0_5c) with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Udense_1 * 0.04) with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Udense_max * 0.04) with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
+Surface AU innondée : moins de 50cm " + ((AU_0_5c) with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((AU_1c) with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((AU_maxc) with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
+Surface A innondée : moins de 50cm " + ((A_0_5c) with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((A_1c) with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((A_maxc) with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
+Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((N_1c) with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((N_maxc) with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
 --------------------------------------------------------------------------------------------------------------------
 " ;	
 			}
 			flood_results <-  text;
-			
 				
 			write "Surface inondée par commune";
-			ask (commune where (each.id > 0))
-				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ; 
+			ask ((commune where (each.id > 0)) sort_by (each.id))
+				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ; 
 					add surface_inondee to: data_surface_inondee; 
 					write ""+ commune_name + " : " + surface_inondee +" ha";
 				}
@@ -2427,6 +2434,8 @@ species commune
 	
 	/* initialisation des hauteurs d'eau */ 
 	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
+	float Us_0_5c <-0.0;	float Us_1c <-0.0;	float Us_maxc <-0.0;
+	float Udense_0_5c <-0.0;	float Udense_1c <-0.0;	float Udense_maxc <-0.0;
 	float AU_0_5c <-0.0; float AU_1c <-0.0; float AU_maxc <-0.0;
 	float A_0_5c <-0.0;	float A_1c <-0.0;	float A_maxc <-0.0;
 	float N_0_5c <-0.0;	float N_1c <-0.0;	float N_maxc <-0.0;
@@ -2617,15 +2626,6 @@ experiment oleronV2 type: gui {
 //			species coast_border_area aspect: base;		
 //			species flood_risk_area aspect: base;
 		}
-//		display carte_oleron_water_max
-//		{
-//			grid cell ;
-//			species cell aspect:elevation_eau_max;
-//			species commune aspect:outline;
-//			species road aspect:base;
-//			species def_cote aspect:base;
-//			
-//		}
 //		display Population
 //		{	
 //			species UA aspect: population;
@@ -2646,31 +2646,55 @@ experiment oleronV2 type: gui {
 			
 		display graph_budget {
 				chart "Graphe des budgets" type: series {
-					datalist value:[data_budget_C1,data_budget_C2,data_budget_C3,data_budget_C4] color:[#red,#blue,#green,#black] legend:((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name; 			
+					datalist value:[data_budget_C1,data_budget_C2,data_budget_C3,data_budget_C4]
+							color:[#red,#blue,#green,#black]
+							legend:((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name; 			
 				}
 			}
 			
 
 		display Barplots {
                 
-				chart "Zone U" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0} {
-					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
+				chart "Zone U" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0} {
+					datalist 
+						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_maxc)] 
+						style:stack
+						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
-				chart "Zone AU" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0} {
-					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
+				chart "Zone Us" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0} {
+					datalist 
+						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.Us_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Us_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Us_maxc)] 
+						style:stack
+						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
-				chart "Zone A" type: histogram background: rgb("white") size: {0.5,0.4} position: {0, 0.5} {
-					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
+				chart "Zone U dense" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0} {
+					datalist 
+						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.Udense_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Udense_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Udense_maxc)] 
+						style:stack
+						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
-				chart "Zone N" type: histogram background: rgb("white") size: {0.5,0.4} position: {0.5, 0.5} {
-					datalist (((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name) value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_maxc)] 
-						style:stack legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
+				chart "Zone AU" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0.5} {
+					datalist 
+						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_maxc)] 
+						style:stack
+						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
+						
+				}
+				chart "Zone A" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0.5} {
+					datalist 
+						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_maxc)] 
+						style:stack
+						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
+						
+				}
+				chart "Zone N" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0.5} {
+					datalist 
+						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_maxc)] 
+						style:stack
+						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
 						
 				}
 				 
