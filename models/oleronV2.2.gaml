@@ -110,7 +110,7 @@ global  {
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	string current_lisflood_rep <- "results"; // * nom du répertoire de sauvegarde des résultats de simu de lisflood
 	map<string,string> list_flooding_events ;  // * listing des répertoires des innondations de la partie
-	string replayed_flooding_event;
+	bool show_max_water_height<- false ;// defines if the water_height displayed on the map should be the max one or the current one
 	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
 	matrix<string> all_action_delay <- matrix<string>(csv_file("../includes/delai_action.csv",";"));	
 	matrix<string> actions_def <- matrix<string>(csv_file("../includes/actions_def.csv",";"));	
@@ -205,7 +205,7 @@ init
 		do init_buttons;
 		stateSimPhase <- 'not started';
 		do addElementIn_list_flooding_events ("Submersion initiale","results");
-		
+		do addElementIn_list_flooding_events ("Submersion Test au Tour 4","results_R4_t1.488119975002E12"); 
 		/*Creation des agents a partir des données SIG */
 		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), commune_name_shpfile::string(read("Commune"))
 		];
@@ -352,25 +352,27 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
 		write flood_results;
-		
 		map<string,string> msg <- [];
 		put "1" key:flood_results in:msg;
 		map values <- user_input(msg);	
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
-						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;
-													//cell[c,r].max_water_height <- 0.0;
-						}  }
+						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;} 
+						}
 		// annulation des ruptures de digues				
 		ask def_cote {if rupture = 1 {do removeRupture;}}
 		// redémarage du jeu
-		if round = 0 {stateSimPhase <- 'not started'; }
-		else {
-				stateSimPhase <- 'game';
-				do new_round;
+		if round = 0
+		{
+			stateSimPhase <- 'not started';
+			write stateSimPhase;
 		}
-		write stateSimPhase;
+		else
+		{
+			stateSimPhase <- 'game';
+			write stateSimPhase + " - Tour "+round;
 		}
+	}
 	
 reflex calculate_flood_stats when: stateSimPhase = 'calculate flood stats'
 	{// fin innondation
@@ -381,13 +383,48 @@ reflex calculate_flood_stats when: stateSimPhase = 'calculate flood stats'
 		}
 		
 reflex show_lisflood when: stateSimPhase = 'show lisflood'
-	{// lecture des fichiers innondation
-	do readLisfloodInRep("results"+timestamp);
-//			write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
+	{
+		// lecture des fichiers innondation
+		do readLisflood;
+		//write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
 	}
-		
+
+action replay_flood_event
+{
+	//map values <- user_input("Select Replayed Flooding" var: replayed_flooding_event <- (list_flooding_events.keys)[0] among: list_flooding_events.keys;
+	string txt;
+	int i <-1;
+	loop aK over: list_flooding_events.keys
+	{
+		txt<- txt + "\n"+i+" :"+aK;
+		i <-i +1;
+	}
+	map values <- user_input("Indiquer le numéro de la submersion que vous voulez réafficher" +txt,
+						[	"Numéro :" :: "0"]);
+	map<string, unknown> msg <-[];
+	i <- int(values["Numéro :"]);
+	if i=0 or i > length(list_flooding_events.keys){return;}
+	
+				
+	string replayed_flooding_event  <- (list_flooding_events.keys)[i-1] ;
+	write replayed_flooding_event;
+	loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
+	set lisfloodReadingStep <- 0;
+	current_lisflood_rep <- list_flooding_events at replayed_flooding_event;
+	stateSimPhase <- 'show lisflood'; write stateSimPhase;
+	do readLisflood;
+}		
 action launchFlood_event (string eventName)
-	{ // déclenchement innondation
+	{
+		if round = 0 
+		{
+			map values <- user_input(["La simulation n'a pas encore commencée" :: ""]);
+	     			write stateSimPhase;
+		}
+		// faire un tour juste avant de déclencher l'innondation
+		// l'innondation à lieu en Janvier (début d'année), juste après le changement d'année civile (le tour change au 31 déc)
+		if round != 0 {	do new_round; }
+		// déclenchement innondation
 		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
 		if round != 0 {
 			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
@@ -485,13 +522,15 @@ action save_dem_old {
 			}
 		}  	
 	   
-action readLisfloodInRep (string rep)
-	 {  string nb <- lisfloodReadingStep;
+action readLisflood
+	 {  
+	 	string nb <- lisfloodReadingStep;
 		loop i from: 0 to: 3-length(nb) { nb <- "0"+nb; }
-		string fileName <- "../includes/lisflood-fp-604/"+rep+"/res-"+ nb +".wd";
+		string fileName <- "../includes/lisflood-fp-604/"+current_lisflood_rep+"/res-"+ nb +".wd";
 		if file_exists (fileName)
-			{	file lfdata <- text_file(fileName) ;
-		 		write "/res-"+ nb +".wd";
+			{
+				write fileName;
+				file lfdata <- text_file(fileName) ;
 				loop r from: 6 to: length(lfdata) -1 {
 					string l <- lfdata[r];
 					list<string> res <- l split_with "\t";
@@ -503,7 +542,11 @@ action readLisfloodInRep (string rep)
 	        }
 	     else { // fin innondation
 	     		lisfloodReadingStep <-  9999999;
-	     		if nb = "0000" {map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);}
+	     		if nb = "0000" {
+	     			map values <- user_input(["Il n'y a pas de fichier de résultat lisflood pour cet évènement" :: 100]);
+	     			stateSimPhase <- 'game';
+	     			write stateSimPhase + " - Tour "+round;
+	     		}
 	     		else{map values <- user_input(["L'innondation est terminée" :: 100]);
 					stateSimPhase <- 'calculate flood stats'; write stateSimPhase;}   }	   
 	}
@@ -1638,6 +1681,24 @@ species network_activated_lever skills:[network]
 			my_icon <- image_file("../images/icones/sans_quadrillage.png");
 			is_selected <- false;
 		}
+		create buttons number: 1
+		{
+			nb_button <- 6;
+			label <- "Replay flooding";
+			shape <- square(button_size);
+			location <- { 9000,1000 };
+			my_icon <- image_file("../images/icones/replay_flooding.png");
+			display_name <- UNAM_DISPLAY_c;
+		}
+		create buttons number: 1
+		{
+			nb_button <- 7;
+			label <- "Show max water height";
+			shape <- square(850);
+			location <- { 1800,14000 };
+			my_icon <- image_file("../images/icones/max_water_height.png");
+			is_selected <- false;
+		}
 	}
 	
 	
@@ -1666,6 +1727,9 @@ species network_activated_lever skills:[network]
 			if (nb_button = 5){
 				ask world {do launchFlood_event("Xynthia moins 50cm");}
 			}
+			if (nb_button = 6){
+				ask world {do replay_flood_event();}
+			}
 		}
 		
 		if(length(selected_UnAm_c)>0)
@@ -1690,6 +1754,15 @@ species network_activated_lever skills:[network]
 			{
 				is_selected <- not(is_selected);
 				my_icon <-  is_selected ? image_file("../images/icones/avec_quadrillage.png") :  image_file("../images/icones/sans_quadrillage.png");
+			}
+		}
+		buttons a_button <- first((buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.nb_button = 7));
+		if a_button != nil
+		{
+			ask a_button
+			{
+				is_selected <- not(is_selected);
+				show_max_water_height <-is_selected;
 			}
 		}
 	}
@@ -1728,12 +1801,23 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 		float soil_height <- grid_value;
 		float soil_height_before_broken <- 0.0;
 		float rugosity;
+		rgb soil_color ;
 	
 		init {
 			if soil_height <= 0 {cell_type <-1;}  //  1 -> mer
 			if soil_height = 0 {soil_height <- -5.0;}
 			soil_height_before_broken <- soil_height;
+			do init_soil_color();
 			}
+		action init_soil_color
+		{
+			if cell_type = 1 
+				{float tmp <-  ((soil_height  / 10) with_precision 1) * -170;
+					soil_color<- rgb( 80, 80 , 255 - tmp) ; }
+			 else{
+				float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
+					soil_color<- rgb( 255 - tmp, 180 - tmp , 0) ; }
+		}
 		aspect niveau_eau
 		{
 			if water_height < 0
@@ -1746,12 +1830,10 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 		aspect elevation_eau
 		{
 			if cell_type = 1 
-				{float tmp <-  ((soil_height  / 10) with_precision 1) * -170;
-					color<- rgb( 80, 80 , 255 - tmp) ; }
+				{color<- soil_color ; }
 			 else{
 				if water_height = 0			
-				{float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
-					color<- rgb( 255 - tmp, 180 - tmp , 0) ; }
+				{color<- soil_color;}
 				else
 				 {float tmp <-  min([(water_height  / 5) * 255,200]);
 				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
@@ -1760,18 +1842,33 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 		aspect elevation_eau_max
 		{
 			if cell_type = 1 
-				{float tmp <-  ((soil_height  / 10) with_precision 1) * -170;
-					color<- rgb( 80, 80 , 255 - tmp) ; }
+				{color<- soil_color ; }
 			 else{
-				if max_water_height = 0			
-				{float tmp <-  ((soil_height  / 10) with_precision 1) * 255;
-					color<- rgb( 255 - tmp, 180 - tmp , 0) ; }
+				if water_height = 0			
+				{color<- soil_color;}
 				else
 				 {float tmp <-  min([(max_water_height  / 5) * 255,200]);
 				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
 				 }
-		}	
-			
+		}		
+		aspect elevation_eau_ou_eau_max
+		{
+			if cell_type = 1 or (show_max_water_height?(max_water_height = 0):(water_height = 0))
+				{color<- soil_color ; }
+			else
+			{
+				if show_max_water_height
+				{
+				 	float tmp <-  min([(max_water_height  / 5) * 255,200]);
+				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+				 }
+				else
+				{
+					float tmp <-  min([(water_height  / 5) * 255,200]);
+				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+				}
+			}
+		}
 	}
 
 
@@ -1901,6 +1998,7 @@ species def_cote
 				ask cells {
 					soil_height <- soil_height + H_DELTA_GANIVELLE;
 					soil_height_before_broken <- soil_height ;
+					do init_soil_color();
 					}
 				not_updated <- true;
 			}
@@ -1939,6 +2037,7 @@ species def_cote
 				ask cells overlapping zoneRupture  {
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 				}
+				write "rupture "+type_def_cote+" n°" + dike_id + "("+", état " + status +", hauteur "+height+", alt "+alt +")";
 				write "rupture "+type_def_cote+" n°" + dike_id + "("+first((commune overlapping self)).commune_name +", état " + status +", hauteur "+height+", alt "+alt +")"; 
 		}
 	}
@@ -1965,13 +2064,18 @@ species def_cote
 		ask cells {
 			soil_height <- soil_height + 1;
 			soil_height_before_broken <- soil_height ;
+			do init_soil_color();
 			}
 		//ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage (myself);}
 	}
 	
 	//la commune détruit la digue
 	action destroy_by_commune (int a_commune_id) {
-		ask cells {	soil_height <- soil_height - myself.height ;}
+		ask cells {
+			soil_height <- soil_height - myself.height ;
+			soil_height_before_broken <- soil_height ;
+			do init_soil_color();
+		}
 		//ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage (myself);}
 		do die;
 	}
@@ -1984,6 +2088,7 @@ species def_cote
 		ask cells  {
 			soil_height <- h + myself.height; ///  Une nouvelle digue fait 1,5 mètre -> STANDARD_DIKE_SIZE
 			soil_height_before_broken <- soil_height ;
+			do init_soil_color();
 		}
 		//ask commune first_with(each.id = a_commune_id) {do payerConstructionOuvrage (myself);}
 	}
@@ -2290,10 +2395,10 @@ species UA
 		rgb acolor <- nil;
 		switch classe_densite {
 			match "vide" {acolor <- # white; }
-			match "peu dense" {acolor <-  rgb( 253, 189, 131 ); }
-			match "densité intermédiaire" {acolor <- rgb( 238, 101, 16 ) ;}
-			match "dense" {acolor <- rgb( 127, 39, 4 ) ;}
-			default "peu dense" {acolor <- # yellow; }
+			match "peu dense" {acolor <- listC[2];} 
+			match "densité intermédiaire" {acolor <- listC[5];}
+			match "dense" {acolor <- listC[7];}
+			default {acolor <- # yellow; }
 			}
 		draw shape color: acolor;
 		
@@ -2469,6 +2574,11 @@ species buttons
 			draw shape color:#white border: is_selected ? # red : # white;
 			draw my_icon size:800#m ;
 		}
+		if( nb_button = 7)
+		{
+			draw shape color:#white border: is_selected ? # red : # white;
+			draw my_icon size:800#m ;
+		}
 	}
 }
 
@@ -2484,12 +2594,11 @@ experiment oleronV2 type: gui {
 	float minimum_cycle_duration <- 0.5;
 	parameter "Log user action" var:log_user_action<- true;
 	parameter "Connect ActiveMQ" var:activemq_connect<- true;
-	//parameter "Select Replayed Flooding" var: replayed_flooding_event <- (list_flooding_events.keys)[0] among: list_flooding_events.keys;
 	output {
 		display carte_oleron //autosave : true
 		{
 			grid cell ;
-			species cell aspect:elevation_eau;
+			species cell aspect: elevation_eau_ou_eau_max; //elevation_eau;
 			species commune aspect:outline;
 			species road aspect:base;
 			species def_cote aspect:base;
@@ -2504,26 +2613,25 @@ experiment oleronV2 type: gui {
 			species UA aspect: base;
 			species road aspect:base;
 			species def_cote aspect:base;
-			species inland_dike_area aspect: base;
-			species coast_border_area aspect: base;		
-			species flood_risk_area aspect: base;
+//			species inland_dike_area aspect: base;
+//			species coast_border_area aspect: base;		
+//			species flood_risk_area aspect: base;
 		}
-		display carte_oleron_water_max
-		{
-			grid cell ;
-			species cell aspect:elevation_eau_max;
-			species commune aspect:outline;
-			species road aspect:base;
-			species def_cote aspect:base;
-			
-		}
-		display Population
-		{	
-			species UA aspect: population;
-			species road aspect:base;
-			species commune aspect: outline;			
-		}
-		
+//		display carte_oleron_water_max
+//		{
+//			grid cell ;
+//			species cell aspect:elevation_eau_max;
+//			species commune aspect:outline;
+//			species road aspect:base;
+//			species def_cote aspect:base;
+//			
+//		}
+//		display Population
+//		{	
+//			species UA aspect: population;
+//			species road aspect:base;
+//			species commune aspect: outline;			
+//		}
 		display "Densité de population"
 		{	
 			species UA aspect: densite_pop;
@@ -2568,10 +2676,10 @@ experiment oleronV2 type: gui {
 				 
 			}
 			
-		display "VIDE"
-		{
-			
-		}	
+//		display "VIDE"
+//		{
+//			
+//		}	
 		display "Surface inondée par commune" {
 				chart "Surface inondée par commune" type: series {
 					datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
