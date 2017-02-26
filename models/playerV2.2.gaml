@@ -617,7 +617,6 @@ global
 			
 		}
 
-		//////////   Boutons d'affichage de couches d'infos	
 		create buttons_map number: 1
 		{
 			command <- ACTION_DISPLAY_PROTECTED_AREA;
@@ -675,7 +674,7 @@ global
 		return false;
 	}
 	
-		action button_click_general
+	action button_click_general
 	{
 		point loc <- #user_location;
 		list<onglet> clicked_onglet_button <- (onglet overlapping loc);
@@ -703,7 +702,7 @@ global
 		
 		
 	}
-		bool show_hide_maps_click
+	bool show_hide_maps_click
 	{
 		point loc <- #user_location;
 		list<buttons> cliked_button <- (buttons where(each.display_name=BOTH_DISPLAY )) overlapping loc   ;
@@ -842,7 +841,9 @@ global
 			{
 				match ACTION_CREATE_DIKE { do create_new_dike(loc,selected_button);}
 				match ACTION_INSPECT_DIKE {/*NE RIEN FAIRE do inspect_dike(loc,selected_dike,selected_button);*/}
-				default {do modify_dike(loc, selected_dike,selected_button);}
+				default {
+					do modify_dike(loc, selected_dike,selected_button);
+				}
 			}
 		}
 	}
@@ -1157,8 +1158,8 @@ global
 				ask a_MAP_button {
 					is_selected <- not(is_selected);
 					switch command {
-						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png");}
-						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") :  image_file("../images/ihm/I_afficher_PPR.png");}
+						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  !is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png");}
+						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  !is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") :  image_file("../images/ihm/I_afficher_PPR.png");}
 					}			
 				}
 			}
@@ -1183,31 +1184,31 @@ global
 		if( length(cliked_dike_button) > 0)
 		{
 			list<buttons> current_active_button <- buttons where (each.is_selected);
-			bool clic_deselect <- false;
-			if length (current_active_button) > 1 {write "BUG: Problème -> deux boutons sélectionnés en même temps";}
-			if length (current_active_button) = 1 
-				{if (first (current_active_button)).command = (first(cliked_dike_button)).command
-					{clic_deselect <-true;}}
 			do clear_selected_button;
-			if !clic_deselect 
-				{ask (first(cliked_dike_button))
-					{
+			
+			if (length (current_active_button) = 1 and (first (current_active_button)).command != (first(cliked_dike_button)).command) or length (current_active_button) = 0
+			{
+				ask (first(cliked_dike_button))
+				{
 					is_selected <- true;
-					}
 				}
+			}
 		}
 		else
-		{	buttons_map a_MAP_button <- first (buttons_map where (each distance_to loc < MOUSE_BUFFER));
+		{	
+			buttons_map a_MAP_button <- first (buttons_map where (each distance_to loc < MOUSE_BUFFER));
 			if a_MAP_button != nil {
 				ask a_MAP_button {
 					is_selected <- not(is_selected);
 					switch command {
-						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_protegees.png") :  image_file("../images/icones/sans_zones_protegees.png");}
-						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  is_selected ? image_file("../images/icones/avec_zones_innondees.png") :  image_file("../images/icones/sans_zones_innondees.png");}
+						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_afficher_zone_protegee.png") :  image_file("../images/ihm/I_desafficher_zone_protegee.png");}
+						match ACTION_DISPLAY_FLOODED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_afficher_PPR.png") :  image_file("../images/ihm/I_desafficher_PPR.png");}
 					}			
 				}
 			}
-			else {do change_dike;}
+			else {
+				do change_dike;
+			}
 		}
 
 	}
@@ -2204,7 +2205,7 @@ species action_done
 	string id <-"";
 	int element_id<-0;
 	geometry element_shape;
-	float shape_width <-0;
+	float shape_width <-35#m;
 	//string command_group <- "";
 	int command <- -1;
 	string label <- "no name";
@@ -2820,8 +2821,7 @@ species action_def_cote parent:action_done
 {
 	string action_type <- "dike";
 	string type_def_cote -> {command = ACTION_INSTALL_GANIVELLE?"dune":"digue"};
-	float shape_width -> {type_def_cote = "digue"?35#m:65#m};
-	
+	float shape_width -> {type_def_cote = "digue"?35#m:65#m};	
 	rgb define_color
 	{
 		switch(command)
