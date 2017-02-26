@@ -1174,7 +1174,7 @@ species commune_action_button
 		{
 			match "Prélever de l'argent"
 			{
-				map values <- user_input("Indiquer le montant prélevé à " +my_commune.com_large_name+"\n(0 pour annuler)",
+				map values <- user_input("Indiquer le montant prélevé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : pour changer le texte à envoyer, mettre le texte entre doubles quotes ->  '' bonjour ''",
 						[	"Montant :" :: "2000",
 							"Message :" :: "L'agence vous preleve un montant de : "
 						]);
@@ -1189,19 +1189,11 @@ species commune_action_button
 			}
 			match "Envoyer de l'argent"
 			{
-				map values <- user_input("Indiquer le montant envoyé à " +my_commune.com_large_name+"\n(0 pour annuler)",
+				map values <- user_input("Indiquer le montant envoyé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : pour changer le texte à envoyer, mettre le texte entre doubles quotes ->  '' bonjour ''",
 						[	"Montant :" :: "2000",
 							"Message :" :: "L'agence vous envoie un montant de : "
 						]);
-				map<string, unknown> msg <-[];
-//				map<string,unknown> values2 <- user_input("Enter numer of agents and locations",["Number" :: 100, "Name" :: "bbb"]);
-//				write "nombre " + (values2 at "Number") + " et point "+(string(values2 at "Name"));
-				map<string,unknown> values2 <- user_input("Enter a string",[ "Name" :: "bbb"]);
-				write "Name "+(string(values2 at "Name"));
-				int bbb;
-				
-				
-				
+				map<string, unknown> msg <-[];				
 				if int(values["Montant :"])=0 {return;}
 				put CREDITER key: LEADER_COMMAND in: msg;
 				put my_commune.commune_name key: COMMUNE in: msg;
@@ -1212,7 +1204,7 @@ species commune_action_button
 			}
 			match "Envoyer un message"
 			{
-				map values <- user_input("Indiquer le message envoyé à " +my_commune.com_large_name+"\n('' pour annuler)",
+				map values <- user_input("Indiquer le message envoyé à " +my_commune.com_large_name+"\n('''' pour annuler)\nATTENTION : pour changer le texte à envoyer, mettre le texte entre doubles quotes ->  '' bonjour ''",
 						[	
 							"Message :" :: "L'agence dit Bonjour"
 						]);
