@@ -1400,6 +1400,7 @@ species displayed_list skills:[UI_location] schedules:[]
 	action change_location_to_all
 	{
 		int i <- 0;
+		start_index <- 0;
 		loop ele over:elements
 		{
 			point p <- get_location(i); //{0.5,index *element_height + header_height+element_height/2 };
@@ -1410,6 +1411,8 @@ species displayed_list skills:[UI_location] schedules:[]
 					is_displayed <- true;
 				}
 		}
+		up_item.is_displayed <- false;
+		down_item.is_displayed <-false;
 	}
 	
 	action change_location
