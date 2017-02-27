@@ -247,6 +247,33 @@ init
 		}
 		ask def_cote {do init_dike;}
 	}
+
+action launchFlood_event (string eventName)
+	{
+		ask network_listen_to_leader{
+					do execute command:"cmd /c start "+"C:\\Users\\nbecu\\Documents\\Gama1_7_Worspace\\LittoSIMv2\\includes\\lisflood-fp-604\\lisflood_oleron_current.bat";
+		}
+		
+		if round = 0 
+		{
+			map values <- user_input(["La simulation n'a pas encore commencée" :: ""]);
+	     			write stateSimPhase;
+		}
+		// faire un tour juste avant de déclencher l'innondation
+		// l'innondation à lieu en Janvier (début d'année), juste après le changement d'année civile (le tour change au 31 déc)
+		if round != 0 {	do new_round; }
+		// déclenchement innondation
+		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
+		if round != 0 {
+			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
+			ask def_cote {do calcRupture;} 
+			do executeLisflood(eventName); // comment this line if you only want to read already existing results
+		} 
+		set lisfloodReadingStep <- 0;
+		stateSimPhase <- 'show lisflood'; write stateSimPhase;
+	}
+
+
 	
  int getMessageID
  	{
@@ -413,26 +440,6 @@ action replay_flood_event
 	stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	do readLisflood;
 }		
-action launchFlood_event (string eventName)
-	{
-		if round = 0 
-		{
-			map values <- user_input(["La simulation n'a pas encore commencée" :: ""]);
-	     			write stateSimPhase;
-		}
-		// faire un tour juste avant de déclencher l'innondation
-		// l'innondation à lieu en Janvier (début d'année), juste après le changement d'année civile (le tour change au 31 déc)
-		if round != 0 {	do new_round; }
-		// déclenchement innondation
-		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
-		if round != 0 {
-			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
-			ask def_cote {do calcRupture;} 
-			do executeLisflood(eventName); // comment this line if you only want to read already existing results
-		} 
-		set lisfloodReadingStep <- 0;
-		stateSimPhase <- 'show lisflood'; write stateSimPhase;
-	}
 
 /*reflex test_calcRupture {
 	int tot <-0;
@@ -972,7 +979,7 @@ species network_listen_to_leader skills:[network]
 		 do connect to:SERVER with_name:MSG_FROM_LEADER;
 	}
 	
-	
+		
 	reflex  wait_message 
 	{
 		loop while:has_more_message()

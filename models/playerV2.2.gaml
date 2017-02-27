@@ -1858,7 +1858,7 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 		}
 
 		rgb mc <- (final_price = initialx_price) ? rgb(87,87,87): rgb(235,33,46);
-		draw ""+int(initialx_price) at:{price_location.x ,price_location.y +(mfont/3)#px } color:#black font:font1;
+		draw ""+int(final_price) at:{price_location.x ,price_location.y +(mfont/3)#px } color:mc font:font1;
 			
 		
 		
@@ -2419,7 +2419,7 @@ species network_listen_to_leader skills:[network]
 			
 		}
 		
-	}
+	} 
 	
 	
 }	
