@@ -1501,8 +1501,6 @@ species basket parent:displayed_list
 		do navigation_item;
 	}
 	
-
-	
 	action add_action_in_basket(action_done act)
 	{
 	  	create basket_element number:1 returns:ele
@@ -1514,9 +1512,6 @@ species basket parent:displayed_list
 		}
 		do add_item(first(ele));
 	}
-	
-
-	
 	
 	action draw_budget
 	{
@@ -1846,17 +1841,27 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 		int mfont <- font_size;
 		font font1 <- font ('Helvetica Neue',mfont, #italic ); 
 		
-		
+		if(!current_action.is_applied)
+		{
+			if(delay != 0)
+			{
+				draw circle(bullet_size.x/2) at:delay_location color:rgb(235,33,46);
+				draw ""+delay at:{delay_location.x -(mfont/6)#px ,delay_location.y +(mfont/3)#px } color:#white font:font1;
+			}
+			draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
+			draw ""+rounds_before_application at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
+		}
+		else
+		{
+			image_file micone <- file("../images/ihm/I_valider.png");
+			draw micone at:round_apply_location size:bullet_size color:rgb(87,87,87);
+		}
+
 		rgb mc <- (final_price = initialx_price) ? rgb(87,87,87): rgb(235,33,46);
 		draw ""+int(initialx_price) at:{price_location.x ,price_location.y +(mfont/3)#px } color:#black font:font1;
 			
-		if(delay != 0)
-		{
-			draw circle(bullet_size.x/2) at:delay_location color:rgb(235,33,46);
-			draw ""+delay at:{delay_location.x -(mfont/6)#px ,delay_location.y +(mfont/3)#px } color:#white font:font1;
-		}
-		draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
-		draw ""+rounds_before_application at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
+		
+		
 		if(highlight_action = current_action)
 		{
 			
@@ -2012,26 +2017,6 @@ species network_activated_lever skills:[network]
 							do user_msg ("Le dossier '"+myself.act_done.label+ "' a été retardé de "+ myself.nb_rounds_delay + " tours", INFORMATION_MESSAGE);
 						}
 					}
-//					switch(lever_type)
-//					{
-//						match_one [LEVER_DIKE_CREATION,LEVER_RAISE_DIKE,LEVER_REPAIR_DIKE,LEVER_AUorUi_inRiskArea,LEVER_GANIVELLE,LEVER_Us_outCoastBorderOrRiskArea]
-//						{
-//							budget <- budget - added_cost;
-//							ask world
-//							{
-//								do user_msg (myself.lever_explanation);
-//								do user_msg ("Votre budget a été "+(myself.added_cost>0?"prélevé":"approvisionné")+" de "+myself.added_cost+ " Bs.");
-//							}
-//						}	
-//						match_one [LEVER_AUorUi_inCoastBorderArea]
-//						{
-//							ask world
-//							{
-//								do user_msg (myself.lever_explanation);
-//								do user_msg ("Le dossier  "+myself.act_done.label+ " a été retardé de "+ myself.nb_rounds_delay + " tours");
-//							}
-//						}
-//					}
 					add self to: act_done.activated_levers;
 				}	
 			}
@@ -2341,7 +2326,13 @@ species network_player_new skills:[network]
 					match "action_done is_applied" // remplace ancien ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT
 					{
 						string act_done_id <- m_contents["id"];
-						((action_def_cote + action_UA) first_with (each.id = act_done_id)).is_applied <- true;
+						write "applay action "+ act_done_id;
+						action_done app <- ((action_def_cote + action_UA) first_with (each.id = act_done_id));
+						ask app
+						{
+							is_applied <- true;
+							do apply	;
+						}
 					}
 					match "INFORM_NEW_ROUND" // a new round just has pass
 					{
@@ -2449,7 +2440,7 @@ species network_player skills:[network]
 		loop while:has_more_message()
 		{
 			message msg <- fetch_message();
-			//write msg.contents;
+			write msg.contents;
 			string my_msg <- msg.contents;
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
 			int command <- int(data[0]);
@@ -2737,7 +2728,10 @@ species network_player skills:[network]
 		{
 			do remove_all_elements;
 		}
+		my_basket <- [];
 	}
+
+			
 	
 }
 
@@ -3249,8 +3243,6 @@ species onglet skills:[UI_location]
 	}
 }
 
-
-
 experiment game type: gui
 {
 	font regular <- font("Helvetica", 14, # bold);
@@ -3272,7 +3264,6 @@ experiment game type: gui
 			species UA aspect:carte;
 			species action_UA aspect:carte;
 			
-			//DIGUE
 			species action_def_cote aspect:carte;
 			species def_cote aspect:carte;
 		
@@ -3306,11 +3297,6 @@ experiment game type: gui
 				
 				
 			}
-			
-			
-			
-			
-			
 			graphics "explore_dike_icone" 
 			{
 				if (explored_dike != nil )
