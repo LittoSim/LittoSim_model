@@ -330,7 +330,6 @@ action new_round{
 			}}
 	else {stateSimPhase <- 'game'; write stateSimPhase;}
 	round <- round + 1;
-	ask network_player {do send_space_update;}
 	ask commune {do inform_new_round;}
 	ask network_listen_to_leader{do informLeader_round_number;}
 	do save_budget_data;
@@ -1190,7 +1189,173 @@ species network_player skills:[network]
 		
 	}
 	
-	reflex apply_action when:length(action_done where(each.is_alive))>0 
+
+		
+	action read_action(string act, string sender)
+	{
+		list<string> data <- act split_with COMMAND_SEPARATOR;
+		
+		if(! (int(data[0]) in ACTION_LIST ) )
+		{
+			return;
+		}
+		
+		action_done new_action <- nil;
+		create action_done number:1 returns:tmp_agent_list;
+		new_action <- first(tmp_agent_list);
+		ask(new_action)
+		{
+			self.command <- int(data[0]);
+			self.command_round <-round; 
+			self.id <- string(data[1]);
+			self.initial_application_round <- int(data[2]);
+			self.commune_name <- sender;
+			if !(self.command in [REFRESH_ALL])
+			{
+				self.element_id <- int(data[3]);
+				self.action_type <- string(data[4]);
+				self.inProtectedArea <- bool(data[5]);
+				self.previous_ua_name <- string(data[6]);
+				self.isExpropriation <- bool(data[7]);
+				self.cost <- float(data[8]);
+				if command = ACTION_CREATE_DIKE
+				{
+					point ori <- {float(data[9]),float(data[10])};
+					point des <- {float(data[11]),float(data[12])};
+					point loc <- {float(data[13]),float(data[14])}; 
+					shape <- polyline([ori,des]);
+					location <- loc; 
+				}
+				else {
+					if isExpropriation {write "Procédure d'expropriation declenchée pour l'UA "+self.id;}
+					switch self.action_type {
+						match "PLU" {shape <- (UA first_with(each.id = self.element_id)).shape; }
+						match "dike" {shape <- (def_cote first_with(each.dike_id = self.element_id)).shape; }
+						default {write "problème reconnaissance du type de action_done";}
+					}
+				}
+				// calcul des attributs qui n'ont pas été calculé au niveau de Participatif et qui ne sont donc pas encore renseigné
+				//inCoastBorderArea  // for PLU action // c'est la bande des 400 m par rapport au trait de cote
+				//inRiskArea  // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
+				//isInlandDike  // for dike action // ce sont les rétro-digues
+				if  self.shape intersects all_flood_risk_area 
+					{inRiskArea <- true;}
+				if  self.shape intersects first(coast_border_area)
+					{inCoastBorderArea <- true;}	
+				if command = ACTION_CREATE_DIKE and (self.shape.centroid overlaps first(inland_dike_area))
+						{isInlandDike <- true;}
+				// finallement on recalcul aussi inProtectedArea meme si ca a été calculé au niveau de participatif, car en fait ce n'est pas calculé pour toutes les actions 
+				if  self.shape intersects all_protected_area
+					{inProtectedArea <- true;}
+					
+				if(log_user_action)
+				{
+					save ([string(machine_time-START_LOG),self.commune_name]+data) to:LOG_FILE_NAME type:"csv";
+				}
+			}
+		}
+		//  le paiement s'est déjà fait coté commune, lorsqu'il a valié le panier. ON renrefistre ici le paiement our garder les comptes à jour coté serveur
+		int idCom <-world.commune_id(new_action.commune_name);
+		ask commune first_with(each.id = idCom) {do record_payment_for_action_done(new_action);}
+	}
+	
+	
+	
+	reflex update_UA  when:length(UA where(each.not_updated))>0 
+	{
+		list<string> update_messages <-[];
+		list<UA> updated_UA <- [];
+		ask UA where(each.not_updated)
+		{
+			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code+COMMAND_SEPARATOR+self.population+COMMAND_SEPARATOR+self.isEnDensification;
+			update_messages <- update_messages + msg;	
+			not_updated <- false;
+			updated_UA <- updated_UA + self;
+		}
+		int i <- 0;
+		loop while: i< length(update_messages)
+		{
+			string msg <- update_messages at i;
+			list<commune> cms <- commune overlapping (updated_UA at i);
+			loop cm over:cms
+			{ do send to:cm.network_name contents:msg;
+			}
+			i <- i + 1;
+		}
+	}
+	
+	action send_destroy_dike_message(def_cote a_dike)
+	{
+		string msg <- ""+ACTION_DIKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+a_dike.dike_id;
+		
+		list<commune> cms <- commune overlapping a_dike;
+		loop cm over:cms
+			{
+				do send to:cm.network_name contents:msg;
+			}
+	}
+	
+	action send_created_dike(def_cote new_dike,action_done act)
+	{
+		point p1 <- first(new_dike.shape.points);
+		point p2 <- last(new_dike.shape.points);
+		
+		
+		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+new_dike.dike_id+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+new_dike.height+COMMAND_SEPARATOR+new_dike.type+COMMAND_SEPARATOR+new_dike.status+ COMMAND_SEPARATOR+min_dike_elevation(new_dike)+COMMAND_SEPARATOR+act.id;
+		list<commune> cms <- commune overlapping new_dike;
+			loop cm over:cms
+			{
+				do send  to:cm.network_name contents:msg;
+			}
+
+	
+	}
+	
+	action acknowledge_application_of_action_done (action_done act)
+	{
+		map<string,string> msg <- [
+			"TOPIC"::"action_done is_applied",
+			"commune_name"::act.commune_name,
+			"id"::act.id
+			];
+		do send  to:act.commune_name+"_map_msg" contents:msg;
+	}
+	
+	float min_dike_elevation(def_cote ovg)
+	{
+		return min(cell overlapping ovg collect(each.soil_height));
+	}
+	
+	
+	reflex update_dike  when:length(def_cote where(each.not_updated))>0 
+	{
+		list<string> update_messages <-[]; 
+		list<def_cote> update_ouvrage <- [];
+		ask def_cote where(each.not_updated)
+		{
+			point p1 <- first(self.shape.points);
+			point p2 <- last(self.shape.points);
+			string msg <- ""+ACTION_DIKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.dike_id+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle+COMMAND_SEPARATOR+myself.min_dike_elevation(self);
+			update_messages <- update_messages + msg;
+			update_ouvrage <- update_ouvrage + self;
+			not_updated <- false;
+		}
+		int i <- 0;
+		loop while: i< length(update_messages)
+		{
+			string msg <- update_messages at i;
+			list<commune> cms <- commune overlapping (update_ouvrage at i);
+			loop cm over:cms
+			{
+				write "message to send "+ msg;
+				do send to:cm.network_name contents:msg;
+			}
+			i <- i + 1;
+			
+		}
+	}
+
+	reflex apply_action when:length(action_done where(each.is_alive))>0
 	{
 		ask(action_done where(each.should_be_applied and each.is_alive))
 		{
@@ -1335,191 +1500,11 @@ species network_player skills:[network]
 					}
 			 	}
 			}
-
-	
-			
 			is_alive <- false; 
 			is_applied <- true;
-			//do die;
-		}
-		
-		
+		}		
 	}
 	
-	
-		
-	action read_action(string act, string sender)
-	{
-		list<string> data <- act split_with COMMAND_SEPARATOR;
-		
-		if(! (int(data[0]) in ACTION_LIST ) )
-		{
-			return;
-		}
-		
-		action_done new_action <- nil;
-		create action_done number:1 returns:tmp_agent_list;
-		new_action <- first(tmp_agent_list);
-		ask(new_action)
-		{
-			self.command <- int(data[0]);
-			self.command_round <-round; 
-			self.id <- string(data[1]);
-			self.initial_application_round <- int(data[2]);
-			self.commune_name <- sender;
-			if !(self.command in [REFRESH_ALL])
-			{
-				self.element_id <- int(data[3]);
-				self.action_type <- string(data[4]);
-				self.inProtectedArea <- bool(data[5]);
-				self.previous_ua_name <- string(data[6]);
-				self.isExpropriation <- bool(data[7]);
-				self.cost <- float(data[8]);
-				if command = ACTION_CREATE_DIKE
-				{
-					point ori <- {float(data[9]),float(data[10])};
-					point des <- {float(data[11]),float(data[12])};
-					point loc <- {float(data[13]),float(data[14])}; 
-					shape <- polyline([ori,des]);
-					location <- loc; 
-				}
-				else {
-					if isExpropriation {write "Procédure d'expropriation declenchée pour l'UA "+self.id;}
-					switch self.action_type {
-						match "PLU" {shape <- (UA first_with(each.id = self.element_id)).shape; }
-						match "dike" {shape <- (def_cote first_with(each.dike_id = self.element_id)).shape; }
-						default {write "problème reconnaissance du type de action_done";}
-					}
-				}
-				// calcul des attributs qui n'ont pas été calculé au niveau de Participatif et qui ne sont donc pas encore renseigné
-				//inCoastBorderArea  // for PLU action // c'est la bande des 400 m par rapport au trait de cote
-				//inRiskArea  // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
-				//isInlandDike  // for dike action // ce sont les rétro-digues
-				if  self.shape intersects all_flood_risk_area 
-					{inRiskArea <- true;}
-				if  self.shape intersects first(coast_border_area)
-					{inCoastBorderArea <- true;}	
-				if command = ACTION_CREATE_DIKE and (self.shape.centroid overlaps first(inland_dike_area))
-						{isInlandDike <- true;}
-				// finallement on recalcul aussi inProtectedArea meme si ca a été calculé au niveau de participatif, car en fait ce n'est pas calculé pour toutes les actions 
-				if  self.shape intersects all_protected_area
-					{inProtectedArea <- true;}
-					
-				if(log_user_action)
-				{
-					save ([string(machine_time-START_LOG),self.commune_name]+data) to:LOG_FILE_NAME type:"csv";
-				}
-			}
-		}
-		//  le paiement se fait au niveau de cette méthode pour que la commune paye au moment de la reception de l'action, et non pas au moment de son applicatiion
-		int idCom <-world.commune_id(new_action.commune_name);
-		ask commune first_with(each.id = idCom) {do pay_for_action_done(new_action);}
-	}
-	
-	
-	
-	action send_space_update
-	{
-		do update_UA;
-		do update_dike;
-	}
-	
-	action update_UA
-	{
-		list<string> update_messages <-[];
-		list<UA> updated_UA <- [];
-		ask UA where(each.not_updated)
-		{
-			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code+COMMAND_SEPARATOR+self.population+COMMAND_SEPARATOR+self.isEnDensification;
-			update_messages <- update_messages + msg;	
-			not_updated <- false;
-			updated_UA <- updated_UA + self;
-		}
-		int i <- 0;
-		loop while: i< length(update_messages)
-		{
-			string msg <- update_messages at i;
-			list<commune> cms <- commune overlapping (updated_UA at i);
-			loop cm over:cms
-			{ do send to:cm.network_name contents:msg;
-			}
-			i <- i + 1;
-			
-		}
-	}
-	
-	action send_destroy_dike_message(def_cote a_dike)
-	{
-		string msg <- ""+ACTION_DIKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+a_dike.dike_id;
-		
-		list<commune> cms <- commune overlapping a_dike;
-		loop cm over:cms
-			{
-				do send to:cm.network_name contents:msg;
-			}
-	//	do sendMessage  dest:"all" content:msg;	
-	
-	}
-	
-	action send_created_dike(def_cote new_dike,action_done act)
-	{
-		point p1 <- first(new_dike.shape.points);
-		point p2 <- last(new_dike.shape.points);
-		
-		
-		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+new_dike.dike_id+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+new_dike.height+COMMAND_SEPARATOR+new_dike.type+COMMAND_SEPARATOR+new_dike.status+ COMMAND_SEPARATOR+min_dike_elevation(new_dike)+COMMAND_SEPARATOR+act.id;
-		list<commune> cms <- commune overlapping new_dike;
-			loop cm over:cms
-			{
-				do send  to:cm.network_name contents:msg;
-			}
-
-	
-	}
-	
-	action acknowledge_application_of_action_done (action_done act)
-	{
-		map<string,string> msg <- [
-			"TOPIC"::"action_done is_applied",
-			"commune_name"::act.commune_name,
-			"id"::act.id
-			];
-		do send  to:act.commune_name+"_map_msg" contents:msg;
-	}
-	
-	float min_dike_elevation(def_cote ovg)
-	{
-		return min(cell overlapping ovg collect(each.soil_height));
-	}
-	
-	
-	action update_dike
-	{
-		list<string> update_messages <-[]; 
-		list<def_cote> update_ouvrage <- [];
-		ask def_cote where(each.not_updated)
-		{
-			point p1 <- first(self.shape.points);
-			point p2 <- last(self.shape.points);
-			string msg <- ""+ACTION_DIKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.dike_id+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle+COMMAND_SEPARATOR+myself.min_dike_elevation(self);
-			update_messages <- update_messages + msg;
-			update_ouvrage <- update_ouvrage + self;
-			not_updated <- false;
-		}
-		int i <- 0;
-		loop while: i< length(update_messages)
-		{
-			string msg <- update_messages at i;
-			list<commune> cms <- commune overlapping (update_ouvrage at i);
-			loop cm over:cms
-			{
-				write "message to send "+ msg;
-				do send to:cm.network_name contents:msg;
-			}
-			i <- i + 1;
-			
-		}
-	}
 	
 //	action update_action_done_func
 //	{
@@ -2059,7 +2044,6 @@ species def_cote
 	action repair_by_commune (int a_commune_id) {
 		status <- "bon";
 		cptStatus <- 0;
-		//ask commune first_with(each.id = a_commune_id) {do payerReparationOuvrage (myself);}
 	}
 	
 	//La commune relève la digue
@@ -2073,7 +2057,6 @@ species def_cote
 			soil_height_before_broken <- soil_height ;
 			do init_soil_color();
 			}
-		//ask commune first_with(each.id = a_commune_id) {do payerRehaussementOuvrage (myself);}
 	}
 	
 	//la commune détruit la digue
@@ -2083,7 +2066,6 @@ species def_cote
 			soil_height_before_broken <- soil_height ;
 			do init_soil_color();
 		}
-		//ask commune first_with(each.id = a_commune_id) {do payerDestructionOuvrage (myself);}
 		do die;
 	}
 	
@@ -2097,7 +2079,6 @@ species def_cote
 			soil_height_before_broken <- soil_height ;
 			do init_soil_color();
 		}
-		//ask commune first_with(each.id = a_commune_id) {do payerConstructionOuvrage (myself);}
 	}
 	
 	//La commune installe des ganivelles sur la dune
@@ -2105,7 +2086,6 @@ species def_cote
 		cptStatus <- 0;
 		ganivelle <- true;
 		write "INSTALL GANIVELLE";
-		//ask commune first_with(each.id = a_commune_id) {do payerGanivelle (myself);}
 	}
 	
 	
@@ -2115,7 +2095,7 @@ species def_cote
 				match  "bon" {color <- # green;}
 				match "moyen" {color <-  rgb (255,102,0);} 
 				match "mauvais" {color <- # red;} 
-				default { /*"casse" {color <- # yellow;}*/write "probleee status dike";}
+				default { /*"casse" {color <- # yellow;}*/write "probleme status dike";}
 				}
 			draw 20#m around shape color: color size:300#m;
 				}
@@ -2123,7 +2103,7 @@ species def_cote
 				match  "bon" {color <- rgb (222, 134, 14,255);}
 				match "moyen" {color <-  rgb (231, 189, 24,255);} 
 				match "mauvais" {color <- rgb (241, 230, 14,255);} 
-				default { write "probleee status dune";}
+				default { write "probleme status dune";}
 				}
 			draw 50#m around shape color: color;
 			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
@@ -2524,15 +2504,9 @@ species commune
 		impot_recu <- current_population(self) * impot_unit;
 		budget <- budget + impot_recu;
 		write commune_name + "->" + budget;
-//		ask network_player
-//		{
-//			string msg <- ""+INFORM_TAX_GAIN+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+myself.impot_recu+COMMAND_SEPARATOR+round;
-//			do send to:myself.network_name contents:msg;
-//		}
-//		not_updated <- true;
 	}
 	
-	action pay_for_action_done (action_done aAction)
+	action record_payment_for_action_done (action_done aAction)
 			{
 				budget <- budget - aAction.cost;
 	}
@@ -2626,12 +2600,6 @@ experiment oleronV2 type: gui {
 //			species coast_border_area aspect: base;		
 //			species flood_risk_area aspect: base;
 		}
-//		display Population
-//		{	
-//			species UA aspect: population;
-//			species road aspect:base;
-//			species commune aspect: outline;			
-//		}
 		display "Densité de population"
 		{	
 			species UA aspect: densite_pop;
@@ -2709,14 +2677,6 @@ experiment oleronV2 type: gui {
 					datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 				}
 			}
-			
-		// NB Pas utilsé car remplacé par l'interface Leader
-		/*display "Liste Actions"
-		{
-			species action_done aspect: base;
-			//species highlight_action_button aspect:base;
-			event [mouse_down] action: button_click_action ;
-
-		}*/
-			}}
+	}
+}
 		
