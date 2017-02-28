@@ -1,4 +1,3 @@
-//
 /**
  *  Commune
  *  Author: nicolas
@@ -1879,6 +1878,9 @@ species basket_element parent:displayed_list_element
 	point button_location -> {point({location.x+ui_width/2- (button_size.x),location.y})};
 	action_done current_action <- nil;
 	image_file close_button <- file("../images/ihm/I_close.png");
+	point bullet_size -> {point({ui_height*0.6,ui_height*0.6})};
+	point round_apply_location -> {point({location.x+1.3*ui_width/5,location.y})};
+	
 	
 	action remove_action
 	{
@@ -1925,9 +1927,12 @@ species basket_element parent:displayed_list_element
 		
 		draw ""+world.separateur_milliers(int(current_action.cost))  at:{button_location.x - 50#px, button_location.y+(mfont/2)#px}  color:#black font:font1;
 		
+		draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
+		draw ""+(world.delayOfAction(current_action.command)) at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
+	
+		
 		if(highlight_action = current_action)
 		{
-			
 			geometry rec <-  polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
 			draw rec  at:{location.x,location.y}  empty:true border:#red;
 		}
