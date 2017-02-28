@@ -684,6 +684,7 @@ species action_done schedules:[]
 	float lever_activation_time;
 	list<activated_lever> activated_levers <-[];
 	bool shouldWaitLeaderToActivate <- false;
+	int length_def_cote;
 	
 	reflex save_data
 	{
@@ -799,6 +800,7 @@ species action_done schedules:[]
 		self.command_round <-int(a at "command_round");
 		self.tracked_profil <- track_profil();
 		self.element_shape <- geometry(a at "element_shape");
+		self.length_def_cote <-int(a at "length_def_cote");
 //		if action_type = 'dike'
 //		{
 //			geometry tt <- a at "shape";
@@ -1006,8 +1008,8 @@ species commune
 	{	if act.is_applied {write "gros problème. le traitement se fait trop tard";}
 		if act.command = ACTION_CREATE_DIKE and !act.isInlandDike
 			{	//write ""+polyline(act.element_shape );
-				//write  act.element_shape.perimeter;
-				length_dike_created <- length_dike_created + act.element_shape.perimeter;
+				//write  act.length_def_cote;
+				length_dike_created <- length_dike_created + act.length_def_cote;
 				ask lever_create_dike where(each.my_commune = self) {
 					do register_and_check_activation(act);
 				}
@@ -1017,7 +1019,7 @@ species commune
 			}
 		if act.command = ACTION_RAISE_DIKE
 			{
-				length_dike_raised <- length_dike_raised + act.element_shape.perimeter;
+				length_dike_raised <- length_dike_raised + act.length_def_cote;
 				ask lever_raise_dike where(each.my_commune = self) {
 					do register_and_check_activation(act);
 				}
@@ -1027,7 +1029,7 @@ species commune
 			}
 		if act.command = ACTION_REPAIR_DIKE
 			{
-				length_dike_repaired <- length_dike_repaired + act.element_shape.perimeter;
+				length_dike_repaired <- length_dike_repaired + act.length_def_cote;
 				ask lever_repair_dike where(each.my_commune = self) {
 					do register_and_check_activation(act);
 				}
@@ -1051,7 +1053,7 @@ species commune
 		}
 		if act.command = ACTION_INSTALL_GANIVELLE
 		{
-			length_ganivelle_created <- length_ganivelle_created + act.element_shape.perimeter;
+			length_ganivelle_created <- length_ganivelle_created + act.length_def_cote;
 			ask lever_ganivelle where(each.my_commune = self) {
 				do register_and_check_activation(act);
 			}
@@ -1080,7 +1082,7 @@ species commune
 		}
 		if act.command = ACTION_CREATE_DIKE and act.isInlandDike
 			{	
-				length_inland_dike <- length_inland_dike + act.element_shape.perimeter;
+				length_inland_dike <- length_inland_dike + act.length_def_cote;
 				ask lever_inland_dike where(each.my_commune = self) {
 					do register_and_check_activation(act);
 				}
@@ -1111,7 +1113,7 @@ species commune
 			}
 		if act.command = ACTION_DESTROY_DIKE
 			{
-				length_dike_destroyed <- length_dike_destroyed + act.element_shape.perimeter;
+				length_dike_destroyed <- length_dike_destroyed + act.length_def_cote;
 				ask lever_destroy_dike where(each.my_commune = self) {
 					do register_and_check_activation(act);
 				}
@@ -1458,7 +1460,7 @@ species cost_lever parent: lever
 	
 	string info_of_next_activated_lever 
 	{
-		return ""+int(activation_queue[0].act_done.element_shape.perimeter) + " m. (" + int(activation_queue[0].act_done.cost * added_cost_percentage) + ' By.)';
+		return ""+int(activation_queue[0].act_done.length_def_cote) + " m. (" + int(activation_queue[0].act_done.cost * added_cost_percentage) + ' By.)';
 	}
 	
 	action apply_lever(activated_lever lev)
@@ -1540,7 +1542,7 @@ species delay_lever parent: lever
 		do register(act_done);
 		do checkActivation_andImpactOn(act_done);
 		act_done.shouldWaitLeaderToActivate <- true;
-		do informNetwork_shouldWaitLeaderToActivate(act_done);
+		//do informNetwork_shouldWaitLeaderToActivate(act_done);
 	}
 		
 	action apply_lever(activated_lever lev)
@@ -1555,7 +1557,7 @@ species delay_lever parent: lever
 		activation_label_L1 <- "Gain de temps total accordé: "+string(abs(tot_lever_delay()))+' tours';
 		
 		lev.act_done.shouldWaitLeaderToActivate <- false;
-		do informNetwork_shouldWaitLeaderToActivate(lev.act_done);
+		//do informNetwork_shouldWaitLeaderToActivate(lev.act_done);
 	}
 	
 	int tot_lever_delay 
@@ -1743,7 +1745,7 @@ species lever_inland_dike parent: delay_lever
 		
 	string info_of_next_activated_lever 
 	{
-		return ""+int(activation_queue[0].act_done.element_shape.perimeter) + " m. (" + int(activation_queue[0].act_done.cost) + ' By)';
+		return ""+int(activation_queue[0].act_done.length_def_cote) + " m. (" + int(activation_queue[0].act_done.cost) + ' By)';
 	}
 	
 	action apply_lever(activated_lever lev)

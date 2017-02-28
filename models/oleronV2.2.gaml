@@ -801,49 +801,50 @@ species action_done schedules:[]
 	bool is_alive <- true;
 	list<activated_lever> activated_levers <-[];
 	bool shouldWaitLeaderToActivate <- false;
+	int length_def_cote<-0;
 	
-	action init_from_map(map<string, string> a )
-	{
-		self.id <- string(a at "id");
-		self.element_id <- int(a at "element_id");
-		self.commune_name <- a at "commune_name";
-		self.command <- int(a at "command");
-		self.label <- a at "label";
-		self.cost <- float(a at "cost");
-		self.initial_application_round <- int(a at "initial_application_round");
-		self.isInlandDike <- bool(a at "isInlandDike");
-		self.inRiskArea <- bool(a at "inRiskArea");
-		self.inCoastBorderArea <- bool(a at "inCoastBorderArea");
-		self.isExpropriation <- bool(a at "isExpropriation");
-		self.inProtectedArea <- bool(a at "inProtectedArea");
-		self.previous_ua_name <- string(a at "previous_ua_name");
-		self.action_type <- string(a at "action_type");
-
-		self.is_applied<- bool(a at "is_applied");
-		self.is_sent<- bool(a at "is_sent");
-		self.command_round <-int(a at "command_round"); 
-		
-		point pp<-{float(a at "locationx"), float(a at "locationy")};
-		point mpp <- pp;
-		int i <- 0;
-		list<point> all_points <- [];
-		loop while: (pp!=nil)
-		{
-			string xd <- a at ("locationx"+i);
-			if(xd != nil)
-			{
-				pp <- {float(xd), float(a at ("locationy"+i))  };
-				all_points <- all_points + pp;
-			}
-			else
-			{
-				pp<-nil;
-			}
-			i<- i + 1;
-		}
-		element_shape <- polygon(all_points);
-		location <-mpp;
-	}
+//	action init_from_map(map<string, string> a )
+//	{
+//		self.id <- string(a at "id");
+//		self.element_id <- int(a at "element_id");
+//		self.commune_name <- a at "commune_name";
+//		self.command <- int(a at "command");
+//		self.label <- a at "label";
+//		self.cost <- float(a at "cost");
+//		self.initial_application_round <- int(a at "initial_application_round");
+//		self.isInlandDike <- bool(a at "isInlandDike");
+//		self.inRiskArea <- bool(a at "inRiskArea");
+//		self.inCoastBorderArea <- bool(a at "inCoastBorderArea");
+//		self.isExpropriation <- bool(a at "isExpropriation");
+//		self.inProtectedArea <- bool(a at "inProtectedArea");
+//		self.previous_ua_name <- string(a at "previous_ua_name");
+//		self.action_type <- string(a at "action_type");
+//
+//		self.is_applied<- bool(a at "is_applied");
+//		self.is_sent<- bool(a at "is_sent");
+//		self.command_round <-int(a at "command_round"); 
+//		
+//		point pp<-{float(a at "locationx"), float(a at "locationy")};
+//		point mpp <- pp;
+//		int i <- 0;
+//		list<point> all_points <- [];
+//		loop while: (pp!=nil)
+//		{
+//			string xd <- a at ("locationx"+i);
+//			if(xd != nil)
+//			{
+//				pp <- {float(xd), float(a at ("locationy"+i))  };
+//				all_points <- all_points + pp;
+//			}
+//			else
+//			{
+//				pp<-nil;
+//			}
+//			i<- i + 1;
+//		}
+//		element_shape <- polygon(all_points);
+//		location <-mpp;
+//	}
 	
 	map<string,string> build_map_from_attribute
 	{
@@ -868,11 +869,12 @@ species action_done schedules:[]
 			"is_applied"::string(is_applied),
 			"is_sent"::string(is_sent),
 			"command_round"::string(command_round),
-			"element_shape"::string(element_shape)
+			"element_shape"::string(element_shape),
+			"length_def_cote"::int(length_def_cote)
 			 ]	;
 			point pp<-nil;
 			int i <- 0;
-			loop pp over:shape.points
+			loop pp over:element_shape.points
 			{
 				put string(pp.x) key:"locationx"+i in: res;
 				put string(pp.y) key:"locationy"+i in: res;
@@ -908,7 +910,7 @@ species action_done schedules:[]
 		{
 			dike_id <- next_dike_id;
 			commune_name_shpfile <- world.commune_name_shpfile_of_commune_name(act.commune_name);
-			shape <- act.shape;
+			shape <- act.element_shape;
 			type <- BUILT_DIKE_TYPE ;
 			status <- BUILT_DIKE_STATUS;
 			height <- STANDARD_DIKE_SIZE;	
@@ -1235,14 +1237,18 @@ species network_player skills:[network]
 					point ori <- {float(data[9]),float(data[10])};
 					point des <- {float(data[11]),float(data[12])};
 					point loc <- {float(data[13]),float(data[14])}; 
-					shape <- polyline([ori,des]);
+					//shape <- polyline([ori,des]);
+					element_shape <- polyline([ori,des]);
+					length_def_cote <- int(element_shape.perimeter);
 					location <- loc; 
 				}
 				else {
 					if isExpropriation {write "Procédure d'expropriation declenchée pour l'UA "+self.id;}
 					switch self.action_type {
-						match "PLU" {shape <- (UA first_with(each.id = self.element_id)).shape; }
-						match "dike" {shape <- (def_cote first_with(each.dike_id = self.element_id)).shape; }
+						match "PLU" {element_shape <- (UA first_with(each.id = self.element_id)).shape; }
+						match "dike" {element_shape <- (def_cote first_with(each.dike_id = self.element_id)).shape;
+									length_def_cote <- int(element_shape.perimeter);
+						}
 						default {write "problème reconnaissance du type de action_done";}
 					}
 				}
@@ -1250,14 +1256,14 @@ species network_player skills:[network]
 				//inCoastBorderArea  // for PLU action // c'est la bande des 400 m par rapport au trait de cote
 				//inRiskArea  // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 				//isInlandDike  // for dike action // ce sont les rétro-digues
-				if  self.shape intersects all_flood_risk_area 
+				if  self.element_shape intersects all_flood_risk_area 
 					{inRiskArea <- true;}
-				if  self.shape intersects first(coast_border_area)
+				if  self.element_shape intersects first(coast_border_area)
 					{inCoastBorderArea <- true;}	
-				if command = ACTION_CREATE_DIKE and (self.shape.centroid overlaps first(inland_dike_area))
+				if command = ACTION_CREATE_DIKE and (self.element_shape.centroid overlaps first(inland_dike_area))
 						{isInlandDike <- true;}
 				// finallement on recalcul aussi inProtectedArea meme si ca a été calculé au niveau de participatif, car en fait ce n'est pas calculé pour toutes les actions 
-				if  self.shape intersects all_protected_area
+				if  self.element_shape intersects all_protected_area
 					{inProtectedArea <- true;}
 					
 				if(log_user_action)
@@ -1390,7 +1396,7 @@ species network_player skills:[network]
 				
 				match ACTION_CREATE_DIKE
 				{	
-					def_cote new_dike <-  create_dike(self);
+					def_cote new_dike <-  create_dike(act);
 					ask network_player
 					{
 						do send_created_dike(new_dike, act);

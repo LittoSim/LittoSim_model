@@ -2272,7 +2272,7 @@ species action_done
 	string serialize_command
 	{
 		string result <-"";
-	result <- ""+
+		result <- ""+
 		command+COMMAND_SEPARATOR+  //0
 		id+COMMAND_SEPARATOR+
 		initial_application_round+COMMAND_SEPARATOR+
@@ -2283,7 +2283,7 @@ species action_done
 		isExpropriation+COMMAND_SEPARATOR+					//7
 		int(cost)	;					//8
 		
-	if command = ACTION_CREATE_DIKE  {
+		if command = ACTION_CREATE_DIKE  {
 				point end <- last(shape.points);
 				point origin <- first(shape.points);
 				result <- result+
@@ -2637,7 +2637,7 @@ species network_player skills:[network]
 		act.previous_ua_name <- string(mdata[15]);
 		act.action_type <- string(mdata[16]);
 		string go <- string(mdata[17]);
-		act.shape <- geometry(go);
+		act.element_shape <- geometry(go);
 		//write "go "+ go;
 //		write "shape go "+ act.shape; 
 	}
