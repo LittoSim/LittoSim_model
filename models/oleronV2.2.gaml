@@ -30,6 +30,8 @@ global  {
 	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
 	bool activemq_connect <- false;
+	string lisfloodPath <- "C:/lisflood-fp-604/";
+	string lisfloodRelativePath <- "../../../../../../lisflood-fp-604/";
 	
 	string UPDATE_ACTION_DONE <- "update_action_done";
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
@@ -116,6 +118,7 @@ global  {
 	matrix<string> actions_def <- matrix<string>(csv_file("../includes/actions_def.csv",";"));	
 	string flood_results <- ""; // store the text to be displayed on flood results per commune 
 	
+
 	//buttons size
 	float button_size <- 2000#m;
 	string UNAM_DISPLAY_c <- "UnAm";
@@ -247,33 +250,6 @@ init
 		}
 		ask def_cote {do init_dike;}
 	}
-
-action launchFlood_event (string eventName)
-	{
-		ask network_listen_to_leader{
-					do execute command:"cmd /c start "+"C:\\Users\\nbecu\\Documents\\Gama1_7_Worspace\\LittoSIMv2\\includes\\lisflood-fp-604\\lisflood_oleron_current.bat";
-		}
-		
-		if round = 0 
-		{
-			map values <- user_input(["La simulation n'a pas encore commencée" :: ""]);
-	     			write stateSimPhase;
-		}
-		// faire un tour juste avant de déclencher l'innondation
-		// l'innondation à lieu en Janvier (début d'année), juste après le changement d'année civile (le tour change au 31 déc)
-		if round != 0 {	do new_round; }
-		// déclenchement innondation
-		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
-		if round != 0 {
-			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
-			ask def_cote {do calcRupture;} 
-			do executeLisflood(eventName); // comment this line if you only want to read already existing results
-		} 
-		set lisfloodReadingStep <- 0;
-		stateSimPhase <- 'show lisflood'; write stateSimPhase;
-	}
-
-
 	
  int getMessageID
  	{
@@ -440,6 +416,26 @@ action replay_flood_event
 	stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	do readLisflood;
 }		
+action launchFlood_event (string eventName)
+	{
+		if round = 0 
+		{
+			map values <- user_input(["La simulation n'a pas encore commencée" :: ""]);
+	     			write stateSimPhase;
+		}
+		// faire un tour juste avant de déclencher l'innondation
+		// l'innondation à lieu en Janvier (début d'année), juste après le changement d'année civile (le tour change au 31 déc)
+		if round != 0 {	do new_round; }
+		// déclenchement innondation
+		stateSimPhase <- 'execute lisflood';	write stateSimPhase;
+		if round != 0 {
+			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
+			ask def_cote {do calcRupture;} 
+			do executeLisflood(eventName); // comment this line if you only want to read already existing results
+		} 
+		set lisfloodReadingStep <- 0;
+		stateSimPhase <- 'show lisflood'; write stateSimPhase;
+	}
 
 /*reflex test_calcRupture {
 	int tot <-0;
@@ -471,33 +467,37 @@ action executeLisflood (string eventName)
 		do save_rugosityGrid;
 		do save_lf_launch_files(eventName);
 		do addElementIn_list_flooding_events("Submersion Tour "+round,current_lisflood_rep);
-		map values <- user_input(["Lisflood input files at directory "+current_lisflood_rep+" are ready.
-
-BEFORE TO CLICK OK
--Launch '../includes/lisflood-fp-604/lisflood_oleron_current.bat' to generate outputs
-
-WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: ""]);
- 		}
+//		map values <- user_input(["Lisflood input files at directory "+current_lisflood_rep+" are ready.
+//
+//BEFORE TO CLICK OK
+//-Launch '../includes/lisflood-fp-604/lisflood_oleron_current.bat' to generate outputs
+//
+//WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: ""]);
+		
+		save "dir created by littoSIM" to: lisfloodRelativePath+current_lisflood_rep+"/bidon.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
+		 ask network_listen_to_leader{
+			do execute command:"cmd /c start "+lisfloodPath+"lisflood_oleron_current.bat"; }
+ 	}
  		
 action save_lf_launch_files (string eventName) {
 	switch eventName {
 		match "Xynthia" {
-			save ("DEMfile         oleron_dem2016"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron2016.bci\nbdyfile         oleron2016.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron2016_Xynthia"+timestamp+".par" type: "text"  ;
-			save ("lisflood -dir "+ current_lisflood_rep +" oleron2016_Xynthia"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;	
+			save ("DEMfile         "+lisfloodPath+"oleron_dem2016"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+"oleron2016_Xynthia"+timestamp+".par" type: "text"  ;
+			save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+"oleron2016_Xynthia"+timestamp+".par") rewrite: true  to: lisfloodRelativePath+"lisflood_oleron_current.bat" type: "text" ;	
 		}
 		match "Xynthia moins 50cm" {
-			save ("DEMfile         oleron_dem2016"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         oleron2016.bci\nbdyfile         oleron2016_Xynthia-50.bdy\n#weirfile       buscot.weir\nstartfile      oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: "../includes/lisflood-fp-604/oleron2016_Xynthia-50"+timestamp+".par" type: "text"  ;
-		save ("lisflood -dir "+ current_lisflood_rep +" oleron2016_Xynthia-50"+timestamp+".par") rewrite: true  to: "../includes/lisflood-fp-604/lisflood_oleron_current.bat" type: "text"  ;
+			save ("DEMfile         "+lisfloodPath+"oleron_dem2016"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016_Xynthia-50.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+"oleron2016_Xynthia-50"+timestamp+".par" type: "text"  ;
+		save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+"oleron2016_Xynthia-50"+timestamp+".par") rewrite: true  to: lisfloodRelativePath+"lisflood_oleron_current.bat" type: "text" ;
 		}
 	}
 }       
 
 action save_dem {
-	save cell to: "../includes/lisflood-fp-604/oleron_dem2016" + timestamp + ".asc" type: "asc";
+	save cell to: lisfloodRelativePath+"oleron_dem2016" + timestamp + ".asc" type: "asc";
 	}
 
 action save_rugosityGrid {
-		string filename <- "../includes/lisflood-fp-604/oleron_n2016" + timestamp + ".asc";
+		string filename <- lisfloodRelativePath+"oleron_n2016" + timestamp + ".asc";
 		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
 		loop j from: 0 to: nb_rows- 1 {
 			string text <- "";
@@ -507,32 +507,32 @@ action save_rugosityGrid {
 			}
 		}  
 		
-action performance_save_dem {
-	float x <- machine_time;
-	loop times:10 {do save_dem;}
-	write (machine_time - x);
-}
-action performance_save_dem2 {
-	float x <- machine_time;
-	loop times:10 {do save_dem_old;}
-	write (machine_time - x);
-}
-action save_dem_old {
-		string filename <- "../includes/lisflood-fp-604/oleron_dem2016" + timestamp + ".asc";
-		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";		
-		loop j from: 0 to: nb_rows- 1 {
-			string text <- "";
-			loop i from: 0 to: nb_cols - 1 {
-				text <- text + " "+ cell[i,j].soil_height;}
-			save text to:filename rewrite:false;
-			}
-		}  	
+//action performance_save_dem {
+//	float x <- machine_time;
+//	loop times:10 {do save_dem;}
+//	write (machine_time - x);
+//}
+//action performance_save_dem2 {
+//	float x <- machine_time;
+//	loop times:10 {do save_dem_old;}
+//	write (machine_time - x);
+//}
+//action save_dem_old {
+//		string filename <- "../includes/lisflood-fp-604/oleron_dem2016" + timestamp + ".asc";
+//		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";		
+//		loop j from: 0 to: nb_rows- 1 {
+//			string text <- "";
+//			loop i from: 0 to: nb_cols - 1 {
+//				text <- text + " "+ cell[i,j].soil_height;}
+//			save text to:filename rewrite:false;
+//			}
+//		}  	
 	   
 action readLisflood
 	 {  
 	 	string nb <- lisfloodReadingStep;
 		loop i from: 0 to: 3-length(nb) { nb <- "0"+nb; }
-		string fileName <- "../includes/lisflood-fp-604/"+current_lisflood_rep+"/res-"+ nb +".wd";
+		string fileName <- lisfloodRelativePath+current_lisflood_rep+"/res-"+ nb +".wd";
 		if file_exists (fileName)
 			{
 				write fileName;
@@ -558,7 +558,7 @@ action readLisflood
 	}
 	
 action load_rugosity
-     { file rug_data <- text_file("../includes/lisflood-fp-604/oleron.n.ascii") ;
+     { file rug_data <- text_file("../includes/zone_etude/oleron.n.ascii") ;
 			loop r from: 6 to: length(rug_data) -1 {
 				string l <- rug_data[r];
 				list<string> res <- l split_with " ";
@@ -800,6 +800,7 @@ species action_done schedules:[]
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	bool is_alive <- true;
 	list<activated_lever> activated_levers <-[];
+	bool shouldWaitLeaderToActivate <- false;
 	
 	action init_from_map(map<string, string> a )
 	{
@@ -979,7 +980,7 @@ species network_listen_to_leader skills:[network]
 		 do connect to:SERVER with_name:MSG_FROM_LEADER;
 	}
 	
-		
+	
 	reflex  wait_message 
 	{
 		loop while:has_more_message()
@@ -1022,6 +1023,10 @@ species network_listen_to_leader skills:[network]
 				}
 				match "RETREIVE_ACTION_DONE" {
 					ask action_done {is_sent_to_leader <- false ;}
+				}
+				match "action_done shouldWaitLeaderToActivate" {
+					action_done aAct <-action_done first_with (each.id = string(m_contents["action_done id"]));
+					aAct.shouldWaitLeaderToActivate <- bool(m_contents["action_done shouldWaitLeaderToActivate"]);
 				}
 			}
 			
@@ -1261,7 +1266,7 @@ species network_player skills:[network]
 				}
 			}
 		}
-		//  le paiement s'est déjà fait coté commune, lorsqu'il a valié le panier. ON renrefistre ici le paiement our garder les comptes à jour coté serveur
+		//  le paiement est déjà fait coté commune, lorsque le joueur a validé le panier. On renregistre ici le paiement pour garder les comptes à jour coté serveur
 		int idCom <-world.commune_id(new_action.commune_name);
 		ask commune first_with(each.id = idCom) {do record_payment_for_action_done(new_action);}
 	}
@@ -1364,7 +1369,7 @@ species network_player skills:[network]
 
 	reflex apply_action when:length(action_done where(each.is_alive))>0
 	{
-		ask(action_done where(each.should_be_applied and each.is_alive))
+		ask(action_done where(each.should_be_applied and each.is_alive and not(each.shouldWaitLeaderToActivate)))
 		{
 			string tmp <- self.commune_name;
 			int idCom <-world.commune_id(tmp);
