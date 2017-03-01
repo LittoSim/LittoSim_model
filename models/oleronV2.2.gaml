@@ -2712,10 +2712,10 @@ experiment oleronV2 type: gui {
 				 
 			}
 			
-//		display "VIDE"
-//		{
-//			
-//		}	
+		display "VIDE"
+		{
+			
+		}	
 		display "Surface inondée par commune" {
 				chart "Surface inondée par commune" type: series {
 					datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
