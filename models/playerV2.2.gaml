@@ -1968,7 +1968,7 @@ species network_activated_lever skills:[network]
 					{
 						ask world
 						{
-							do user_msg ("Le dossier '"+myself.act_done.label+ "' a été retardé de "+ myself.nb_rounds_delay + " tours", INFORMATION_MESSAGE);
+							do user_msg ("Le dossier '"+myself.act_done.label+ "' a été "+(myself.nb_rounds_delay>=0?"retardé":"avancé")+" de "+ abs(myself.nb_rounds_delay) + " tour"+(abs(myself.nb_rounds_delay)<=1?"":"s"), INFORMATION_MESSAGE);
 						}
 						act_done.shouldWaitLeaderToActivate <- false;
 					}

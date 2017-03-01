@@ -1281,7 +1281,7 @@ species lever
 	bool threshold_reached <- false;
 	bool timer_activated -> {!empty(activation_queue)};
 	bool has_activated_levers -> {!empty(activated_levers)};
-	float timer_duration <- 30000;// 1 minute = 60000 milliseconds
+	float timer_duration <- 240000;// 1 minute = 60000 milliseconds //   4 mn = 240000
 	list<action_done> associated_actions;
 	list<activated_lever> activation_queue;
 	list<activated_lever> activated_levers;
@@ -1777,20 +1777,20 @@ species lever_inland_dike parent: delay_lever
 		
 	string info_of_next_activated_lever 
 	{
-		return ""+int(activation_queue[0].act_done.length_def_cote) + " m. (" + int(activation_queue[0].act_done.cost) + ' By)';
+		return "Rétrodigue ("+int(activation_queue[0].act_done.length_def_cote) + " m.): -"+abs(rounds_delay_added)+ " tours";
 	}
 	
-	action apply_lever(activated_lever lev)
-	{
-		lev.applied <- true;
-		write help_lever_msg;
-		lev.lever_explanation <- player_msg;
-		lev.nb_rounds_delay <- rounds_delay_added;
-		
-		ask world {do send_message_lever(lev) ;}
-		
-		activation_label_L1 <- "Gain de temps accordé au total : "+string(abs(tot_lever_delay()))+' tours';
-	}
+//	action apply_lever(activated_lever lev)
+//	{
+//		lev.applied <- true;
+//		write help_lever_msg;
+//		lev.lever_explanation <- player_msg;
+//		lev.nb_rounds_delay <- rounds_delay_added;
+//		
+//		ask world {do send_message_lever(lev) ;}
+//		
+//		activation_label_L1 <- "Gain de temps accordé au total : "+string(abs(tot_lever_delay()))+' tours';
+//	}
 }
 
 

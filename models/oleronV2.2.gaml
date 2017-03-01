@@ -208,7 +208,6 @@ init
 		do init_buttons;
 		stateSimPhase <- 'not started';
 		do addElementIn_list_flooding_events ("Submersion initiale","results");
-		do addElementIn_list_flooding_events ("Submersion Test au Tour 4","results_R4_t1.488119975002E12"); 
 		/*Creation des agents a partir des données SIG */
 		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), commune_name_shpfile::string(read("Commune"))
 		];
@@ -2071,7 +2070,8 @@ species def_cote
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 				}
 				write "rupture "+type_def_cote+" n°" + dike_id + "("+", état " + status +", hauteur "+height+", alt "+alt +")";
-				write "rupture "+type_def_cote+" n°" + dike_id + "("+first((commune overlapping self)).commune_name +", état " + status +", hauteur "+height+", alt "+alt +")"; 
+				write "rupture "+type_def_cote+" n°" + dike_id + "("+ commune_name_shpfile+", état " + status +", hauteur "+height+", alt "+alt +")";
+				
 		}
 	}
 	
