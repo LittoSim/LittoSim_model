@@ -133,7 +133,7 @@ global
 	string UNAM_DISPLAY <- "UnAm";
 	string DIKE_DISPLAY <- "sloap";
 	string BOTH_DISPLAY <- "both";
-	
+	bool display_window <-false;
 
 	int MAX_HISTORY_VIEW_SIZE <- 10;
 	
@@ -191,6 +191,7 @@ global
 		 * ajout 
 		 * 
 		 */
+		 display_window <- false;
 		create work_in_progress_left_icon number:1
 		{
 			point p <- {0.075,0.5};
@@ -200,6 +201,26 @@ global
 		{
 			point p <- {0.075,0.5};
 			do lock_agent_at ui_location:p display_name:"Messages" ui_width:0.15 ui_height:1.0 ;
+		}
+		
+		
+		create hideSimulationAgent number:1
+		{
+			point p <- {0.5,0.5};
+			do lock_agent_at ui_location:p display_name:"Dossiers" ui_width:1.0 ui_height:1.0 ; // OU 0.1
+			
+		}
+		create hideSimulationAgent number:1
+		{
+			point p <- {0.5,0.5};
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:1.0 ui_height:1.0 ; // OU 0.1
+			
+		}
+		create hideSimulationAgent number:1
+		{
+			point p <- {0.5,0.5};
+			do lock_agent_at ui_location:p display_name:"Panier" ui_width:1.0 ui_height:1.0 ; // OU 0.1
+			
 		}
 		
 		
@@ -822,57 +843,6 @@ global
 			}
 		}
 	}
-	
-//	action inspect_UNAM//(point mloc, list agts, buttons but)
-//	{
-//		point mloc <- #user_location;
-//		
-//		list<def_cote> selected_dike <-   def_cote where (each distance_to mloc < MOUSE_BUFFER); // agts of_species dike;
-//		
-//		if(length(selected_dike)>0)
-//		{
-//			def_cote dk<- selected_dike closest_to mloc;
-//			create action_def_cote number:1 returns:action_list
-//			 {
-//				id <- 0;
-//				shape <- dk.shape;
-//				element_id <- dk.dike_id;
-//			 }
-//			 action_def_cote tmp <- first(action_list);
-//			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-//			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::"");		
-//			ask(tmp)
-//			{
-//				do die;
-//			}
-//		}
-//	}
-
-
-	/////////////   C'est quoi cette action ???	
-//	action inspect_dike(point mloc, list<def_cote> agts, buttons but)
-//	{
-//		list<def_cote> selected_dike <- agts ;
-//		
-//		if(length(selected_dike)>0)
-//		{
-//			def_cote dk<- selected_dike closest_to mloc;
-//			create action_def_cote number:1 returns:action_list
-//			 {
-//			 	write "C'est quoi cette action ???";
-//				id <- 0;
-//				shape <- dk.shape;
-//				element_id <- dk.dike_id;
-//			 }
-//			 action_def_cote tmp <- first(action_list);
-//			 string chain <- "Caractéristiques de la digue \n Type :"+ dk.type+" \n Etat général : "+dk.status+"\n Hauteur : "+ dk.height+"m";
-//			 map<string,unknown> values2 <- user_input("Inspecteur de digue",chain::string(dk.dike_id));		
-//			ask(tmp)
-//			{
-//				do die;
-//			}
-//		}
-//	}
 	action modify_dike(point mloc, list<def_cote> agts, buttons but)
 	{
 		list<def_cote> selected_dike <- agts ;
@@ -2061,6 +2031,14 @@ species data_retrieve skills:[network]
 			
 			switch(mc["OBJECT_TYPE"])
 			{
+				match "lock_unlock"
+				{
+					if(mc["WINDOW_STATUS"] = "LOCKED")
+					{
+						world.display_window <- false;
+					}
+				}
+				
 				match "action_done"
 				{
 					if(mc["action_type"]="dike")
@@ -2289,8 +2267,8 @@ species action_done
 		int(cost)	;					//8
 		
 		if command = ACTION_CREATE_DIKE  {
-				point end <- last(shape.points);
-				point origin <- first(shape.points);
+				point end <- last(element_shape.points);
+				point origin <- first(element_shape.points);
 				result <- result+
 					COMMAND_SEPARATOR+( origin.x)+	//9
 					COMMAND_SEPARATOR+(origin.y) +
@@ -2298,6 +2276,10 @@ species action_done
 					COMMAND_SEPARATOR+(end.y)+
 					COMMAND_SEPARATOR+location.x+	//13
 					COMMAND_SEPARATOR+location.y;
+					
+					write "envoi digue " + origin.x+" "+origin.y+ " "+ end.x+ " "+end.y ;
+					write "shape element "+ element_shape;
+					
 		}
 			
 		
@@ -2659,10 +2641,13 @@ species network_player skills:[network]
 		string st <- msg[9];
 		float a_alt <- msg[10];
 		string action_id  <- msg[11];
+		float x3  <- float(msg[12]);
+		float y3  <- float(msg[13]);
 		geometry pli <- polyline([{x1,y1},{x2,y2}]);
 		create def_cote number:1 returns: dikes
 		{
 			shape <- pli;
+			location <- point({x3,y3});
 			dike_id <- d_id;
 			type<-tp;
 			height<- hg;
@@ -3118,6 +3103,9 @@ species def_cote
 		self.height <- float(a at "height");
 		self.alt <- float(a at "alt");
 		self.ganivelle <- bool(a at "ganivelle");
+	//	self.shape <- geometry(a at "shape");
+	//	self.location <- point(a at "location");
+		
 		point pp<-{float(a at "locationx"), float(a at "locationy")};
 		point mpp <- pp;
 		int i <- 0;
@@ -3136,8 +3124,11 @@ species def_cote
 			}
 			i<- i + 1;
 		}
+		
 		shape <- polyline(all_points);
 		location <-mpp;
+		
+		
 	}
 	
 	
@@ -3248,6 +3239,19 @@ species onglet skills:[UI_location]
 	}
 }
 
+
+species hideSimulationAgent skills:[UI_location] schedules:[]
+{
+	aspect carte
+	{
+		if(world.display_window)
+		{
+			draw shape color:#black;
+			draw circle(200#m) color:#yellow;
+		}
+	}
+}
+
 experiment game type: gui
 {
 	font regular <- font("Helvetica", 14, # bold);
@@ -3280,6 +3284,7 @@ experiment game type: gui
 			species onglet aspect:base;
 			species buttons aspect:carte;
 			species buttons_map aspect:carte;
+			species hideSimulationAgent aspect:carte;
 
 
 			graphics "Full target dike" transparency:0.3
@@ -3573,6 +3578,8 @@ experiment game type: gui
 			species basket aspect:base;
 			species basket_element aspect:base;
 			species system_list_element aspect:basket;
+			//species hideSimulationAgent aspect:Panier
+		
 			event mouse_down action:move_down_event;
 			
 		}
@@ -3583,7 +3590,9 @@ experiment game type: gui
 			species work_in_progress_list aspect:base;
 			species work_in_progress_element aspect:base;
 			species system_list_element aspect:dossier;
+			//species hideSimulationAgent aspect:Dossier
 			event mouse_down action:move_down_event_dossier;
+			
 		}
 		
 		display "Messages" background:#black

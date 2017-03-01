@@ -756,6 +756,19 @@ species data_retreive skills:[network] schedules:[]
 		}
 	}
 	
+	
+	action lock_window(commune m, bool are_allowed)
+	{
+		string val <- are_allowed=true?"UN_LOCKED":"LOCKED";
+		map<string,string> me <- [
+			"OBJECT_TYPE"::"lock_unlock",
+			"WINDOW_STATUS"::val
+			];
+		
+		do send 	to:m.network_name+"_retreive" contents:me;
+	}
+	
+	
 	action retreive_activated_lever(commune m)
 	{
 		list<activated_lever> lever_list <- activated_lever where(each.commune_name = m.commune_name);
@@ -766,6 +779,8 @@ species data_retreive skills:[network] schedules:[]
 			do send 	to:m.network_name+"_retreive" contents:tmp.build_map_from_attribute();
 		}
 	}
+	
+		
 }
 
 
@@ -911,6 +926,7 @@ species action_done schedules:[]
 			dike_id <- next_dike_id;
 			commune_name_shpfile <- world.commune_name_shpfile_of_commune_name(act.commune_name);
 			shape <- act.element_shape;
+			location <- act.location;
 			type <- BUILT_DIKE_TYPE ;
 			status <- BUILT_DIKE_STATUS;
 			height <- STANDARD_DIKE_SIZE;	
@@ -922,12 +938,14 @@ species action_done schedules:[]
 	
 }
 
+
 species network_round_manager skills:[remoteGUI]
 {
-	list<string> title <- [];
+	list<string> mtitle <- list_flooding_events.keys;
 	list<string> mfile <- [];
 	string selected_action;
-	string choix_simu;
+	string choix_simu_temp <- nil;
+	string choix_simulation <- nil;
 	int round;
 	 
 	init
@@ -935,33 +953,68 @@ species network_round_manager skills:[remoteGUI]
 		//connection du au serveur
 		do connect to:SERVER;
 		
-		do expose variables:["title","mfile"] with_name:"listdata";
+		do expose variables:["mtitle","mfile"] with_name:"listdata";
 		do expose variables:["round"] with_name:"current_round";
-		do listen with_name:"simu_choisie" store_to:"choix_simu";
+		do listen with_name:"simu_choisie" store_to:"choix_simu_temp";
 		do listen with_name:"littosim_command" store_to:"selected_action";
+		
+		do update_submersion_list;
 	}
+	
+	action update_submersion_list
+	{
+		loop a over:list_flooding_events.keys
+		{
+			mtitle <- mtitle + a;
+			mfile <- mfile + (list_flooding_events at a)	;
+		}
+	}
+	
 	reflex selected_action when:selected_action != nil
 	{
 		write "network_round_manager " + selected_action;
 		switch(selected_action)
 		{
 			match "NEW_ROUND" { ask world {	do new_round; }}
-			match "LOCK_USERS" {   }
-			match "UNLOCK_USERS" {   }
+			match "START_VISUALISATION" { do start_visualisation_submersion ; }
+			match "LOCK_USERS" { do lock_unlock_window(true) ; }
+			match "UNLOCK_USERS" { do lock_unlock_window(false) ;}
 			match "HIGH_FLOODING" { ask world {do launchFlood_event("Xynthia");} }
 			match "LOW_FLOODING" {	ask world {do launchFlood_event("Xynthia moins 50cm");}}
 		}
 		selected_action <- nil;
 	}
-	reflex show_submersion when: choix_simu!=nil
+	
+	
+	reflex show_submersion when: choix_simu_temp!=nil
 	{
-		write "network_round_manager : choix simulation " + choix_simu;
-		choix_simu <- nil;
+		//write "network_round_manager : choix simulation " + choix_simu;
+		choix_simulation <- choix_simu_temp;
 	}
-	action add_element(string sub_name, string sub_rep)
+	
+	
+	action lock_unlock_window(bool value)
 	{
-		title <- title + sub_name;
-		mfile <- mfile +  sub_rep;
+		data_retreive agt <- first(data_retreive);
+		
+		ask commune
+		{
+			ask agt {
+				do lock_window(myself,value);
+			}
+		}
+	}
+	
+	action start_visualisation_submersion
+	{
+		
+		//démarer la visualisation avec la submerssion "choix simulaiton"
+		//quelle méthode doit il être utilisé?
+	}
+	
+	action add_element(string nom_submersion, string path_to_see)
+	{
+		do update_submersion_list;
 	}
 }
 
@@ -981,7 +1034,6 @@ species network_listen_to_leader skills:[network]
 	{
 		 do connect to:SERVER with_name:MSG_FROM_LEADER;
 	}
-	
 	
 	reflex  wait_message 
 	{
@@ -1237,7 +1289,7 @@ species network_player skills:[network]
 					point ori <- {float(data[9]),float(data[10])};
 					point des <- {float(data[11]),float(data[12])};
 					point loc <- {float(data[13]),float(data[14])}; 
-					//shape <- polyline([ori,des]);
+					shape <- polyline([ori,des]);
 					element_shape <- polyline([ori,des]);
 					length_def_cote <- int(element_shape.perimeter);
 					location <- loc; 
@@ -1315,11 +1367,21 @@ species network_player skills:[network]
 	
 	action send_created_dike(def_cote new_dike,action_done act)
 	{
-		point p1 <- first(new_dike.shape.points);
-		point p2 <- last(new_dike.shape.points);
+		point p1 <- first(act.element_shape.points);
+		point p2 <- last(act.element_shape.points);
 		
-		
-		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+new_dike.dike_id+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+new_dike.height+COMMAND_SEPARATOR+new_dike.type+COMMAND_SEPARATOR+new_dike.status+ COMMAND_SEPARATOR+min_dike_elevation(new_dike)+COMMAND_SEPARATOR+act.id;
+write "coucou ca va ?" + p1 + " " + p2+ " " + act.element_shape;
+		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +
+		COMMAND_SEPARATOR+new_dike.dike_id+
+		COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+
+		COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+
+		COMMAND_SEPARATOR+new_dike.height+
+		COMMAND_SEPARATOR+new_dike.type+
+		COMMAND_SEPARATOR+new_dike.status+ 
+		COMMAND_SEPARATOR+min_dike_elevation(new_dike)+
+		COMMAND_SEPARATOR+act.id+
+		COMMAND_SEPARATOR+new_dike.location.x+
+		COMMAND_SEPARATOR+new_dike.location.y;
 		list<commune> cms <- commune overlapping new_dike;
 			loop cm over:cms
 			{
@@ -1365,7 +1427,6 @@ species network_player skills:[network]
 			list<commune> cms <- commune overlapping (update_ouvrage at i);
 			loop cm over:cms
 			{
-				write "message to send "+ msg;
 				do send to:cm.network_name contents:msg;
 			}
 			i <- i + 1;
@@ -1523,54 +1584,6 @@ species network_player skills:[network]
 		}		
 	}
 	
-	
-//	action update_action_done_func
-//	{
-//		list<string> update_messages <-[]; 
-//		list<action_done> update_action_done <- [];
-//		ask action_done where(each.not_updated)
-//		{
-//			point p1 <- first(self.shape.points);
-//			point p2 <- last(self.shape.points);
-//			string msg <- ""+ACTION_ACTION_DONE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +
-//			COMMAND_SEPARATOR+self.id+
-//			COMMAND_SEPARATOR + self.element_id +
-//			COMMAND_SEPARATOR + self.commune_name+
-//			COMMAND_SEPARATOR + self.command +
-//			COMMAND_SEPARATOR + self.label+
-//			COMMAND_SEPARATOR + self.cost+
-//			COMMAND_SEPARATOR + self.initial_application_round +
-//			COMMAND_SEPARATOR + self.round_delay +
-//			COMMAND_SEPARATOR + self.isInlandDike +
-//			COMMAND_SEPARATOR + self.inRiskArea +
-//			COMMAND_SEPARATOR + self.inCoastBorderArea +
-//			COMMAND_SEPARATOR + self.isExpropriation +
-//			COMMAND_SEPARATOR + self.inProtectedArea +
-//			COMMAND_SEPARATOR + self.previous_ua_name +
-//
-//			COMMAND_SEPARATOR + self.action_type+
-//			COMMAND_SEPARATOR + string(self.shape);
-//
-//			
-//			update_messages <- update_messages + msg;
-//			update_action_done <- update_action_done + self;
-//			not_updated <- false;
-//		}
-//		int i <- 0;
-//		loop while: i< length(update_messages)
-//		{
-//			string msg <- update_messages at i;
-//			list<commune> cms <- commune where(each.commune_name = (update_action_done at i).commune_name);
-//			loop cm over:cms
-//			{
-//				write "message to send "+ msg;
-//				do send to:cm.network_name contents:msg;
-//			}
-//			i <- i + 1;
-//			
-//		}
-//	}
-
 }
 	
 
@@ -1931,7 +1944,7 @@ species def_cote
 			}
 			i<- i + 1;
 		}
-		shape <- polygon(all_points);
+		shape <- polyline(all_points);
 		location <-mpp;
 	}
 	
@@ -1950,11 +1963,7 @@ species def_cote
 			"ganivelle"::string(ganivelle),
 			"height_avant_ganivelle"::string(height_avant_ganivelle),
 			"locationx"::string(location.x),
-			"locationy"::string(location.y),
-			"locationx1"::string(shape.points[0].x),   
-			"locationy1"::string(shape.points[0].y),
-			"locationx2"::string(shape.points[1].x),
-			"locationy2"::string(shape.points[1].y)
+			"locationy"::string(location.y)
 			];
 			point pp<-nil;
 			int i <- 0;
