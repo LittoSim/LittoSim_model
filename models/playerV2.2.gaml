@@ -134,7 +134,7 @@ global
 	string UNAM_DISPLAY <- "UnAm";
 	string DIKE_DISPLAY <- "sloap";
 	string BOTH_DISPLAY <- "both";
-	bool display_window <-false;
+	bool is_active_gui <-true;
 
 	int MAX_HISTORY_VIEW_SIZE <- 10;
 	
@@ -194,7 +194,7 @@ global
 		 * ajout 
 		 * 
 		 */
-		 display_window <- false;
+		 is_active_gui <- true;
 		create work_in_progress_left_icon number:1
 		{
 			point p <- {0.075,0.5};
@@ -205,27 +205,6 @@ global
 			point p <- {0.075,0.5};
 			do lock_agent_at ui_location:p display_name:"Messages" ui_width:0.15 ui_height:1.0 ;
 		}
-		
-		
-		create hideSimulationAgent number:1
-		{
-			point p <- {0.5,0.5};
-			do lock_agent_at ui_location:p display_name:"Dossiers" ui_width:1.0 ui_height:1.0 ; // OU 0.1
-			
-		}
-		create hideSimulationAgent number:1
-		{
-			point p <- {0.5,0.5};
-			do lock_agent_at ui_location:p display_name:"Carte" ui_width:1.0 ui_height:1.0 ; // OU 0.1
-			
-		}
-		create hideSimulationAgent number:1
-		{
-			point p <- {0.5,0.5};
-			do lock_agent_at ui_location:p display_name:"Panier" ui_width:1.0 ui_height:1.0 ; // OU 0.1
-			
-		}
-		
 		
 		create basket number:1 returns:lbsk;
 		game_basket <- first(lbsk);
@@ -357,6 +336,8 @@ global
 		else {return int((act_id split_with "_")[1]);}
 		
 	}
+	
+
 	
 	string get_action_id
 	{
@@ -1370,7 +1351,6 @@ species displayed_list skills:[UI_location] schedules:[]
 		create system_list_element number:1
 		{
 			label <- "<< Précédent";
-			write "cers "+myself.display_name;
 			point p <- myself.get_location(0);
 			do lock_agent_at ui_location:p display_name:myself.display_name ui_width:myself.locked_ui_width ui_height:myself.element_height ;
 			myself.up_item <- self;
@@ -2029,13 +2009,19 @@ species data_retrieve skills:[network]
 			message m <- fetch_message();
 			map<string, unknown> mc <- m.contents;
 			
+			
 			switch(mc["OBJECT_TYPE"])
 			{
 				match "lock_unlock"
 				{
+					
 					if(mc["WINDOW_STATUS"] = "LOCKED")
 					{
-						world.display_window <- false;
+						world.is_active_gui <- false;
+					}
+					else
+					{
+						world.is_active_gui <- true;
 					}
 				}
 				
@@ -2294,8 +2280,6 @@ species action_done
 					COMMAND_SEPARATOR+location.x+	//13
 					COMMAND_SEPARATOR+location.y;
 					
-					write "envoi digue " + origin.x+" "+origin.y+ " "+ end.x+ " "+end.y ;
-					write "shape element "+ element_shape;
 					
 		}
 			
@@ -2323,7 +2307,6 @@ species network_player_new skills:[network]
 			message msg <- fetch_message();
 			string m_sender <- msg.sender;
 			map<string, string> m_contents <- msg.contents;
-			write m_contents;
 			if string(m_contents["commune_name"]) = commune_name
 			{
 				switch m_contents["TOPIC"]
@@ -2331,7 +2314,6 @@ species network_player_new skills:[network]
 					match "action_done is_applied" // remplace ancien ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT
 					{
 						string act_done_id <- m_contents["id"];
-						write "apply action "+ act_done_id;
 						action_done app <- ((action_def_cote + action_UA) first_with (each.id = act_done_id));
 						ask app
 						{
@@ -2401,7 +2383,6 @@ species network_listen_to_leader skills:[network]
 			map<string, unknown> m_contents <- msg.contents;
 			if m_contents[COMMUNE] =commune_name
 			{
-			write "command " + m_contents[LEADER_COMMAND];
 				switch(m_contents[LEADER_COMMAND])
 				{
 					match CREDITER
@@ -2421,12 +2402,10 @@ species network_listen_to_leader skills:[network]
 						ask world {do user_msg(string(m_contents[PLAYER_MSG]),INFORMATION_MESSAGE);}
 					}
 					match "action_done shouldWaitLeaderToActivate" {
-						write "ici 1";
 						bool shouldWait <- bool(m_contents["action_done shouldWaitLeaderToActivate"]);
 						if shouldWait {
 							action_done aAct <-(action_UA+action_def_cote) first_with (each.id = string(m_contents["action_done id"]));
 							aAct.shouldWaitLeaderToActivate <- bool(m_contents["action_done shouldWaitLeaderToActivate"]);
-							write "ici 2 " +aAct.id + " "+aAct.shouldWaitLeaderToActivate ;
 						}
 						//Dans le cas où le message est de ne pas attendre, alors il ne fait pas acutalisare l'action done, car c'est l'application de l'action_done qui va  mettre shouldWaitLeaderToActivate à false	
 					}
@@ -3273,18 +3252,6 @@ species onglet skills:[UI_location]
 }
 
 
-species hideSimulationAgent skills:[UI_location] schedules:[]
-{
-	aspect carte
-	{
-		if(world.display_window)
-		{
-			draw shape color:#black;
-			draw circle(200#m) color:#yellow;
-		}
-	}
-}
-
 experiment game type: gui
 {
 	font regular <- font("Helvetica", 14, # bold);
@@ -3303,6 +3270,9 @@ experiment game type: gui
 		display "Carte" background:rgb(0, 188,196)  focus:my_commune
 		{
 			species commune aspect: base;
+			graphics population {
+			draw population_area color:rgb( 120, 120, 120 ) ;				
+			}
 			species UA aspect:carte;
 			species action_UA aspect:carte;
 			
@@ -3317,8 +3287,7 @@ experiment game type: gui
 			species onglet aspect:base;
 			species buttons aspect:carte;
 			species buttons_map aspect:carte;
-			species hideSimulationAgent aspect:carte;
-
+			
 
 			graphics "Full target dike" transparency:0.3
 			{
@@ -3442,6 +3411,20 @@ experiment game type: gui
 				
 				
 			}
+			
+			graphics "Hide everything" transparency:0.3
+			{
+				if(!is_active_gui)
+				{
+					point loc <- {world.shape.width/2,world.shape.height/2};
+					geometry rec <- rectangle(world.shape.width,world.shape.height);
+					draw rec at:loc color:#black;
+					float msize <- min([world.shape.width/2,world.shape.height/2]);
+					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
+				}
+			}
+			
+			
 			event [mouse_down] action: button_click_general;
 			event mouse_move action: mouse_move_general;
 			
@@ -3613,8 +3596,18 @@ experiment game type: gui
 			species basket aspect:base;
 			species basket_element aspect:base;
 			species system_list_element aspect:basket;
-			//species hideSimulationAgent aspect:Panier
-		
+			
+			graphics "Hide everything" transparency:0.3
+			{
+				if(!is_active_gui)
+				{
+					point loc <- {world.shape.width/2,world.shape.height/2};
+					geometry rec <- rectangle(world.shape.width,world.shape.height);
+					draw rec at:loc color:#black;
+					float msize <- min([world.shape.width/2,world.shape.height/2]);
+					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
+				}
+			}		
 			event mouse_down action:move_down_event;
 			
 		}
@@ -3626,6 +3619,19 @@ experiment game type: gui
 			species work_in_progress_element aspect:base;
 			species system_list_element aspect:dossier;
 			//species hideSimulationAgent aspect:Dossier
+			
+			graphics "Hide everything" transparency:0.3
+			{
+				if(!is_active_gui)
+				{
+					point loc <- {world.shape.width/2,world.shape.height/2};
+					geometry rec <- rectangle(world.shape.width,world.shape.height);
+					draw rec at:loc color:#black;
+					float msize <- min([world.shape.width/2,world.shape.height/2]);
+					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
+				}
+			}
+			
 			event mouse_down action:move_down_event_dossier;
 			
 		}
@@ -3636,6 +3642,19 @@ experiment game type: gui
 			species console aspect:base;
 			species console_element aspect:base;
 			species system_list_element aspect:console;
+			
+			graphics "Hide everything" transparency:0.3
+			{
+				if(!is_active_gui)
+				{
+					point loc <- {world.shape.width/2,world.shape.height/2};
+					geometry rec <- rectangle(world.shape.width,world.shape.height);
+					draw rec at:loc color:#black;
+					float msize <- min([world.shape.width/2,world.shape.height/2]);
+					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
+				}
+			}
+			
 			event mouse_down action:move_down_event_console;
 		
 		}

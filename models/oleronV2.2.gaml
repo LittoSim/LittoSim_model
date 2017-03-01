@@ -767,7 +767,6 @@ species data_retreive skills:[network] schedules:[]
 			"OBJECT_TYPE"::"lock_unlock",
 			"WINDOW_STATUS"::val
 			];
-		
 		do send 	to:m.network_name+"_retreive" contents:me;
 	}
 	
@@ -951,7 +950,7 @@ species network_round_manager skills:[remoteGUI]
 	string selected_action;
 	string choix_simu_temp <- nil;
 	string choix_simulation <- nil;
-	int round;
+	int mround <-0 update:world.round;
 	 
 	init
 	{
@@ -959,7 +958,7 @@ species network_round_manager skills:[remoteGUI]
 		do connect to:SERVER;
 		
 		do expose variables:["mtitle","mfile"] with_name:"listdata";
-		do expose variables:["round"] with_name:"current_round";
+		do expose variables:["mround"] with_name:"current_round";
 		do listen with_name:"simu_choisie" store_to:"choix_simu_temp";
 		do listen with_name:"littosim_command" store_to:"selected_action";
 		
