@@ -150,7 +150,7 @@ global
 	string DEFENSE_DOUCE <- "défense douce";
 	string RETRAIT <- "retrait";
 	
-	
+//	float time_at_initialization;
 	
 	map<string,list<map<string,int>>> profils<-[];
 	
@@ -238,6 +238,18 @@ global
 			commune_name<-"dolus";
 			i<- i+1;
 		}
+//		time_at_initialization <- machine_time;
+	}
+	
+//	reflex cancel_activations_for_5_sec_after_initialization when: machine_time < time_at_initialization+5000
+//	{
+//		do cancel_all_activated_action;
+//	}
+	
+	user_command "Annuler toutes les applications de leviers en cours" action: cancel_all_activated_action;
+	action cancel_all_activated_action
+	{
+		ask all_levers {activation_queue<-[];}
 	}
 	
 	action generate_historique_profils {
@@ -685,6 +697,7 @@ species action_done schedules:[]
 	list<activated_lever> activated_levers <-[];
 	bool shouldWaitLeaderToActivate <- false;
 	int length_def_cote;
+	bool a_lever_has_been_applied<- false;
 	
 	reflex save_data
 	{
@@ -801,6 +814,7 @@ species action_done schedules:[]
 		self.tracked_profil <- track_profil();
 		self.element_shape <- geometry(a at "element_shape");
 		self.length_def_cote <-int(a at "length_def_cote");
+		self.a_lever_has_been_applied <-bool(a at "a_lever_has_been_applied");
 //		if action_type = 'dike'
 //		{
 //			geometry tt <- a at "shape";
@@ -1004,8 +1018,8 @@ species commune
 
 	
 	
-	action update_indicators_with (action_done act)
-	{	if act.is_applied {write "gros problème. le traitement se fait trop tard";}
+	action update_indicators_and_register_action_done (action_done act)
+	{	if act.is_applied {write "Reception action " +act.id+" -> déjà validé";}
 		if act.command = ACTION_CREATE_DIKE and !act.isInlandDike
 			{	//write ""+polyline(act.element_shape );
 				//write  act.length_def_cote;
@@ -1120,25 +1134,13 @@ species commune
 			}
 			
 	}
-	
-//	FINALLELENT LE REGSITER EST INTERGRE DS L UPDATE_INDICATORS
-// action register_action_in_levers (action_done act_done)
-//	{
-//		ask levers {do register_and_check_activation(act_done);}
-//		 
-//	}
-//		//le joueur construit des digues
-//		if length_dike_created / length_dikes_t0 > 0.2 
-//			{
-//			//appliquer le levier correspondant
-//			write "le joueur construit des digues-> appliquer le levier correspondant";
-//			}
-//	}
+
 	
 	list<action_done> actions_install_ganivelle
 	{
-		return ( (lever_ganivelle first_with(each.my_commune = self)).associated_actions sort_by(-each.command_round) ) sort_by(-each.command_round);
+		return ( (lever_ganivelle first_with(each.my_commune = self)).associated_actions sort_by(-each.command_round) );
 	}
+	
 	
 	list<action_done> actions_densification_outCoastBorderAndRiskArea
 	{
@@ -1285,6 +1287,7 @@ species lever
 	list<activated_lever> activated_levers;
 	string profile_name<-"";
 	string lever_type <-"";
+	string box_title -> {lever_type +' ('+length(associated_actions)+')'};
 	string progression_bar<-"";
 	string help_lever_msg <-"";
 	string player_msg;
@@ -1306,9 +1309,9 @@ species lever
 	}
 	action checkActivation_andImpactOn (action_done act_done)
 	{
-		if  status_on
+		if  status_on //and !act_done.is_applied 
 		{
-			if should_be_activated
+			if should_be_activated //and !act_done.a_lever_has_been_applied
 			{
 				threshold_reached <- true;
 				do queue_activated_lever(act_done);
@@ -1319,6 +1322,7 @@ species lever
 	action apply_lever(activated_lever lev) {} ///  virtual:true;    CA FAIT PLANTER
 	string info_of_next_activated_lever {return "";} //virtual:true;	   CA FAIT PLANTER
 	action check_activation_at_new_round {}
+	action cancel_lever(activated_lever lev){}
 	action checkActivation_andImpactOnFirstElementOf  (list<action_done> list_act_done)
 	{
 		if !empty(list_act_done)
@@ -1351,10 +1355,9 @@ species lever
 	user_command "Voir le message envoyé au joueur" action: write_player_msg;	
 	
 	user_command "Annuler la prochaine application du levier" action: cancel_next_activated_action;	
-	user_command "Accepter la prochaine application du levier" action: accept_next_activated_action;
+	user_command "Valider la prochaine application du levier" action: accept_next_activated_action;
 	
-	user_command "Changer la valeur du seuil du levier" action: change_lever_threshold_value;	
-	
+	user_command "Changer la valeur du seuil du levier" action: change_lever_threshold_value;
 	user_command "activer/désactiver le levier" action: toogle_status;
 	
 	action write_help_lever_msg 
@@ -1406,6 +1409,7 @@ species lever
 	
 	action cancel_next_activated_action
 	{		
+			do cancel_lever(activation_queue[0]);
 			remove index: 0 from: activation_queue ;
 	}
 
@@ -1429,7 +1433,7 @@ species lever
 	{
 		if timer_activated {draw shape+0.2#m color: #red;}
 		draw shape color: color_profile() border:#black;
-		draw lever_type +' ('+length(associated_actions)+')' at:{origin.x, origin.y} font: font("Arial", 14 , #bold) color:#black;
+		draw box_title at:{origin.x, origin.y} font: font("Arial", 14 , #bold) color:#black;
 		float v_pos <-0.5;
 		draw progression_bar at:{origin.x , origin.y+v_pos} font: font("Arial", 14 , #plain) color: threshold_reached?#red:#black;
 		v_pos<-v_pos+0.5;
@@ -1457,6 +1461,16 @@ species cost_lever parent: lever
 {
 	float added_cost_percentage;
 	int last_lever_amount <-0; 
+		
+	user_command "Changer le % d'impact sur le prix " action: change_added_cost_percentage;
+	
+	action change_added_cost_percentage
+	{
+		map values <- user_input(("Le % actuel par rapport au cout du levier "+lever_type+"\nest de "+string(added_cost_percentage)),["Entrer le nouveau % :":: added_cost_percentage]);
+		float n_val <- float(values["Entrer le nouveau % :"]);
+		added_cost_percentage <- n_val;
+		write "La nouveau % du levier "+lever_type+" est de "+string(added_cost_percentage);
+	}
 	
 	string info_of_next_activated_lever 
 	{
@@ -1483,6 +1497,70 @@ species cost_lever parent: lever
 	}
 }
 
+species delay_lever parent: lever
+{
+	int rounds_delay_added;
+		
+	action checkActivation_andImpactOn (action_done act_done)
+	{
+		if  status_on //and !act_done.is_applied
+		{
+			if should_be_activated //and !act_done.a_lever_has_been_applied
+			{
+				threshold_reached <- true;
+				do queue_activated_lever(act_done);
+				act_done.shouldWaitLeaderToActivate <- true;
+				do informNetwork_shouldWaitLeaderToActivate(act_done);
+			}
+			else {threshold_reached <- false;}	
+		}
+	} 
+	action apply_lever(activated_lever lev)
+	{
+		lev.applied <- true;
+		write help_lever_msg;
+		lev.lever_explanation <- player_msg;
+		lev.nb_rounds_delay <- rounds_delay_added;
+		
+		ask world {do send_message_lever(lev) ;}
+		
+		int aTot <- tot_lever_delay();
+		if aTot < 0
+		{
+			activation_label_L1 <- "Avance total: "+string(abs(tot_lever_delay()))+' tours';
+		}
+		else
+		{
+			activation_label_L1 <- "Retard total: "+string(abs(tot_lever_delay()))+' tours';
+		}
+		
+		
+		lev.act_done.shouldWaitLeaderToActivate <- false;
+		do informNetwork_shouldWaitLeaderToActivate(lev.act_done);
+	}
+	
+	action cancel_lever(activated_lever lev)
+	{
+		lev.act_done.shouldWaitLeaderToActivate <- false;
+		do informNetwork_shouldWaitLeaderToActivate(lev.act_done);
+	}
+	
+	int tot_lever_delay 
+	{
+		return activated_levers sum_of (each.nb_rounds_delay);
+	}
+	
+	action informNetwork_shouldWaitLeaderToActivate(action_done act_done)
+	{
+		map<string, unknown> msg <-[];
+		put "action_done shouldWaitLeaderToActivate" key: LEADER_COMMAND in: msg;
+		put my_commune.commune_name key: COMMUNE in: msg;
+		put act_done.id key: "action_done id" in: msg;
+		put act_done.shouldWaitLeaderToActivate key: "action_done shouldWaitLeaderToActivate" in: msg;
+		ask world {do send_message_from_leader(msg);}
+		write msg;	
+	}
+}
 
 species lever_create_dike parent: cost_lever
 {
@@ -1533,50 +1611,6 @@ species lever_repair_dike parent: cost_lever
 }
 
 
-species delay_lever parent: lever
-{
-	int rounds_delay_added;
-		
-	action register_and_check_activation (action_done act_done)
-	{
-		do register(act_done);
-		do checkActivation_andImpactOn(act_done);
-		act_done.shouldWaitLeaderToActivate <- true;
-		//do informNetwork_shouldWaitLeaderToActivate(act_done);
-	}
-		
-	action apply_lever(activated_lever lev)
-	{
-		lev.applied <- true;
-		write help_lever_msg;
-		lev.lever_explanation <- player_msg;
-		lev.nb_rounds_delay <- rounds_delay_added;
-		
-		ask world {do send_message_lever(lev) ;}
-		
-		activation_label_L1 <- "Gain de temps total accordé: "+string(abs(tot_lever_delay()))+' tours';
-		
-		lev.act_done.shouldWaitLeaderToActivate <- false;
-		//do informNetwork_shouldWaitLeaderToActivate(lev.act_done);
-	}
-	
-	int tot_lever_delay 
-	{
-		return activated_levers sum_of (each.nb_rounds_delay);
-	}
-	
-	action informNetwork_shouldWaitLeaderToActivate(action_done act_done)
-	{
-		map<string, unknown> msg <-[];
-		put "action_done shouldWaitLeaderToActivate" key: LEADER_COMMAND in: msg;
-		put my_commune.commune_name key: COMMUNE in: msg;
-		put act_done.id key: "action_done id" in: msg;
-		put act_done.shouldWaitLeaderToActivate key: "action_done shouldWaitLeaderToActivate" in: msg;
-		ask world {do send_message_from_leader(msg);}	
-	}
-}
-
-
 species lever_AUorUi_inCoastBorderArea parent: delay_lever
 {
 	int rounds_delay_added <- 2;
@@ -1604,8 +1638,6 @@ species lever_AUorUi_inCoastBorderArea parent: delay_lever
 }
 
 
-
-
 species lever_AUorUi_inRiskArea parent: cost_lever
 {
 	string progression_bar -> {""+indicator + " actions / "+ int(threshold) + " max"};
@@ -1615,7 +1647,7 @@ species lever_AUorUi_inRiskArea parent: cost_lever
 		{
 		lever_type <- "Const/Densi en ZI";
 		profile_name<-"batisseur";
-		threshold <- 2;
+		threshold <- 1;
 		added_cost_percentage <- 0.5 ;
 		help_lever_msg <-"prélevement de la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de construction";
 		player_msg <- "Les coûts dans les BTP augmentent considérablement";	
@@ -1761,61 +1793,128 @@ species lever_inland_dike parent: delay_lever
 	}
 }
 
-species cost_lever_with_impact_on_existing_ganivelle parent: cost_lever // c'est un cost lever dont le déclenchement est associé à une action à définir mais dont l'impact est sur des installation de ganivelles déjà existantes 
+
+species cost_lever_if_no_associatedActionA_for_N_rounds_with_impacted_on_actionB parent: cost_lever 
 {
-	bool should_be_activated -> {indicator > threshold and !empty(my_commune.actions_install_ganivelle())};
+	int nb_rounds_before_activation;
+	int nb_activations <-0;
+	string box_title -> {lever_type +' ('+nb_activations+')'};
+	bool should_be_activated -> { (nb_rounds_before_activation  <0) and !empty(listOfImpactedAction)};
+	list<action_done> listOfImpactedAction;
+	
+	action register (action_done act_done)
+	{
+		add act_done to: associated_actions;
+		nb_rounds_before_activation <- threshold;	
+	}	
+
+	action check_activation_at_new_round
+	{
+		if round > 1
+		{
+			nb_rounds_before_activation <- nb_rounds_before_activation - 1;
+			do checkActivation_andImpactOnFirstElementOf(listOfImpactedAction);
+		}
+	}
+	
+	string progression_bar -> {""+int(threshold-nb_rounds_before_activation) + " tours / "+int(threshold)+" max"};
+	
+	action apply_lever(activated_lever lev)
+	{
+		lev.applied <- true;
+		write help_lever_msg;
+		lev.lever_explanation <- player_msg;
+		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
+		
+		ask world {do send_message_lever(lev) ;}
+		
+		last_lever_amount <-lev.added_cost;
+		activation_label_L1 <- "Dernier "+(last_lever_amount>=0?"prélevement":"versement")+" : "+abs(last_lever_amount)+ ' By.';
+		activation_label_L2 <- "Total "+(last_lever_amount>=0?"prélevé":"versé")+" : "+string(abs(tot_lever_amont()))+' By';
+		
+		nb_rounds_before_activation <- threshold;
+		nb_activations <- nb_activations +1;
+	}
+}
+
+species lever_no_action_on_dike parent: cost_lever_if_no_associatedActionA_for_N_rounds_with_impacted_on_actionB
+{
+	list<action_done> listOfImpactedAction -> {my_commune.actions_install_ganivelle()};
 	init
 		{
-		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
+			profile_name<-"retrait";
+			threshold <- 2; // tours
+			nb_rounds_before_activation <- threshold;
+			added_cost_percentage <- -0.5 ;
+			player_msg <- "Le gouvernement encourage les pratiques vertueuses de gestion intégrée des risques";
 		}
 		
 	string info_of_next_activated_lever 
 	{
-		return "+" + abs(int(activation_queue[0].act_done.cost * added_cost_percentage)) + ' By pour la dernière construction de ganivelle';
-	}
-		
-	action check_activation_at_new_round
-	{
-		do checkActivation_andImpactOnFirstElementOf(my_commune.actions_install_ganivelle());
-	}
+		return "Dernière ganivelle -" + abs(int(activation_queue[0].act_done.cost * added_cost_percentage)) + ' By';
+	}	
 }
 
-species cost_lever_with_impact_on_existing_ganivelle_DEJA_RENSEIGNE parent: cost_lever_with_impact_on_existing_ganivelle
+
+//species cost_lever_with_impact_on_existing_ganivelle parent: cost_lever // c'est un cost lever dont le déclenchement est associé à une action à définir mais dont l'impact est sur des installation de ganivelles déjà existantes 
+//{
+//	string box_title -> {lever_type +' ('+length(associated_actions)+')'};
+//	bool should_be_activated -> {(indicator > threshold )and !empty(my_commune.actions_install_ganivelle())};
+//	init
+//		{
+//		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
+//		}
+//		
+//	string info_of_next_activated_lever 
+//	{
+//		return "+" + abs(int(activation_queue[0].act_done.cost * added_cost_percentage)) + ' By pour la dernière construction de ganivelle';
+//	}
+//		
+//	action check_activation_at_new_round
+//	{
+//		do checkActivation_andImpactOnFirstElementOf(my_commune.actions_install_ganivelle());
+//	}
+//}
+
+//species cost_lever_with_impact_on_existing_ganivelle_DEJA_RENSEIGNE parent: cost_lever_with_impact_on_existing_ganivelle
+//{
+//	string progression_bar -> {"Depuis "+indicator+" tours / " + int(threshold) +" max"};
+//	int indicator -> {round- (empty(associated_actions)? // Nb de tours depuis la dernière création de digue
+//									0:
+//									(associated_actions sort_by(-each.command_round))[0].command_round)}; //command_round_of_last_dike_creation
+//	init
+//		{
+//		profile_name<-"retrait";
+//		threshold <- 2; // tours
+//		added_cost_percentage <- -0.5 ;
+//		player_msg <- "Le gouvernement encourage les pratiques vertueuses de gestion intégrée des risques";
+//		}	
+//}
+
+species lever_no_dike_creation parent: lever_no_action_on_dike
 {
-	string progression_bar -> {"Depuis "+indicator+" tours / " + int(threshold) +" max"};
-	int indicator -> {round- (empty(associated_actions)? // Nb de tours depuis la dernière création de digue
-									0:
-									(associated_actions sort_by(-each.command_round))[0].command_round)}; //command_round_of_last_dike_creation
 	init
 		{
-		profile_name<-"retrait";
-		threshold <- 2; // tours
-		added_cost_percentage <- -0.5 ;
-		player_msg <- "Le gouvernement encourage les pratiques vertueuses de gestion intégrée des risques";
+			lever_type <- "Pas Const Digue";
+			help_lever_msg <-"Durant "+threshold+" tours consécutifs le joueur ne contruit pas de digue.\nVersement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
 		}	
 }
 
-species lever_no_dike_creation parent: cost_lever_with_impact_on_existing_ganivelle_DEJA_RENSEIGNE
-{
-	init
-		{
-		lever_type <- "Pas Const Digue";
-		}	
-}
-
-species lever_no_dike_raise parent: cost_lever_with_impact_on_existing_ganivelle_DEJA_RENSEIGNE
+species lever_no_dike_raise parent: lever_no_action_on_dike
 {
 	init
 		{
 		lever_type <- "Pas réhausse Digue";
+		help_lever_msg <-"Durant "+threshold+" tours consécutifs le joueur ne réhausse pas de digue.\nVersement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
 		}
 }
 
-species lever_no_dike_repair parent: cost_lever_with_impact_on_existing_ganivelle_DEJA_RENSEIGNE
+species lever_no_dike_repair parent: lever_no_action_on_dike
 {
 	init
 		{
 		lever_type <- "Pas rénove Digue";
+		help_lever_msg <-"Durant "+threshold+" tours consécutifs le joueur ne rénove pas de digue.\nVersement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
 		}
 }
 
@@ -1871,7 +1970,7 @@ species lever_expropriation parent: cost_lever
 		{
 		lever_type <- "Exproprie";
 		profile_name<-"retrait";
-		threshold <- 2;
+		threshold <- 1;
 		added_cost_percentage <- -0.25 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût d'expropriation";
 		player_msg <- "Une aide spéciale est versée aux communes engagées dans une stratégie de recul stratégique";
@@ -1912,7 +2011,7 @@ species network_leader skills:[network]
 {
 	init
 	{
-		 do connect to: SERVER with_name:GAME_LEADER;
+		do connect to: SERVER with_name:GAME_LEADER;
 		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
 		put ASK_NUM_ROUND key: LEADER_COMMAND in: msg;
 		ask world {do send_message_from_leader(msg);}
@@ -1984,8 +2083,7 @@ species network_leader skills:[network]
 					do add_action_done_to_profile(myself,round);	
 				}
 				ask commune first_with (each.commune_name = commune_name) {
-					do update_indicators_with (myself);
-					//  do register_action_in_levers (myself);  FINLALEMENT INTERGER DSN LE UPDATE_INDCIATORS
+					do update_indicators_and_register_action_done (myself);
 				}
 			}
 			

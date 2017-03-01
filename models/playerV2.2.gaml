@@ -1,3 +1,4 @@
+//
 /**
  *  Commune
  *  Author: nicolas
@@ -154,7 +155,9 @@ global
 	int budget <- 0;
 	int minimal_budget <- -2000;
 	int impot_recu <- 0;
-	float impot_unit <- 0.42; // 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
+	// 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
+	// Ajustement pour réduire un tout petit peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.65 pour sttrojan
+	float impot_unit <- commune_name="stpierre"?0.38:(commune_name="sttrojan"?0.65:0.42);
 	bool subvention_habitat_adapte <- false;
 	bool subvention_ganivelle <- false;
 	int previous_population;
@@ -224,10 +227,7 @@ global
 		my_commune <- commune first_with(each.commune_name = commune_name);
 		local_shape <-envelope(my_commune);
 		do init_buttons;
-		create def_cote from:defense_shape with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune_name_shpfile::string(read("Commune"))]
-		{
-			 name <- "défence numéro "+ self.dike_id;  //  --> ca sert à rien
-		}
+		create def_cote from:defense_shape with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune_name_shpfile::string(read("Commune"))];
 		create road from:road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
 		create flood_risk_area from: zone_PPR_shape;
@@ -1810,7 +1810,7 @@ species work_in_progress_element parent:displayed_list_element schedules:[]
 	int font_size <- 12;
 		
 	int delay ->{current_action.round_delay};
-	int rounds_before_application ->{current_action.nb_rounds_before_activation()};
+	int rounds_before_application ->{current_action.nb_rounds_before_activation_and_waitingLeaderToActivate()};
 	
 	float final_price ->{current_action.actual_cost};
 	float initialx_price ->{float(current_action.cost)};
@@ -1881,7 +1881,6 @@ species basket_element parent:displayed_list_element
 	point bullet_size -> {point({ui_height*0.6,ui_height*0.6})};
 	point round_apply_location -> {point({location.x+1.3*ui_width/5,location.y})};
 	
-	
 	action remove_action
 	{
 		ask my_parent
@@ -1930,9 +1929,9 @@ species basket_element parent:displayed_list_element
 		draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
 		draw ""+(world.delayOfAction(current_action.command)) at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
 	
-		
 		if(highlight_action = current_action)
 		{
+			
 			geometry rec <-  polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
 			draw rec  at:{location.x,location.y}  empty:true border:#red;
 		}
@@ -2021,6 +2020,7 @@ species network_activated_lever skills:[network]
 						{
 							do user_msg ("Le dossier '"+myself.act_done.label+ "' a été retardé de "+ myself.nb_rounds_delay + " tours", INFORMATION_MESSAGE);
 						}
+						act_done.shouldWaitLeaderToActivate <- false;
 					}
 					add self to: act_done.activated_levers;
 				}	
@@ -2186,6 +2186,7 @@ species action_done
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	bool has_activated_levers -> {!empty(activated_levers)};
 	list<activated_lever> activated_levers <-[];
+	bool shouldWaitLeaderToActivate <- false;
 	
 	init 
 	{
@@ -2272,6 +2273,22 @@ species action_done
 		return actual_application_round - world.round ;
 	}
 	
+	int nb_rounds_before_activation_and_waitingLeaderToActivate
+	{
+		int aV <- actual_application_round - world.round ;
+		if aV <= 0
+		 {
+		 	if shouldWaitLeaderToActivate {
+		 		// En attente du leader pour l'activation
+		 			return 0;
+		 	}
+		 	else {
+		 		write "délai d'activation pas normal";
+		 	}
+		 }
+		return aV;
+	}
+	
 	action apply;
 	
 	string serialize_command
@@ -2324,6 +2341,7 @@ species network_player_new skills:[network]
 			message msg <- fetch_message();
 			string m_sender <- msg.sender;
 			map<string, string> m_contents <- msg.contents;
+			write m_contents;
 			if string(m_contents["commune_name"]) = commune_name
 			{
 				switch m_contents["TOPIC"]
@@ -2331,11 +2349,12 @@ species network_player_new skills:[network]
 					match "action_done is_applied" // remplace ancien ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT
 					{
 						string act_done_id <- m_contents["id"];
-						write "applay action "+ act_done_id;
+						write "apply action "+ act_done_id;
 						action_done app <- ((action_def_cote + action_UA) first_with (each.id = act_done_id));
 						ask app
 						{
 							is_applied <- true;
+							shouldWaitLeaderToActivate <- false;
 							do apply	;
 						}
 					}
@@ -2419,6 +2438,16 @@ species network_listen_to_leader skills:[network]
 					{
 						ask world {do user_msg(string(m_contents[PLAYER_MSG]),INFORMATION_MESSAGE);}
 					}
+					match "action_done shouldWaitLeaderToActivate" {
+						write "ici 1";
+						bool shouldWait <- bool(m_contents["action_done shouldWaitLeaderToActivate"]);
+						if shouldWait {
+							action_done aAct <-(action_UA+action_def_cote) first_with (each.id = string(m_contents["action_done id"]));
+							aAct.shouldWaitLeaderToActivate <- bool(m_contents["action_done shouldWaitLeaderToActivate"]);
+							write "ici 2 " +aAct.id + " "+aAct.shouldWaitLeaderToActivate ;
+						}
+						//Dans le cas où le message est de ne pas attendre, alors il ne fait pas acutalisare l'action done, car c'est l'application de l'action_done qui va  mettre shouldWaitLeaderToActivate à false	
+					}
 				}
 			}
 			
@@ -2445,7 +2474,6 @@ species network_player skills:[network]
 		loop while:has_more_message()
 		{
 			message msg <- fetch_message();
-			write msg.contents;
 			string my_msg <- msg.contents;
 			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
 			int command <- int(data[0]);
@@ -2663,6 +2691,7 @@ species network_player skills:[network]
 		create def_cote number:1 returns: dikes
 		{
 			shape <- pli;
+			length_def_cote<- int(shape.perimeter);
 			dike_id <- d_id;
 			type<-tp;
 			height<- hg;
@@ -3109,6 +3138,7 @@ species def_cote
 	bool ganivelle <- false;
 	float alt <- 0.0;
 	string status;	//  "bon" "moyen" "mauvais" 
+	int length_def_cote;
 	
 	action init_from_map(map<string, unknown> a )
 	{
@@ -3137,6 +3167,7 @@ species def_cote
 			i<- i + 1;
 		}
 		shape <- polyline(all_points);
+		length_def_cote <- int(shape.perimeter);
 		location <-mpp;
 	}
 	
@@ -3148,6 +3179,7 @@ species def_cote
 		if status = "tres bon" {status <- "bon";} 
 		if status = "tres mauvais" {status <- "mauvais";} 
 		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
+		length_def_cote <- int(shape.perimeter);
 		}
 	
 	string type_ouvrage
@@ -3287,13 +3319,15 @@ experiment game type: gui
 				if (explored_dike != nil)
 				{
 					point target <- {explored_dike.location.x  ,explored_dike.location.y };
-					point target2 <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					point target2 <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px+20#px)};
 					
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Information sur "+explored_dike.type_ouvrage() at: target + { 5#px, 15#px } font: regular color: #white;
 					int xpx <-0;
+					draw "Longueur "+string(explored_dike.length_def_cote)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					xpx <- xpx+20;
 					if explored_dike.type_ouvrage() = "la digue" {
-						draw "Hauteur"+string(round(100*explored_dike.height)/100.0)+"m" at: target + { 30#px, 35#px } font: regular color: # white;
+						draw "Hauteur "+string(round(100*explored_dike.height)/100.0)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 						xpx <- xpx+20;
 					}
 					draw "Altitude "+string(round(100*explored_dike.alt)/100.0)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;

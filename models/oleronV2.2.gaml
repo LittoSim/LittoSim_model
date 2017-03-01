@@ -333,7 +333,7 @@ action new_round{
 			}}
 	else {stateSimPhase <- 'game'; write stateSimPhase;}
 	round <- round + 1;
-	ask commune {do inform_new_round;}
+	ask commune {do inform_new_round;} 
 	ask network_listen_to_leader{do informLeader_round_number;}
 	do save_budget_data;
 	write "done!";
@@ -357,6 +357,9 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 //		map<string,string> msg <- [];
 //		put "1" key:flood_results in:msg;
 //		map values <- user_input(msg);	
+
+		map values <- user_input(["Cliquez sur OK pour continuer" :: ""]);
+		
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1  {
 						loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;} 
@@ -553,7 +556,7 @@ action readLisflood
 	     			stateSimPhase <- 'game';
 	     			write stateSimPhase + " - Tour "+round;
 	     		}
-	     		else{map values <- user_input(["L'innondation est terminée" :: ""]);
+	     		else{
 					stateSimPhase <- 'calculate flood stats'; write stateSimPhase;}   }	   
 	}
 	
@@ -802,6 +805,7 @@ species action_done schedules:[]
 	list<activated_lever> activated_levers <-[];
 	bool shouldWaitLeaderToActivate <- false;
 	int length_def_cote<-0;
+	bool a_lever_has_been_applied<- false;
 	
 //	action init_from_map(map<string, string> a )
 //	{
@@ -870,7 +874,8 @@ species action_done schedules:[]
 			"is_sent"::string(is_sent),
 			"command_round"::string(command_round),
 			"element_shape"::string(element_shape),
-			"length_def_cote"::int(length_def_cote)
+			"length_def_cote"::string(length_def_cote),
+			"a_lever_has_been_applied"::string(a_lever_has_been_applied)
 			 ]	;
 			point pp<-nil;
 			int i <- 0;
@@ -965,6 +970,77 @@ species network_round_manager skills:[remoteGUI]
 	}
 }
 
+species activated_lever 
+{
+	action_done act_done;
+	float activation_time;
+	bool applied <- false;
+	
+	//attributes sent through network
+	int id;
+	string commune_name;
+	string lever_type;
+	string lever_explanation <- "";
+	string act_done_id <- "";
+	int nb_rounds_delay <-0;
+	int added_cost <- 0;
+	
+	action init_from_map(map<string, string> m )
+	{
+		id <- int(m["id"]);
+		lever_type <- m["lever_type"];
+		commune_name <- m["commune_name"];
+		act_done_id <- m["act_done_id"];
+		added_cost <- int(m["added_cost"]);
+		nb_rounds_delay <- int(m["nb_rounds_delay"]);
+		lever_explanation <- m["lever_explanation"];
+	}
+	
+	map<string,string> build_map_from_attribute
+	{
+		map<string,string> res <- [
+			"OBJECT_TYPE"::"activated_lever",
+			"id"::id,
+			"lever_type"::lever_type,
+			"commune_name"::commune_name,
+			"act_done_id"::string(act_done_id),
+			"added_cost"::string(added_cost),
+			"nb_rounds_delay"::int(nb_rounds_delay),
+			"lever_explanation"::lever_explanation
+			 ]	;
+		return res;
+	}
+}
+
+species network_activated_lever skills:[network]
+{
+	init
+	{
+		do connect to:SERVER with_name:"activated_lever";	
+	}
+	
+	reflex wait_message
+	{
+		loop while:has_more_message()
+		{
+			message msg <- fetch_message();
+			string m_sender <- msg.sender;
+			map<string, string> m_contents <- msg.contents;
+			if empty(activated_lever where (each.id = int(m_contents["id"])))
+			{
+				create activated_lever number:1
+				{
+					do init_from_map(m_contents);
+					act_done <- action_done first_with (each.id = act_done_id);
+					commune aCommune <- commune first_with (each.commune_name = commune_name);
+					aCommune.budget <-aCommune.budget - added_cost; 
+					add self to:act_done.activated_levers;
+					act_done.a_lever_has_been_applied<- true;
+				}
+			}			
+		}	
+	}
+}
 species network_listen_to_leader skills:[network]
 {
 	string PRELEVER <- "Percevoir Recette";
@@ -1028,7 +1104,9 @@ species network_listen_to_leader skills:[network]
 				}
 				match "action_done shouldWaitLeaderToActivate" {
 					action_done aAct <-action_done first_with (each.id = string(m_contents["action_done id"]));
+					write "msg shouldWait on "+aAct;
 					aAct.shouldWaitLeaderToActivate <- bool(m_contents["action_done shouldWaitLeaderToActivate"]);
+					write "msg shouldWait value "+aAct.shouldWaitLeaderToActivate;
 				}
 			}
 			
@@ -1315,8 +1393,11 @@ species network_player skills:[network]
 	
 	action send_created_dike(def_cote new_dike,action_done act)
 	{
-		point p1 <- first(new_dike.shape.points);
-		point p2 <- last(new_dike.shape.points);
+//		point p1 <- first(new_dike.shape.points);
+//		point p2 <- last(new_dike.shape.points); // BUG DU CREATE DIKE
+		new_dike.shape <- act.element_shape;
+		point p1 <- first(act.element_shape.points);
+		point p2 <- last(act.element_shape.points);
 		
 		
 		string msg <- ""+ACTION_DIKE_CREATED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+new_dike.dike_id+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+new_dike.height+COMMAND_SEPARATOR+new_dike.type+COMMAND_SEPARATOR+new_dike.status+ COMMAND_SEPARATOR+min_dike_elevation(new_dike)+COMMAND_SEPARATOR+act.id;
@@ -1365,7 +1446,7 @@ species network_player skills:[network]
 			list<commune> cms <- commune overlapping (update_ouvrage at i);
 			loop cm over:cms
 			{
-				write "message to send "+ msg;
+				//write "message to send "+ msg;
 				do send to:cm.network_name contents:msg;
 			}
 			i <- i + 1;
@@ -1375,7 +1456,11 @@ species network_player skills:[network]
 
 	reflex apply_action when:length(action_done where(each.is_alive))>0
 	{
-		ask(action_done where(each.should_be_applied and each.is_alive and not(each.shouldWaitLeaderToActivate)))
+	//	ask(action_done where(each.should_be_applied and each.is_alive and not(each.shouldWaitLeaderToActivate)))
+	// Pour une raison bizarre la ligne au dessus ne fonctionne pas alors que les 2 lignes ci dessous fonctionnent. Pourtant je ne vois aucune difference
+		ask action_done {
+			if should_be_applied and is_alive and !shouldWaitLeaderToActivate
+			
 		{
 			string tmp <- self.commune_name;
 			int idCom <-world.commune_id(tmp);
@@ -1520,7 +1605,7 @@ species network_player skills:[network]
 			}
 			is_alive <- false; 
 			is_applied <- true;
-		}		
+		}}		
 	}
 	
 	
@@ -1574,76 +1659,7 @@ species network_player skills:[network]
 }
 	
 
-species activated_lever 
-{
-	action_done act_done;
-	float activation_time;
-	bool applied <- false;
-	
-	//attributes sent through network
-	int id;
-	string commune_name;
-	string lever_type;
-	string lever_explanation <- "";
-	string act_done_id <- "";
-	int nb_rounds_delay <-0;
-	int added_cost <- 0;
-	
-	action init_from_map(map<string, string> m )
-	{
-		id <- int(m["id"]);
-		lever_type <- m["lever_type"];
-		commune_name <- m["commune_name"];
-		act_done_id <- m["act_done_id"];
-		added_cost <- int(m["added_cost"]);
-		nb_rounds_delay <- int(m["nb_rounds_delay"]);
-		lever_explanation <- m["lever_explanation"];
-	}
-	
-	map<string,string> build_map_from_attribute
-	{
-		map<string,string> res <- [
-			"OBJECT_TYPE"::"activated_lever",
-			"id"::id,
-			"lever_type"::lever_type,
-			"commune_name"::commune_name,
-			"act_done_id"::string(act_done_id),
-			"added_cost"::string(added_cost),
-			"nb_rounds_delay"::int(nb_rounds_delay),
-			"lever_explanation"::lever_explanation
-			 ]	;
-		return res;
-	}
-}
 
-species network_activated_lever skills:[network]
-{
-	init
-	{
-		do connect to:SERVER with_name:"activated_lever";	
-	}
-	
-	reflex wait_message
-	{
-		loop while:has_more_message()
-		{
-			message msg <- fetch_message();
-			string m_sender <- msg.sender;
-			map<string, string> m_contents <- msg.contents;
-			if empty(activated_lever where (each.id = int(m_contents["id"])))
-			{
-				create activated_lever number:1
-				{
-					do init_from_map(m_contents);
-					act_done <- action_done first_with (each.id = act_done_id);
-					commune aCommune <- commune first_with (each.commune_name = commune_name);
-					aCommune.budget <-aCommune.budget - added_cost; 
-					add self to:act_done.activated_levers;
-				}
-			}			
-		}	
-	}
-}
 	
 	
 /*
@@ -2421,14 +2437,17 @@ species UA
 species commune
 {	
 	int id<-0;
-	string commune_name;
+	string commune_name; //["stpierre", "dolus","sttrojan","lechateau"]
 	string network_name;
 	int budget;
 	int impot_recu <-0;
 	bool subvention_habitat_adapte <- false;
 	list<UA> UAs ;
 	list<cell> cells ;
-	float impot_unit <- 0.42; // 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
+	
+	// 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
+	// Ajustement pour réduire un tout petit peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.65 pour sttrojan
+	float impot_unit <- commune_name="stpierre"?0.38:(commune_name="sttrojan"?0.65:0.42); 
 	
 	/* initialisation des hauteurs d'eau */ 
 	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
@@ -2521,7 +2540,7 @@ species commune
 	action calcul_impots {
 		impot_recu <- current_population(self) * impot_unit;
 		budget <- budget + impot_recu;
-		write commune_name + "->" + budget;
+		write commune_name + "-> impot " + impot_recu + " ; budget "+ budget;
 	}
 	
 	action record_payment_for_action_done (action_done aAction)
