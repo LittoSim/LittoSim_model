@@ -2060,7 +2060,7 @@ species def_cote
 		if type = 'Naturel' and status = "moyen" {p <- PROBA_RUPTURE_DUNE_ETAT_MOYEN;}
 		if type = 'Naturel' and status = "bon" {p <- PROBA_RUPTURE_DUNE_ETAT_BON;}
 		if rnd (100) <= p {
-				set rupture <- 1;
+				rupture <- 1;
 				// on applique la rupture a peu pres au milieu du linéaire
 				int cIndex <- int(length(cells) /2);
 				// on défini la zone de rupture ds un rayon de 30 mètre autour du point de rupture 
@@ -2149,8 +2149,14 @@ species def_cote
 			draw 50#m around shape color: color;
 			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
 		}		
+		if(rupture = 1)
+		{
+			list<point> pts <- shape.points;
+			point tmp <- length(pts) > 2?pts[int(length(pts)/2)]:shape.centroid;
+			draw image_file("../images/icones/rupture.png") at:tmp size:30#px;
 			
-		if rupture  = 1 {draw (zoneRupture +70#m) color:rgb(240,20,20,200);} 	
+		}	
+	//	if rupture  = 1 {draw (zoneRupture +70#m) color:rgb(240,20,20,200);} 	
 	}
 }
 
