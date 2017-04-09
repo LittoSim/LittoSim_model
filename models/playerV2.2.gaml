@@ -411,19 +411,21 @@ global
 	
 	action init_background
 	{
+		float increment <- "stpierre" = commune_name ? 0.8:0.0;
+		
 		create onglet number:1
 		{
-			point p <- {0.25,0.03};
+			point p <- {0.25,increment+0.03};
 			legend_name <- LEGEND_DYKE;
 			display_name <- DIKE_DISPLAY;
-			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.5 ui_height:0.06;
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.5 ui_height: (0.06);
 		}
 		create onglet number:1
 		{
-			point p <- {0.75,0.03};
+			point p <- {0.75,increment+0.03};
 			legend_name <-LEGEND_UNAM;
 			display_name <- UNAM_DISPLAY;
-			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.5 ui_height:0.06;
+			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.5 ui_height: ( 0.06);
 		}	
 		
 		create background_agent number:1
@@ -440,7 +442,8 @@ global
 		
 		string uaHelpMessage <- "Cliquez sur la cellule à modifier.";
 		string dikeHelpMessage <- "Cliquez sur la digue à modifier.";
-		
+		float increment <- "stpierre" = commune_name ? 0.8:0.0;
+			
 		create buttons number: 1
 		{
 			command <- ACTION_MODIFY_LAND_COVER_A;
@@ -448,7 +451,7 @@ global
 			action_cost <- ACTION_COST_LAND_COVER_TO_A;
 			display_name <- UNAM_DISPLAY;
 			my_help <- uaHelpMessage;
-			point p <- {0.40,0.13};
+			point p <- {0.40,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			shape <- square(button_size);
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave}; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
@@ -463,7 +466,7 @@ global
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			my_help <- uaHelpMessage;
-			point p <- {0.05,0.13};
+			point p <- {0.05,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/ihm/I_urbanise.png");
@@ -477,7 +480,7 @@ global
 			my_help <- uaHelpMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			point p <- {0.15,0.13};
+			point p <- {0.15,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
@@ -492,7 +495,7 @@ global
 			my_help <- uaHelpMessage;
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			point p <- {0.25,0.13};
+			point p <- {0.25,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 4*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
@@ -508,7 +511,7 @@ global
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
 			my_help <- uaHelpMessage;
-			point p <- {0.50,0.13};
+			point p <- {0.50,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
 			my_icon <- image_file("../images/ihm/I_naturel.png");
@@ -522,7 +525,7 @@ global
 			my_help <- "Glissez le pointeur sur les cellules à inspecter.";
 			shape <- square(button_size);
 			display_name <- UNAM_DISPLAY;
-			point p <- {0.70,0.13};
+			point p <- {0.70,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
 			my_icon <- image_file("../images/ihm/I_info.png");
@@ -537,7 +540,7 @@ global
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquez aux deux extrémités du linéaire de digue.";
-			point p <- {0.05,0.13};
+			point p <- {0.05,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  }; // + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m };
 			my_icon <- image_file("../images/ihm/i_creation_digue.png");
@@ -551,7 +554,7 @@ global
 			shape <- square(button_size);
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
-			point p <- {0.15,0.13};
+			point p <- {0.15,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) }; //{  world.local_shape.location.x + world.local_shape.width - 500#m,world.local_shape.location.y + 350#m + 600#m };
 			my_icon <- image_file("../images/ihm/I_reparation_digue.png");
@@ -567,7 +570,7 @@ global
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
 		//	my_help <- "Cliquer sur la digue à supprimer";	
-			point p <- {0.35,0.13};
+			point p <- {0.35,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
@@ -584,7 +587,7 @@ global
 			my_help <- dikeHelpMessage;
 			display_name <- DIKE_DISPLAY;
 		//	my_help <- "Cliquer sur la digue à réhausser";
-			point p <- {0.25,0.13};
+			point p <- {0.25,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
 			my_icon <- image_file("../images/ihm/I_elevation_digue.png");
@@ -599,7 +602,7 @@ global
 			shape <- square(button_size);
 			display_name <- DIKE_DISPLAY;
 			my_help <- "Cliquez sur la dune pour installer une ganivelle.";
-			point p <- {0.45,0.13};
+			point p <- {0.45,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
 			my_icon <- image_file("../images/ihm/I_ganivelle.png");
@@ -613,7 +616,7 @@ global
 			shape <- square(button_size);
 			my_help <- "Glissez le pointeur sur les digues et dunes.";
 			display_name <- DIKE_DISPLAY;
-			point p <- {0.70,0.13};
+			point p <- {0.70,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };
 			my_icon <- image_file("../images/ihm/I_info.png");
@@ -627,7 +630,7 @@ global
 			display_name <-BOTH_DISPLAY;
 			shape <- square(850);
 			location <- { 1000,8000 };
-			point p <- {0.80,0.13};
+			point p <- {0.80,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			
 			my_icon <- image_file("../images/ihm/I_afficher_zone_protegee.png");
@@ -641,7 +644,7 @@ global
 			
 			shape <- square(850);
 			location <- { 1000,9000 };
-			point p <- {0.90,0.13};
+			point p <- {0.90,increment+0.13};
 			do lock_agent_at ui_location:p display_name:"Carte" ui_width:0.1 ui_height:0.1;
 			
 			my_icon <- image_file("../images/ihm/I_afficher_PPR.png");
@@ -1466,10 +1469,10 @@ species basket parent:displayed_list
 	{
 		float gem_height <- ui_height*header_height/2;
 		float gem_width <- ui_width;
-		int mfont_size <- my_font_size - 2;
-		font font0 <- font ('Helvetica Neue',my_font_size-4, #plain ); 
-		draw "Budget initial" font:font0 color:rgb(101,101,101) at:{location.x + ui_width - 150#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
-		font font1 <- font ('Helvetica Neue',my_font_size, #bold ); 
+		int mfont_size <- DISPLAY_FONT_SIZE - 2;
+		font font0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE-4, #plain ); 
+		draw "Budget initial" font:font0 color:rgb(101,101,101)  at:{location.x + ui_width - 150#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		font font1 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
 		draw ""+world.separateur_milliers(int(budget)) font:font1 color:rgb(101,101,101) at:{location.x + ui_width - 70#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 	}
 	
@@ -1549,8 +1552,8 @@ species basket parent:displayed_list
 	aspect base
 	{
 		do draw_list;
-		do draw_budget;
 		do draw_valid_button;
+		do draw_budget;
 		do draw_foot;
 	}
 }
@@ -3216,10 +3219,12 @@ species background_agent skills:[UI_location]
 {
 	aspect base
 	{
+		float increment <- "stpierre" = commune_name ? 0.8:0.0;
+		
 		geometry rec1 <- polygon([{0,0}, {0,ui_height*0.06}, {ui_width,ui_height*0.06},{ui_width,0},{0,0}]);
 		geometry rec2 <- polygon([{0,0}, {0,ui_height*0.2}, {ui_width,ui_height*0.2},{ui_width,0},{0,0}]);
-		point loc1  <- {location.x+ui_width/2,location.y+ui_height*0.03};
-		point loc2  <- {location.x+ui_width/2,location.y+ui_height*0.1};
+		point loc1  <- {location.x+ui_width/2,location.y+ui_height*(increment+0.03)};
+		point loc2  <- {location.x+ui_width/2,location.y+ui_height*(increment+0.1)};
 		draw  rec2 at:loc2 color:rgb(219,219,219);
 		draw  rec1 at:loc1 color:rgb(148,148,148);
 	}
@@ -3331,12 +3336,12 @@ experiment game type: gui
 			{
 				if (active_display = DIKE_DISPLAY and explored_buttons != nil  and explored_cell= nil and explored_dike = nil and explored_action_UA = nil)
 				{
-					
+					float increment <- "stpierre" = commune_name ? (-2*INFORMATION_BOX_SIZE.y#px):0.0;
 					point loc <- world.button_box_location(explored_buttons.location,2*(INFORMATION_BOX_SIZE.x#px));
 					point target <-loc;
-					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y};
-					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)};
-					point target4 <- {target3.x,target2.y - 15#px };
+					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y+increment};
+					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)+increment};
+					point target4 <- {target3.x,target2.y - 15#px+increment };
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
@@ -3385,10 +3390,12 @@ experiment game type: gui
 			{
 				if (active_display = UNAM_DISPLAY and explored_buttons != nil and explored_cell= nil and explored_dike = nil and explored_action_UA = nil)
 				{
+					float increment <- "stpierre" = commune_name ? (-2*INFORMATION_BOX_SIZE.y#px):0.0;
+					
 					point loc <- world.button_box_location(explored_buttons.location,2*(INFORMATION_BOX_SIZE.x#px));
 					point target <-loc;
-					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y};
-					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)};
+					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y+increment};
+					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)+increment};
 					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
 					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
 					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
