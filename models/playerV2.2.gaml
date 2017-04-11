@@ -1964,7 +1964,7 @@ species network_activated_lever skills:[network]
 						budget <- budget - added_cost;
 						ask world
 						{
-							do user_msg ("Vous avez été "+(myself.added_cost>0?"prélevé":"approvisionné")+" de "+abs(myself.added_cost)+ " Bs. pour le dossier '"+myself.act_done.label+"'", BUDGET_MESSAGE);
+							do user_msg ("Vous avez été "+(myself.added_cost>0?"prélevé":"approvisionné")+" de "+abs(myself.added_cost)+ " By pour le dossier '"+myself.act_done.label+"'", BUDGET_MESSAGE);
 						}	
 					}
 					if nb_rounds_delay != 0
