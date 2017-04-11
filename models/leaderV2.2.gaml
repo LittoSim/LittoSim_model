@@ -17,6 +17,7 @@ global
 	string SERVER <- "localhost"; //"192.168.1.100"localhost
 	float MOUSE_BUFFER <- 50#m;
 	point MOUSE_LOC ;
+	float sim_id;
 	lever explored_lever;
 	list<string> leader_activities;
 	string COMMAND_SEPARATOR <- ":";
@@ -184,6 +185,13 @@ global
 		write aText;		
 	}
 	
+	action save_leader_records
+	{
+		save leader_activities to: "leader_records-"+sim_id+"/leader_activities_Tour"+round+".txt" type: "text";
+		save action_done to: "leader_records-"+sim_id+"/action_done_Tour"+round+".csv" type: "csv";
+		save activated_lever to: "leader_records-"+sim_id+"/activated_lever_Tour"+round+".csv" type: "csv";
+	}
+	
 	action add_action_done_to_profile(action_done act_dn, int act_round)
 	{
 		list<map<string,int>> profil_commune<- profils[act_dn.commune_name];
@@ -226,6 +234,7 @@ global
 	
 	init
 	{
+		sim_id <- machine_time;
 		create network_leader number:1;
 		do create_commune; 
 		do create_commune_action_buttons;
@@ -1481,7 +1490,7 @@ species delay_lever parent: lever
 		lev.act_done.shouldWaitLeaderToActivate <- false;
 		do informNetwork_shouldWaitLeaderToActivate(lev.act_done);
 		
-		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+(lev.nb_rounds_delay)+" Tours"+"("+lev.act_done+")");}
+		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+(lev.nb_rounds_delay)+" tours"+"("+lev.act_done+")");}
 	}
 	
 	action cancel_lever(activated_lever lev)
@@ -1657,7 +1666,7 @@ species lever_Us_outCoastBorderOrRiskArea parent: cost_lever
 		activation_label_L1 <- "Dernier versement : "+(-1*last_lever_amount)+ ' By';
 		activation_label_L2 <- 'Total versé : '+string((-1*tot_lever_amont()))+' By';
 		
-		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+lev.added_cost+"Ny : "+lev.nb_rounds_delay+" Tours"+"("+lev.act_done+")");}
+		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+lev.added_cost+"Ny : "+lev.nb_rounds_delay+" tours"+"("+lev.act_done+")");}
 			
 	}
 }
@@ -1977,6 +1986,7 @@ species network_leader skills:[network]
 						//ask world { do write_profile; }
 						write "--- Tour "+round+" commence ---";
 						ask all_levers {do check_activation_at_new_round();}
+						ask world{do save_leader_records;}
 					}
 				match INDICATORS_T0
 					{ //write m_contents;
