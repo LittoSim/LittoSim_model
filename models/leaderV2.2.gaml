@@ -14,8 +14,11 @@ model leader
 global
 {
 	
-	string SERVER <- "localhost";
+	string SERVER <- "localhost"; //"192.168.1.100"localhost
 	float MOUSE_BUFFER <- 50#m;
+	point MOUSE_LOC ;
+	lever explored_lever;
+	list<string> leader_activities;
 	string COMMAND_SEPARATOR <- ":";
 	string GAME_LEADER <- "GAME_LEADER";
 	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
@@ -175,6 +178,11 @@ global
 
 	}
 	
+	action record_leader_activity (string type_msg , string aCommune, string msg) {
+		string aText <- "<"+string(current_date.hour) +":"+ current_date.minute +">"+type_msg + aCommune+" -> "+ msg;
+		add aText to: leader_activities;
+		write aText;		
+	}
 	
 	action add_action_done_to_profile(action_done act_dn, int act_round)
 	{
@@ -220,7 +228,6 @@ global
 	{
 		create network_leader number:1;
 		do create_commune; 
-		do create_button;
 		do create_commune_action_buttons;
 
 		ask commune
@@ -343,38 +350,6 @@ global
 						}
 						
 					}
-//					match RETARD_1_AN
-//					{
-//						if(local_selection != nil)
-//						{
-//							do retarder_action(local_selection,1);
-//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
-//						}	
-//					}
-//					match RETARD_2_ANS
-//					{
-//						if(local_selection != nil)
-//						{
-//							do retarder_action(local_selection,2);
-//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
-//						}	
-//					}
-//					match RETARD_3_ANS
-//					{
-//						if(local_selection != nil)
-//						{
-//							do retarder_action(local_selection,3);
-//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
-//						}	
-//					}
-//					match ABROGER
-//					{
-//						if(local_selection != nil)
-//						{
-//							do retarder_action(local_selection,3000);
-//							selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action
-//						}	
-//					}
 				}
 	}
 	
@@ -420,25 +395,6 @@ global
 		do send_message_to_commune(msg,selected_commune.commune_name);	
 	}
 	
-//	action retarder_action(action_done act_dn, int duree)
-//	{
-//		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
-//		put RETARDER key: LEADER_COMMAND in: msg;
-//		put int(duree) key: DELAY in: msg;
-//		put act_dn.id key: ACTION_ID in: msg;
-//		do send_message(msg);
-//		act_dn.round_delay <- act_dn.round_delay + duree;
-//		act_dn.application_round <- act_dn.application_round + duree;	
-//	}
-//	
-//	action lever_retard_action(action_done act_dn)
-//	{
-//		map<string, unknown> msg <-[]; //LEADER_COMMAND::LEVER_RETARD,ACTION_ID::act_dn.id];
-//		put LEVER_RETARD key: LEADER_COMMAND in: msg;
-//		put act_dn.id key: ACTION_ID in: msg;
-//		
-//		do send_message(msg);	
-//	}
 	
 	action send_message_from_leader(map<string,unknown> msg)
 	{
@@ -472,80 +428,22 @@ global
 		}
 	}
 			
-	action create_button
+	action action_move_infobulle
 	{
-		int i <- 0;
-		create action_button number:1
-		{
-			displayName <- RETARD_1_AN;	
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		
-		create action_button number:1
-		{
-			displayName <- RETARD_2_ANS;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		
-		create action_button number:1
-		{
-			displayName <- RETARD_3_ANS;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-			
-		}
-		
-		create action_button number:1
-		{
-			displayName <- ABROGER;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		
-		create action_button number:1
-		{
-			displayName <- LEVER_RETARD;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		
-		create action_button number:1
-		{
-			displayName <- CREDITER;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		
-		create action_button number:1
-		{
-			displayName <- PRELEVER;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		
-		create action_button number:1
-		{
-			displayName <- REORGANISATION_AFFICHAGE;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		
-		create action_button number:1
-		{
-			displayName <- SUBVENTIONNER_GANIVELLE_NAME;
-			location <- {5, i*10 + 10};
-			i <- i +1;
-		}
-		create action_button number:1
-		{
-			displayName <- SUBVENTIONNER_HABITAT_ADAPTE_NAME;
-			location <- {5, i*10 + 10};
-			i <- i +1;
+		explored_lever <- nil;
+		MOUSE_LOC <- point(#user_location);
+		if MOUSE_LOC != nil  and MOUSE_LOC != {0,0} and !empty(all_levers)
+			{
+			list<lever> selected_levers <- all_levers overlapping (MOUSE_LOC);
+			if (length(selected_levers)> 0) 
+			{
+				explored_lever <- first(selected_levers);
+			}
 		}
 	}
-	
+		
+				
+				
 	//ask get_all_instances(lever) 
 	list<lever> all_levers -> {(lever_create_dike+lever_raise_dike+lever_repair_dike+lever_AUorUi_inCoastBorderArea+lever_AUorUi_inRiskArea
 				+lever_ganivelle+lever_Us_outCoastBorderOrRiskArea+lever_Us_inCoastBorderArea+lever_Us_inRiskArea+lever_inland_dike
@@ -1179,9 +1077,9 @@ species commune_action_button
 		{
 			match "Prélever de l'argent"
 			{
-				map values <- user_input("Indiquer le montant prélevé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : pour changer le texte à envoyer, mettre le texte entre doubles quotes ->  '' bonjour ''",
+				map values <- user_input("Indiquer le montant prélevé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : ne pas utiliser de guillemets",
 						[	"Montant :" :: "2000",
-							"Message :" :: "L'agence vous preleve un montant de : "
+							"Message :" :: "L agence vous preleve un montant de : "
 						]);
 				map<string, unknown> msg <-[];
 				if int(values["Montant :"])=0 {return;}
@@ -1189,14 +1087,16 @@ species commune_action_button
 				put my_commune.commune_name key: COMMUNE in: msg;
 				put int(values["Montant :"]) key: AMOUNT in: msg;
 				put values["Message :"] key: PLAYER_MSG in:msg;
-				write msg;
-				ask world {do send_message_from_leader(msg);}			
+
+				ask world {do send_message_from_leader(msg);}	
+				ask world {do record_leader_activity("Prélever de l'argent à ", myself.my_commune.commune_name, string(msg at PLAYER_MSG) + string(msg at AMOUNT)+"By");}
+						
 			}
 			match "Envoyer de l'argent"
 			{
-				map values <- user_input("Indiquer le montant envoyé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : pour changer le texte à envoyer, mettre le texte entre doubles quotes ->  '' bonjour ''",
+				map values <- user_input("Indiquer le montant envoyé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : ne pas utiliser de guillemets",
 						[	"Montant :" :: "2000",
-							"Message :" :: "L'agence vous envoie un montant de : "
+							"Message :" :: "L agence vous envoie un montant de : "
 						]);
 				map<string, unknown> msg <-[];				
 				if int(values["Montant :"])=0 {return;}
@@ -1204,22 +1104,24 @@ species commune_action_button
 				put my_commune.commune_name key: COMMUNE in: msg;
 				put int(values["Montant :"]) key: AMOUNT in: msg;
 				put values["Message :"] key: PLAYER_MSG in:msg;
-				write msg;
-				ask world {do send_message_from_leader(msg);}			
+
+				ask world {do send_message_from_leader(msg);}
+				ask world {do record_leader_activity("Envoyer de l'argent à ", myself.my_commune.commune_name, string(msg at PLAYER_MSG)+ string(msg at AMOUNT)+"By");}							
 			}
 			match "Envoyer un message"
 			{
-				map values <- user_input("Indiquer le message envoyé à " +my_commune.com_large_name+"\n('''' pour annuler)\nATTENTION : pour changer le texte à envoyer, mettre le texte entre doubles quotes ->  '' bonjour ''",
-						[	
-							"Message :" :: "L'agence dit Bonjour"
-						]);
+				string msg_sent <- "L agence dit Bonjour";
+				map values <- user_input("Indiquer le message envoyé à " +my_commune.com_large_name+"\n('''' pour annuler)\nATTENTION : ne pas utiliser de guillemets",
+						["Message :" :: msg_sent]);
+				msg_sent <- string (values["Message :"]);
 				map<string, string> msg <-[];
-				write values["Message :"];
 				if (values["Message :"])in["","L'agence signale que..."] {return;}
 				put MSG_TO_PLAYER key: LEADER_COMMAND in: msg;
 				put my_commune.commune_name key: COMMUNE in: msg;
 				put values["Message :"] key: PLAYER_MSG in:msg;
-				ask world {do send_message_from_leader(msg);}			
+				
+				ask world {do send_message_from_leader(msg);}
+				ask world {do record_leader_activity("Envoyer un message à ", myself.my_commune.commune_name, string(msg at PLAYER_MSG));}			
 			}			
 		}		
 	}
@@ -1342,6 +1244,7 @@ species lever
 			activation_time <-  machine_time + myself.timer_duration ;
 			add self to: myself.activation_queue;
 		}
+		ask world {do record_leader_activity("Levier "+myself.lever_type+" programmé à ", myself.my_commune.commune_name, string(a_act_done.label)+"("+a_act_done+")");}
 	}
 
 	action toogle_status 
@@ -1351,39 +1254,31 @@ species lever
 			activation_queue <-[];
 		}
 	}
-	user_command "Comment fonctionne ce levier ?" action: write_help_lever_msg;		
-	user_command "Voir le message envoyé au joueur" action: write_player_msg;	
-	
-	user_command "Annuler la prochaine application du levier" action: cancel_next_activated_action;	
-	user_command "Valider la prochaine application du levier" action: accept_next_activated_action;
-	
-	user_command "Changer la valeur du seuil du levier" action: change_lever_threshold_value;
-	user_command "activer/désactiver le levier" action: toogle_status;
+//	
 	
 	action write_help_lever_msg 
 	{
 		map values <- user_input("Explication du levier",[help_lever_msg+"\nValeur seuil : "+threshold:: ""]);
 	}
-	action write_player_msg 
+	
+	string texte_infobulle {
+		return (""+help_lever_msg+" / Valeur seuil : "+threshold);
+		}
+	
+	action change_lever_player_msg 
 	{
 		map values <- user_input("Message envoyé au joueur lorsque le levier se déclenche",
 			["Message :":: player_msg]);
 		player_msg <- string(values["Message :"]);
+		ask world {do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_commune.commune_name, "-> Le nouveau message envoyé au joueur est : "+string(myself.player_msg));}
 	}
 	action change_lever_threshold_value
 	{
-		string question_new_value <- "Entrer la nouvelle valeur du seuil du levier :";
-		map values <- user_input(("Le seuil actuel du levier "+lever_type+"\nest de "+string(threshold)),["Entrer la nouvelle valeur du levier :":: threshold]);
-		float n_val <- float(values[question_new_value]);
-//		if n_val <= 0 or n_val >= 1
-//		{
-//			write "Valeur incorrecte. Le seuil du levier n'a pas été modifié";
-//		}
-//		else
-//		{
-			threshold <- n_val;
-			write "La nouvelle valeur seuil du levier "+lever_type+" est de "+string(threshold);
-//		}
+		map values <- user_input(("Le seuil actuel du levier "+lever_type+"\nest de "+string(threshold)),["Entrer la nouvelle valeur seuil du levier :":: threshold]);
+		float n_val  <- float(values["Entrer la nouvelle valeur seuil du levier :"]);
+		threshold <- n_val ;
+		
+		ask world {do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_commune.commune_name, "-> La nouvelle valeur seuil est : "+string(myself.threshold));}	
 	}
 	
 	float activation_time
@@ -1409,15 +1304,31 @@ species lever
 	
 	action cancel_next_activated_action
 	{		
-			do cancel_lever(activation_queue[0]);
-			remove index: 0 from: activation_queue ;
+		if !empty(activation_queue)
+			{
+				do cancel_lever(activation_queue[0]);
+				ask world {do record_leader_activity("Levier "+myself.lever_type+" annulé à ", myself.my_commune.commune_name,  " Annulation de " +myself.activation_queue[0].act_done);}
+				remove index: 0 from: activation_queue ;	
+	
+			}
 	}
 
 	action accept_next_activated_action
 	{		
+		if !empty(activation_queue)
+		{
 			activation_queue[0].activation_time <- machine_time ;
+		} 	
 	}
 
+	action accept_all_activated_action
+	{	
+		loop aa over: activation_queue
+		{
+			aa.activation_time <- machine_time ;
+		} 	
+	}
+	
 	rgb color_profile
 	{
 		switch profile_name
@@ -1451,8 +1362,7 @@ species lever
 		if tout_a_gauche_a_l_affichage
 		{draw my_commune.commune_name  at:{origin.x, origin.y-1} font: font("Arial", 18 , #bold) color:#black;}
 		
-		if tout_a_gauche_a_l_affichage and my_commune.com_id = 1
-		{draw ("Tour : "+round)  at:{origin.x+50, origin.y-1} font: font("Arial", 20 , #bold) color:#black;}
+
 	}
 }
 
@@ -1462,14 +1372,25 @@ species cost_lever parent: lever
 	float added_cost_percentage;
 	int last_lever_amount <-0; 
 		
-	user_command "Changer le % d'impact sur le prix " action: change_added_cost_percentage;
+	//user_command "Comment fonctionne ce levier ?" action: write_help_lever_msg;		
+	user_command "Annuler la prochaine application du levier" action: cancel_next_activated_action;	
+	user_command "Valider la prochaine application du levier" action: accept_next_activated_action;
+	user_command "Valider toutes les applications en cours du levier" action: accept_all_activated_action;
 	
-	action change_added_cost_percentage
+	user_command "Changer le message envoyé au joueur" action: change_lever_player_msg;	
+	user_command "Changer la valeur du seuil du levier" action: change_lever_threshold_value;
+	user_command "Changer le % d'impact sur le prix " action: change_lever_added_cost_percentage;
+
+	user_command "activer/désactiver le levier" action: toogle_status;
+	
+	
+	action change_lever_added_cost_percentage
 	{
 		map values <- user_input(("Le % actuel par rapport au cout du levier "+lever_type+"\nest de "+string(added_cost_percentage)),["Entrer le nouveau % :":: added_cost_percentage]);
 		float n_val <- float(values["Entrer le nouveau % :"]);
 		added_cost_percentage <- n_val;
-		write "La nouveau % du levier "+lever_type+" est de "+string(added_cost_percentage);
+		
+		ask world {do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_commune.commune_name, "-> Le nouveau % du levier est : "+string(myself.added_cost_percentage));}
 	}
 	
 	string info_of_next_activated_lever 
@@ -1480,7 +1401,6 @@ species cost_lever parent: lever
 	action apply_lever(activated_lever lev)
 	{
 		lev.applied <- true;
-		write help_lever_msg;
 		lev.lever_explanation <- player_msg;
 		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
 		
@@ -1489,6 +1409,9 @@ species cost_lever parent: lever
 		last_lever_amount <-lev.added_cost;
 		activation_label_L1 <- "Dernier "+(last_lever_amount>=0?"prélevement":"versement")+" : "+abs(last_lever_amount)+ ' By.';
 		activation_label_L2 <- "Total "+(last_lever_amount>=0?"prélevé":"versé")+" : "+string(abs(tot_lever_amont()))+' By';
+		
+		ask world {do record_leader_activity("Levier "+myself.lever_type+" validé à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+(lev.added_cost)+"By"+"("+lev.act_done+")");}
+		
 	}
 	
 	int tot_lever_amont 
@@ -1500,7 +1423,28 @@ species cost_lever parent: lever
 species delay_lever parent: lever
 {
 	int rounds_delay_added;
+	
+	//user_command "Comment fonctionne ce levier ?" action: write_help_lever_msg;		
+	user_command "Annuler la prochaine application du levier" action: cancel_next_activated_action;	
+	user_command "Valider la prochaine application du levier" action: accept_next_activated_action;
+	user_command "Valider toutes les applications en cours du levier" action: accept_all_activated_action;
+	
+	user_command "Changer le message envoyé au joueur" action: change_lever_player_msg;	
+	user_command "Changer la valeur du seuil du levier" action: change_lever_threshold_value;
+	user_command "Changer le % d'impact sur le prix " action: change_lever_rounds_delay_added;
+
+	user_command "activer/désactiver le levier" action: toogle_status;
+
+
+	action change_lever_rounds_delay_added
+	{
+		map values <- user_input(("Le nb de tours de délai actuel du levier "+lever_type+"\nest de "+string(rounds_delay_added)),["Entrer le nouveau nb :":: rounds_delay_added]);
+		int n_val <- int(values["Entrer le nouveau nb :"]);
+		rounds_delay_added <- n_val;
 		
+		ask world {do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_commune.commune_name, "-> Le nouveau nb de tours du levier est : "+string(myself.rounds_delay_added));}
+	}
+	
 	action checkActivation_andImpactOn (action_done act_done)
 	{
 		if  status_on //and !act_done.is_applied
@@ -1518,7 +1462,6 @@ species delay_lever parent: lever
 	action apply_lever(activated_lever lev)
 	{
 		lev.applied <- true;
-		write help_lever_msg;
 		lev.lever_explanation <- player_msg;
 		lev.nb_rounds_delay <- rounds_delay_added;
 		
@@ -1537,6 +1480,8 @@ species delay_lever parent: lever
 		
 		lev.act_done.shouldWaitLeaderToActivate <- false;
 		do informNetwork_shouldWaitLeaderToActivate(lev.act_done);
+		
+		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+(lev.nb_rounds_delay)+" Tours"+"("+lev.act_done+")");}
 	}
 	
 	action cancel_lever(activated_lever lev)
@@ -1558,7 +1503,7 @@ species delay_lever parent: lever
 		put act_done.id key: "action_done id" in: msg;
 		put act_done.shouldWaitLeaderToActivate key: "action_done shouldWaitLeaderToActivate" in: msg;
 		ask world {do send_message_from_leader(msg);}
-		write msg;	
+		//write msg;	
 	}
 }
 
@@ -1613,8 +1558,6 @@ species lever_repair_dike parent: cost_lever
 
 species lever_AUorUi_inCoastBorderArea parent: delay_lever
 {
-	int rounds_delay_added <- 2;
-	
 	string progression_bar -> {""+indicator + " actions / "+ int(threshold) + " max"};
 	int indicator -> {my_commune.count_AUorUi_inCoastBorderArea};
 	
@@ -1622,6 +1565,7 @@ species lever_AUorUi_inCoastBorderArea parent: delay_lever
 		{
 		lever_type <- "Const/Densi non adapt en ZL";
 		profile_name<-"batisseur";
+		rounds_delay_added <- 2;
 		threshold <- 2;
 		help_lever_msg <-"Retard de "+rounds_delay_added+" tours";
 		player_msg <- "Un renforcement de la loi Littoral retarde vos projets";	
@@ -1703,7 +1647,6 @@ species lever_Us_outCoastBorderOrRiskArea parent: cost_lever
 	action apply_lever(activated_lever lev)
 	{
 		lev.applied <- true;
-		write help_lever_msg;
 		lev.lever_explanation <- player_msg;
 		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
 		lev.nb_rounds_delay <- rounds_delay_added;
@@ -1713,6 +1656,9 @@ species lever_Us_outCoastBorderOrRiskArea parent: cost_lever
 		last_lever_amount <-lev.added_cost;
 		activation_label_L1 <- "Dernier versement : "+(-1*last_lever_amount)+ ' By';
 		activation_label_L2 <- 'Total versé : '+string((-1*tot_lever_amont()))+' By';
+		
+		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+lev.added_cost+"Ny : "+lev.nb_rounds_delay+" Tours"+"("+lev.act_done+")");}
+			
 	}
 }
 
@@ -1760,8 +1706,7 @@ species lever_Us_inRiskArea parent: cost_lever
 
 species lever_inland_dike parent: delay_lever
 {
-	int rounds_delay_added <- -1;
-	
+
 	float indicator -> {my_commune.length_inland_dike / my_commune.length_dikes_t0};
 	string progression_bar -> {""+my_commune.length_inland_dike+ " m. / "+threshold+" * "+ my_commune.length_dikes_t0+" m. digues à t0"};
 	
@@ -1770,6 +1715,7 @@ species lever_inland_dike parent: delay_lever
 		{
 		lever_type <- "Const Rétrodigue";
 		profile_name<-"défense douce";
+		rounds_delay_added <- -1;
 		threshold <- 0.01;
 		help_lever_msg <-"Avance de "+abs(rounds_delay_added)+" tour"+(abs(rounds_delay_added)>1?"s":"");
 		player_msg <- "Des aides existent de la part du gouvernement pour renforcer la gestion intégrée des risques";	
@@ -1779,18 +1725,6 @@ species lever_inland_dike parent: delay_lever
 	{
 		return "Rétrodigue ("+int(activation_queue[0].act_done.length_def_cote) + " m.): -"+abs(rounds_delay_added)+ " tours";
 	}
-	
-//	action apply_lever(activated_lever lev)
-//	{
-//		lev.applied <- true;
-//		write help_lever_msg;
-//		lev.lever_explanation <- player_msg;
-//		lev.nb_rounds_delay <- rounds_delay_added;
-//		
-//		ask world {do send_message_lever(lev) ;}
-//		
-//		activation_label_L1 <- "Gain de temps accordé au total : "+string(abs(tot_lever_delay()))+' tours';
-//	}
 }
 
 
@@ -1822,7 +1756,6 @@ species cost_lever_if_no_associatedActionA_for_N_rounds_with_impacted_on_actionB
 	action apply_lever(activated_lever lev)
 	{
 		lev.applied <- true;
-		write help_lever_msg;
 		lev.lever_explanation <- player_msg;
 		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
 		
@@ -1834,6 +1767,8 @@ species cost_lever_if_no_associatedActionA_for_N_rounds_with_impacted_on_actionB
 		
 		nb_rounds_before_activation <- threshold;
 		nb_activations <- nb_activations +1;
+		
+		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_commune.commune_name, myself.help_lever_msg + " : "+(lev.added_cost)+"By"+"("+lev.act_done+")");}
 	}
 }
 
@@ -2044,7 +1979,7 @@ species network_leader skills:[network]
 						ask all_levers {do check_activation_at_new_round();}
 					}
 				match INDICATORS_T0
-					{ write m_contents;
+					{ //write m_contents;
 						ask commune where (each.commune_name = m_contents['commune_name']) 
 						{ 	length_dikes_t0 <- float (m_contents['length_dikes_t0']);
 							length_dunes_t0 <- float (m_contents['length_dunes_t0']);
@@ -2137,7 +2072,9 @@ experiment lead_the_game
 //		}
 		display levers 
 		{
-			graphics "leviers" position:{0,0} {}
+			graphics "Tour" {
+				draw ("Tour : "+round)  at:{55, 8.3} font: font("Arial", 20 , #bold) color:#black ;
+			}
 			species lever_create_dike aspect:base;
 			species lever_AUorUi_inCoastBorderArea aspect: base;
 			species lever_AUorUi_inRiskArea aspect: base;
@@ -2158,6 +2095,17 @@ experiment lead_the_game
 			
 			species commune_action_button aspect: base;
 			event [mouse_down] action: user_click;
+			event mouse_move action: action_move_infobulle;
+			
+			graphics "infobulle levier" transparency:0.4
+			{
+				if(explored_lever != nil)
+				{
+					geometry rec <- rectangle(20,0.7);
+					//draw rec at:MOUSE_LOC color:#black;
+					draw explored_lever.texte_infobulle()  at: (MOUSE_LOC /*-{9.8,0}*/) font: font("Arial", 12 , #bold) color: #red;
+				}
+			}
 		}
 	}
 
