@@ -2052,7 +2052,7 @@ species data_retrieve skills:[network]
 					{
 						if mc["action_type"]!="PLU" {write "PROBLEME";}
 						action_UA tmp <- action_UA first_with(each.id =mc["id"] );
-						
+						write tmp;
 						if(tmp = nil)
 						{
 							create action_UA number:1
@@ -2060,6 +2060,8 @@ species data_retrieve skills:[network]
 								id <- mc["id"];
 							}
 							tmp<- action_UA first_with(each.id =mc["id"] );
+							write "write 2"+tmp;
+						
 							ask tmp {do init_from_map(mc);}	
 							ask(game_history) {	do add_action_in_history(tmp);} 
 						}
@@ -2163,6 +2165,7 @@ species action_done
 	
 	action init_from_map(map<string, unknown> a )
 	{
+		
 		self.id <- string(a at "id");
 		self.element_id <- int(a at "element_id");
 		self.command <- int(a at "command");
@@ -2179,7 +2182,11 @@ species action_done
 		self.is_applied<- bool(a at "is_applied");
 		self.is_sent<- bool(a at "is_sent");
 		
+		write "idd sqdklsj"+is_applied;
+		
 		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		write "idd position "+pp;
+		
 		point mpp <- pp;
 		int i <- 0;
 		list<point> all_points <- [];
@@ -2206,7 +2213,11 @@ species action_done
 		{
 			element_shape <- polygon(all_points);
 			shape <- element_shape;
+			UA aa <- UA first_with(each.id = element_id);
+			write " " + aa.location + " "+ self.location;
+			
 		}
+		write "shape " + mpp+" " +shape;
 		location <-mpp;
 	}
 	
@@ -2804,6 +2815,7 @@ species action_UA parent:action_done
 	}
 	action draw_display
 	{
+		write "is_applied "+ is_applied ;
 		if ( !is_applied) {
 			
 			bool highlighted <- self = highlight_action;
@@ -2811,8 +2823,9 @@ species action_UA parent:action_done
 			geometry triangle <- polygon([shape.points[3],shape.points[1],shape.points[0],shape.points[3] ]);
 			
 			draw triangle  color:(define_color()) border:define_color() ;
-			draw shape  empty:true border:highlighted?#red:((is_sent)?define_color():#black) ;
-			
+			draw shape  at:location empty:true border:highlighted?#red:((is_sent)?define_color():#black) ;
+			write "draw_triangle  "+ location ;
+		
 			if(ACTION_MODIFY_LAND_COVER_Ui = command)
 			{
 				draw file("../images/icones/crowd.png") size:self.shape.width;

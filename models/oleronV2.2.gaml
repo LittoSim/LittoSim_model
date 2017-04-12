@@ -820,48 +820,6 @@ species action_done schedules:[]
 	int length_def_cote<-0;
 	bool a_lever_has_been_applied<- false;
 	
-//	action init_from_map(map<string, string> a )
-//	{
-//		self.id <- string(a at "id");
-//		self.element_id <- int(a at "element_id");
-//		self.commune_name <- a at "commune_name";
-//		self.command <- int(a at "command");
-//		self.label <- a at "label";
-//		self.cost <- float(a at "cost");
-//		self.initial_application_round <- int(a at "initial_application_round");
-//		self.isInlandDike <- bool(a at "isInlandDike");
-//		self.inRiskArea <- bool(a at "inRiskArea");
-//		self.inCoastBorderArea <- bool(a at "inCoastBorderArea");
-//		self.isExpropriation <- bool(a at "isExpropriation");
-//		self.inProtectedArea <- bool(a at "inProtectedArea");
-//		self.previous_ua_name <- string(a at "previous_ua_name");
-//		self.action_type <- string(a at "action_type");
-//
-//		self.is_applied<- bool(a at "is_applied");
-//		self.is_sent<- bool(a at "is_sent");
-//		self.command_round <-int(a at "command_round"); 
-//		
-//		point pp<-{float(a at "locationx"), float(a at "locationy")};
-//		point mpp <- pp;
-//		int i <- 0;
-//		list<point> all_points <- [];
-//		loop while: (pp!=nil)
-//		{
-//			string xd <- a at ("locationx"+i);
-//			if(xd != nil)
-//			{
-//				pp <- {float(xd), float(a at ("locationy"+i))  };
-//				all_points <- all_points + pp;
-//			}
-//			else
-//			{
-//				pp<-nil;
-//			}
-//			i<- i + 1;
-//		}
-//		element_shape <- polygon(all_points);
-//		location <-mpp;
-//	}
 	
 	map<string,string> build_map_from_attribute
 	{
@@ -1373,7 +1331,11 @@ species network_player skills:[network]
 				else {
 					if isExpropriation {write "Procédure d'expropriation declenchée pour l'UA "+self.id;}
 					switch self.action_type {
-						match "PLU" {element_shape <- (UA first_with(each.id = self.element_id)).shape; }
+						match "PLU" {
+							UA tmp <- (UA first_with(each.id = self.element_id));
+							element_shape <- tmp.shape;
+							location <- tmp.location;
+						}
 						match "dike" {element_shape <- (def_cote first_with(each.dike_id = self.element_id)).shape;
 									length_def_cote <- int(element_shape.perimeter);
 						}
