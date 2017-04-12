@@ -179,17 +179,21 @@ global
 
 	}
 	
-	action record_leader_activity (string type_msg , string aCommune, string msg) {
+	action record_leader_activity (string type_msg , string aCommune, string msg)
+	{
 		string aText <- "<"+string(current_date.hour) +":"+ current_date.minute +">"+type_msg + aCommune+" -> "+ msg;
-		add aText to: leader_activities;
-		write aText;		
+		write aText; //affiche dans la console
+		add ("<"+machine_time+">"+aText) to: leader_activities;
 	}
 	
 	action save_leader_records
 	{
-		save leader_activities to: "leader_records-"+sim_id+"/leader_activities_Tour"+round+".txt" type: "text";
+		loop a over: leader_activities 
+		{
+			save a to: "leader_records-"+sim_id+"/leader_activities_Tour"+round+".txt" type: "text";
+		}
 		save action_done to: "leader_records-"+sim_id+"/action_done_Tour"+round+".csv" type: "csv";
-		save activated_lever to: "leader_records-"+sim_id+"/activated_lever_Tour"+round+".csv" type: "csv";
+		save activated_lever to: "leader_records-"+sim_id+"/activated_lever_Tour"+round+".csv" type: "csv"; 
 	}
 	
 	action add_action_done_to_profile(action_done act_dn, int act_round)
@@ -441,7 +445,7 @@ global
 	{
 		explored_lever <- nil;
 		MOUSE_LOC <- point(#user_location);
-		if MOUSE_LOC != nil  and MOUSE_LOC != {0,0} and !empty(all_levers)
+		if MOUSE_LOC != nil  and MOUSE_LOC != {0,0} and all_levers != nil and !empty(all_levers)
 			{
 			list<lever> selected_levers <- all_levers overlapping (MOUSE_LOC);
 			if (length(selected_levers)> 0) 
@@ -492,9 +496,9 @@ global
 		
 		int nb_comm <- length(commune);
 		int nb_lev_comm <- length(all_levers) / nb_comm; // nb de leviers par commune
-		int nb_rows_comm <- 3 ; // nb de rangées de leviers par commune
-		int width_screen_view <- 60;
-		int height_screen_view <- 60;
+		int nb_rows_comm <- 2 ; // nb de rangées de leviers par commune
+		int width_screen_view <- 100;
+		int height_screen_view <- 40;
 		int nb_rows <- nb_rows_comm * nb_comm;
 		int nb_levs_row <- ceil(nb_lev_comm / nb_rows_comm);
 		float row_spacing <- (height_screen_view / nb_rows) *0.9;
@@ -2109,7 +2113,7 @@ experiment lead_the_game
 			
 			graphics "infobulle levier" transparency:0.4
 			{
-				if(explored_lever != nil)
+				if(explored_lever != nil and MOUSE_LOC !=nil)
 				{
 					geometry rec <- rectangle(20,0.7);
 					//draw rec at:MOUSE_LOC color:#black;

@@ -2124,7 +2124,14 @@ species def_cote
 	
 	//La commune installe des ganivelles sur la dune
 	action install_ganivelle_by_commune (int a_commune_id) {
-		cptStatus <- 0;
+		if status = "mauvais"
+		{
+			cptStatus <- 2;
+		}
+		else
+		{				
+			cptStatus <- 0;
+		}		
 		ganivelle <- true;
 		write "INSTALL GANIVELLE";
 	}
