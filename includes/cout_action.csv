@@ -2,12 +2,12 @@ identifiant;action;cost
 0;Transformer en A;100
 1;Transformer en AU;750
 2;Transformer une AU en N;200
-3;Construire une digue;20
-4;Reparer une digue;2
-5;Dementeler une digue;4
-6;Rehausser une digue;4
+3;Construire une digue;10
+4;Reparer une digue;1
+5;Dementeler une digue;2
+6;Rehausser une digue;2
 7;Transformer une A en N;100
-8;Installer des ganivelles;1
+8;Installer des ganivelles;0.5
 9;Transformer en AUs;1500
 10;Transformer en Us;1000
 11;Transformer en AUs subventionné;800

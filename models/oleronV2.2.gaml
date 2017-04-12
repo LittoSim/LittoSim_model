@@ -35,7 +35,7 @@ global  {
 	
 	string UPDATE_ACTION_DONE <- "update_action_done";
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
-	
+	list<commune> communes_en_jeu;
 	
 	//récupération des couts du fichier cout_action	
 	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,0});
@@ -132,10 +132,10 @@ global  {
 	int font_interleave <- int(shape.width/60);
 	
 	//// tableau des données de budget des communes pour tracer le graph d'évolution des budgets
-	container data_budget_C1 <- [0];
-	container data_budget_C2 <- [0];
-	container data_budget_C3 <- [0];	
-	container data_budget_C4 <- [0];
+	list<int> data_budget_C1 <- [];
+	list<int> data_budget_C2 <- [];
+	list<int> data_budget_C3 <- [];	
+	list<int> data_budget_C4 <- [];
 	int count_N_to_AU_C1 <-0;
 	int count_N_to_AU_C2 <-0;
 	int count_N_to_AU_C3 <-0;	
@@ -248,6 +248,8 @@ init
 			do calculate_indicators_t0;
 		}
 		ask def_cote {do init_dike;}
+		
+		communes_en_jeu <- (commune where (each.id > 0)) sort_by (each.id);
 	}
 	
  int getMessageID
@@ -353,6 +355,7 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
 		write flood_results;
+		save flood_results to: "flood_results-"+machine_time+"-Tour"+round+".txt" type: "text";
 //		map<string,string> msg <- [];
 //		put "1" key:flood_results in:msg;
 //		map values <- user_input(msg);	
@@ -689,9 +692,22 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 				
 			write "Surface inondée par commune";
 			ask ((commune where (each.id > 0)) sort_by (each.id))
-				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ; 
+				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ;
 					add surface_inondee to: data_surface_inondee; 
 					write ""+ commune_name + " : " + surface_inondee +" ha";
+
+					totU <- (U_0_5c + U_1c + U_maxc) with_precision 1 ;
+					totUs <- (Us_0_5c + Us_1c + Us_maxc ) with_precision 1 ;
+					totUdense <- (Udense_0_5c + Udense_1c + Udense_maxc) with_precision 1 ;
+					totAU <- (AU_0_5c + AU_1c + AU_maxc) with_precision 1 ;
+					totN <- (N_0_5c + N_1c + N_maxc) with_precision 1 ;
+					totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1 ;	
+					add totU to: data_totU;
+					add totUs to: data_totUs;
+					add totUdense to: data_totUdense;
+					add totAU to: data_totAU;
+					add totN to: data_totN;
+					add totA to: data_totA;	
 				}
 		}
 
@@ -1821,6 +1837,13 @@ species network_player skills:[network]
 	}	
 		
 	
+	rgb color_of_water_height (float aWaterHeight)
+	{
+		if aWaterHeight  <= 0.5 {return rgb (200,200,255);}
+		if aWaterHeight  > 0.5 and aWaterHeight  <= 1 {return rgb (115,115,255);}
+		if aWaterHeight  > 1 and aWaterHeight  <= 2 {return rgb (65,65,255);}
+		return rgb (30,30,255);
+	}
 	
 }
 
@@ -1867,25 +1890,33 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 		{
 			if cell_type = 1 
 				{color<- soil_color ; }
-			 else{
+			else
+			{
 				if water_height = 0			
 				{color<- soil_color;}
 				else
-				 {float tmp <-  min([(water_height  / 5) * 255,200]);
-				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
-				 }
+				{
+//				 	float tmp <-  min([(water_height  / 5) * 255,200]);
+//				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+					color <- world.color_of_water_height(water_height);
+				}
 			}
+		}
 		aspect elevation_eau_max
 		{
 			if cell_type = 1 
 				{color<- soil_color ; }
-			 else{
+			else
+			{
 				if water_height = 0			
 				{color<- soil_color;}
 				else
-				 {float tmp <-  min([(max_water_height  / 5) * 255,200]);
-				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; }
-				 }
+				{
+//				 	float tmp <-  min([(max_water_height / 5) * 255, 200]);
+//				 	color <- rgb(200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+					color <- world.color_of_water_height(max_water_height);
+				}
+			}
 		}		
 		aspect elevation_eau_ou_eau_max
 		{
@@ -1895,13 +1926,15 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 			{
 				if show_max_water_height
 				{
-				 	float tmp <-  min([(max_water_height  / 5) * 255,200]);
-				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+//				 	float tmp <-  min([(max_water_height  / 5) * 255,200]);
+//				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+					color <- world.color_of_water_height(max_water_height);
 				 }
 				else
 				{
-					float tmp <-  min([(water_height  / 5) * 255,200]);
-				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+//					float tmp <-  min([(water_height  / 5) * 255,200]);
+//				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
+					color <- world.color_of_water_height(water_height);
 				}
 			}
 		}
@@ -2466,8 +2499,8 @@ species commune
 	list<cell> cells ;
 	
 	// 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
-	// Ajustement pour réduire un tout petit peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.65 pour sttrojan
-	float impot_unit <- commune_name="stpierre"?0.38:(commune_name="sttrojan"?0.65:0.42); 
+	// Ajustement pour réduire un peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.9 pour sttrojan
+	float impot_unit <- commune_name="stpierre"?0.38:(commune_name="sttrojan"?0.9:0.42); 
 	
 	/* initialisation des hauteurs d'eau */ 
 	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
@@ -2478,6 +2511,18 @@ species commune
 	float N_0_5c <-0.0;	float N_1c <-0.0;	float N_maxc <-0.0;
 	float surface_inondee <- 0.0;
 	list<float> data_surface_inondee <- [];
+	float totU <- 0.0;
+	list<float> data_totU <- [];
+	float totUs <- 0.0;
+	list<float> data_totUs <- [];
+	float totUdense <- 0.0;
+	list<float> data_totUdense <- [];
+	float totAU <- 0.0;
+	list<float> data_totAU <- [];
+	float totN <- 0.0;
+	list<float> data_totN <- [];
+	float totA <- 0.0;
+	list<float> data_totA <- [];
 
 	// Indicateurs calculés par le Modèle à l’initialisation. Lorsque Leader se connecte, le Modèle lui renvoie la valeur de ces indicateurs en même temps
 	float length_dikes_t0 <- 0#m; //linéaire de digues existant / commune
@@ -2669,71 +2714,170 @@ experiment oleronV2 type: gui {
 			event mouse_down action: button_click_C_mdj;
 			}
 			
-		display graph_budget {
-				chart "Graphe des budgets" type: series {
-					datalist value:[data_budget_C1,data_budget_C2,data_budget_C3,data_budget_C4]
-							color:[#red,#blue,#green,#black]
-							legend:((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name; 			
+		display "Budgets" {
+				chart "Budget des communes" type: series {
+				 	data "St Pierre"
+					value:data_budget_C1
+				 	color:#red;
+				 	data "Dolus"
+					value:data_budget_C2
+				 	color:#blue;
+				 	data "Le Chateau"
+					value:data_budget_C3
+				 	color:#green;
+				 	data "St Trojan"
+					value:data_budget_C4
+				 	color:#black;			
 				}
 			}
-			
-
-		display Barplots {
-                
-				chart "Zone U" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0} {
-					datalist 
-						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.U_maxc)] 
+		
+		display Barplots
+			{
+				chart "Zone U" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0}
+				{
+					data "0.5" 
+						value:(communes_en_jeu collect each.U_0_5c)
 						style:stack
-						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
-						
-				}
-				chart "Zone Us" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0} {
-					datalist 
-						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.Us_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Us_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Us_maxc)] 
+						color: world.color_of_water_height(0.5);
+					data  "1"
+						value:(communes_en_jeu collect each.U_1c)
 						style:stack
-						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
-						
-				}
-				chart "Zone U dense" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0} {
-					datalist 
-						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.Udense_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Udense_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.Udense_maxc)] 
+						color: world.color_of_water_height(0.9); 
+					data ">1" 
+						value:(communes_en_jeu collect each.U_maxc)
 						style:stack
-						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
-						
+						color: world.color_of_water_height(1.9); 
 				}
-				chart "Zone AU" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0.5} {
-					datalist 
-						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.AU_maxc)] 
+				chart "Zone Us" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0}
+				{
+					data "0.5" 
+						value:(communes_en_jeu collect each.Us_0_5c)
 						style:stack
-						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
-						
-				}
-				chart "Zone A" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0.5} {
-					datalist 
-						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.A_maxc)] 
+						color: world.color_of_water_height(0.5);
+					data  "1"
+						value:(communes_en_jeu collect each.Us_1c)
 						style:stack
-						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
-						
-				}
-				chart "Zone N" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0.5} {
-					datalist 
-						value:[(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_0_5c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_1c),(((commune where (each.id > 0)) sort_by (each.id)) collect each.N_maxc)] 
+						color: world.color_of_water_height(0.9); 
+					data ">1" 
+						value:(communes_en_jeu collect each.Us_maxc)
 						style:stack
-						legend:[" < 0.5m","0.5 - 1m","+1m"] ; 	
-						
+						color: world.color_of_water_height(1.9); 
 				}
-				 
+				chart "Zone U dense" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0}
+				{
+					data "0.5" 
+						value:(communes_en_jeu collect each.Udense_0_5c)
+						style:stack
+						color: world.color_of_water_height(0.5);
+					data  "1"
+						value:(communes_en_jeu collect each.Udense_1c)
+						style:stack
+						color: world.color_of_water_height(0.9); 
+					data ">1" 
+						value:(communes_en_jeu collect each.Udense_maxc)
+						style:stack
+						color: world.color_of_water_height(1.9); 
+				}
+				chart "Zone AU" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0.5}
+				{
+					data "0.5" 
+						value:(communes_en_jeu collect each.AU_0_5c)
+						style:stack
+						color: world.color_of_water_height(0.5);
+					data  "1"
+						value:(communes_en_jeu collect each.AU_1c)
+						style:stack
+						color: world.color_of_water_height(0.9); 
+					data ">1" 
+						value:(communes_en_jeu collect each.AU_maxc)
+						style:stack
+						color: world.color_of_water_height(1.9); 
+				}
+				chart "Zone A" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0.5}
+				{
+					data "0.5" 
+						value:(communes_en_jeu collect each.A_0_5c)
+						style:stack
+						color: world.color_of_water_height(0.5);
+					data  "1"
+						value:(communes_en_jeu collect each.A_1c)
+						style:stack
+						color: world.color_of_water_height(0.9); 
+					data ">1" 
+						value:(communes_en_jeu collect each.A_maxc)
+						style:stack
+						color: world.color_of_water_height(1.9); 
+				}
+				chart "Zone N" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0.5}
+				{
+					data "0.5" 
+						value:(communes_en_jeu collect each.N_0_5c)
+						style:stack
+						color: world.color_of_water_height(0.5);
+					data  "1"
+						value:(communes_en_jeu collect each.N_1c)
+						style:stack
+						color: world.color_of_water_height(0.9); 
+					data ">1" 
+						value:(communes_en_jeu collect each.N_maxc)
+						style:stack
+						color: world.color_of_water_height(1.9); 
+				}
 			}
-			
+				
 		display "VIDE"
 		{
 			
 		}	
-		display "Surface inondée par commune" {
-				chart "Surface inondée par commune" type: series {
-					datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
-				}
+		display "Surface inondée par commune"
+		{
+			chart "Surface inondée par commune" type: series
+			{
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
+		}
+		display "Surface U inondée par commune"
+		{
+			chart "Surface U inondée par commune" type: series
+			{
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totU),((commune first_with(each.id = 2)).data_totU),((commune first_with(each.id = 3)).data_totU),((commune first_with(each.id = 4)).data_totU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+			}
+		}
+		display "Surface Us inondée par commune"
+		{
+			chart "Surface Us inondée par commune" type: series
+			{
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUs),((commune first_with(each.id = 2)).data_totUs),((commune first_with(each.id = 3)).data_totUs),((commune first_with(each.id = 4)).data_totUs)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+			}
+		}
+		display "Surface Udense inondée par commune"
+		{
+			chart "Surface Udense inondée par commune" type: series
+			{
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUdense),((commune first_with(each.id = 2)).data_totUdense),((commune first_with(each.id = 3)).data_totUdense),((commune first_with(each.id = 4)).data_totUdense)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+			}
+		}
+		display "Surface AU inondée par commune"
+		{
+			chart "Surface AU inondée par commune" type: series
+			{
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totAU),((commune first_with(each.id = 2)).data_totAU),((commune first_with(each.id = 3)).data_totAU),((commune first_with(each.id = 4)).data_totAU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+			}
+		}
+		display "Surface N inondée par commune"
+		{
+			chart "Surface N inondée par commune" type: series
+			{
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totN),((commune first_with(each.id = 2)).data_totN),((commune first_with(each.id = 3)).data_totN),((commune first_with(each.id = 4)).data_totN)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+			}
+		}
+		display "Surface A inondée par commune"
+		{
+			chart "Surface A inondée par commune" type: series
+			{
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totA),((commune first_with(each.id = 2)).data_totA),((commune first_with(each.id = 3)).data_totA),((commune first_with(each.id = 4)).data_totA)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+			}
+		}
 	}
 }
 		

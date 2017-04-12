@@ -156,8 +156,8 @@ global
 	int minimal_budget <- -2000;
 	int impot_recu <- 0;
 	// 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
-	// Ajustement pour réduire un tout petit peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.65 pour sttrojan
-	float impot_unit <- commune_name="stpierre"?0.38:(commune_name="sttrojan"?0.65:0.42);
+	// Ajustement pour réduire un peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.9 pour sttrojan
+	float impot_unit <- commune_name="stpierre"?0.38:(commune_name="sttrojan"?0.9:0.42);
 	bool subvention_habitat_adapte <- false;
 	bool subvention_ganivelle <- false;
 	int previous_population;

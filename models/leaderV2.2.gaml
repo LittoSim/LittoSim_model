@@ -1089,17 +1089,32 @@ species commune_action_button
 		switch(displayName)
 		{
 			match "Prélever de l'argent"
-			{
-				map values <- user_input("Indiquer le montant prélevé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : ne pas utiliser de guillemets",
+			{			
+				string msg1 <- "Les autorités réorientent leur politique: vos actions vous coûtent plus cher que prévu. Vous êtes prélevé de : ";
+				string msg2 <- "Les coûts dans le BTP augmentent considérablement et votre budget en est impacté. Vous êtes prélevé de : ";
+				string msg3 <-"L’agence du risque prélève une amende en raison de vos actions de gestion des risques. Vous êtes prélevé de : ";
+				map values <- user_input("Indiquer le montant prélevé à " +my_commune.com_large_name+"\n(0 pour annuler)\n
+Choix du message envoyé au joueur
+1 : "+msg1+" 
+2 : "+msg2+"
+3 : "+msg3+"
+OU Tapez votre message personnalisé sans utiliser de guillemets",
 						[	"Montant :" :: "2000",
-							"Message :" :: "L agence vous preleve un montant de : "
+							"Message (1,2,3 ou message personnalisé)" :: "1"
 						]);
 				map<string, unknown> msg <-[];
 				if int(values["Montant :"])=0 {return;}
+				string msgJoueur;
+				switch int(values["Message (1,2,3 ou message personnalisé)"]) {
+					match 1 {msgJoueur<-msg1;}
+					match 2 {msgJoueur<-msg2;}
+					match 3 {msgJoueur<-msg3;}
+					default {msgJoueur<-(values["Message (1,2,3 ou message personnalisé)"]);}
+				}
 				put PRELEVER key: LEADER_COMMAND in: msg;
 				put my_commune.commune_name key: COMMUNE in: msg;
 				put int(values["Montant :"]) key: AMOUNT in: msg;
-				put values["Message :"] key: PLAYER_MSG in:msg;
+				put msgJoueur key: PLAYER_MSG in:msg;
 
 				ask world {do send_message_from_leader(msg);}	
 				ask world {do record_leader_activity("Prélever de l'argent à ", myself.my_commune.commune_name, string(msg at PLAYER_MSG) + string(msg at AMOUNT)+"By");}
@@ -1107,31 +1122,62 @@ species commune_action_button
 			}
 			match "Envoyer de l'argent"
 			{
-				map values <- user_input("Indiquer le montant envoyé à " +my_commune.com_large_name+"\n(0 pour annuler)\nATTENTION : ne pas utiliser de guillemets",
+				string msg1 <- "L’agence du risque finance une partie de vos pratiques de gestion intégrée des risques. Vous recevez : ";
+				string msg2 <- "Les autorités subventionnent vos actions de gestion des risques. Vous recevez : ";
+				string msg3 <-"Vos efforts en matière de gestion des risques sont financièrement encouragés. Vous recevez : ";
+				map values <- user_input("Indiquer le montant envoyé à " +my_commune.com_large_name+"\n(0 pour annuler)\n
+Choix du message envoyé au joueur
+1 : "+msg1+" 
+2 : "+msg2+"
+3 : "+msg3+"
+OU Tapez votre message personnalisé sans utiliser de guillemets",
 						[	"Montant :" :: "2000",
-							"Message :" :: "L agence vous envoie un montant de : "
+							"Message (1,2,3 ou message personnalisé)" :: "1"
 						]);
 				map<string, unknown> msg <-[];				
 				if int(values["Montant :"])=0 {return;}
+				string msgJoueur;
+				switch int(values["Message (1,2,3 ou message personnalisé)"]) {
+					match 1 {msgJoueur<-msg1;}
+					match 2 {msgJoueur<-msg2;}
+					match 3 {msgJoueur<-msg3;}
+					default {msgJoueur<-(values["Message (1,2,3 ou message personnalisé)"]);}
+				}
 				put CREDITER key: LEADER_COMMAND in: msg;
 				put my_commune.commune_name key: COMMUNE in: msg;
 				put int(values["Montant :"]) key: AMOUNT in: msg;
-				put values["Message :"] key: PLAYER_MSG in:msg;
+				put msgJoueur key: PLAYER_MSG in:msg;
 
 				ask world {do send_message_from_leader(msg);}
 				ask world {do record_leader_activity("Envoyer de l'argent à ", myself.my_commune.commune_name, string(msg at PLAYER_MSG)+ string(msg at AMOUNT)+"By");}							
 			}
 			match "Envoyer un message"
 			{
-				string msg_sent <- "L agence dit Bonjour";
-				map values <- user_input("Indiquer le message envoyé à " +my_commune.com_large_name+"\n('''' pour annuler)\nATTENTION : ne pas utiliser de guillemets",
-						["Message :" :: msg_sent]);
-				msg_sent <- string (values["Message :"]);
+				string msg1 <- "Un renforcement de la loi Littoral retarde vos mesures de gestion du risque";
+				string msg2 <- "L’agence du risque désapprouve votre gestion du risque : vos dossiers sont retardés";
+				string msg3 <-"L’agence du risque facilite vos pratiques alternatives de gestion des risques et active vos dossiers";
+				string msg4 <-"Un changement législatif est opéré en faveur de vos pratiques de gestion des risques : vous êtes encouragé à poursuivre votre stratégie";
+				string msgJoueur;
+				map values <- user_input("Indiquer le message envoyé à " +my_commune.com_large_name+"\n(message vide pour annuler)\n
+Choix du message envoyé au joueur
+1 : "+msg1+" 
+2 : "+msg2+"
+3 : "+msg3+"
+4 : "+msg4+"
+OU Tapez votre message personnalisé sans utiliser de guillemets",
+						["Message (1,2,3,4 ou message personnalisé)" :: "1"]);
+				if (values["Message (1,2,3,4 ou message personnalisé)"])=""{return;}
+				switch int(values["Message (1,2,3,4 ou message personnalisé)"]) {
+					match 1 {msgJoueur<-msg1;}
+					match 2 {msgJoueur<-msg2;}
+					match 3 {msgJoueur<-msg3;}
+					match 4 {msgJoueur<-msg4;}
+					default {msgJoueur<-(values["Message (1,2,3,4 ou message personnalisé)"]);}
+				}
 				map<string, string> msg <-[];
-				if (values["Message :"])in["","L'agence signale que..."] {return;}
 				put MSG_TO_PLAYER key: LEADER_COMMAND in: msg;
 				put my_commune.commune_name key: COMMUNE in: msg;
-				put values["Message :"] key: PLAYER_MSG in:msg;
+				put msgJoueur key: PLAYER_MSG in:msg;
 				
 				ask world {do send_message_from_leader(msg);}
 				ask world {do record_leader_activity("Envoyer un message à ", myself.my_commune.commune_name, string(msg at PLAYER_MSG));}			
