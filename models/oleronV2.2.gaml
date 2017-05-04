@@ -922,7 +922,7 @@ species network_round_manager skills:[remoteGUI]
 	list<string> mfile <- [];
 	string selected_action;
 	string choix_simu_temp <- nil;
-	string choix_simulation <- nil;
+	string choix_simulation <- "Submersion initiale";
 	int mround <-0 update:world.round;
 	 
 	init
@@ -965,8 +965,9 @@ species network_round_manager skills:[remoteGUI]
 	
 	reflex show_submersion when: choix_simu_temp!=nil
 	{
-		//write "network_round_manager : choix simulation " + choix_simu;
+		write "network_round_manager : choix simulation " + choix_simu_temp;
 		choix_simulation <- choix_simu_temp;
+		choix_simu_temp <-nil;
 	}
 	
 	
@@ -987,6 +988,20 @@ species network_round_manager skills:[remoteGUI]
 		
 		//démarer la visualisation avec la submerssion "choix simulaiton"
 		//quelle méthode doit il être utilisé?
+		loop a over:list_flooding_events.keys
+		{
+			write "coucou "+ a+ " " +(list_flooding_events at a);
+		}
+		write "chouis "+choix_simulation;
+		
+		loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
+		set lisfloodReadingStep <- 0;
+		current_lisflood_rep <- list_flooding_events at choix_simulation;
+		stateSimPhase <- 'show lisflood'; write stateSimPhase;
+		ask world{
+			do readLisflood;
+		}
+		
 	}
 	
 	action add_element(string nom_submersion, string path_to_see)
