@@ -14,7 +14,7 @@ model leader
 global
 {
 	
-	string SERVER <- "localhost"; //"192.168.1.100"localhost
+	string SERVER <- "192.168.1.100"; //"192.168.1.100" "localhost"
 	float MOUSE_BUFFER <- 50#m;
 	point MOUSE_LOC ;
 	float sim_id;
@@ -190,10 +190,14 @@ global
 	{
 		loop a over: leader_activities 
 		{
-			save a to: "leader_records-"+sim_id+"/leader_activities_Tour"+round+".txt" type: "text";
+			save a to: "leader_records-"+sim_id+"/leader_activities_Tour"+round+".txt" type: "text" rewrite:false;
 		}
 		save action_done to: "leader_records-"+sim_id+"/action_done_Tour"+round+".csv" type: "csv";
 		save activated_lever to: "leader_records-"+sim_id+"/activated_lever_Tour"+round+".csv" type: "csv"; 
+		loop a over:all_levers 
+		{
+			save a to:"leader_records-"+sim_id+"/all_levers_Tour"+round+".csv"  type:"csv" rewrite:false;
+		}
 	}
 	
 	action add_action_done_to_profile(action_done act_dn, int act_round)
@@ -1200,6 +1204,8 @@ species activated_lever
 	string act_done_id <- "";
 	int nb_rounds_delay <-0;
 	int added_cost <- 0;
+	int round_creation;
+	int round_application;
 	
 	action init_from_map(map<string, string> m )
 	{
@@ -1210,6 +1216,8 @@ species activated_lever
 		added_cost <- int(m["added_cost"]);
 		nb_rounds_delay <- int(m["nb_rounds_delay"]);
 		lever_explanation <- m["lever_explanation"];
+		round_creation <- int(m["round_creation"]);
+		round_application <- int(m["round_application"]);
 	}
 	
 	map<string,string> build_map_from_attribute
@@ -1222,7 +1230,9 @@ species activated_lever
 			"act_done_id"::string(act_done_id),
 			"added_cost"::string(added_cost),
 			"nb_rounds_delay"::int(nb_rounds_delay),
-			"lever_explanation"::lever_explanation
+			"lever_explanation"::lever_explanation,
+			"round_creation"::round_creation,
+			"round_application"::round_application
 			 ]	;
 		return res;
 	}
@@ -1301,6 +1311,7 @@ species lever
 			self.act_done <- a_act_done;
 			act_done_id <- a_act_done.id;
 			activation_time <-  machine_time + myself.timer_duration ;
+			round_creation <- round;
 			add self to: myself.activation_queue;
 		}
 		ask world {do record_leader_activity("Levier "+myself.lever_type+" programmé à ", myself.my_commune.commune_name, string(a_act_done.label)+"("+a_act_done+")");}
@@ -1460,6 +1471,7 @@ species cost_lever parent: lever
 	action apply_lever(activated_lever lev)
 	{
 		lev.applied <- true;
+		lev.round_application <-round;
 		lev.lever_explanation <- player_msg;
 		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
 		
@@ -2155,7 +2167,7 @@ experiment lead_the_game
 			
 			species commune_action_button aspect: base;
 			event [mouse_down] action: user_click;
-			event mouse_move action: action_move_infobulle;
+			//event mouse_move action: action_move_infobulle;
 			
 			graphics "infobulle levier" transparency:0.4
 			{

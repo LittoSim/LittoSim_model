@@ -1024,6 +1024,8 @@ species activated_lever
 	string act_done_id <- "";
 	int nb_rounds_delay <-0;
 	int added_cost <- 0;
+	int round_creation;
+	int round_application;
 	
 	action init_from_map(map<string, string> m )
 	{
@@ -1034,6 +1036,8 @@ species activated_lever
 		added_cost <- int(m["added_cost"]);
 		nb_rounds_delay <- int(m["nb_rounds_delay"]);
 		lever_explanation <- m["lever_explanation"];
+		round_creation <- int(m["round_creation"]);
+		round_application <- int(m["round_application"]);
 	}
 	
 	map<string,string> build_map_from_attribute
@@ -1046,7 +1050,9 @@ species activated_lever
 			"act_done_id"::string(act_done_id),
 			"added_cost"::string(added_cost),
 			"nb_rounds_delay"::int(nb_rounds_delay),
-			"lever_explanation"::lever_explanation
+			"lever_explanation"::lever_explanation,
+			"round_creation"::round_creation,
+			"round_application"::round_application
 			 ]	;
 		return res;
 	}
