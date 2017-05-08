@@ -14,7 +14,7 @@ model leader
 global
 {
 	
-	string SERVER <- "192.168.1.100"; //"192.168.1.100" "localhost"
+	string SERVER <- "localhost"; //"192.168.1.100" "localhost"
 	float MOUSE_BUFFER <- 50#m;
 	point MOUSE_LOC ;
 	float sim_id;
@@ -1442,7 +1442,7 @@ species cost_lever parent: lever
 	float added_cost_percentage;
 	int last_lever_amount <-0; 
 		
-	//user_command "Comment fonctionne ce levier ?" action: write_help_lever_msg;		
+	
 	user_command "Annuler la prochaine application du levier" action: cancel_next_activated_action;	
 	user_command "Valider la prochaine application du levier" action: accept_next_activated_action;
 	user_command "Valider toutes les applications en cours du levier" action: accept_all_activated_action;
@@ -1453,6 +1453,7 @@ species cost_lever parent: lever
 
 	user_command "activer/désactiver le levier" action: toogle_status;
 	
+	user_command "Comment fonctionne ce levier ?" action: write_help_lever_msg;		
 	
 	action change_lever_added_cost_percentage
 	{
@@ -1495,7 +1496,7 @@ species delay_lever parent: lever
 {
 	int rounds_delay_added;
 	
-	//user_command "Comment fonctionne ce levier ?" action: write_help_lever_msg;		
+	
 	user_command "Annuler la prochaine application du levier" action: cancel_next_activated_action;	
 	user_command "Valider la prochaine application du levier" action: accept_next_activated_action;
 	user_command "Valider toutes les applications en cours du levier" action: accept_all_activated_action;
@@ -1505,6 +1506,7 @@ species delay_lever parent: lever
 	user_command "Changer le % d'impact sur le prix " action: change_lever_rounds_delay_added;
 
 	user_command "activer/désactiver le levier" action: toogle_status;
+	user_command "Comment fonctionne ce levier ?" action: write_help_lever_msg;		
 
 
 	action change_lever_rounds_delay_added
@@ -2018,11 +2020,12 @@ species network_leader skills:[network]
 	init
 	{
 		do connect to: SERVER with_name:GAME_LEADER;
-		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
-		put ASK_NUM_ROUND key: LEADER_COMMAND in: msg;
-		ask world {do send_message_from_leader(msg);}
+		
 		map<string, unknown> msg <-[]; 
 		put ASK_INDICATORS_T0 key: LEADER_COMMAND in: msg;
+		ask world {do send_message_from_leader(msg);}
+		map<string, unknown> msg <-[]; //LEADER_COMMAND::RETARDER,DELAY::duree, ACTION_ID::act_dn.id];
+		put ASK_NUM_ROUND key: LEADER_COMMAND in: msg;
 		ask world {do send_message_from_leader(msg);}
 		map<string, unknown> msg <-[]; 
 		put "RETREIVE_ACTION_DONE" key: LEADER_COMMAND in: msg;
