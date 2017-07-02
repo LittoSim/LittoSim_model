@@ -28,34 +28,32 @@ shinyUI(navbarPage(
     # )
   )
 ),
-tabPanel("Graphs Actions par Communes",
+tabPanel("Graphs Actions",
          mainPanel(
-          h3("Nombre d'actions par tour"),
+          h3("Nombre d'actions par commune et par tour"),
           plotOutput(outputId = "plot_actions", height = "500px"),
           h3("Nombre d'actions par tour et par commune"),
           plotOutput(outputId = "plot_actions_communes", height = "500px")
           
          )
-)#,
-# tabPanel("Graphs profils",
-#          mainPanel(
-#            h3("Nombre d'actions par tour"),
-#            plotOutput(outputId = "plot_profils", height = "500px"),
-#            h3("Evolution de l'indice de Gini durant la partie"),
-#            plotOutput(outputId = "plot_actions_communes", height = "500px")
-#            
-#          )
-# ),
-# tabPanel("Graphs coûts",
-#          mainPanel(
-#            h3("Nombre d'actions par tour"),
-#            plotOutput(outputId = "plot_actions", height = "500px"),
-#            h3("Evolution de l'indice de Gini durant la partie"),
-#            plotOutput(outputId = "plot_actions_communes", height = "500px")
-#            
-#          )
-#          
-# )
+),
+tabPanel("Graphs profils",
+         mainPanel(
+           h3("Nombre d'actions par tour"),
+           plotOutput(outputId = "plot_profils", height = "700px", width = "900px"),
+           h3("Nombre d'actions par tour en %"),
+           plotOutput(outputId = "plot_profils_pct", height = "700px", width = "900px")
+
+         )
+),
+tabPanel("Graphs coûts",
+         mainPanel(
+           h3("Evolution de l'indice de Gini durant la partie"),
+           plotOutput(outputId = "plot_cost_by_communes", height = "500px", width = "900px"),
+           h3("Nombre d'actions par tour"),
+           plotOutput(outputId = "plot_cost_by_profils", height = "500px", width = "900px")
+         )
+)
 # tabPanel("Aide",
 #     withMathJax(),
 #     helpText(tags$h1("Le rapport d'incidence standardisé : Le SIR"),
