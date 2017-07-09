@@ -30,6 +30,10 @@ Lancer l'application
 Une fenêtre type "browser" et contenant l'interface s'ouvre :
 1. charger l'ensemble des fichiers `action done` en maintenant la touche `ctrl` enfoncée
 2. si les phases de submersion ont changé, vous pouvez les définir ici
+  * Les numéros des tours auxquels ont eu lieu les submersions sont indiqués dans le sous-répertoire "résultats Simu Lisflood" de chacun des répertoire de résultat d'atelier. Vous pouvez les trouver en lisant le nom des sous-sous-répertoire comme par ex. results_R5_t1.494336499043E12 ou results_R10_t1.494339474544E12... ce qui correspond à round(tour) R5 ou R10
+  * Les submersions sont déclenchées au début du tour. Par ex, une submersion indiqué R8, correspond à une submersion déclenché par l'opérateur à la fin du Tour7. Lorsque l'opérateur a déclenché la submersion au T7, alors automatiquement le modèle à avancé d'un tour, les actions prévues pour le Tour 8, ont été executées, puis le modèle à lancé la submersion. Une fois la submersion passé, les joueurs ont repris le jeu au Tour 8.
+  * Dans la fenêtre de l'appli, écrire  7.5  pour une submersion au Tour 8. Cela fera apparaître une ligne verticale (noir ou rouge), entre le Tour 7 et le Tour 8
+
 3. Une fois les données chargées, vous aurez accès, dans les "onglets" aux différents graphes.
 ![](./www/ui.desc.png)
 
