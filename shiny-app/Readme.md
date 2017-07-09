@@ -17,7 +17,9 @@ L'objectif de cette application est de permettre l'utilisation de traitement R �
 4. Recommencer plusieurs fois l'étape 3 si vous ne voyer pas les fenêtres de Download apparaitre
 
 5- Télécharger depuis le GitHub LIttoSIM l'appli développée pour LittoSIM appelé Shiny-app (`git clone git@github.com:LittoSim/LittoSim_model.git`)
+
 6- Dans RStudio ouvrez les fichiers `LittoSim_model/shiny-app/server.R` et `LittoSim_model/shiny-app/ui.R`
+
 7- Puis, dans l'angle supérieur droit du script, cliquez sur Run APP
 
 # Utilisation
