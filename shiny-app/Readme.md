@@ -1,7 +1,9 @@
 Shiny app : débrefing littoSim
 =======================
 <div style="text-align:center"><img src ="./www/ShinyLittoSim.png" /></div>
+
 # Contexte
+
 [Shiny](https://shiny.rstudio.com/)<sup>1</sup> est un package développé par [Rstudio](https://www.rstudio.com/) et qui permet de transformer un script de traitement R en une application web.
 
 L'objectif de cette application est de permettre l'utilisation de traitement R à la partie débrefing des sessions de simulation participative. Le traitement doit être transparent pour les utilisateurs tout en permettant la production d'inducteurs (graphique et/ou numérique) facilitant la compréhension des dynamiques de la partie.
