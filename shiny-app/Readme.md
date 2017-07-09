@@ -14,10 +14,11 @@ L'objectif de cette application est de permettre l'utilisation de traitement R �
 2. Lancer Rstudio et depuis Tools \ Download Package, installer le package "[Shiny](https://shiny.rstudio.com/)"
 3. Dans Rstudio copier coller la ligne suivante : `install.packages(c("ggplot2","stringr","dplyr","plyr"), dependencies = T)` et valider Entrer pour installer d'autres packages.
   * Si il y a eu des erreurs lors de l'install, alors faites un chargement de chacun des packages `plyr`, `dplyr`, `stringr`, `ggplot2` l'un après l'autre directement depuis le menu Tools/Install Packages
-5. Recommencer plusieurs fois le 3 si vous ne voyer pas les fenêtres de Download apparaitre
-6- Télécharger depuis le GitHub LIttoSIM l'appli développée pour LittoSIM appelé Shiny-app (`git clone git@github.com:LittoSim/LittoSim_model.git`)
-7- Dans RStudio ouvrez les fichiers `LittoSim_model/shiny-app/server.R` et `LittoSim_model/shiny-app/ui.R`
-8- Puis, dans l'angle supérieur droit du script, cliquez sur Run APP
+4. Recommencer plusieurs fois l'étape 3 si vous ne voyer pas les fenêtres de Download apparaitre
+
+5- Télécharger depuis le GitHub LIttoSIM l'appli développée pour LittoSIM appelé Shiny-app (`git clone git@github.com:LittoSim/LittoSim_model.git`)
+6- Dans RStudio ouvrez les fichiers `LittoSim_model/shiny-app/server.R` et `LittoSim_model/shiny-app/ui.R`
+7- Puis, dans l'angle supérieur droit du script, cliquez sur Run APP
 
 # Utilisation
 
