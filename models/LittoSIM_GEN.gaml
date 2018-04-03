@@ -51,7 +51,7 @@ global  {
 	int STEPS_DEGRAD_STATUS_DUNE <-6; // Sur les dunes, sans ganivelle,  il faut 6 ans pour que ça change de statut
 	int STEPS_REGAIN_STATUS_GANIVELLE  <-3; // Avec une ganivelle ça se régénère 2 fois plus vite que ça ne se dégrade
 
-	// Paramètres  de la dynamique d'évolution des défenses côtes (défense côte = digues et dunees)
+	// Paramètres des ruptures des défenses côtes
 	int PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS <- 13;
 	int PROBA_RUPTURE_DIGUE_ETAT_MOYEN <- 6;
 	int PROBA_RUPTURE_DIGUE_ETAT_BON <- -1; // si -1, alors  impossible
@@ -106,7 +106,7 @@ global  {
 	// Sauvegarde des résultats au format SHP : OUI / NON
 	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile de manière récurrente.  La  récurrence est réglée par la paramètre 'cycle_sauver
 
-	// Paramètre utilisé pour une tentative infructueuse de permettre à l'utulisateur de lancer la simulation sans activemq
+	// Paramètre utilisé pour une tentative infructueuse de permettre à l'utilisateur de lancer la simulation sans activemq : OUI / NON
 	bool activemq_connect <- false; 
 
 	
@@ -114,7 +114,7 @@ global  {
 	// Definition de l'enveloppe SIG de travail
 	geometry shape <- envelope(emprise_shape);
 	
-	// Définition de géométries aggréguant plusieurs polygones   
+	// Définition de géométries agrégeant  plusieurs polygones   
 	geometry all_flood_risk_area;
 	geometry all_protected_area;	
 
@@ -179,7 +179,7 @@ global  {
 	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY <- int(all_action_cost at {2,11});
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY <- int(all_action_cost at {2,12});
 	
-	//// tableau des données de budget des communes pour tracer le graph d'évolution des budgets
+	// Tableau des données de budget des communes pour tracer le graph d'évolution des budgets
 	list<int> data_budget_C1 <- [];
 	list<int> data_budget_C2 <- [];
 	list<int> data_budget_C3 <- [];	
@@ -198,7 +198,6 @@ global  {
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	string flood_results <- "";   //  text of flood results per commune   // la variable flood_results est sauvegardé sous forme de fichier txt
 
-	
     // Variables d'opérations des interfaces
     string UNAM_DISPLAY_c <- "UnAm";
 	string active_display <- nil;
