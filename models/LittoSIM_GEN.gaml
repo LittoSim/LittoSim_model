@@ -213,8 +213,9 @@ global  {
 	
 //////// NON CLASSE	
 	list<UA> agents_to_inspect update: 10 among UA;	 // // Not used. Should detele ?
-	
-	
+	int borderBuffer <- 400; // Unit =  meter. It's buffer distance add to the costal border to "see the sea."
+	int minPopUArea <- 10; // Unit = abs pop. This is a trick to cancel an error made by a division by zero
+	int pctBudgetInit <- 20; ///Unit = int in %. During the initialization phase, each commune initiate with a budget equal to an annual tax +  % here 20%
 	
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -243,7 +244,6 @@ init
 		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), commune_name_shpfile::string(read("Commune"))
 		];
 		
-		///  ON EN EST LA
 		create commune from:communes_shape with: [commune_name::string(read("NOM_RAC")),id::int(read("id_jeu"))]
 		{
 			write " commune " + commune_name + " "+id;
@@ -254,7 +254,7 @@ init
 		create flood_risk_area from: zone_PPR_shape;
 		all_flood_risk_area <- union(flood_risk_area);
 		create coast_border_area from: coastline_shape {
-			shape <-  shape + 400#m; }
+			shape <-  shape + borderBuffer #m; }
 		create inland_dike_area from: contour_ile_moins_100m_shape;
 		
 		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]
@@ -262,7 +262,7 @@ init
 			ua_name <- nameOfUAcode(ua_code);
 			my_color <- cell_color();
 			if ua_name = "U" and population = 0 {
-					population <- 10;}
+					population <- minPopUArea;}
 			my_color <- cell_color();
 			if ua_name = "AU"  {
 				AU_to_U_counter <- flip(0.5)?1:0;
@@ -275,7 +275,7 @@ init
 		{
 			UAs <- UA overlapping self;
 			cells <- cell overlapping self;
-			budget <- current_population(self) * impot_unit * 1.2; ///A l’initialisation la commune commence avec un budget équivalent aux impôts annuels perçus + 20%
+			budget <- current_population(self) * impot_unit * (1 +  pctBudgetInit/100);
 			write commune_name +" budget initial : " + budget;
 			do calculate_indicators_t0;
 		}
@@ -307,6 +307,7 @@ int delayOfAction (int action_code){
 	return rslt;
 	}
 	
+	// Etienne MARK
 string labelOfAction (int action_code){
 	string rslt <- "";
 	loop i from:0 to: 30 {
