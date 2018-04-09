@@ -58,6 +58,7 @@ global  {
 	int PROBA_RUPTURE_DUNE_ETAT_MAUVAIS <- 8;
 	int PROBA_RUPTURE_DUNE_ETAT_MOYEN <- 4;
 	int PROBA_RUPTURE_DUNE_ETAT_BON <- -1; // si -1, alors  impossible
+	int radius_rupture <- 30; // en mètres. Etendu de la rupture sur l'éléments
 
   ////  Module Croissance démographique
 	int POP_FOR_NEW_U <- 3 ; // Nb initial d'habitants pour les cases qui viennent de passer de AU à U
@@ -80,6 +81,8 @@ global  {
 	string lisfloodPath <- "C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
 	string lisfloodRelativePath <- "../../../../../../lisflood-fp-604/"; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
 	string current_lisflood_rep <- "results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
+	string lisflood_bat <- "lisflood_oleron_current.bat" ; // Nom de l'executable lisflood
+	string conf_Xynthia_listflood <- "oleron2016_Xynthia"+timestamp+".par";
 
 	// Paramètres des interfaces utilisateur
 	float button_size <- 2000#m;
@@ -94,7 +97,8 @@ global  {
 	// Paramètres pour la sauvegarde des logs (permet de définir les noms des fichiers de sauvegarde)
 	string LOG_FILE_NAME <- "log_"+machine_time+"csv";
 	float START_LOG <- machine_time;
-	
+	string atelierDEM <- "oleron_dem2016" ; //Nom du fichier d'altirtude envoyer a lisflood pour submersion 
+	string atelier_rugosityGrid <- lisfloodRelativePath+"oleron_n2016" + timestamp + ".asc";
 	// Divers paramètres
 	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 
@@ -216,6 +220,8 @@ global  {
 	int borderBuffer <- 400; // Unit =  meter. It's buffer distance add to the costal border to "see the sea."
 	int minPopUArea <- 10; // Unit = abs pop. This is a trick to cancel an error made by a division by zero
 	int pctBudgetInit <- 20; ///Unit = int in %. During the initialization phase, each commune initiate with a budget equal to an annual tax +  % here 20%
+	float rehaussement <- 1.0; // en mètres ? le réhaussement d'ouvrage est forcément de 1 mètre / ds la V1 c'etait 50  centimètres
+	
 	
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -307,7 +313,6 @@ int delayOfAction (int action_code){
 	return rslt;
 	}
 	
-	// Etienne MARK
 string labelOfAction (int action_code){
 	string rslt <- "";
 	loop i from:0 to: 30 {
@@ -389,9 +394,6 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 		// affichage des résultats 
 		write flood_results;
 		save flood_results to: "flood_results-"+machine_time+"-Tour"+round+".txt" type: "text";
-//		map<string,string> msg <- [];
-//		put "1" key:flood_results in:msg;
-//		map values <- user_input(msg);	
 
 		map values <- user_input(["Cliquez sur OK pour continuer" :: ""]);
 		
@@ -426,12 +428,11 @@ reflex show_lisflood when: stateSimPhase = 'show lisflood'
 	{
 		// lecture des fichiers innondation
 		do readLisflood;
-		//write  "Nb cells innondées : "+ (cell count (each.water_height !=0));
+		
 	}
 
 action replay_flood_event
 {
-	//map values <- user_input("Select Replayed Flooding" var: replayed_flooding_event <- (list_flooding_events.keys)[0] among: list_flooding_events.keys;
 	string txt;
 	int i <-1;
 	loop aK over: list_flooding_events.keys
@@ -475,21 +476,6 @@ action launchFlood_event (string eventName)
 		stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	}
 
-/*reflex test_calcRupture {
-	int tot <-0;
-	ask def_cote where (each.type != 'Naturel') {
-		int p <- 0;
-		
-		if status = "mauvais" {p <- PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS;}
-		if status = "moyen" {p <- PROBA_RUPTURE_DIGUE_ETAT_MOYEN;}
-		if status = "bon" {p <- PROBA_RUPTURE_DIGUE_ETAT_BON;}
-		if rnd (100) <= p {
-			tot <- tot+1;
-			}		
-	}
-	write tot;
-}*/
-
 action addElementIn_list_flooding_events (string sub_name, string sub_rep)
 	{
 		put sub_rep key: sub_name in: list_flooding_events;
@@ -505,37 +491,31 @@ action executeLisflood (string eventName)
 		do save_rugosityGrid;
 		do save_lf_launch_files(eventName);
 		do addElementIn_list_flooding_events("Submersion Tour "+round,current_lisflood_rep);
-//		map values <- user_input(["Lisflood input files at directory "+current_lisflood_rep+" are ready.
-//
-//BEFORE TO CLICK OK
-//-Launch '../includes/lisflood-fp-604/lisflood_oleron_current.bat' to generate outputs
-//
-//WAIT UNTIL Lisflood finishes calculations to click OK (Dos command will close when finish) " :: ""]);
 		
 		save "dir created by littoSIM" to: lisfloodRelativePath+current_lisflood_rep+"/bidon.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
 		 ask network_listen_to_leader{
-			do execute command:"cmd /c start "+lisfloodPath+"lisflood_oleron_current.bat"; }
+			do execute command:"cmd /c start "+lisfloodPath+lisflood_bat; }
  	}
  		
 action save_lf_launch_files (string eventName) {
 	switch eventName {
 		match "Xynthia" {
-			save ("DEMfile         "+lisfloodPath+"oleron_dem2016"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+"oleron2016_Xynthia"+timestamp+".par" type: "text"  ;
-			save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+"oleron2016_Xynthia"+timestamp+".par") rewrite: true  to: lisfloodRelativePath+"lisflood_oleron_current.bat" type: "text" ;	
+			save ("DEMfile         "+lisfloodPath+atelierDEM+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+conf_Xynthia_listflood type: "text"  ;
+			save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+conf_Xynthia_listflood) rewrite: true  to: lisfloodRelativePath+lisflood_bat type: "text" ;	
 		}
 		match "Xynthia moins 50cm" {
-			save ("DEMfile         "+lisfloodPath+"oleron_dem2016"+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016_Xynthia-50.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+"oleron2016_Xynthia-50"+timestamp+".par" type: "text"  ;
-		save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+"oleron2016_Xynthia-50"+timestamp+".par") rewrite: true  to: lisfloodRelativePath+"lisflood_oleron_current.bat" type: "text" ;
+			save ("DEMfile         "+lisfloodPath+atelierDEM+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016_Xynthia-50.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+"oleron2016_Xynthia-50"+timestamp+".par" type: "text"  ;
+		save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+conf_Xynthia_listflood) rewrite: true  to: lisfloodRelativePath+lisflood_bat type: "text" ;
 		}
 	}
 }       
 
 action save_dem {
-	save cell to: lisfloodRelativePath+"oleron_dem2016" + timestamp + ".asc" type: "asc";
+	save cell to: lisfloodRelativePath + atelierDEM + timestamp + ".asc" type: "asc";
 	}
 
 action save_rugosityGrid {
-		string filename <- lisfloodRelativePath+"oleron_n2016" + timestamp + ".asc";
+		string filename <- atelier_rugosityGrid;
 		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
 		loop j from: 0 to: nb_rows- 1 {
 			string text <- "";
@@ -543,28 +523,7 @@ action save_rugosityGrid {
 				text <- text + " "+ cell[i,j].rugosity;}
 			save text to: filename rewrite: false ;
 			}
-		}  
-		
-//action performance_save_dem {
-//	float x <- machine_time;
-//	loop times:10 {do save_dem;}
-//	write (machine_time - x);
-//}
-//action performance_save_dem2 {
-//	float x <- machine_time;
-//	loop times:10 {do save_dem_old;}
-//	write (machine_time - x);
-//}
-//action save_dem_old {
-//		string filename <- "../includes/lisflood-fp-604/oleron_dem2016" + timestamp + ".asc";
-//		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";		
-//		loop j from: 0 to: nb_rows- 1 {
-//			string text <- "";
-//			loop i from: 0 to: nb_cols - 1 {
-//				text <- text + " "+ cell[i,j].soil_height;}
-//			save text to:filename rewrite:false;
-//			}
-//		}  	
+		}
 	   
 action readLisflood
 	 {  
@@ -1162,13 +1121,6 @@ species network_listen_to_leader skills:[network]
 					commune cm <- commune first_with(each.commune_name=commune_name);
 					cm.budget <- cm.budget - amount;
 				}
-//				match LEVER_RETARD
-//				{
-//					int id_action <- m_contents[ACTION_ID];
-//					action_done dd <- action_done first_with(each.id=id_action);
-//					
-//					do appliquer_action(dd);
-//				}
 				
 				match ASK_NUM_ROUND {
 					do informLeader_round_number;
@@ -1219,58 +1171,6 @@ species network_listen_to_leader skills:[network]
 					}		
 				}
 	
-//	action retarder_action(action_done act, int duree)
-//	{
-//		ask act
-//		{
-//			round_delay <- round_delay + duree;
-//			initial_application_round <- initial_application_round + duree; 
-//			commune cm <-commune first_with (each.commune_name = commune_name);
-//			ask network_player
-//				{
-//				string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+duree;
-//				do send to:cm.network_name contents:msg;
-//				}
-//		}
-//		
-//	}
-//	action appliquer_action(action_done act)
-//	{
-//		ask act
-//			{
-//				int tmp <- initial_application_round - round;
-//				round_delay <- round_delay - tmp;
-//				initial_application_round <- round; 
-//				commune cm <-commune first_with (each.commune_name = commune_name);
-//				ask network_player
-//				{
-//					string msg <- ""+NOTIFY_DELAY+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+world.entityTypeCodeOfAction(myself.command)+COMMAND_SEPARATOR+myself.id+COMMAND_SEPARATOR+tmp;
-//					do send to:cm.network_name contents:msg;
-//				}
-//		}
-//		
-//	}
-//	action subventionner(commune cm, int montant)
-//	{
-//		cm.budget <- cm.budget + montant;
-//		ask network_player
-//			{
-//			string msg <- ""+INFORM_GRANT_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
-//			do send to:cm.network_name contents:msg;
-//			}
-//		cm.not_updated <- true;
-//	}
-	
-//	action percevoir(commune cm, int montant)
-//	{
-//		cm.budget <- cm.budget - montant;
-//		ask network_player
-//		{
-//			string msg <- ""+INFORM_FINE_RECEIVED+COMMAND_SEPARATOR+world.getMessageID()+COMMAND_SEPARATOR+int(montant);
-//			do send to:cm.network_name contents:msg;
-//		}
-//		cm.not_updated <- true;
-//	}
 	
 	reflex send_action_state when: cycle mod 10 = 0
 	{
@@ -1475,8 +1375,6 @@ species network_player skills:[network]
 	
 	action send_created_dike(def_cote new_dike,action_done act)
 	{
-//		point p1 <- first(new_dike.shape.points);
-//		point p2 <- last(new_dike.shape.points); // BUG DU CREATE DIKE
 		new_dike.shape <- act.element_shape;
 		point p1 <- first(act.element_shape.points);
 		point p2 <- last(act.element_shape.points);
@@ -1912,8 +1810,6 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 				{color<- soil_color;}
 				else
 				{
-//				 	float tmp <-  min([(water_height  / 5) * 255,200]);
-//				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
 					color <- world.color_of_water_height(water_height);
 				}
 			}
@@ -1928,8 +1824,6 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 				{color<- soil_color;}
 				else
 				{
-//				 	float tmp <-  min([(max_water_height / 5) * 255, 200]);
-//				 	color <- rgb(200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
 					color <- world.color_of_water_height(max_water_height);
 				}
 			}
@@ -1942,14 +1836,10 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 			{
 				if show_max_water_height
 				{
-//				 	float tmp <-  min([(max_water_height  / 5) * 255,200]);
-//				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
 					color <- world.color_of_water_height(max_water_height);
 				 }
 				else
 				{
-//					float tmp <-  min([(water_height  / 5) * 255,200]);
-//				 	color<- rgb( 200 - tmp, 200 - tmp , 255) /* hsb(0.66,1.0,((water_height +1) / 8)) */; 
 					color <- world.color_of_water_height(water_height);
 				}
 			}
@@ -2113,7 +2003,7 @@ species def_cote
 				// on applique la rupture a peu pres au milieu du linéaire
 				int cIndex <- int(length(cells) /2);
 				// on défini la zone de rupture ds un rayon de 30 mètre autour du point de rupture 
-				zoneRupture <- circle(30#m,(cells[cIndex]).location);
+				zoneRupture <- circle(radius_rupture#m,(cells[cIndex]).location);
 				// on applique la rupture sur les cells de cette zone
 				ask cells overlapping zoneRupture  {
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
@@ -2140,7 +2030,7 @@ species def_cote
 	action increase_height_by_commune (int a_commune_id) {
 		status <- "bon";
 		cptStatus <- 0;
-		height <- height + 1; // le réhaussement d'ouvrage est forcément de 1 mètre / ds la V1 c'etait 50  centimètres
+		height <- height + rehaussement; // le réhaussement d'ouvrage est forcément de 1 mètre / ds la V1 c'etait 50  centimètres
 		alt <- alt + 1;
 		ask cells {
 			soil_height <- soil_height + 1;
@@ -2212,7 +2102,6 @@ species def_cote
 			draw image_file("../images/icones/rupture.png") at:tmp size:30#px;
 			
 		}	
-	//	if rupture  = 1 {draw (zoneRupture +70#m) color:rgb(240,20,20,200);} 	
 	}
 }
 
@@ -2230,20 +2119,14 @@ species protected_area {
 	string name;
 	aspect base 
 	{
-		/*if (buttons_map first_with(each.command =ACTION_DISPLAY_PROTECTED_AREA)).is_selected
-		{*/
-		 draw shape color: rgb (185, 255, 185,120) border:#black;
-		/*}*/
+		 draw shape color: rgb (185, 255, 185,120) border:#black;	
 	}
 }
 species flood_risk_area {
 	
 	aspect base 
 	{
-		/*if (buttons_map first_with(each.command =ACTION_DISPLAY_FLOODED_AREA)).is_selected
-		{*/
 		 draw shape color: rgb (20, 200, 255,120) border:#black;
-		/*}*/
 	}
 }
 
