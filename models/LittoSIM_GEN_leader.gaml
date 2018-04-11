@@ -23,12 +23,8 @@ global
 	string COMMAND_SEPARATOR <- ":";
 	string GAME_LEADER <- "GAME_LEADER";
 	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
-	string GROUP_NAME <- "Oleron";  
 	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
-	float  STANDARD_DIKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
 	string BUILT_DIKE_STATUS <- "bon"; // status de nouvelle digue
-	string LOG_FILE_NAME <- "log_"+machine_time+"csv";
-	float START_LOG <- machine_time; 
 	bool log_user_action <- true;
 	bool activemq_connect <- true;
 	int round<-0;		

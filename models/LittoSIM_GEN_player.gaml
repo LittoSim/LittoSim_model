@@ -125,7 +125,6 @@ global
 	geometry local_shape <- nil; // envelope(emprise_local);
 	
 	string COMMAND_SEPARATOR <- ":";
-	string GROUP_NAME <- "Oleron";
 	
 	list<float> basket_location <- [];
 	
@@ -1052,9 +1051,6 @@ global
 	action button_click_UnAM 
 	{
 		point loc <- #user_location;
-		
-		
-		
 		if(active_display != UNAM_DISPLAY)
 		{
 			current_action <- nil;
