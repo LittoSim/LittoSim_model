@@ -33,16 +33,37 @@ global  {
 	file contour_ile_moins_100m_shape <- file("../includes/zone_etude/contour_ile_moins_100m.shp");
 	int nb_cols <- 631;
 	int nb_rows <- 906;
+	map table_correspondance_nom_commune <- ["lechateau"::"Le-Chateau-d'Oleron","dolus"::"Dolus-d'Oleron", "sttrojan"::"Saint-Trojan-Les-Bains", "stpierre"::"Saint-Pierre-d'Oleron"]; //Table de correspondance des noms des communes entre l'attribut NOM_RAC du fichier communes_shape et l'attribut Commune du fichier defenses_cote_shape 
+	
+	// Ajustement des données de population
+	int minPopUArea <- 10; // Unit = abs pop. In case the population of a UA of type U (Urban area) is equal at zero at initialization (due to a mismatch between the unAm_shape file and the population data), the pop of the UA is rewrite to the minPopUArea value
+
+	// Budgets des commune	
+	map impot_unit_table <- ["stpierre"::0.38,"dolus"::0.42,"lechateau"::0.42,"sttrojan"::0.9]; // impot_unit correspond au montant en Boyard (monnaie du jeu) reçu pour chaque habitant de la population d'une commune. 
+				// La valeur de impot unit est de 0.42 par défaut.  0.42 Boyard /hab correspond à  21 € / hab   // Le taux entre le Boyard et l'Euros est de 50. Ce taux a été estimé à partir du cout de construction d'un mètre linéaire de digue. Dans le jeu ça vaut 20 alors que dans la réalité ça vaut 1000 € (donc facteur 50 / impot_unit = 21/50= 0.42) 
+				// Ajustement pour réduire un peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.9 pour sttrojan		
+	int pctBudgetInit <- 20; ///Unit = int in %. During the initialization phase, each commune initiate with a budget equal to an annual tax +  % here 20%
+	
+	//Définition de la largeur de la zone littoral (à des conséquences sur le déclenchement des leviers par le modèle Leader
+	float coastBorderBuffer <- 400.0#m; //  Largeur de la zone littorale (<400m) à partir du trait de cote
 	
 	// Paramètres des dynamique de Population
 	float ANNUAL_POP_GROWTH_RATE <- 0.009;
 	
+	// Config Lisflood pour Oléron
+	string application_name <- "Oleron"; // Nom utilisé pour spécifier les noms des fichiers d'export
+	string lisflood_bdy_file -> // Nom du fichier de hauteurs de la mer envoyé a lisflood en fonction du type d'évènement sélectionné.
+		{	 floodEventType ="HIGH_FLOODING"?"oleron2016_Xynthia.bdy"   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" renvoie lisflood vers le fichier "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
+			:(floodEventType ="LOW_FLOODING"?"oleron2016_Xynthia-50.bdy" // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" renvoie lisflood un fichier correspondant au niveau de Xynthia moins 50 cm 
+		    :"Match Error for floodEventType")}; 
+		    
 	
 //////// PARAMETRES DES MODULES  
   ////  Module Digues
 	// Paramètres des actions de construction et réhaussement de digue
 	string BUILT_DIKE_STATUS <- "bon"; // status de nouvelle digue
-	float  STANDARD_DIKE_SIZE <- 1.5#m; ////// hauteur d'une nouvelle digue	
+	float BUILT_DIKE_HEIGHT <- 1.5#m; ////// hauteur d'une nouvelle digue	
+	float RAISE_DIKE_HEIGHT <- 1.0#m; // le réhaussement d'ouvrage est par défaut de 1 mètre. Il ne peut pas être changé en cours de simulation
 	
 	// Paramètres  de la dynamique d'évolution des défenses côtes (défense côte = digues et dunees)
 	float H_MAX_GANIVELLE <- 1.2; // ganivelle  d'une hauteur de 1.2 metres  -> fixe le maximum d'augmentation de hauteur de la dune
@@ -63,7 +84,7 @@ global  {
   ////  Module Croissance démographique
 	int POP_FOR_NEW_U <- 3 ; // Nb initial d'habitants pour les cases qui viennent de passer de AU à U
 	int POP_FOR_U_DENSIFICATION <- 10 ; // Nb de nouveaux habitants par tour pour les cases qui ont une action densification
-	int POP_FOR_U_STANDARD <- 1 ; // Nb de nouveaux habitants par tour pour les autres cases 	
+	int POP_FOR_U_STANDARD <- 1 ; // Nb de nouveaux habitants par tour pour les autres cases 	 
 	
 	
 //////// CONFIG LITTOSIM_GEN
@@ -73,7 +94,6 @@ global  {
 	string GAME_LEADER <- "GAME_LEADER";
 	string GAME_MANAGER <- "GAME_MANAGER";
 	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
-	string GROUP_NAME <- "Oleron";
 	string UPDATE_ACTION_DONE <- "update_action_done";
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
 
@@ -81,24 +101,22 @@ global  {
 	string lisfloodPath <- "C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
 	string lisfloodRelativePath <- "../../../../../../lisflood-fp-604/"; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
 	string current_lisflood_rep <- "results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
-	string lisflood_bat <- "lisflood_oleron_current.bat" ; // Nom de l'executable lisflood
-	string conf_Xynthia_listflood <- "oleron2016_Xynthia"+timestamp+".par";
-
+	string listflood_par_file -> {"LittoSIM_GEN_"+application_name+"_config_"+floodEventType+timestamp+".par"}; //  Nom du fichier de config envoyé a lisflood pour simu submersion
+	string lisflood_DEM_file -> { "LittoSIM_GEN_"+application_name+"_DEM"+ timestamp + ".asc"}  ; // Nom du fichier d'altitude envoyé a lisflood pour simu submersion 
+	string lisflood_rugosityGrid_file -> {"LittoSIM_GEN_"+application_name+"_n" + timestamp + ".asc"}; //  Nom du fichier de rugosité envoyé a lisflood pour simu submersion
+	string lisflood_bat_file <- "lisflood_LittoSIM_GEN_current.bat" ; //  Nom de l'executable lisflood
+	
 	// Paramètres des interfaces utilisateur
 	float button_size <- 2000#m;
 	float MOUSE_BUFFER <- 50#m; // zone considéré autour de l'endroit où l'on clic pour repérer si un bouton de l'interface a été cliqué 
 	int font_size <- int(shape.height/30); 	// Police de caractère de l'interface de suivi des actions
 	int font_interleave <- int(shape.width/60);  // Police de caractère de l'interface de suivi des actions
 	 
-	//  Sauvegarde des résultats dans un fichier SIG au format SHP
-	string resultats <- "resultats.shp"; //	nom du fichier de de sauvegarde des résultats en format shp (attention, cela ecrase a chaque fois le resultat precedent)
-	int cycle_sauver <- 100; //cycle à laquelle les resultats sont sauvegardés au format shp
-
-	// Paramètres pour la sauvegarde des logs (permet de définir les noms des fichiers de sauvegarde)
-	string LOG_FILE_NAME <- "log_"+machine_time+"csv";
-	float START_LOG <- machine_time;
-	string atelierDEM <- "oleron_dem2016" ; //Nom du fichier d'altirtude envoyer a lisflood pour submersion 
-	string atelier_rugosityGrid <- lisfloodRelativePath+"oleron_n2016" + timestamp + ".asc";
+	//  Paramètres des sauvegardes des résultats de simulation
+	string results_rep <- "results/results"+EXPERIMENT_START_TIME; // nom du répertoire de sauvegarde des résultats de simu du main model
+	string shape_export_filePath -> {results_rep+"/resultats_SHP_Tour"+round+".shp"}; //	nom du fichier de sauvegarde des cells au format SHP
+	string log_export_filePath <- results_rep+"/log_"+machine_time+".csv"; 	// nom du ficheir sauvegarde des logs, coté main model, des actions des joueurs  
+	
 	// Divers paramètres
 	string BUILT_DIKE_TYPE <- "nouvelle digue"; // Type de nouvelle digue
 
@@ -108,15 +126,19 @@ global  {
 	bool log_user_action <- true;
 
 	// Sauvegarde des résultats au format SHP : OUI / NON
-	bool sauver_shp <- false ; // si vrai on sauvegarde le resultat dans un shapefile de manière récurrente.  La  récurrence est réglée par la paramètre 'cycle_sauver
+	bool sauver_shp <- false ; // si vrai on sauvegarde  à chaque tour, un shapefile avec l'élevation et le niveau d'eau de toutes les cells 
 
 	// Paramètre utilisé pour une tentative infructueuse de permettre à l'utilisateur de lancer la simulation sans activemq : OUI / NON
 	bool activemq_connect <- false; 
 
 	
 //////// VARIABLES D'OPERATION
+	
 	// Definition de l'enveloppe SIG de travail
 	geometry shape <- envelope(emprise_shape);
+	
+	// Sauvegarde du machine_time à l'initialisation de la simulation
+	float EXPERIMENT_START_TIME <- machine_time;
 	
 	// Définition de géométries agrégeant  plusieurs polygones   
 	geometry all_flood_risk_area;
@@ -196,11 +218,12 @@ global  {
 	// Variable de calcul de la dynamique de Pop
 	int new_comers_still_to_dispatch <- 0;
 
-	// Variables de calcul pour la sauvegarde et lecture des simulations de lisflood 
+	// Variables de calcul pour lisflood 
 	map<string,string> list_flooding_events ;  // listing des répertoires des innondations de la partie
 	int lisfloodReadingStep <- 9999999; // lisfloodReadingStep is used to indicate to which step of lisflood results, the current cycle corresponds //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle 
 	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
 	string flood_results <- "";   //  text of flood results per commune   // la variable flood_results est sauvegardé sous forme de fichier txt
+	string floodEventType ;
 
     // Variables d'opérations des interfaces
     string UNAM_DISPLAY_c <- "UnAm";
@@ -212,15 +235,7 @@ global  {
 	int round <- 0;
 	list<commune> communes_en_jeu;
 	list<rgb> listC <- brewer_colors("YlOrRd",8);
-	action_done current_action <- nil; // Check if it is really used or not
 	
-	
-//////// NON CLASSE	
-	list<UA> agents_to_inspect update: 10 among UA;	 // // Not used. Should detele ?
-	int borderBuffer <- 400; // Unit =  meter. It's buffer distance add to the costal border to "see the sea."
-	int minPopUArea <- 10; // Unit = abs pop. This is a trick to cancel an error made by a division by zero
-	int pctBudgetInit <- 20; ///Unit = int in %. During the initialization phase, each commune initiate with a budget equal to an annual tax +  % here 20%
-	float rehaussement <- 1.0; // en mètres ? le réhaussement d'ouvrage est forcément de 1 mètre / ds la V1 c'etait 50  centimètres
 	
 	
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +275,7 @@ init
 		create flood_risk_area from: zone_PPR_shape;
 		all_flood_risk_area <- union(flood_risk_area);
 		create coast_border_area from: coastline_shape {
-			shape <-  shape + borderBuffer #m; }
+			shape <-  shape + coastBorderBuffer #m; }
 		create inland_dike_area from: contour_ile_moins_100m_shape;
 		
 		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")), population:: int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]
@@ -281,7 +296,7 @@ init
 		{
 			UAs <- UA overlapping self;
 			cells <- cell overlapping self;
-			budget <- current_population(self) * impot_unit * (1 +  pctBudgetInit/100);
+			budget <- int(current_population(self) * impot_unit * (1 +  pctBudgetInit/100));
 			write commune_name +" budget initial : " + budget;
 			do calculate_indicators_t0;
 		}
@@ -333,19 +348,7 @@ int entityTypeCodeOfAction (int action_code){
 		match "UA" {return ENTITY_TYPE_CODE_UA;}
 		default {return 0;}
 		}
-	}	
-	
-string commune_name_shpfile_of_commune_name (string a_commune_name)
-{
-		switch (a_commune_name)
-			{
-			match "lechateau" {return "Le-Chateau-d'Oleron";}
-			match "dolus" {return "Dolus-d'Oleron";}
-			match "sttrojan" { return "Saint-Trojan-Les-Bains";}
-			match "stpierre" {return "Saint-Pierre-d'Oleron";}
-			default {return "";}
-			}
-}  
+	} 
 		 
 	 
 int current_total_population {
@@ -358,7 +361,7 @@ int new_comers_to_dispatch {
 
 
 action new_round{
-	//do sauvegarder_resultat;
+	if sauver_shp {do save_cells_as_shp_file;}
 	write "new round "+ (round +1);
 	if round != 0
 	   {ask def_cote where (each.type != 'Naturel') {  do evolveStatus_ouvrage;}
@@ -393,7 +396,7 @@ reflex show_flood_stats when: stateSimPhase = 'show flood stats'
 	{// fin innondation
 		// affichage des résultats 
 		write flood_results;
-		save flood_results to: "flood_results-"+machine_time+"-Tour"+round+".txt" type: "text";
+		save flood_results to: results_rep+"/flood_results-"+machine_time+"-Tour"+round+".txt" type: "text";
 
 		map values <- user_input(["Cliquez sur OK pour continuer" :: ""]);
 		
@@ -455,7 +458,7 @@ action replay_flood_event
 	stateSimPhase <- 'show lisflood'; write stateSimPhase;
 	do readLisflood;
 }		
-action launchFlood_event (string eventName)
+action launchFlood_event
 	{
 		if round = 0 
 		{
@@ -470,7 +473,7 @@ action launchFlood_event (string eventName)
 		if round != 0 {
 			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
 			ask def_cote {do calcRupture;} 
-			do executeLisflood(eventName); // comment this line if you only want to read already existing results
+			do executeLisflood; // comment this line if you only want to read already existing results
 		} 
 		set lisfloodReadingStep <- 0;
 		stateSimPhase <- 'show lisflood'; write stateSimPhase;
@@ -484,38 +487,30 @@ action addElementIn_list_flooding_events (string sub_name, string sub_rep)
 			do add_element(sub_name,sub_rep);
 		}
 	}	
-action executeLisflood (string eventName)
+action executeLisflood
 	{	timestamp <- "_R"+round+"_t"+machine_time ;
 		current_lisflood_rep <- "results"+timestamp;
 		do save_dem;  
 		do save_rugosityGrid;
-		do save_lf_launch_files(eventName);
+		do save_lf_launch_files;
 		do addElementIn_list_flooding_events("Submersion Tour "+round,current_lisflood_rep);
 		
-		save "dir created by littoSIM" to: lisfloodRelativePath+current_lisflood_rep+"/bidon.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
-		 ask network_listen_to_leader{
-			do execute command:"cmd /c start "+lisfloodPath+lisflood_bat; }
+		save "directory created by littoSIM Gama model" to: lisfloodRelativePath+current_lisflood_rep+"/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
+		ask network_listen_to_leader{
+			do execute command:"cmd /c start "+lisfloodPath+lisflood_bat_file; }
  	}
  		
-action save_lf_launch_files (string eventName) {
-	switch eventName {
-		match "Xynthia" {
-			save ("DEMfile         "+lisfloodPath+atelierDEM+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+conf_Xynthia_listflood type: "text"  ;
-			save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+conf_Xynthia_listflood) rewrite: true  to: lisfloodRelativePath+lisflood_bat type: "text" ;	
-		}
-		match "Xynthia moins 50cm" {
-			save ("DEMfile         "+lisfloodPath+atelierDEM+timestamp+".asc\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+"oleron_n2016"+timestamp+".asc\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+"oleron2016_Xynthia-50.bdy\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true  to: lisfloodRelativePath+"oleron2016_Xynthia-50"+timestamp+".par" type: "text"  ;
-		save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+lisfloodPath+conf_Xynthia_listflood) rewrite: true  to: lisfloodRelativePath+lisflood_bat type: "text" ;
-		}
-	}
+action save_lf_launch_files {
+	save ("DEMfile         "+lisfloodPath+lisflood_DEM_file+"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+lisflood_rugosityGrid_file+"\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+lisflood_bdy_file+"\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath+listflood_par_file type: "text"  ;
+	save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+(lisfloodPath+listflood_par_file)) rewrite: true  to: lisfloodRelativePath+lisflood_bat_file type: "text" ;
 }       
 
 action save_dem {
-	save cell to: lisfloodRelativePath + atelierDEM + timestamp + ".asc" type: "asc";
+	save cell to: lisfloodRelativePath + lisflood_DEM_file type: "asc";	
 	}
 
 action save_rugosityGrid {
-		string filename <- atelier_rugosityGrid;
+		string filename <- lisfloodRelativePath+lisflood_rugosityGrid_file;
 		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
 		loop j from: 0 to: nb_rows- 1 {
 			string text <- "";
@@ -582,7 +577,7 @@ action calculate_communes_results
 						{ switch myself.ua_name //"U","Us","AU","N","A"    -> et  "AUs" impossible normallement
 							{
 							match "AUs" {
-								write "STOP :  AUs impossible normallement";
+								write "STOP :  AUs impossible normalement";
 							}
 								match "U" {
 									if max_water_height <= 0.5 {
@@ -704,9 +699,9 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		}
 
  /* pour la sauvegarde des données en format shape */
-action sauvegarder_resultat //when: sauver_shp and cycle = cycle_sauver
+action save_cells_as_shp_file
 	{										 
-		save cell type:"shp" to: resultats with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
+		save cell type:"shp" to: shape_export_filePath with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
 	}
 
 /*
@@ -735,7 +730,7 @@ species data_retreive skills:[network] schedules:[]
 	
 	action retreive_def_cote(commune aCommune)
 	{	
-		list<def_cote> def_list <- def_cote where(each.commune_name_shpfile = world.commune_name_shpfile_of_commune_name(aCommune.commune_name));
+		list<def_cote> def_list <- def_cote where(each.commune_name_shpfile = world.table_correspondance_nom_commune at (aCommune.commune_name));
 		def_cote tmp;
 		loop tmp over:def_list
 		{
@@ -893,12 +888,12 @@ species action_done schedules:[]
 		create def_cote number:1 returns:new_dikes
 		{
 			dike_id <- next_dike_id;
-			commune_name_shpfile <- world.commune_name_shpfile_of_commune_name(act.commune_name);
+			commune_name_shpfile <- world.table_correspondance_nom_commune at (act.commune_name);
 			shape <- act.element_shape;
 			location <- act.location;
 			type <- BUILT_DIKE_TYPE ;
 			status <- BUILT_DIKE_STATUS;
-			height <- STANDARD_DIKE_SIZE;	
+			height <- BUILT_DIKE_HEIGHT;	
 			cells <- cell overlapping self;
 		}
 		act.element_id <- first(new_dikes).dike_id;
@@ -948,8 +943,10 @@ species network_round_manager skills:[remoteGUI]
 			match "START_VISUALISATION" { do start_visualisation_submersion ; }
 			match "LOCK_USERS" { do lock_unlock_window(true) ; }
 			match "UNLOCK_USERS" { do lock_unlock_window(false) ;}
-			match "HIGH_FLOODING" { ask world {do launchFlood_event("Xynthia");} }
-			match "LOW_FLOODING" {	ask world {do launchFlood_event("Xynthia moins 50cm");}}
+			match_one ["HIGH_FLOODING","LOW_FLOODING"] {
+				floodEventType <- selected_action ;
+				ask world {do launchFlood_event;}
+			}
 		}
 		selected_action <- nil;
 	}
@@ -1328,7 +1325,7 @@ species network_player skills:[network]
 					
 				if(log_user_action)
 				{
-					save ([string(machine_time-START_LOG),self.commune_name]+data) to:LOG_FILE_NAME type:"csv";
+					save ([string(machine_time-EXPERIMENT_START_TIME),self.commune_name]+data) to:log_export_filePath rewrite: false type:"csv";
 				}
 			}
 		}
@@ -1621,7 +1618,7 @@ species network_player skills:[network]
 		create buttons number: 1
 		{
 			nb_button <- 3;
-			label <- "Lisflood Xynthia";
+			label <- "HIGH_FLOODING";
 			shape <- square(button_size);
 			location <- { 5000,1000 };
 			my_icon <- image_file("../images/icones/launch_lisflood.png");
@@ -1631,7 +1628,7 @@ species network_player skills:[network]
 		create buttons number: 1
 		{
 			nb_button <- 5;
-			label <- "Lisflood Xynthia - 50cm";
+			label <- "LOW_FLOODING";
 			shape <- square(button_size);
 			location <- { 7000,1000 };
 			my_icon <- image_file("../images/icones/launch_lisflood_small.png");
@@ -1668,14 +1665,13 @@ species network_player skills:[network]
 	}
 	
 	
-    //Action Général appel action particulière 
-    action button_click_C_mdj //(point loc, list selected_agents)
+    //Action Générale qui appelle une action particulière 
+    action button_click_C_mdj
 	{
 		
 		point loc <- #user_location;
 		if(active_display != UNAM_DISPLAY_c)
 		{
-			current_action <- nil;
 			active_display <- UNAM_DISPLAY_c;
 			do clear_selected_button;
 			//return;
@@ -1684,17 +1680,16 @@ species network_player skills:[network]
 		list<buttons> selected_UnAm_c <- ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
 		ask ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display )
 		{
-			if (nb_button = 0){
-				ask world {do new_round;}
+			switch nb_button
+			{
+				match 0 { ask world {do new_round;} }
+				match_one [3, 5]{ 
+					floodEventType <- label;
+					ask world {do launchFlood_event;}
+				}
+				match 6 { ask world {do replay_flood_event();}
 			}
-			if (nb_button = 3){
-				ask world {do launchFlood_event("Xynthia");}
-			}
-			if (nb_button = 5){
-				ask world {do launchFlood_event("Xynthia moins 50cm");}
-			}
-			if (nb_button = 6){
-				ask world {do replay_flood_event();}
+			
 			}
 		}
 		
@@ -2030,10 +2025,10 @@ species def_cote
 	action increase_height_by_commune (int a_commune_id) {
 		status <- "bon";
 		cptStatus <- 0;
-		height <- height + rehaussement; // le réhaussement d'ouvrage est forcément de 1 mètre / ds la V1 c'etait 50  centimètres
-		alt <- alt + 1;
+		height <- height + RAISE_DIKE_HEIGHT; // le réhaussement d'ouvrage est défini par 
+		alt <- alt + RAISE_DIKE_HEIGHT;
 		ask cells {
-			soil_height <- soil_height + 1;
+			soil_height <- soil_height + RAISE_DIKE_HEIGHT;
 			soil_height_before_broken <- soil_height ;
 			do init_soil_color();
 			}
@@ -2396,10 +2391,7 @@ species commune
 	bool subvention_habitat_adapte <- false;
 	list<UA> UAs ;
 	list<cell> cells ;
-	
-	// 0.42 correspond à  21 € / hab convertit au taux de la monnaie du jeu (le taux est de 50)   // comme construire une digue dans le jeu vaut 20 alors que ds la réalité ça vaut 1000 , -> facteur 50  -> le impot_unit = 21/50= 0.42 
-	// Ajustement pour réduire un peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.9 pour sttrojan
-	float impot_unit <- commune_name="stpierre"?0.38:(commune_name="sttrojan"?0.9:0.42); 
+	float impot_unit  <- impot_unit_table at commune_name; 
 	
 	/* initialisation des hauteurs d'eau */ 
 	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
@@ -2487,7 +2479,7 @@ species commune
 	
 	action calculate_indicators_t0 
 	{
-			list<def_cote> my_def_cote <- def_cote where(each.commune_name_shpfile = world.commune_name_shpfile_of_commune_name(commune_name));
+			list<def_cote> my_def_cote <- def_cote where(each.commune_name_shpfile = world.table_correspondance_nom_commune at commune_name);
 			length_dikes_t0 <- my_def_cote where (each.type_def_cote = 'digue') sum_of (each.shape.perimeter);
 			length_dunes_t0 <- my_def_cote where (each.type_def_cote = 'dune') sum_of (each.shape.perimeter);
 			count_UA_urban_t0 <- length (UAs where (each.isUrbanType));
