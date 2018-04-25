@@ -1,0 +1,20 @@
+//	Prix des actions et durée de mis en oeuvre des actions
+ACTION_COST_FILE	../includes/Oleron/cout_action.csv
+ACTION_DELAY_FILE	../includes/Oleron/delai_action.csv
+ACTION_DEF_FILE	../includes/Oleron/actions_def.csv
+//	Chargements des données SIG
+COMMUNE_SHAPE	../includes/zone_etude/communes.shp
+ROAD_SHAPE	../includes/zone_etude/routesdepzone.shp
+ZONES_PROTEGEES_SHAPE	../includes/zone_etude/zps_sic.shp
+ZONES_PPR	../includes/zone_etude/PPR_extract.shp
+COASTLINES_SHAPE	../includes/zone_etude/trait_cote.shp
+DEFENSES_COTES_SHAPE	../includes/zone_etude/defense_cote_littoSIM-05122015.shp
+UNAM_SHAPE	../includes/zone_etude/zones241115.shp
+EMPRISE_SHAPE	../includes/zone_etude/emprise_ZE_littoSIM.shp
+DEM_FILE	../includes/zone_etude/oleron_dem2016.asc
+CONTOUR_ILE_INF_100M	../includes/zone_etude/contour_ile_moins_100m.shp
+
+DEM_NB_COLS	631
+DEM_NB_ROWS	906
+
+
