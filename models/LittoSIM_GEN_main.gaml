@@ -13,48 +13,55 @@ model littoSIM_GEN
 
 
 global  {
+	string config_file_name <- "../includes/Oleron/oleron_config.csv";
+	map<string,string> configuration_file <- read_configuration_file("../includes/Oleron/oleron_config2.csv","\t");
 	
-//////// CONFIG OLERON
+	//map<string, string> configuration_file <- map<string,string>(csv_file(config_file_name,"\t"));
+	
+	//////// CONFIG OLERON
 	// Prix des actions et durée de mis en oeuvre des actions
-	matrix<string> all_action_cost <- matrix<string>(csv_file("../includes/cout_action.csv",";"));	
-	matrix<string> all_action_delay <- matrix<string>(csv_file("../includes/delai_action.csv",";"));	
-	matrix<string> actions_def <- matrix<string>(csv_file("../includes/actions_def.csv",";"));	
+	matrix<string> all_action_cost <- matrix<string>(csv_file(configuration_file["ACTION_COST_FILE"],";"));	
+	matrix<string> all_action_delay <- matrix<string>(csv_file(configuration_file["ACTION_DELAY_FILE"],";"));	
+	matrix<string> actions_def <- matrix<string>(csv_file(configuration_file["ACTION_DEF_FILE"],";"));	
 	
 	// Chargements des données SIG
-	file communes_shape <- file("../includes/zone_etude/communes.shp");
-	file road_shape <- file("../includes/zone_etude/routesdepzone.shp");
-	file zone_protegee_shape <- file("../includes/zone_etude/zps_sic.shp");
-	file zone_PPR_shape <- file("../includes/zone_etude/PPR_extract.shp");
-	file coastline_shape <- file("../includes/zone_etude/trait_cote.shp");
-	file defenses_cote_shape <- file("../includes/zone_etude/defense_cote_littoSIM-05122015.shp");
-	file unAm_shape <- file("../includes/zone_etude/zones241115.shp");	
-	file emprise_shape <- file("../includes/zone_etude/emprise_ZE_littoSIM.shp"); 
-	file dem_file <- file("../includes/zone_etude/oleron_dem2016.asc") ;
-	file contour_ile_moins_100m_shape <- file("../includes/zone_etude/contour_ile_moins_100m.shp");
-	int nb_cols <- 631;
-	int nb_rows <- 906;
-	map table_correspondance_nom_commune <- ["lechateau"::"Le-Chateau-d'Oleron","dolus"::"Dolus-d'Oleron", "sttrojan"::"Saint-Trojan-Les-Bains", "stpierre"::"Saint-Pierre-d'Oleron"]; //Table de correspondance des noms des communes entre l'attribut NOM_RAC du fichier communes_shape et l'attribut Commune du fichier defenses_cote_shape 
+	file communes_shape <- file(configuration_file["COMMUNE_SHAPE"]);
+	file road_shape <- file(configuration_file["ROAD_SHAPE"]);
+	file zone_protegee_shape <- file(configuration_file["ZONES_PROTEGEES_SHAPE"]);
+	file zone_PPR_shape <- file(configuration_file["ZONES_PPR_SHAPE"]);
+	file coastline_shape <- file(configuration_file["COASTLINES_SHAPE"]);
+	file defenses_cote_shape <- file(configuration_file["DEFENSES_COTES_SHAPE"]);
+	file unAm_shape <- file(configuration_file["UNAM_SHAPE"]);	
+	file emprise_shape <- file(configuration_file["EMPRISE_SHAPE"]); 
+	file dem_file <- file(configuration_file["DEM_FILE"]) ;
+	file contour_ile_moins_100m_shape <- file(configuration_file["CONTOUR_ILE_INF_100M"]);
+	
+	
+	int nb_cols <- int(configuration_file["DEM_NB_COLS"]);
+	int nb_rows <- int(configuration_file["DEM_NB_ROWS"]);
+	map table_correspondance_nom_commune <- eval_gaml(configuration_file["CORRESPONDANCE_NOM_COMMUNE"]);
+	//map table_correspondance_nom_commune <- eval_gaml("[\"lechateau\"::\"Le-Chateau-d'Oleron\",\"dolus\"::\"Dolus-d'Oleron\", \"sttrojan\"::\"Saint-Trojan-Les-Bains\", \"stpierre\"::\"Saint-Pierre-d'Oleron\"]"); //Table de correspondance des noms des communes entre l'attribut NOM_RAC du fichier communes_shape et l'attribut Commune du fichier defenses_cote_shape 
 	
 	// Ajustement des données de population
-	int minPopUArea <- 10; // Unit = abs pop. In case the population of a UA of type U (Urban area) is equal at zero at initialization (due to a mismatch between the unAm_shape file and the population data), the pop of the UA is rewrite to the minPopUArea value
+	int minPopUArea <- eval_gaml(configuration_file["MIN_POPU_AREA"]); // Unit = abs pop. In case the population of a UA of type U (Urban area) is equal at zero at initialization (due to a mismatch between the unAm_shape file and the population data), the pop of the UA is rewrite to the minPopUArea value
 
 	// Budgets des commune	
-	map impot_unit_table <- ["stpierre"::0.38,"dolus"::0.42,"lechateau"::0.42,"sttrojan"::0.9]; // impot_unit correspond au montant en Boyard (monnaie du jeu) reçu pour chaque habitant de la population d'une commune. 
+	map impot_unit_table <- eval_gaml(configuration_file["IMPOT_UNIT_TABLE"]); // impot_unit correspond au montant en Boyard (monnaie du jeu) reçu pour chaque habitant de la population d'une commune. 
 				// La valeur de impot unit est de 0.42 par défaut.  0.42 Boyard /hab correspond à  21 € / hab   // Le taux entre le Boyard et l'Euros est de 50. Ce taux a été estimé à partir du cout de construction d'un mètre linéaire de digue. Dans le jeu ça vaut 20 alors que dans la réalité ça vaut 1000 € (donc facteur 50 / impot_unit = 21/50= 0.42) 
 				// Ajustement pour réduire un peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.9 pour sttrojan		
-	int pctBudgetInit <- 20; ///Unit = int in %. During the initialization phase, each commune initiate with a budget equal to an annual tax +  % here 20%
+	int pctBudgetInit <- eval_gaml(configuration_file["PCT_BUDGET_TABLE"]); ///Unit = int in %. During the initialization phase, each commune initiate with a budget equal to an annual tax +  % here 20%
 	
 	//Définition de la largeur de la zone littoral (à des conséquences sur le déclenchement des leviers par le modèle Leader
-	float coastBorderBuffer <- 400.0#m; //  Largeur de la zone littorale (<400m) à partir du trait de cote
+	float coastBorderBuffer <- eval_gaml(configuration_file["COAST_BORDER_BUFFER"]); //  Largeur de la zone littorale (<400m) à partir du trait de cote
 	
 	// Paramètres des dynamique de Population
-	float ANNUAL_POP_GROWTH_RATE <- 0.009;
+	float ANNUAL_POP_GROWTH_RATE <- eval_gaml(configuration_file["ANNUAL_POP_GROWTH_RATE"]);
 	
 	// Config Lisflood pour Oléron
 	string application_name <- "Oleron"; // Nom utilisé pour spécifier les noms des fichiers d'export
 	string lisflood_bdy_file -> // Nom du fichier de hauteurs de la mer envoyé a lisflood en fonction du type d'évènement sélectionné.
-		{	 floodEventType ="HIGH_FLOODING"?"oleron2016_Xynthia.bdy"   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" renvoie lisflood vers le fichier "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
-			:(floodEventType ="LOW_FLOODING"?"oleron2016_Xynthia-50.bdy" // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" renvoie lisflood un fichier correspondant au niveau de Xynthia moins 50 cm 
+		{	 floodEventType ="HIGH_FLOODING"?eval_gaml(configuration_file["LISTFLOOD_BDY_HIGH_FILE"])   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" renvoie lisflood vers le fichier "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
+			:(floodEventType ="LOW_FLOODING"?eval_gaml(configuration_file["LISTFLOOD_BDY_LOW_FILE"]) // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" renvoie lisflood un fichier correspondant au niveau de Xynthia moins 50 cm 
 		    :"Match Error for floodEventType")}; 
 		    
 	
@@ -239,6 +246,42 @@ global  {
 	
 	
 /////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//map<string, string> configuration_file <- map<string,string>(csv_file(config_file_name,"\t"));
+	
+map<string, string> read_configuration_file(string fileName,string separator)
+{
+	map<string, string> res <- map<string, string>([]);
+	//file myFile <-file(fileName);
+	string line <-"";
+	loop line over:text_file(fileName)
+	{
+		write line;
+		int last_index<-length(line);
+		if(line contains("//")){
+			last_index <- line index_of("//");
+			write "comment index";
+		} 
+		write "line : " + (line contains(separator))+"  "+line;
+		if(last_index = 0 or !(line contains(separator))){
+			write "empty line";
+		}
+		else
+		{
+			string subString <- line copy_between(0,last_index);
+			list<string> data <- subString split_with(separator);
+			write "add "+data[0]+"      "+data[1];
+			add data[1] at:data[0] to:res;
+			
+		}
+			
+		
+			
+				
+	}
+	
+	return res;
+}	
 
 
 init

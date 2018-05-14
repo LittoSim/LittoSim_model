@@ -1,9 +1,10 @@
 //Prix des actions et durée de mis en oeuvre des actions
-ACTION_COST_FILE	../includes/Oleron/cout_action.csv
+ACTION_COST_FILE	../includes/Oleron/cout_action.csv	//bidule
 ACTION_DELAY_FILE	../includes/Oleron/delai_action.csv
 ACTION_DEF_FILE	../includes/Oleron/actions_def.csv
 //	Chargements des données SIG
 COMMUNE_SHAPE	../includes/zone_etude/communes.shp
+
 ROAD_SHAPE	../includes/zone_etude/routesdepzone.shp
 ZONES_PROTEGEES_SHAPE	../includes/zone_etude/zps_sic.shp
 ZONES_PPR	../includes/zone_etude/PPR_extract.shp
@@ -18,11 +19,5 @@ DEM_NB_ROWS	906
 LISTFLOOD_BDY_LOW_FILE	oleron2016_Xynthia-50.bdy
 LISTFLOOD_BDY_HIGH_FILE	oleron2016_Xynthia.bdy
 BUILT_DIKE_STATUS	bon
-BUILT_DIKE_HEIGHT	1.5#m 
-RAISE_DIKE_HEIGHT	1.0#m 
-
-MIN_POPU_AREA	10
-CORRESPONDANCE_NOM_COMMUNE	["lechateau"::"Le-Chateau-d'Oleron","dolus"::"Dolus-d'Oleron", "sttrojan"::"Saint-Trojan-Les-Bains", "stpierre"::"Saint-Pierre-d'Oleron"]
-IMPOT_UNIT_TABLE	["stpierre"::0.38,"dolus"::0.42,"lechateau"::0.42,"sttrojan"::0.9]
-PCT_BUDGET_TABLE	20
-COAST_BORDER_BUFFER	400.0#m
+BUILT_DIKE_HEIGHT	1.5#m; 
+RAISE_DIKE_HEIGHT	1.0#m; 
