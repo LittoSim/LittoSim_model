@@ -15,8 +15,8 @@ DEM_FILE	../includes/zone_etude/oleron_dem2016.asc
 CONTOUR_ILE_INF_100M	../includes/zone_etude/contour_ile_moins_100m.shp
 DEM_NB_COLS	631
 DEM_NB_ROWS	906
-LISTFLOOD_BDY_LOW_FILE	oleron2016_Xynthia-50.bdy
-LISTFLOOD_BDY_HIGH_FILE	oleron2016_Xynthia.bdy
+LISTFLOOD_BDY_LOW_FILENAME	oleron2016_Xynthia-50.bdy
+LISTFLOOD_BDY_HIGH_FILENAME	oleron2016_Xynthia.bdy
 BUILT_DIKE_STATUS	bon
 BUILT_DIKE_HEIGHT	1.5#m 
 RAISE_DIKE_HEIGHT	1.0#m 

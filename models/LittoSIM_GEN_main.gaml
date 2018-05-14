@@ -14,8 +14,8 @@ model littoSIM_GEN
 
 global  {
 	string config_file_name <- "../includes/Oleron/oleron_config.csv";
-	map<string,string> configuration_file <- read_configuration_file("../includes/Oleron/oleron_config2.csv","\t");
 	
+	map<string,string> configuration_file <- read_configuration_file(config_file_name,"\t");
 	//map<string, string> configuration_file <- map<string,string>(csv_file(config_file_name,"\t"));
 	
 	//////// CONFIG OLERON
@@ -57,11 +57,21 @@ global  {
 	// Paramètres des dynamique de Population
 	float ANNUAL_POP_GROWTH_RATE <- eval_gaml(configuration_file["ANNUAL_POP_GROWTH_RATE"]);
 	
+	
+	// Paramètres de rugosité des Unité d'Aménagement (UA)
+	float RUGOSITY_N <- 0.11; 	//  Ds la V1 c'était 0.05 mais selon MA et NB ce n'était pas cohérent car N est sensé freiner l'inondation. Selon MA et NB c'est  0.11
+	float RUGOSITY_U <- 0.05;	//  Ds la V1 c'était 0.12 mais selon MA et NB ce n'était pas cohérent car U est sensé faire glisser l'eau. Selon MA et NB c'est 0.05
+	float RUGOSITY_AU <- 0.09; 	//  Ds la V1 c'était 0.1 mais selon MA et NB ce n'était pas cohérent car AU n'est pas sensé freiner autant l'eau que N. Selon MA et NB c'est 0.09							->selon MA et NB  0.09
+	float RUGOSITY_A <- 0.07;	// Ds la V1 c'était 0.06 mais selon MA et NB ce n'était pas cohérent car le A d'oélron correspond plus à Landes (code CLC 322) ou Vignes (code CLC 221) qui font 0.07, et pas vraiement à Prairies (code CLC 241)  qui fait 0.04. Selon MA et NB c'est 0.07
+	float RUGOSITY_AUs <- 0.09;  // Selon MA et NB et la CdC, l'habitat adapté va freiner un peu l'inondation. Donc 0.09
+	float RUGOSITY_Us <- 0.09;   // Selon MA et NB et la Cd
+	
+	
 	// Config Lisflood pour Oléron
 	string application_name <- "Oleron"; // Nom utilisé pour spécifier les noms des fichiers d'export
 	string lisflood_bdy_file -> // Nom du fichier de hauteurs de la mer envoyé a lisflood en fonction du type d'évènement sélectionné.
-		{	 floodEventType ="HIGH_FLOODING"?eval_gaml(configuration_file["LISTFLOOD_BDY_HIGH_FILE"])   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" renvoie lisflood vers le fichier "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
-			:(floodEventType ="LOW_FLOODING"?eval_gaml(configuration_file["LISTFLOOD_BDY_LOW_FILE"]) // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" renvoie lisflood un fichier correspondant au niveau de Xynthia moins 50 cm 
+		{	 floodEventType ="HIGH_FLOODING"?configuration_file["LISTFLOOD_BDY_HIGH_FILENAME"]   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur d'eau "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
+			:(floodEventType ="LOW_FLOODING"?configuration_file["LISTFLOOD_BDY_LOW_FILENAME"] // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur "oleron2016_Xynthia-50.bdy" qui correspond au niveau de Xynthia moins 50 cm 
 		    :"Match Error for floodEventType")}; 
 		    
 	
@@ -537,7 +547,6 @@ action executeLisflood
 		do save_rugosityGrid;
 		do save_lf_launch_files;
 		do addElementIn_list_flooding_events("Submersion Tour "+round,current_lisflood_rep);
-		
 		save "directory created by littoSIM Gama model" to: lisfloodRelativePath+current_lisflood_rep+"/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
 		ask network_listen_to_leader{
 			do execute command:"cmd /c start "+lisfloodPath+lisflood_bat_file; }
@@ -589,7 +598,7 @@ action readLisflood
 	     			write stateSimPhase + " - Tour "+round;
 	     		}
 	     		else{
-					stateSimPhase <- 'calculate flood stats'; write stateSimPhase;}   }	   
+					stateSimPhase <- 'calculate flood stats'; write stateSimPhase;}   }	 
 	}
 	
 action load_rugosity
@@ -2344,17 +2353,9 @@ species UA
 	}
 	
 	float rugosityValueOfUA_name (string a_ua_name) 
-		{float val <- 0.0;
-		 switch (a_ua_name)
-			{
-				match "N" {val <- 0.11;}	//  Ds la V1 c'était 0.05 mais selon MA et NB ce n'était pas cohérent car N est sensé freiner l'inondation. Selon MA et NB c'est  0.11
-				match "U" {val <- 0.05;}	//  Ds la V1 c'était 0.12 mais selon MA et NB ce n'était pas cohérent car U est sensé faire glisser l'eau. Selon MA et NB c'est 0.05
-				match "AU" {val <- 0.09;} 	//  Ds la V1 c'était 0.1 mais selon MA et NB ce n'était pas cohérent car AU n'est pas sensé freiner autant l'eau que N. Selon MA et NB c'est 0.09							->selon MA et NB  0.09
-				match "A" {val <- 0.07;}	// Ds la V1 c'était 0.06 mais selon MA et NB ce n'était pas cohérent car le A d'oélron correspond plus à Landes (code CLC 322) ou Vignes (code CLC 221) qui font 0.07, et pas vraiement à Prairies (code CLC 241)  qui fait 0.04. Selon MA et NB c'est 0.07
-				match "AUs" {val <- 0.09;}  // Selon MA et NB et la CdC, l'habitat adapté va freiner un peu l'inondation. Donc 0.09
-				match "Us" {val <- 0.09;}   // Selon MA et NB et la CdC, l'habitat adapté va freiner un peu l'inondation. Donc 0.09
-			}
-		return val;}
+		{
+		return float((eval_gaml("RUGOSITY_"+a_ua_name))) ;
+		}
 
 	rgb cell_color
 	{
@@ -2427,7 +2428,7 @@ species UA
 species commune
 {	
 	int id<-0;
-	string commune_name; //["stpierre", "dolus","sttrojan","lechateau"]
+	string commune_name; 
 	string network_name;
 	int budget;
 	int impot_recu <-0;
@@ -2552,7 +2553,6 @@ species commune
 species indicators
 // Indicateurs calculés par le Modèle à l’initialisation. Lorsque Leader se connecte, le Modèle lui renvoie la valeur de ces indicateurs en même temps
 {
-	
 	int lineaire_cote_stpierre <- 0#m;
 	int lineaire_cote_dolus <- 0#m;
 	int lineaire_cote_lechateau <- 0#m;
