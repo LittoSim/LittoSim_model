@@ -26,3 +26,4 @@ CORRESPONDANCE_NOM_COMMUNE	["lechateau"::"Le-Chateau-d'Oleron","dolus"::"Dolus-d
 IMPOT_UNIT_TABLE	["stpierre"::0.38,"dolus"::0.42,"lechateau"::0.42,"sttrojan"::0.9]
 PCT_BUDGET_TABLE	20
 COAST_BORDER_BUFFER	400.0#m
+ANNUAL_POP_GROWTH_RATE	0.009
