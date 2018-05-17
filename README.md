@@ -63,7 +63,11 @@ L'emprise et les limites de ce carroyage doivent se superposer parfaitement avec
 Les attributs requis sont "FID_1", "grid_code", "Avg_ind_c", "coutexpr"
 - "FID_1" (integer, 10) : identifiant unique
 - "grid_code" (integer, 10) : 4 occurences correspondant aux zones du PLU. 1=N, 2=U, 4=AU, 5=A.
-- "Avg_ind_c" (integer, 10) : nombre d'habitants par cellule. Si une cellule est en zone U, mais si 'Avg_ind_c' = 0, alors le modèle considère qu'il y a 10 habitants.
+- "Avg_ind_c" (integer, 10) : le ratio entre le nombre d’habitant dans la commune et la superficie de bâtiments sur chaque carré de 200X200. 
+* calculer la superficie de tous les bâtiments sur la commune à usage d'habitation (hors bâtiments industriels, commerciaux et agricoles) correspondant à 100% de la population.
+* puis pour chaque carré de 200x200, calculer la surface des bâtiments
+* calculer le ratio par carré  : surface des bâtiments/nombre d'habitants
+Si une cellule est en zone U, mais si 'Avg_ind_c' = 0, alors le modèle considère qu'il y a 10 habitants.
 - "coutexpr" (real, 12) : coût de l'expropriation
 
 ## Architecture du fichier 'emprise_ZE_littoSIM.shp'
