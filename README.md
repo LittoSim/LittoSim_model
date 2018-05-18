@@ -35,6 +35,7 @@ Une zone d'étude est définie par plusieurs fichiers :
 * zps_sic.shp
 * routesdepzone.shp
 * trait_cote.shp
+
 L'ensemble de ces fichiers sont en RGF93 / Lambert-93 (epsg 2154).
 
 ## Architecture du fichier 'communes.shp'
