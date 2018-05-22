@@ -61,7 +61,7 @@ RUGOSITY_Us;0.09   // Selon MA et NB et la Cd
 //////// PARAMETRES DES MODULES  
 ////  Module Digues
 	// Paramètres des actions de construction et réhaussement de digue
-BUILT_DIKE_STATUS;"bon" // status de nouvelle digue
+BUILT_DIKE_STATUS;bon // status de nouvelle digue
 BUILT_DIKE_HEIGHT;1.5#m ////// hauteur d'une nouvelle digue	
 RAISE_DIKE_HEIGHT;1.0#m // le réhaussement d'ouvrage est par défaut de 1 mètre. Il ne peut pas être changé en cours de simulation
 	
