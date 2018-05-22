@@ -4,7 +4,7 @@ SERVER_ADDRESS;localhost;
 // Chemin d'accès a lisflood sur la machine
 LISTFLOOD_PATH;C:/lisflood-fp-604/	// chemin absolu du répertoire lisflood sur la machine  
 LISTFLOOD_RELATIVE_PATH;../../../../../../lisflood-fp-604/ // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
-CURRENT_LISTFLOOD_REP;"results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
+CURRENT_LISTFLOOD_REP;results // nom du répertoire de sauvegarde des résultats de simu de lisflood
 // Paramètres des interfaces utilisateur
 BUTTON_SIZE;2000#m
 MOUSE_BUFFER;50#m
