@@ -15,7 +15,7 @@ model littoSIM_GEN
 global  {
 	string config_file_name <- "../includes/Oleron/oleron_config.csv";
 	
-	map<string,string> configuration_file <- read_configuration_file(config_file_name,"\t");
+	map<string,string> configuration_file <- read_configuration_file(config_file_name,";");
 	//map<string, string> configuration_file <- map<string,string>(csv_file(config_file_name,"\t"));
 	
 	//////// CONFIG OLERON
@@ -59,16 +59,16 @@ global  {
 	
 	
 	// Paramètres de rugosité des Unité d'Aménagement (UA)
-	float RUGOSITY_N <- 0.11; 	//  Ds la V1 c'était 0.05 mais selon MA et NB ce n'était pas cohérent car N est sensé freiner l'inondation. Selon MA et NB c'est  0.11
-	float RUGOSITY_U <- 0.05;	//  Ds la V1 c'était 0.12 mais selon MA et NB ce n'était pas cohérent car U est sensé faire glisser l'eau. Selon MA et NB c'est 0.05
-	float RUGOSITY_AU <- 0.09; 	//  Ds la V1 c'était 0.1 mais selon MA et NB ce n'était pas cohérent car AU n'est pas sensé freiner autant l'eau que N. Selon MA et NB c'est 0.09							->selon MA et NB  0.09
-	float RUGOSITY_A <- 0.07;	// Ds la V1 c'était 0.06 mais selon MA et NB ce n'était pas cohérent car le A d'oélron correspond plus à Landes (code CLC 322) ou Vignes (code CLC 221) qui font 0.07, et pas vraiement à Prairies (code CLC 241)  qui fait 0.04. Selon MA et NB c'est 0.07
-	float RUGOSITY_AUs <- 0.09;  // Selon MA et NB et la CdC, l'habitat adapté va freiner un peu l'inondation. Donc 0.09
-	float RUGOSITY_Us <- 0.09;   // Selon MA et NB et la Cd
-	
+	float RUGOSITY_N <- float(configuration_file["RUGOSITY_N"]); 	//  Ds la V1 c'était 0.05 mais selon MA et NB ce n'était pas cohérent car N est sensé freiner l'inondation. Selon MA et NB c'est  0.11
+	float RUGOSITY_U <-float(configuration_file["RUGOSITY_U"]);	//  Ds la V1 c'était 0.12 mais selon MA et NB ce n'était pas cohérent car U est sensé faire glisser l'eau. Selon MA et NB c'est 0.05
+	float RUGOSITY_AU <- float(configuration_file["RUGOSITY_AU"]); 	//  Ds la V1 c'était 0.1 mais selon MA et NB ce n'était pas cohérent car AU n'est pas sensé freiner autant l'eau que N. Selon MA et NB c'est 0.09							->selon MA et NB  0.09
+	float RUGOSITY_A <- float(configuration_file["RUGOSITY_A"]);	// Ds la V1 c'était 0.06 mais selon MA et NB ce n'était pas cohérent car le A d'oélron correspond plus à Landes (code CLC 322) ou Vignes (code CLC 221) qui font 0.07, et pas vraiement à Prairies (code CLC 241)  qui fait 0.04. Selon MA et NB c'est 0.07
+	float RUGOSITY_AUs <- float(configuration_file["RUGOSITY_AUs"]);  // Selon MA et NB et la CdC, l'habitat adapté va freiner un peu l'inondation. Donc 0.09
+	float RUGOSITY_Us <- float(configuration_file["RUGOSITY_Us"]);   // Selon MA et NB et la Cd
+	string RUGOSITE_PAR_DEFAUT <- configuration_file["RUGOSITE_PAR_DEFAUT"];
 	
 	// Config Lisflood pour Oléron
-	string application_name <- "Oleron"; // Nom utilisé pour spécifier les noms des fichiers d'export
+	string application_name <- configuration_file["APPLICATION_NAME"]; // Nom utilisé pour spécifier les noms des fichiers d'export
 	string lisflood_bdy_file -> // Nom du fichier de hauteurs de la mer envoyé a lisflood en fonction du type d'évènement sélectionné.
 		{	 floodEventType ="HIGH_FLOODING"?configuration_file["LISTFLOOD_BDY_HIGH_FILENAME"]   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur d'eau "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
 			:(floodEventType ="LOW_FLOODING"?configuration_file["LISTFLOOD_BDY_LOW_FILENAME"] // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur "oleron2016_Xynthia-50.bdy" qui correspond au niveau de Xynthia moins 50 cm 
@@ -78,35 +78,37 @@ global  {
 //////// PARAMETRES DES MODULES  
   ////  Module Digues
 	// Paramètres des actions de construction et réhaussement de digue
-	string BUILT_DIKE_STATUS <- "bon"; // status de nouvelle digue
-	float BUILT_DIKE_HEIGHT <- 1.5#m; ////// hauteur d'une nouvelle digue	
-	float RAISE_DIKE_HEIGHT <- 1.0#m; // le réhaussement d'ouvrage est par défaut de 1 mètre. Il ne peut pas être changé en cours de simulation
+	string BUILT_DIKE_STATUS <- configuration_file["BUILT_DIKE_STATUS"]; // status de nouvelle digue
+	float BUILT_DIKE_HEIGHT <- float(configuration_file["BUILT_DIKE_HEIGHT"]); ////// hauteur d'une nouvelle digue	
+	float RAISE_DIKE_HEIGHT <- float(configuration_file["RAISE_DIKE_HEIGHT"]); // le réhaussement d'ouvrage est par défaut de 1 mètre. Il ne peut pas être changé en cours de simulation
 	
 	// Paramètres  de la dynamique d'évolution des défenses côtes (défense côte = digues et dunees)
-	float H_MAX_GANIVELLE <- 1.2; // ganivelle  d'une hauteur de 1.2 metres  -> fixe le maximum d'augmentation de hauteur de la dune
-	float H_DELTA_GANIVELLE <- 0.05 ; // une ganivelle  augmente de 5 cm par an la hauteur du cordon dunaire
-	int STEPS_DEGRAD_STATUS_OUVRAGE <- 8; // Sur les ouvrages il faut 8 ans pour que ça change de statut
-	int STEPS_DEGRAD_STATUS_DUNE <-6; // Sur les dunes, sans ganivelle,  il faut 6 ans pour que ça change de statut
-	int STEPS_REGAIN_STATUS_GANIVELLE  <-3; // Avec une ganivelle ça se régénère 2 fois plus vite que ça ne se dégrade
+	float H_MAX_GANIVELLE <- float(configuration_file["H_MAX_GANIVELLE"]); // ganivelle  d'une hauteur de 1.2 metres  -> fixe le maximum d'augmentation de hauteur de la dune
+	float H_DELTA_GANIVELLE <- float(configuration_file["H_DELTA_GANIVELLE"]); // une ganivelle  augmente de 5 cm par an la hauteur du cordon dunaire
+	int STEPS_DEGRAD_STATUS_OUVRAGE <- int(configuration_file["STEPS_DEGRAD_STATUS_OUVRAGE"]); // Sur les ouvrages il faut 8 ans pour que ça change de statut
+	int STEPS_DEGRAD_STATUS_DUNE <-int(configuration_file["STEPS_DEGRAD_STATUS_DUNE"]); // Sur les dunes, sans ganivelle,  il faut 6 ans pour que ça change de statut
+	int STEPS_REGAIN_STATUS_GANIVELLE  <-int(configuration_file["STEPS_REGAIN_STATUS_GANIVELLE"]); // Avec une ganivelle ça se régénère 2 fois plus vite que ça ne se dégrade
 
 	// Paramètres des ruptures des défenses côtes
-	int PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS <- 13;
-	int PROBA_RUPTURE_DIGUE_ETAT_MOYEN <- 6;
-	int PROBA_RUPTURE_DIGUE_ETAT_BON <- -1; // si -1, alors  impossible
-	int PROBA_RUPTURE_DUNE_ETAT_MAUVAIS <- 8;
-	int PROBA_RUPTURE_DUNE_ETAT_MOYEN <- 4;
-	int PROBA_RUPTURE_DUNE_ETAT_BON <- -1; // si -1, alors  impossible
-	int radius_rupture <- 30; // en mètres. Etendu de la rupture sur l'éléments
+	int PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS <- int(configuration_file["PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS"]);
+	int PROBA_RUPTURE_DIGUE_ETAT_MOYEN <- int(configuration_file["PROBA_RUPTURE_DIGUE_ETAT_MOYEN"]);
+	int PROBA_RUPTURE_DIGUE_ETAT_BON <- int(configuration_file["PROBA_RUPTURE_DIGUE_ETAT_BON"]); // si -1, alors  impossible
+	int PROBA_RUPTURE_DUNE_ETAT_MAUVAIS <- int(configuration_file["PROBA_RUPTURE_DUNE_ETAT_MAUVAIS"]);
+	int PROBA_RUPTURE_DUNE_ETAT_MOYEN <- int(configuration_file["PROBA_RUPTURE_DUNE_ETAT_MOYEN"]);
+	int PROBA_RUPTURE_DUNE_ETAT_BON <- int(configuration_file["PROBA_RUPTURE_DUNE_ETAT_BON"]); // si -1, alors  impossible
+	int RADIUS_RUPTURE <- int(configuration_file["RADIUS_RUPTURE"]); // en mètres. Etendu de la rupture sur l'éléments
 
   ////  Module Croissance démographique
-	int POP_FOR_NEW_U <- 3 ; // Nb initial d'habitants pour les cases qui viennent de passer de AU à U
-	int POP_FOR_U_DENSIFICATION <- 10 ; // Nb de nouveaux habitants par tour pour les cases qui ont une action densification
-	int POP_FOR_U_STANDARD <- 1 ; // Nb de nouveaux habitants par tour pour les autres cases 	 
+	int POP_FOR_NEW_U <- int(configuration_file["POP_FOR_NEW_U"]) ; // Nb initial d'habitants pour les cases qui viennent de passer de AU à U
+	int POP_FOR_U_DENSIFICATION <- int(configuration_file["POP_FOR_U_DENSIFICATION"]) ; // Nb de nouveaux habitants par tour pour les cases qui ont une action densification
+	int POP_FOR_U_STANDARD <- int(configuration_file["POP_FOR_U_STANDARD"]) ; // Nb de nouveaux habitants par tour pour les autres cases 	 
+	
+	
 	
 	
 //////// CONFIG LITTOSIM_GEN
 	// Paramètres de Communication Network 
-	string SERVER <- "localhost"; 
+	string SERVER <- configuration_file["SERVER_ADDRESS"]; 
 	string COMMAND_SEPARATOR <- ":";
 	string GAME_LEADER <- "GAME_LEADER";
 	string GAME_MANAGER <- "GAME_MANAGER";
@@ -115,22 +117,22 @@ global  {
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
 
 	// Chemin d'accès a lisflood sur la machine
-	string lisfloodPath <- "C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
-	string lisfloodRelativePath <- "../../../../../../lisflood-fp-604/"; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
-	string current_lisflood_rep <- "results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
+	string lisfloodPath <- configuration_file["LISTFLOOD_PATH"]; //C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
+	string lisfloodRelativePath <- configuration_file["LISTFLOOD_RELATIVE_PATH"]; //../../../../../../lisflood-fp-604/"; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
+	string current_lisflood_rep <- configuration_file["CURRENT_LISTFLOOD_REP"]; //results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
 	string listflood_par_file -> {"LittoSIM_GEN_"+application_name+"_config_"+floodEventType+timestamp+".par"}; //  Nom du fichier de config envoyé a lisflood pour simu submersion
 	string lisflood_DEM_file -> { "LittoSIM_GEN_"+application_name+"_DEM"+ timestamp + ".asc"}  ; // Nom du fichier d'altitude envoyé a lisflood pour simu submersion 
 	string lisflood_rugosityGrid_file -> {"LittoSIM_GEN_"+application_name+"_n" + timestamp + ".asc"}; //  Nom du fichier de rugosité envoyé a lisflood pour simu submersion
 	string lisflood_bat_file <- "lisflood_LittoSIM_GEN_current.bat" ; //  Nom de l'executable lisflood
 	
 	// Paramètres des interfaces utilisateur
-	float button_size <- 2000#m;
-	float MOUSE_BUFFER <- 50#m; // zone considéré autour de l'endroit où l'on clic pour repérer si un bouton de l'interface a été cliqué 
+	float button_size <- float(configuration_file["BUTTON_SIZE"]); //2000#m;
+	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]); // 50#m; // zone considéré autour de l'endroit où l'on clic pour repérer si un bouton de l'interface a été cliqué 
 	int font_size <- int(shape.height/30); 	// Police de caractère de l'interface de suivi des actions
 	int font_interleave <- int(shape.width/60);  // Police de caractère de l'interface de suivi des actions
 	 
 	//  Paramètres des sauvegardes des résultats de simulation
-	string results_rep <- "results/results"+EXPERIMENT_START_TIME; // nom du répertoire de sauvegarde des résultats de simu du main model
+	string results_rep <- current_lisflood_rep+ "/results"+EXPERIMENT_START_TIME; // nom du répertoire de sauvegarde des résultats de simu du main model
 	string shape_export_filePath -> {results_rep+"/resultats_SHP_Tour"+round+".shp"}; //	nom du fichier de sauvegarde des cells au format SHP
 	string log_export_filePath <- results_rep+"/log_"+machine_time+".csv"; 	// nom du ficheir sauvegarde des logs, coté main model, des actions des joueurs  
 	
@@ -140,13 +142,13 @@ global  {
 
 //////// PARAMETRES UTILISATEURS
 	// Sauvegarde des logs des joueurs : OUI / NON
-	bool log_user_action <- true;
+	bool log_user_action <- bool(configuration_file["LOG_USER_ACTION"]);
 
 	// Sauvegarde des résultats au format SHP : OUI / NON
-	bool sauver_shp <- false ; // si vrai on sauvegarde  à chaque tour, un shapefile avec l'élevation et le niveau d'eau de toutes les cells 
+	bool sauver_shp <- bool(configuration_file["SAUVER_SHP"]); // si vrai on sauvegarde  à chaque tour, un shapefile avec l'élevation et le niveau d'eau de toutes les cells 
 
 	// Paramètre utilisé pour une tentative infructueuse de permettre à l'utilisateur de lancer la simulation sans activemq : OUI / NON
-	bool activemq_connect <- false; 
+	bool activemq_connect <- bool(configuration_file["ACTIVEMQ_CONNECT"]);
 
 	
 //////// VARIABLES D'OPERATION
@@ -266,21 +268,17 @@ map<string, string> read_configuration_file(string fileName,string separator)
 	string line <-"";
 	loop line over:text_file(fileName)
 	{
-		write line;
 		int last_index<-length(line);
 		if(line contains("//")){
 			last_index <- line index_of("//");
-			write "comment index";
 		} 
-		write "line : " + (line contains(separator))+"  "+line;
 		if(last_index = 0 or !(line contains(separator))){
-			write "empty line";
+			
 		}
 		else
 		{
 			string subString <- line copy_between(0,last_index);
 			list<string> data <- subString split_with(separator);
-			write "add "+data[0]+"      "+data[1];
 			add data[1] at:data[0] to:res;
 			
 		}
@@ -297,6 +295,10 @@ map<string, string> read_configuration_file(string fileName,string separator)
 init
 	{
 		create data_retreive number:1;
+		create commune from:communes_shape with: [commune_name::string(read("NOM_RAC")),id::int(read("id_jeu"))]
+		{
+			write " commune " + commune_name + " "+id;
+		}
 		
 		loop i from: 0 to: (length(listC)-1)  {
 		listC[i] <- blend (listC[i], #red , 0.9);
@@ -318,10 +320,6 @@ init
 		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), commune_name_shpfile::string(read("Commune"))
 		];
 		
-		create commune from:communes_shape with: [commune_name::string(read("NOM_RAC")),id::int(read("id_jeu"))]
-		{
-			write " commune " + commune_name + " "+id;
-		}
 		create road from: road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
 		all_protected_area <- union(protected_area);
@@ -602,7 +600,7 @@ action readLisflood
 	}
 	
 action load_rugosity
-     { file rug_data <- text_file("../includes/zone_etude/oleron.n.ascii") ;
+     { file rug_data <- text_file(RUGOSITE_PAR_DEFAUT) ;
 			loop r from: 6 to: length(rug_data) -1 {
 				string l <- rug_data[r];
 				list<string> res <- l split_with " ";
@@ -2050,7 +2048,7 @@ species def_cote
 				// on applique la rupture a peu pres au milieu du linéaire
 				int cIndex <- int(length(cells) /2);
 				// on défini la zone de rupture ds un rayon de 30 mètre autour du point de rupture 
-				zoneRupture <- circle(radius_rupture#m,(cells[cIndex]).location);
+				zoneRupture <- circle(RADIUS_RUPTURE#m,(cells[cIndex]).location);
 				// on applique la rupture sur les cells de cette zone
 				ask cells overlapping zoneRupture  {
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
@@ -2767,7 +2765,7 @@ experiment oleronV2 type: gui {
 		{
 			chart "Surface inondée par commune" type: series
 			{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value: length(commune)= 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:length(commune)= 0 ?"":(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 		display "Surface U inondée par commune"
