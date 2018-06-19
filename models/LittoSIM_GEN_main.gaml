@@ -40,7 +40,7 @@ global  {
 	int nb_cols <- int(configuration_file["DEM_NB_COLS"]);
 	int nb_rows <- int(configuration_file["DEM_NB_ROWS"]);
 	map table_correspondance_nom_commune <- eval_gaml(configuration_file["CORRESPONDANCE_NOM_COMMUNE"]);
-	//map table_correspondance_nom_commune <- eval_gaml("[\"lechateau\"::\"Le-Chateau-d'Oleron\",\"dolus\"::\"Dolus-d'Oleron\", \"sttrojan\"::\"Saint-Trojan-Les-Bains\", \"stpierre\"::\"Saint-Pierre-d'Oleron\"]"); //Table de correspondance des noms des communes entre l'attribut NOM_RAC du fichier communes_shape et l'attribut Commune du fichier defenses_cote_shape 
+	//map table_correspondance_nom_commune <- eval_gaml("[\"lechateau\"::\"Le-Chateau-d'Oleron\",\"dolus\"::\"Dolus-d'Oleron\", \"sttrojan\"::\"Saint-Trojan-Les-Bains\", \"stpierre\"::\"Saint-Pierre-d'Oleron\"]"); //Table de correspondance les codes INSEE et l'attribut INSEE_COM du fichier communes_shape et l'attribut INSEE_COM du fichier defenses_cote_shape
 	
 	// Ajustement des données de population
 	int minPopUArea <- eval_gaml(configuration_file["MIN_POPU_AREA"]); // Unit = abs pop. In case the population of a UA of type U (Urban area) is equal at zero at initialization (due to a mismatch between the unAm_shape file and the population data), the pop of the UA is rewrite to the minPopUArea value
