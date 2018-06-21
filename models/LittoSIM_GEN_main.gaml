@@ -53,11 +53,11 @@ global  {
 	//Définition de la largeur de la zone littoral (à des conséquences sur le déclenchement des leviers par le modèle Leader
 	float coastBorderBuffer <- eval_gaml(configuration_file["COAST_BORDER_BUFFER"]); //  Largeur de la zone littorale (<400m) à partir du trait de cote
 	
-	// Paramètres des dynamique de Population
+	// Paramètres des dynamiques de Population
 	float ANNUAL_POP_GROWTH_RATE <- eval_gaml(configuration_file["ANNUAL_POP_GROWTH_RATE"]);
 	
 	
-	// Paramètres de rugosité des Unité d'Aménagement (UA)
+	// Paramètres de rugosité des Unités d'Aménagement (UA)
 	float RUGOSITY_N <- float(configuration_file["RUGOSITY_N"]); 	//  Ds la V1 c'était 0.05 mais selon MA et NB ce n'était pas cohérent car N est sensé freiner l'inondation. Selon MA et NB c'est  0.11
 	float RUGOSITY_U <-float(configuration_file["RUGOSITY_U"]);	//  Ds la V1 c'était 0.12 mais selon MA et NB ce n'était pas cohérent car U est sensé faire glisser l'eau. Selon MA et NB c'est 0.05
 	float RUGOSITY_AU <- float(configuration_file["RUGOSITY_AU"]); 	//  Ds la V1 c'était 0.1 mais selon MA et NB ce n'était pas cohérent car AU n'est pas sensé freiner autant l'eau que N. Selon MA et NB c'est 0.09							->selon MA et NB  0.09
@@ -81,7 +81,7 @@ global  {
 	float BUILT_DIKE_HEIGHT <- float(configuration_file["BUILT_DIKE_HEIGHT"]); ////// hauteur d'une nouvelle digue	
 	float RAISE_DIKE_HEIGHT <- float(configuration_file["RAISE_DIKE_HEIGHT"]); // le réhaussement d'ouvrage est par défaut de 1 mètre. Il ne peut pas être changé en cours de simulation
 	
-	// Paramètres  de la dynamique d'évolution des défenses côtes (défense côte = digues et dunees)
+	// Paramètres  de la dynamique d'évolution des défenses côtes (défense côte = digues et dunes)
 	float H_MAX_GANIVELLE <- float(configuration_file["H_MAX_GANIVELLE"]); // ganivelle  d'une hauteur de 1.2 metres  -> fixe le maximum d'augmentation de hauteur de la dune
 	float H_DELTA_GANIVELLE <- float(configuration_file["H_DELTA_GANIVELLE"]); // une ganivelle  augmente de 5 cm par an la hauteur du cordon dunaire
 	int STEPS_DEGRAD_STATUS_OUVRAGE <- int(configuration_file["STEPS_DEGRAD_STATUS_OUVRAGE"]); // Sur les ouvrages il faut 8 ans pour que ça change de statut
@@ -115,7 +115,7 @@ global  {
 	string UPDATE_ACTION_DONE <- "update_action_done";
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
 
-	// Chemin d'accès a lisflood sur la machine
+	// Chemin d'accès à lisflood sur la machine
 	string lisfloodPath <- configuration_file["LISTFLOOD_PATH"]; //C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
 	string lisfloodRelativePath <- configuration_file["LISTFLOOD_RELATIVE_PATH"]; //../../../../../../lisflood-fp-604/"; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
 	string current_lisflood_rep <- configuration_file["CURRENT_LISTFLOOD_REP"]; //results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
@@ -152,7 +152,7 @@ global  {
 	
 //////// VARIABLES D'OPERATION
 	
-	// Definition de l'enveloppe SIG de travail
+	// Définition de l'enveloppe SIG de travail
 	geometry shape <- envelope(emprise_shape);
 	
 	// Sauvegarde du machine_time à l'initialisation de la simulation
@@ -233,7 +233,7 @@ global  {
 	int count_N_to_AU_C3 <-0;	
 	int count_N_to_AU_C4 <-0;
 
-	// Variable de calcul de la dynamique de Pop
+	// Variable de calcul de la dynamique de Population
 	int new_comers_still_to_dispatch <- 0;
 
 	// Variables de calcul pour lisflood 
