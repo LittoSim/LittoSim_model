@@ -39,13 +39,12 @@ global  {
 	
 	int nb_cols <- int(configuration_file["DEM_NB_COLS"]);
 	int nb_rows <- int(configuration_file["DEM_NB_ROWS"]);
-	map table_correspondance_nom_commune <- eval_gaml(configuration_file["CORRESPONDANCE_NOM_COMMUNE"]);
-	//map table_correspondance_nom_commune <- eval_gaml("[\"lechateau\"::\"Le-Chateau-d'Oleron\",\"dolus\"::\"Dolus-d'Oleron\", \"sttrojan\"::\"Saint-Trojan-Les-Bains\", \"stpierre\"::\"Saint-Pierre-d'Oleron\"]"); //Table de correspondance les codes INSEE et l'attribut INSEE_COM du fichier communes_shape et l'attribut INSEE_COM du fichier defenses_cote_shape
+	map table_correspondance_insee_com <- eval_gaml(configuration_file["CORRESPONDANCE_INSEE_COM"]);
 	
 	// Ajustement des données de population
 	int minPopUArea <- eval_gaml(configuration_file["MIN_POPU_AREA"]); // Unit = abs pop. In case the population of a UA of type U (Urban area) is equal at zero at initialization (due to a mismatch between the unAm_shape file and the population data), the pop of the UA is rewrite to the minPopUArea value
 
-	// Budgets des commune	
+	// Budgets des communes	
 	map impot_unit_table <- eval_gaml(configuration_file["IMPOT_UNIT_TABLE"]); // impot_unit correspond au montant en Boyard (monnaie du jeu) reçu pour chaque habitant de la population d'une commune. 
 				// La valeur de impot unit est de 0.42 par défaut.  0.42 Boyard /hab correspond à  21 € / hab   // Le taux entre le Boyard et l'Euros est de 50. Ce taux a été estimé à partir du cout de construction d'un mètre linéaire de digue. Dans le jeu ça vaut 20 alors que dans la réalité ça vaut 1000 € (donc facteur 50 / impot_unit = 21/50= 0.42) 
 				// Ajustement pour réduire un peu les écarts -> 0.42 de base et 0.38 pour stpierre et 0.9 pour sttrojan		
@@ -295,9 +294,9 @@ map<string, string> read_configuration_file(string fileName,string separator)
 init
 	{
 		create data_retreive number:1;
-		create commune from:communes_shape with: [commune_name::string(read("NOM_RAC")),id::int(read("id_jeu"))]
+		create commune from:communes_shape with: [insee_com::string(read("INSEE_COM")),id::int(read("id_jeu"))]
 		{
-			write " commune " + commune_name + " "+id;
+			write " commune " + insee_com + " "+id;
 		}
 		
 		loop i from: 0 to: (length(listC)-1)  {
@@ -317,7 +316,7 @@ init
 		stateSimPhase <- 'not started';
 		do addElementIn_list_flooding_events ("Submersion initiale","results");
 		/*Creation des agents a partir des données SIG */
-		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), commune_name_shpfile::string(read("Commune"))
+		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), insee_com_shpfile::string(read("Commune"))
 		];
 		
 		create road from: road_shape;
@@ -348,7 +347,7 @@ init
 			UAs <- UA overlapping self;
 			cells <- cell overlapping self;
 			budget <- int(current_population(self) * impot_unit * (1 +  pctBudgetInit/100));
-			write commune_name +" budget initial : " + budget;
+			write insee_com +" budget initial : " + budget;
 			do calculate_indicators_t0;
 		}
 		ask def_cote {do init_dike;}
@@ -437,7 +436,7 @@ int commune_id(string xx)
 		commune m <- commune first_with(each.network_name = xx);
 		if(m = nil)
 		{
-			m <- (commune first_with (xx contains each.commune_name ));
+			m <- (commune first_with (xx contains each.insee_com ));
 			m.network_name <- xx;
 		}
 		return	 m.id;
@@ -715,7 +714,7 @@ action calculate_communes_results
 				N_0_5c <- N_0_5 * 0.04;
 				N_1c <- N_1 * 0.04;
 				N_maxc <- N_max * 0.04;
-				text <- text + "Résultats commune " + commune_name +"
+				text <- text + "Résultats commune " + insee_com +"
 Surface U innondée : moins de 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
 Surface Us innondée : moins de 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
 Surface Udense innondée : moins de 50cm " + ((Udense_0_5c) with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Udense_1 * 0.04) with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Udense_max * 0.04) with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
@@ -731,7 +730,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			ask ((commune where (each.id > 0)) sort_by (each.id))
 				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ;
 					add surface_inondee to: data_surface_inondee; 
-					write ""+ commune_name + " : " + surface_inondee +" ha";
+					write ""+ insee_com + " : " + surface_inondee +" ha";
 
 					totU <- (U_0_5c + U_1c + U_maxc) with_precision 1 ;
 					totUs <- (Us_0_5c + Us_1c + Us_maxc ) with_precision 1 ;
@@ -780,7 +779,7 @@ species data_retreive skills:[network] schedules:[]
 	
 	action retreive_def_cote(commune aCommune)
 	{	
-		list<def_cote> def_list <- def_cote where(each.commune_name_shpfile = world.table_correspondance_nom_commune at (aCommune.commune_name));
+		list<def_cote> def_list <- def_cote where(each.insee_com_shpfile = world.table_correspondance_insee_com at (aCommune.insee_com));
 		def_cote tmp;
 		loop tmp over:def_list
 		{
@@ -802,7 +801,7 @@ species data_retreive skills:[network] schedules:[]
 
 	action retreive_action_done(commune m)
 	{
-		list<action_done> action_list <- action_done where(each.commune_name = m.commune_name);
+		list<action_done> action_list <- action_done where(each.insee_com = m.insee_com);
 		action_done tmp<- nil;
 		loop tmp over:action_list 	
 		{
@@ -825,7 +824,7 @@ species data_retreive skills:[network] schedules:[]
 	
 	action retreive_activated_lever(commune m)
 	{
-		list<activated_lever> lever_list <- activated_lever where(each.commune_name = m.commune_name);
+		list<activated_lever> lever_list <- activated_lever where(each.insee_com = m.insee_com);
 		activated_lever tmp<- nil;
 		loop tmp over:lever_list 	
 		{
@@ -843,7 +842,7 @@ species action_done schedules:[]
 	string id;
 	int element_id;
 	geometry element_shape;
-	string commune_name<-"";
+	string insee_com<-"";
 	bool not_updated <- false;
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	int command_round<- -1;
@@ -880,7 +879,7 @@ species action_done schedules:[]
 			"OBJECT_TYPE"::"action_done",
 			"id"::string(id),
 			"element_id"::string(element_id),
-			"commune_name"::string(commune_name),
+			"insee_com"::string(insee_com),
 			"command"::string(command),
 			"label"::string(label),
 			"cost"::string(cost),
@@ -922,7 +921,7 @@ species action_done schedules:[]
 			float x_loc2 <- font_interleave + 20* (font_size+font_interleave);
 			shape <- rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} );
 			draw shape color:#white;
-			string txt <- commune_name+": "+ label;
+			string txt <- insee_com+": "+ label;
 			txt <- txt +" ("+string(initial_application_round-round)+")"; 
 			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
 			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
@@ -938,7 +937,7 @@ species action_done schedules:[]
 		create def_cote number:1 returns:new_dikes
 		{
 			dike_id <- next_dike_id;
-			commune_name_shpfile <- world.table_correspondance_nom_commune at (act.commune_name);
+			insee_com_shpfile <- world.table_correspondance_insee_com at (act.insee_com);
 			shape <- act.element_shape;
 			location <- act.location;
 			type <- BUILT_DIKE_TYPE ;
@@ -1057,7 +1056,7 @@ species activated_lever
 	
 	//attributes sent through network
 	int id;
-	string commune_name;
+	string insee_com;
 	string lever_type;
 	string lever_explanation <- "";
 	string act_done_id <- "";
@@ -1070,7 +1069,7 @@ species activated_lever
 	{
 		id <- int(m["id"]);
 		lever_type <- m["lever_type"];
-		commune_name <- m["commune_name"];
+		insee_com <- m["insee_com"];
 		act_done_id <- m["act_done_id"];
 		added_cost <- int(m["added_cost"]);
 		nb_rounds_delay <- int(m["nb_rounds_delay"]);
@@ -1085,7 +1084,7 @@ species activated_lever
 			"OBJECT_TYPE"::"activated_lever",
 			"id"::id,
 			"lever_type"::lever_type,
-			"commune_name"::commune_name,
+			"insee_com"::insee_com,
 			"act_done_id"::string(act_done_id),
 			"added_cost"::string(added_cost),
 			"nb_rounds_delay"::int(nb_rounds_delay),
@@ -1117,7 +1116,7 @@ species network_activated_lever skills:[network]
 				{
 					do init_from_map(m_contents);
 					act_done <- action_done first_with (each.id = act_done_id);
-					commune aCommune <- commune first_with (each.commune_name = commune_name);
+					commune aCommune <- commune first_with (each.insee_com = insee_com);
 					aCommune.budget <-aCommune.budget - added_cost; 
 					add self to:act_done.activated_levers;
 					act_done.a_lever_has_been_applied<- true;
@@ -1156,16 +1155,16 @@ species network_listen_to_leader skills:[network]
 			{
 				match CREDITER
 				{
-					string commune_name <- m_contents[COMMUNE];
+					string insee_com <- m_contents[COMMUNE];
 					int amount <- m_contents[AMOUNT];
-					commune cm <- commune first_with(each.commune_name=commune_name);
+					commune cm <- commune first_with(each.insee_com=insee_com);
 					cm.budget <- cm.budget + amount;
 				}
 				match PRELEVER
 				{
-					string commune_name <- m_contents[COMMUNE];
+					string insee_com <- m_contents[COMMUNE];
 					int amount <- m_contents[AMOUNT]; 
-					commune cm <- commune first_with(each.commune_name=commune_name);
+					commune cm <- commune first_with(each.insee_com=insee_com);
 					cm.budget <- cm.budget - amount;
 				}
 				
@@ -1202,7 +1201,7 @@ species network_listen_to_leader skills:[network]
 		ask commune where (each.id > 0) {
 					map<string,string> msg <- [];
 					put myself.INDICATORS_T0 key:OBSERVER_MESSAGE_COMMAND in:msg ;
-					put commune_name key: 'commune_name' in: msg;
+					put insee_com key: 'insee_com' in: msg;
 					put length_dikes_t0 key: "length_dikes_t0" in: msg;
 					put length_dunes_t0 key: "length_dunes_t0" in: msg;
 					put count_UA_urban_t0 key: "count_UA_urban_t0" in: msg;
@@ -1326,7 +1325,7 @@ species network_player skills:[network]
 			self.command_round <-round; 
 			self.id <- string(data[1]);
 			self.initial_application_round <- int(data[2]);
-			self.commune_name <- sender;
+			self.insee_com <- sender;
 			if !(self.command in [REFRESH_ALL])
 			{
 				self.element_id <- int(data[3]);
@@ -1375,12 +1374,12 @@ species network_player skills:[network]
 					
 				if(log_user_action)
 				{
-					save ([string(machine_time-EXPERIMENT_START_TIME),self.commune_name]+data) to:log_export_filePath rewrite: false type:"csv";
+					save ([string(machine_time-EXPERIMENT_START_TIME),self.insee_com]+data) to:log_export_filePath rewrite: false type:"csv";
 				}
 			}
 		}
 		//  le paiement est déjà fait coté commune, lorsque le joueur a validé le panier. On renregistre ici le paiement pour garder les comptes à jour coté serveur
-		int idCom <-world.commune_id(new_action.commune_name);
+		int idCom <-world.commune_id(new_action.insee_com);
 		ask commune first_with(each.id = idCom) {do record_payment_for_action_done(new_action);}
 	}
 	
@@ -1449,10 +1448,10 @@ species network_player skills:[network]
 	{
 		map<string,string> msg <- [
 			"TOPIC"::"action_done is_applied",
-			"commune_name"::act.commune_name,
+			"insee_com"::act.insee_com,
 			"id"::act.id
 			];
-		do send  to:act.commune_name+"_map_msg" contents:msg;
+		do send  to:act.insee_com+"_map_msg" contents:msg;
 	}
 	
 	float min_dike_elevation(def_cote ovg)
@@ -1497,15 +1496,15 @@ species network_player skills:[network]
 			if should_be_applied and is_alive and !shouldWaitLeaderToActivate
 			
 		{
-			string tmp <- self.commune_name;
+			string tmp <- self.insee_com;
 			int idCom <-world.commune_id(tmp);
 			action_done act <- self;
 			switch(command)
 			{
 				match REFRESH_ALL
 				{////  Pourquoi est ce que REFRESH_ALL est une  Action_done ??
-					write " Update ALL !!!! " + idCom+ " "+ commune_name;
-					string dd <- commune_name;
+					write " Update ALL !!!! " + idCom+ " "+ insee_com;
+					string dd <- insee_com;
 					commune cm <- first(commune where(each.id=idCom));
 					ask first(data_retreive) 
 					{
@@ -1895,7 +1894,7 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 species def_cote
 {	
 	int dike_id;
-	string commune_name_shpfile;
+	string insee_com_shpfile;
 	string type;
 	string status;	//  "bon" "moyen" "mauvais"  
 	float height;  // height au pied en mètre
@@ -2054,7 +2053,7 @@ species def_cote
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 				}
 				write "rupture "+type_def_cote+" n°" + dike_id + "("+", état " + status +", hauteur "+height+", alt "+alt +")";
-				write "rupture "+type_def_cote+" n°" + dike_id + "("+ commune_name_shpfile+", état " + status +", hauteur "+height+", alt "+alt +")";
+				write "rupture "+type_def_cote+" n°" + dike_id + "("+ insee_com_shpfile+", état " + status +", hauteur "+height+", alt "+alt +")";
 				
 		}
 	}
@@ -2426,14 +2425,14 @@ species UA
 species commune
 {	
 	int id<-0;
-	string commune_name; 
+	string insee_com; 
 	string network_name;
 	int budget;
 	int impot_recu <-0;
 	bool subvention_habitat_adapte <- false;
 	list<UA> UAs ;
 	list<cell> cells ;
-	float impot_unit  <- impot_unit_table at commune_name; 
+	float impot_unit  <- impot_unit_table at insee_com; 
 	
 	/* initialisation des hauteurs d'eau */ 
 	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
@@ -2489,10 +2488,10 @@ species commune
 		{
 			map<string,string> msg <- [
 			"TOPIC"::"INFORM_CURRENT_ROUND",
-			"commune_name"::myself.commune_name,
+			"insee_com"::myself.insee_com,
 			"round"::round
 			];
-			do send  to:myself.commune_name+"_map_msg" contents:msg;
+			do send  to:myself.insee_com+"_map_msg" contents:msg;
 		}
 	}
 
@@ -2502,10 +2501,10 @@ species commune
 		{
 			map<string,string> msg <- [
 			"TOPIC"::"COMMUNE_UPDATE",
-			"commune_name"::myself.commune_name,
+			"insee_com"::myself.insee_com,
 			"budget"::myself.budget
 			];
-			do send  to:myself.commune_name+"_map_msg" contents:msg;
+			do send  to:myself.insee_com+"_map_msg" contents:msg;
 		}
 	}
 	action inform_new_round {  // INFORM THAT A NEW ROUND HAS PASS
@@ -2513,15 +2512,15 @@ species commune
 		{
 			map<string,string> msg <- [
 			"TOPIC"::"INFORM_NEW_ROUND",
-			"commune_name"::myself.commune_name
+			"insee_com"::myself.insee_com
 			];
-			do send  to:myself.commune_name+"_map_msg" contents:msg;
+			do send  to:myself.insee_com+"_map_msg" contents:msg;
 		}
 	}
 	
 	action calculate_indicators_t0 
 	{
-			list<def_cote> my_def_cote <- def_cote where(each.commune_name_shpfile = world.table_correspondance_nom_commune at commune_name);
+			list<def_cote> my_def_cote <- def_cote where(each.insee_com_shpfile = world.table_correspondance_insee_com at insee_com);
 			length_dikes_t0 <- my_def_cote where (each.type_def_cote = 'digue') sum_of (each.shape.perimeter);
 			length_dunes_t0 <- my_def_cote where (each.type_def_cote = 'dune') sum_of (each.shape.perimeter);
 			count_UA_urban_t0 <- length (UAs where (each.isUrbanType));
@@ -2538,7 +2537,7 @@ species commune
 	action calcul_impots {
 		impot_recu <- current_population(self) * impot_unit;
 		budget <- budget + impot_recu;
-		write commune_name + "-> impot " + impot_recu + " ; budget "+ budget;
+		write insee_com + "-> impot " + impot_recu + " ; budget "+ budget;
 	}
 	
 	action record_payment_for_action_done (action_done aAction)
@@ -2765,49 +2764,49 @@ experiment oleronV2 type: gui {
 		{
 			chart "Surface inondée par commune" type: series
 			{
-				datalist value: length(commune)= 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:length(commune)= 0 ?"":(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value: length(commune)= 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:length(commune)= 0 ?"":(((commune where (each.id > 0)) sort_by (each.id)) collect each.insee_com); 			
 			}
 		}
 		display "Surface U inondée par commune"
 		{
 			chart "Surface U inondée par commune" type: series
 			{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totU),((commune first_with(each.id = 2)).data_totU),((commune first_with(each.id = 3)).data_totU),((commune first_with(each.id = 4)).data_totU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totU),((commune first_with(each.id = 2)).data_totU),((commune first_with(each.id = 3)).data_totU),((commune first_with(each.id = 4)).data_totU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.insee_com); 			
 			}
 		}
 		display "Surface Us inondée par commune"
 		{
 			chart "Surface Us inondée par commune" type: series
 			{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUs),((commune first_with(each.id = 2)).data_totUs),((commune first_with(each.id = 3)).data_totUs),((commune first_with(each.id = 4)).data_totUs)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUs),((commune first_with(each.id = 2)).data_totUs),((commune first_with(each.id = 3)).data_totUs),((commune first_with(each.id = 4)).data_totUs)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.insee_com); 			
 			}
 		}
 		display "Surface Udense inondée par commune"
 		{
 			chart "Surface Udense inondée par commune" type: series
 			{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUdense),((commune first_with(each.id = 2)).data_totUdense),((commune first_with(each.id = 3)).data_totUdense),((commune first_with(each.id = 4)).data_totUdense)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUdense),((commune first_with(each.id = 2)).data_totUdense),((commune first_with(each.id = 3)).data_totUdense),((commune first_with(each.id = 4)).data_totUdense)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.insee_com); 			
 			}
 		}
 		display "Surface AU inondée par commune"
 		{
 			chart "Surface AU inondée par commune" type: series
 			{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totAU),((commune first_with(each.id = 2)).data_totAU),((commune first_with(each.id = 3)).data_totAU),((commune first_with(each.id = 4)).data_totAU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totAU),((commune first_with(each.id = 2)).data_totAU),((commune first_with(each.id = 3)).data_totAU),((commune first_with(each.id = 4)).data_totAU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.insee_com); 			
 			}
 		}
 		display "Surface N inondée par commune"
 		{
 			chart "Surface N inondée par commune" type: series
 			{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totN),((commune first_with(each.id = 2)).data_totN),((commune first_with(each.id = 3)).data_totN),((commune first_with(each.id = 4)).data_totN)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totN),((commune first_with(each.id = 2)).data_totN),((commune first_with(each.id = 3)).data_totN),((commune first_with(each.id = 4)).data_totN)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.insee_com); 			
 			}
 		}
 		display "Surface A inondée par commune"
 		{
 			chart "Surface A inondée par commune" type: series
 			{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totA),((commune first_with(each.id = 2)).data_totA),((commune first_with(each.id = 3)).data_totA),((commune first_with(each.id = 4)).data_totA)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totA),((commune first_with(each.id = 2)).data_totA),((commune first_with(each.id = 3)).data_totA),((commune first_with(each.id = 4)).data_totA)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.insee_com); 			
 			}
 		}
 	}
