@@ -23,16 +23,17 @@ ACTION_DELAY_FILE;../includes/Oleron/delai_action.csv
 ACTION_DEF_FILE;../includes/Oleron/actions_def.csv
 //;Chargements des données SIG
 COMMUNE_SHAPE;../includes/Oleron/zone_etude/communes.shp
-ROAD_SHAPE;../includes/Oleron/zone_etude/routesdepzone.shp
-ZONES_PROTEGEES_SHAPE;../includes/Oleron/zone_etude/zps_sic.shp
-ZONES_PPR;../includes/Oleron/zone_etude/PPR_extract.shp
-COASTLINES_SHAPE;../includes/Oleron/zone_etude/trait_cote.shp
-DEFENSES_COTES_SHAPE;../includes/Oleron/zone_etude/defense_cote_littoSIM-05122015.shp
-UNAM_SHAPE;../includes/Oleron/zone_etude/zones241115.shp
-EMPRISE_SHAPE;../includes/Oleron/zone_etude/emprise_ZE_littoSIM.shp
-DEM_FILE;../includes/Oleron/zone_etude/oleron_dem2016.asc
-CONTOUR_ILE_INF_100M;../includes/Oleron/zone_etude/contour_ile_moins_100m.shp
+CONTOUR_ILE_INF_100M;../includes/Oleron/zone_etude/contour_neg_100m.shp
+DEFENSES_COTES_SHAPE;../includes/Oleron/zone_etude/defense_cote.shp
+EMPRISE_SHAPE;../includes/Oleron/zone_etude/emprise_ZE.shp
+DEM_FILE;../includes/Oleron/zone_etude/mnt_2016.asc
 RUGOSITE_PAR_DEFAUT;../includes/Oleron/zone_etude/oleron.n.ascii
+ZONES_PPR;../includes/Oleron/zone_etude/PPR.shp
+ROAD_SHAPE;../includes/Oleron/zone_etude/routes.shp
+COASTLINES_SHAPE;../includes/Oleron/zone_etude/trait_cote.shp
+UNAM_SHAPE;../includes/Oleron/zone_etude/zones.shp
+ZONES_PROTEGEES_SHAPE;../includes/Oleron/zone_etude/zps_sic.shp
+
 
 DEM_NB_COLS;631
 DEM_NB_ROWS;906
