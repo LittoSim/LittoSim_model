@@ -58,7 +58,7 @@ Les attributs requis sont "OBJECTID", "Commune", "INSEE_COM", "type", "Etat_ouvr
 - "INSEE_COM" (string, 5) : code INSEE des communes
 - "type" (string, 20) : type de défense, 2 types d'occurence possible, soit 'Naturel', soit 'Autre' (exemple pour Oléron : 'Ouvrage longitudinal').
 L'occurence 'Naturel' indique que le linéaire est une dune. Toutes les autres occurences différentes de 'Naturel' seront considérées comme des 'Digues'. Si aucun type défini, le modèle le considère, par défaut, comme 'inconnu'.
-- "Etat_ouvr" (string, 20) : état de l'ouvrage : 3 occurences : bon, moyen, mauvais. Si aucun état est renseigné, le modèle le considère comme bon.
+ - "Etat_ouvr" (string, 20) : état de l'ouvrage : 3 occurences : bon, moyen, mauvais. Si aucun état est renseigné, le modèle le considère comme bon.
 - "alt" (real double, 18) : altitude en m (NGF)
 - "hauteur" (real double, 10) : hauteur en m de l'ouvrage de défense (de sa fondation à son sommet). Si la hauteur est nulle, alors le modele indique 1.5 m par défaut.
 L'attribut facultatif "Nature_def" permet d'identifier les types de côte dans l'interface du jeu (cordon dunaire, cordon de galets, enrochements, etc...)
@@ -100,5 +100,5 @@ Si une cellule est en zone U, mais si 'Avg_ind_c' = 0, alors le modèle considè
 - "coutexpr" (real, 12) : coût de l'expropriation
 
 ## Architecture du fichier 'zps_sic.shp'
-Ce fichier correspond aux sites Natura 2000, regroupant les Zones de Protection Spéciale (Z.P.S.) et les Sites d’Importance Communautaire (S.I.C.).
+Ce fichier correspond aux sites Natura 2000, regroupant les Zones de Protection Spéciale (Z.P.S.) de la directive Oiseaux 79/409/CEE et les Sites d’Importance Communautaire (S.I.C.) de la directive Habitats 92/43/CEE(réseau Natura 2000).
 L'attribut requis est "SITECODE" correspondant au nom du site protégé.
