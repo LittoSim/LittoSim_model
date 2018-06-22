@@ -101,4 +101,4 @@ Si une cellule est en zone U, mais si 'Avg_ind_c' = 0, alors le modèle considè
 
 ## Architecture du fichier 'zps_sic.shp'
 Ce fichier correspond aux sites Natura 2000, regroupant les Zones de Protection Spéciale (Z.P.S.) de la directive Oiseaux 79/409/CEE et les Sites d’Importance Communautaire (S.I.C.) de la directive Habitats 92/43/CEE(réseau Natura 2000).
-L'attribut requis est "SITECODE" correspondant au nom du site protégé.
+L'attribut requis est "SITECODE" correspondant au code unique des zones protégées.
