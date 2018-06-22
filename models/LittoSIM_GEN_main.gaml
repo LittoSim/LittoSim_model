@@ -320,7 +320,7 @@ init
 		];
 		
 		create road from: road_shape;
-		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
+		create protected_area from: zone_protegee_shape with: [name::string(read("SITECODE"))];
 		all_protected_area <- union(protected_area);
 		create flood_risk_area from: zone_PPR_shape;
 		all_flood_risk_area <- union(flood_risk_area);
