@@ -43,7 +43,7 @@ L'ensemble des autres fichiers sont des données SIG, projetées en RGF93 / Lamb
 
 ## Architecture du fichier 'communes.shp'
 Ce fichier comprend les communes du jeu et correspond au découpage administratif national de la base de données  ADMIN EXPRESS® de l'IGN(découpage adminsitratif) : libre téléchargement  http://professionnels.ign.fr/adminexpress#tab-3 
-Deux attributs requis sont ajoutés "id_jeu" et "INSEE_COM":
+Deux attributs sont requis : "INSEE_COM" et "id_jeu" qui est à créer :
 - "id_jeu" (integer, 1) : 0 : communes affichées, mais non jouées. Valeurs de 1 à n correspondant au numéro des joueurs.
 - "INSEE_COM" (string, 5) : code INSEE des communes
 
@@ -101,4 +101,4 @@ Si une cellule est en zone U, mais si 'Avg_ind_c' = 0, alors le modèle considè
 
 ## Architecture du fichier 'zps_sic.shp'
 Ce fichier correspond aux sites Natura 2000, regroupant les Zones de Protection Spéciale (Z.P.S.) et les Sites d’Importance Communautaire (S.I.C.).
-L'attribut requis est "SITENAME" correspondant au nom du site protégé.
+L'attribut requis est "SITECODE" correspondant au nom du site protégé.
