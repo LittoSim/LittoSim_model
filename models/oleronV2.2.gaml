@@ -246,6 +246,8 @@ init
 			budget <- current_population(self) * impot_unit * 1.2; ///A l’initialisation la commune commence avec un budget équivalent aux impôts annuels perçus + 20%
 			write commune_name +" budget initial : " + budget;
 			do calculate_indicators_t0;
+			//initialisation du network..name des communes via la méthode commune_id
+			int i <- world.commune_id(commune_name);
 		}
 		ask def_cote {do init_dike;}
 		
