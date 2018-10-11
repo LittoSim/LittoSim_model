@@ -30,7 +30,7 @@ global  {
 	file zone_protegee_shape <- file(configuration_file["ZONES_PROTEGEES_SHAPE"]);
 	file zone_PPR_shape <- file(configuration_file["ZONES_PPR_SHAPE"]);
 	file coastline_shape <- file(configuration_file["COASTLINES_SHAPE"]);
-	file defenses_cote_shape <- file(configuration_file["DEFENSES_COTES_SHAPE"]);
+	file defenses_cotes_shape <- file(configuration_file["DEFENSES_COTES_SHAPE"]);
 	file unAm_shape <- file(configuration_file["UNAM_SHAPE"]);	
 	file emprise_shape <- file(configuration_file["EMPRISE_SHAPE"]); 
 	file dem_file <- file(configuration_file["DEM_FILE"]) ;
@@ -39,7 +39,8 @@ global  {
 	
 	int nb_cols <- int(configuration_file["DEM_NB_COLS"]);
 	int nb_rows <- int(configuration_file["DEM_NB_ROWS"]);
-	map table_correspondance_insee_com <- eval_gaml(configuration_file["CORRESPONDANCE_INSEE_COM"]);
+	map table_correspondance_insee_com_nom <- eval_gaml(configuration_file["CORRESPONDANCE_INSEE_COM_NOM"]);
+	map table_correspondance_insee_com_nom_rac <- eval_gaml(configuration_file["CORRESPONDANCE_INSEE_COM_NOM_RAC"]);
 	
 	// Ajustement des données de population
 	int minPopUArea <- eval_gaml(configuration_file["MIN_POPU_AREA"]); // Unit = abs pop. In case the population of a UA of type U (Urban area) is equal at zero at initialization (due to a mismatch between the unAm_shape file and the population data), the pop of the UA is rewrite to the minPopUArea value
@@ -69,8 +70,8 @@ global  {
 	// Config Lisflood pour Oléron
 	string application_name <- configuration_file["APPLICATION_NAME"]; // Nom utilisé pour spécifier les noms des fichiers d'export
 	string lisflood_bdy_file -> // Nom du fichier de hauteurs de la mer envoyé a lisflood en fonction du type d'évènement sélectionné.
-		{	 floodEventType ="HIGH_FLOODING"?configuration_file["LISTFLOOD_BDY_HIGH_FILENAME"]   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur d'eau "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
-			:(floodEventType ="LOW_FLOODING"?configuration_file["LISTFLOOD_BDY_LOW_FILENAME"] // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur "oleron2016_Xynthia-50.bdy" qui correspond au niveau de Xynthia moins 50 cm 
+		{	 floodEventType ="HIGH_FLOODING"?configuration_file["LISFLOOD_BDY_HIGH_FILENAME"]   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur d'eau "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
+			:(floodEventType ="LOW_FLOODING"?configuration_file["LISFLOOD_BDY_LOW_FILENAME"] // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur "oleron2016_Xynthia-50.bdy" qui correspond au niveau de Xynthia moins 50 cm 
 		    :"Match Error for floodEventType")}; 
 		    
 	
@@ -116,10 +117,10 @@ global  {
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
 
 	// Chemin d'accès à lisflood sur la machine
-	string lisfloodPath <- configuration_file["LISTFLOOD_PATH"]; //C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
-	string lisfloodRelativePath <- configuration_file["LISTFLOOD_RELATIVE_PATH"]; //../../../../../../lisflood-fp-604/"; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
-	string current_lisflood_rep <- configuration_file["CURRENT_LISTFLOOD_REP"]; //results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
-	string listflood_par_file -> {"LittoSIM_GEN_"+application_name+"_config_"+floodEventType+timestamp+".par"}; //  Nom du fichier de config envoyé a lisflood pour simu submersion
+	string lisfloodPath <- configuration_file["LISFLOOD_PATH"]; //C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
+	string lisfloodRelativePath <- configuration_file["LISFLOOD_RELATIVE_PATH"]; //../../../../../../lisflood-fp-604/"; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
+	string current_lisflood_rep <- configuration_file["CURRENT_LISFLOOD_REP"]; //results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
+	string lisflood_par_file -> {"LittoSIM_GEN_"+application_name+"_config_"+floodEventType+timestamp+".par"}; //  Nom du fichier de config envoyé a lisflood pour simu submersion
 	string lisflood_DEM_file -> { "LittoSIM_GEN_"+application_name+"_DEM"+ timestamp + ".asc"}  ; // Nom du fichier d'altitude envoyé a lisflood pour simu submersion 
 	string lisflood_rugosityGrid_file -> {"LittoSIM_GEN_"+application_name+"_n" + timestamp + ".asc"}; //  Nom du fichier de rugosité envoyé a lisflood pour simu submersion
 	string lisflood_bat_file <- "lisflood_LittoSIM_GEN_current.bat" ; //  Nom de l'executable lisflood
@@ -167,24 +168,39 @@ global  {
 		
 	// Variables d'état de l'étape en cours de la simulation 	
 	string stateSimPhase <- 'not started'; // stateSimPhase defines the currrent phase of the simulation {'not started' 'game' 'execute lisflood' 'show lisflood' , 'calculate flood stats' and 'show flood stats'} 
+
+	// Chargement des paramètres des actions 
+	map<string,map> data_action <- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";");
+	//   Pour utiliser la map data_action, utiliser la syntaxe data_action at NOM_ACTION at nom_du_paramètre (action code, delay, label, cost ou entity). Exemple data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' at 'cost'; 
 	
 	// Codification des actions pour Communication Network 
 	//Liste de l'ensemble des messages possibles à envoyer via Communication Network
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N];int ACTION_REPAIR_DIKE <- 5;
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N];
 	// Liste des actions avec leur code correspondant
-	int ACTION_MODIFY_LAND_COVER_AU <- 1;
-	int ACTION_MODIFY_LAND_COVER_A <- 2;
-	int ACTION_MODIFY_LAND_COVER_U <- 3;
-	int ACTION_MODIFY_LAND_COVER_N <- 4;
-	int ACTION_CREATE_DIKE <- 6;
-	int ACTION_DESTROY_DIKE <- 7;
-	int ACTION_RAISE_DIKE <- 8;
+	int ACTION_REPAIR_DIKE <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action code');
+	int ACTION_CREATE_DIKE <- int(data_action at 'ACTION_CREATE_DIKE' at 'action code');
+	int ACTION_DESTROY_DIKE <- int(data_action at 'ACTION_DESTROY_DIKE' at 'action code');
+	int ACTION_RAISE_DIKE <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action code');
+	int ACTION_INSTALL_GANIVELLE <- int(data_action at 'ACTION_INSTALL_GANIVELLE' at 'action code');
+	int ACTION_MODIFY_LAND_COVER_AU <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AU' at 'action code');
+	int ACTION_MODIFY_LAND_COVER_A <- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'action code');
+	int ACTION_MODIFY_LAND_COVER_U <- int(data_action at 'ACTION_MODIFY_LAND_COVER_U' at 'action code');
+	int ACTION_MODIFY_LAND_COVER_N <- int(data_action at 'ACTION_MODIFY_LAND_COVER_N' at 'action code');
+	int ACTION_MODIFY_LAND_COVER_AUs <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs' at 'action code');	
+	int ACTION_MODIFY_LAND_COVER_Us <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' at 'action code');
+	int ACTION_MODIFY_LAND_COVER_Ui <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' at 'action code');
+	int ACTION_EXPROPRIATION <- int(data_action at 'ACTION_EXPROPRIATION' at 'action code');
+	
+	int ACTION_ACTION_DONE_UPDATE<- 101;
+	int ACTION_ACTION_LIST <- 211;
+	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
 	int ACTION_LAND_COVER_UPDATE<-9;
 	int ACTION_DIKE_UPDATE<-10;
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_AU <- 11; // Not used. Should detele ?
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_A <- 12;// Not used. Should detele ?
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_U <- 13;// Not used. Should detele ?
-	int VALIDATION_ACTION_MODIFY_LAND_COVER_N <- 14;// Not used. Should detele ?
+	int INFORM_ROUND <-34;
+	int NOTIFY_DELAY <-35;
+	int ENTITY_TYPE_CODE_DEF_COTE <-36;
+	int ENTITY_TYPE_CODE_UA <-37;
+	
 	int ACTION_DIKE_CREATED <- 16;
 	int ACTION_DIKE_DROPPED <- 17;
 	int UPDATE_BUDGET <- 19;
@@ -194,18 +210,7 @@ global  {
 	int INFORM_TAX_GAIN <-24;
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
-	int ACTION_INSTALL_GANIVELLE <- 29;
-	int ACTION_MODIFY_LAND_COVER_AUs <-31;	
-	int ACTION_MODIFY_LAND_COVER_Us <-32;
-	int INFORM_ROUND <-34;
-	int NOTIFY_DELAY <-35;
-	int ENTITY_TYPE_CODE_DEF_COTE <-36;
-	int ENTITY_TYPE_CODE_UA <-37;
-	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
-	int ACTION_ACTION_DONE_UPDATE<- 101;
-	int ACTION_ACTION_LIST <- 211;
-	int ACTION_MODIFY_LAND_COVER_Ui <-311;
-	int ACTION_EXPROPRIATION <- 9999; // codification spéciale car en fait le code n'est utilisé que pour aller chercher le delai d'exection dans le fichier csv
+	
 
 	// Récupération des couts du fichier cout_action dans des variables 	
 	int ACTION_COST_LAND_COVER_TO_A <- int(all_action_cost at {2,0});
@@ -258,12 +263,10 @@ global  {
 	
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//map<string, string> configuration_file <- map<string,string>(csv_file(config_file_name,"\t"));
 	
 map<string, string> read_configuration_file(string fileName,string separator)
 {
 	map<string, string> res <- map<string, string>([]);
-	//file myFile <-file(fileName);
 	string line <-"";
 	loop line over:text_file(fileName)
 	{
@@ -278,25 +281,39 @@ map<string, string> read_configuration_file(string fileName,string separator)
 		{
 			string subString <- line copy_between(0,last_index);
 			list<string> data <- subString split_with(separator);
-			add data[1] at:data[0] to:res;
-			
-		}
-			
-		
-			
-				
+			add data[1] at:data[0] to:res;	
+		}				
 	}
 	
 	return res;
 }	
 
+	map<string, map> store_csv_data_into_map_of_map(string fileName,string separator)
+	{
+		map<string, map> res ;
+		string line <-"";
+		list<string> col_labels <- [];
+		loop line over:text_file(fileName)
+		{
+			list<string> data <- line split_with(separator);
+			if empty(col_labels) 
+				{col_labels <- data ; } 
+			else
+			{
+				map  sub_res <- map([]);
+				loop i from: 1 to: ((length(col_labels))-1) { add data[i] at: col_labels[i] to: sub_res ; }
+				add sub_res at:data[0] to:res ;
+			}
+		}
+		return res;
+	}
 
 init
 	{
 		create data_retreive number:1;
-		create commune from:communes_shape with: [insee_com::string(read("INSEE_COM")),id::int(read("id_jeu"))]
+		create commune from:communes_shape with: [insee_com::string(read("INSEE_COM")),commune_name::string(read("NOM_RAC")),id::int(read("id_jeu"))]
 		{
-			write " commune " + insee_com + " "+id;
+			write " commune " + commune_name +"("+insee_com+")" + " "+id;
 		}
 		
 		loop i from: 0 to: (length(listC)-1)  {
@@ -316,7 +333,7 @@ init
 		stateSimPhase <- 'not started';
 		do addElementIn_list_flooding_events ("Submersion initiale","results");
 		/*Creation des agents a partir des données SIG */
-		create def_cote from:defenses_cote_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), insee_com_shpfile::string(read("Commune"))
+		create def_cote from:defenses_cotes_shape  with:[dike_id::int(read("OBJECTID")),type::string(read("Type_de_de")), status::string(read("Etat_ouvr")), alt::float(get("alt")), height::float(get("hauteur")), insee_com::string(read("INSEE_COM"))
 		];
 		
 		create road from: road_shape;
@@ -347,7 +364,7 @@ init
 			UAs <- UA overlapping self;
 			cells <- cell overlapping self;
 			budget <- int(current_population(self) * impot_unit * (1 +  pctBudgetInit/100));
-			write insee_com +" budget initial : " + budget;
+			write commune_name +" budget initial : " + budget;
 			do calculate_indicators_t0;
 		}
 		ask def_cote {do init_dike;}
@@ -431,7 +448,7 @@ action new_round{
 	write "done!";
 	} 	
 	
-int commune_id(string xx)
+int commune_id(string xx) // TO DO   Il y a des chances que cette méthode ne marche plus du fait qu'on a changé commune_name par insee_com
 	{
 		commune m <- commune first_with(each.network_name = xx);
 		if(m = nil)
@@ -506,7 +523,7 @@ action replay_flood_event
 	set lisfloodReadingStep <- 0;
 	current_lisflood_rep <- list_flooding_events at replayed_flooding_event;
 	stateSimPhase <- 'show lisflood'; write stateSimPhase;
-	do readLisflood;
+	//do readLisflood;  // TO DO -> ligne à supprimer
 }		
 action launchFlood_event
 	{
@@ -550,8 +567,8 @@ action executeLisflood
  	}
  		
 action save_lf_launch_files {
-	save ("DEMfile         "+lisfloodPath+lisflood_DEM_file+"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+lisflood_rugosityGrid_file+"\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+lisflood_bdy_file+"\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath+listflood_par_file type: "text"  ;
-	save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+(lisfloodPath+listflood_par_file)) rewrite: true  to: lisfloodRelativePath+lisflood_bat_file type: "text" ;
+	save ("DEMfile         "+lisfloodPath+lisflood_DEM_file+"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+lisflood_rugosityGrid_file+"\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+lisflood_bdy_file+"\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath+lisflood_par_file type: "text"  ;
+	save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+(lisfloodPath+lisflood_par_file)) rewrite: true  to: lisfloodRelativePath+lisflood_bat_file type: "text" ;
 }       
 
 action save_dem {
@@ -573,7 +590,7 @@ action readLisflood
 	 {  
 	 	string nb <- lisfloodReadingStep;
 		loop i from: 0 to: 3-length(nb) { nb <- "0"+nb; }
-		string fileName <- lisfloodRelativePath+current_lisflood_rep+"/res-"+ nb +".wd";
+		string fileName <- lisfloodRelativePath+current_lisflood_rep+"/res-"+ nb +".wd";		
 		if file_exists (fileName)
 			{
 				write fileName;
@@ -714,7 +731,7 @@ action calculate_communes_results
 				N_0_5c <- N_0_5 * 0.04;
 				N_1c <- N_1 * 0.04;
 				N_maxc <- N_max * 0.04;
-				text <- text + "Résultats commune " + insee_com +"
+				text <- text + "Résultats commune " + commune_name +"
 Surface U innondée : moins de 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
 Surface Us innondée : moins de 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
 Surface Udense innondée : moins de 50cm " + ((Udense_0_5c) with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Udense_1 * 0.04) with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Udense_max * 0.04) with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
@@ -730,7 +747,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			ask ((commune where (each.id > 0)) sort_by (each.id))
 				{ 	surface_inondee <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ;
 					add surface_inondee to: data_surface_inondee; 
-					write ""+ insee_com + " : " + surface_inondee +" ha";
+					write ""+ commune_name + " : " + surface_inondee +" ha";
 
 					totU <- (U_0_5c + U_1c + U_maxc) with_precision 1 ;
 					totUs <- (Us_0_5c + Us_1c + Us_maxc ) with_precision 1 ;
@@ -779,7 +796,7 @@ species data_retreive skills:[network] schedules:[]
 	
 	action retreive_def_cote(commune aCommune)
 	{	
-		list<def_cote> def_list <- def_cote where(each.insee_com_shpfile = world.table_correspondance_insee_com at (aCommune.insee_com));
+		list<def_cote> def_list <- def_cote where(each.insee_com = aCommune.insee_com);
 		def_cote tmp;
 		loop tmp over:def_list
 		{
@@ -921,7 +938,7 @@ species action_done schedules:[]
 			float x_loc2 <- font_interleave + 20* (font_size+font_interleave);
 			shape <- rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} );
 			draw shape color:#white;
-			string txt <- insee_com+": "+ label;
+			string txt <-  ""+world.table_correspondance_insee_com_nom_rac at (insee_com)+": "+ label;
 			txt <- txt +" ("+string(initial_application_round-round)+")"; 
 			draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
 			draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;
@@ -937,7 +954,7 @@ species action_done schedules:[]
 		create def_cote number:1 returns:new_dikes
 		{
 			dike_id <- next_dike_id;
-			insee_com_shpfile <- world.table_correspondance_insee_com at (act.insee_com);
+			insee_com <- act.insee_com;
 			shape <- act.element_shape;
 			location <- act.location;
 			type <- BUILT_DIKE_TYPE ;
@@ -989,7 +1006,7 @@ species network_round_manager skills:[remoteGUI]
 		switch(selected_action)
 		{
 			match "NEW_ROUND" { ask world {	do new_round; }}
-			match "START_VISUALISATION" { do start_visualisation_submersion ; }
+			match "START_VISUALISATION" { do start_visualisation_submersion ; } // TO DO -> Ligne à supprimer 
 			match "LOCK_USERS" { do lock_unlock_window(true) ; }
 			match "UNLOCK_USERS" { do lock_unlock_window(false) ;}
 			match_one ["HIGH_FLOODING","LOW_FLOODING"] {
@@ -1021,7 +1038,7 @@ species network_round_manager skills:[remoteGUI]
 		}
 	}
 	
-	action start_visualisation_submersion
+	action start_visualisation_submersion  // TO DO -> Méthode à virer
 	{
 		
 		//démarer la visualisation avec la submerssion "choix simulaiton"
@@ -1201,7 +1218,7 @@ species network_listen_to_leader skills:[network]
 		ask commune where (each.id > 0) {
 					map<string,string> msg <- [];
 					put myself.INDICATORS_T0 key:OBSERVER_MESSAGE_COMMAND in:msg ;
-					put insee_com key: 'insee_com' in: msg;
+					put insee_com key: "insee_com" in: msg;
 					put length_dikes_t0 key: "length_dikes_t0" in: msg;
 					put length_dunes_t0 key: "length_dunes_t0" in: msg;
 					put count_UA_urban_t0 key: "count_UA_urban_t0" in: msg;
@@ -1237,7 +1254,7 @@ species network_player skills:[network]
 {
 	init
 	{
-		 do connect to: SERVER with_name:GAME_MANAGER;
+		do connect to: SERVER with_name:GAME_MANAGER;
 	}
 	
 	reflex wait_message when: activemq_connect
@@ -1249,54 +1266,48 @@ species network_player skills:[network]
 			map<string, unknown> m_contents <- msg.contents;
 			if(m_sender!=GAME_MANAGER )
 			{
-				
 				if(m_contents["stringContents"]!= nil)
 				{
 					write"read message: " + m_contents["stringContents"];
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
 					if(CONNECTION_MESSAGE = int(data[0]))
 					{
-							int idCom <-world.commune_id(m_sender);
-							ask(commune where(each.id= idCom))
-							{
-								do inform_current_round;
-								do send_player_commune_update;
-							}
-							write "connexion de "+ m_sender + " "+ idCom;
-						
+						int idCom <-world.commune_id(m_sender);
+						ask(commune where(each.id= idCom))
+						{
+							do inform_current_round;
+							do send_player_commune_update;
+						}
+						write "connexion de "+ m_sender + " "+ idCom;
 					}
 					else
+					{
+						if(REFRESH_ALL = int(data[0]))
 						{
-							if(REFRESH_ALL = int(data[0]))
+							int idCom <-world.commune_id(m_sender);
+							write " Update ALL !!!! " + idCom+ " ";
+							commune cm <- first(commune where(each.id=idCom));
+							ask first(data_retreive) 
 							{
-								int idCom <-world.commune_id(m_sender);
-								write " Update ALL !!!! " + idCom+ " ";
-								commune cm <- first(commune where(each.id=idCom));
-								ask first(data_retreive) 
-								{
-									do send_data_to_commune(cm);
-								}
-							} 
-							else
+								do send_data_to_commune(cm);
+							}
+						} 
+						else
+						{
+							if(round>0) 
 							{
-								if(round>0) 
-								{
-									write "read action " + m_contents["stringContents"];
-									do read_action(string(m_contents["stringContents"]),m_sender);
-								}
-								
+								write "read action " + m_contents["stringContents"];
+								do read_action(string(m_contents["stringContents"]),m_sender);
 							}
 						}
+					}
 				}
 				else
 				{
 					map<string,unknown> data <- m_contents["objectContent"];
 					
-				}
-				
-			}
-			
-					
+				}				
+			}					
 		}
 	}
 	
@@ -1503,7 +1514,7 @@ species network_player skills:[network]
 			{
 				match REFRESH_ALL
 				{////  Pourquoi est ce que REFRESH_ALL est une  Action_done ??
-					write " Update ALL !!!! " + idCom+ " "+ insee_com;
+					write " Update ALL !!!! " + idCom+ " "+  world.table_correspondance_insee_com_nom_rac at (insee_com);
 					string dd <- insee_com;
 					commune cm <- first(commune where(each.id=idCom));
 					ask first(data_retreive) 
@@ -1894,7 +1905,7 @@ grid cell file: dem_file schedules:[] neighbours: 8 {
 species def_cote
 {	
 	int dike_id;
-	string insee_com_shpfile;
+	string insee_com;
 	string type;
 	string status;	//  "bon" "moyen" "mauvais"  
 	float height;  // height au pied en mètre
@@ -2053,7 +2064,7 @@ species def_cote
 							if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 				}
 				write "rupture "+type_def_cote+" n°" + dike_id + "("+", état " + status +", hauteur "+height+", alt "+alt +")";
-				write "rupture "+type_def_cote+" n°" + dike_id + "("+ insee_com_shpfile+", état " + status +", hauteur "+height+", alt "+alt +")";
+				write "rupture "+type_def_cote+" n°" + dike_id + "("+ world.table_correspondance_insee_com_nom_rac at (insee_com)+", état " + status +", hauteur "+height+", alt "+alt +")";
 				
 		}
 	}
@@ -2426,13 +2437,14 @@ species commune
 {	
 	int id<-0;
 	string insee_com; 
+	string commune_name;
 	string network_name;
 	int budget;
 	int impot_recu <-0;
 	bool subvention_habitat_adapte <- false;
 	list<UA> UAs ;
 	list<cell> cells ;
-	float impot_unit  <- impot_unit_table at insee_com; 
+	float impot_unit  <- impot_unit_table at commune_name; 
 	
 	/* initialisation des hauteurs d'eau */ 
 	float U_0_5c <-0.0;	float U_1c <-0.0;	float U_maxc <-0.0;
@@ -2520,7 +2532,7 @@ species commune
 	
 	action calculate_indicators_t0 
 	{
-			list<def_cote> my_def_cote <- def_cote where(each.insee_com_shpfile = world.table_correspondance_insee_com at insee_com);
+			list<def_cote> my_def_cote <- def_cote where(each.insee_com = insee_com);
 			length_dikes_t0 <- my_def_cote where (each.type_def_cote = 'digue') sum_of (each.shape.perimeter);
 			length_dunes_t0 <- my_def_cote where (each.type_def_cote = 'dune') sum_of (each.shape.perimeter);
 			count_UA_urban_t0 <- length (UAs where (each.isUrbanType));
@@ -2537,7 +2549,7 @@ species commune
 	action calcul_impots {
 		impot_recu <- current_population(self) * impot_unit;
 		budget <- budget + impot_recu;
-		write insee_com + "-> impot " + impot_recu + " ; budget "+ budget;
+		write commune_name + "-> impot " + impot_recu + " ; budget "+ budget;
 	}
 	
 	action record_payment_for_action_done (action_done aAction)
@@ -2606,7 +2618,7 @@ species buttons
  *  **********************************************************************************************
  */
 
-experiment oleronV2 type: gui {
+experiment Oleron type: gui {
 	float minimum_cycle_duration <- 0.5;
 	parameter "Log user action" var:log_user_action<- true;
 	parameter "Connect ActiveMQ" var:activemq_connect<- true;
