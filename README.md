@@ -56,9 +56,9 @@ Les attributs requis sont "OBJECTID", "Commune", "INSEE_COM", "type", "Etat_ouvr
 - "OBJECTID" (integer, 10) : identifiant unique
 - "Commune" (string, 30) : nom de la commune
 - "INSEE_COM" (string, 5) : code INSEE des communes
-- "type" (string, 20) : type de défense, 2 types d'occurence possible, soit 'Naturel', soit 'Autre' (exemple pour Oléron : 'Ouvrage longitudinal').
-L'occurence 'Naturel' indique que le linéaire est une dune. Toutes les autres occurences différentes de 'Naturel' seront considérées comme des 'Digues'. Si aucun type défini, le modèle le considère, par défaut, comme 'inconnu'.
- - "Etat_ouvr" (string, 20) : état de l'ouvrage : 3 occurences : bon, moyen, mauvais. Si aucun état est renseigné, le modèle le considère comme bon.
+- "type" (string, 20) : type de défense, 2 types d'occurrence possible, soit 'Naturel', soit 'Autre' (exemple pour Oléron : 'Ouvrage longitudinal').
+L'occurrence 'Naturel' indique que le linéaire est une dune. Toutes les autres occurrences différentes de 'Naturel' seront considérées comme des 'Digues'. Si aucun type défini, le modèle le considère, par défaut, comme 'inconnu'.
+ - "Etat_ouvr" (string, 20) : état de l'ouvrage : 3 occurrences : bon, moyen, mauvais. Si aucun état est renseigné, le modèle le considère comme bon.
 - "alt" (real double, 18) : altitude en m (NGF)
 - "hauteur" (real double, 10) : hauteur en m de l'ouvrage de défense (de sa fondation à son sommet). Si la hauteur est nulle, alors le modele indique 1.5 m par défaut.
 L'attribut facultatif "Nature_def" permet d'identifier les types de côte dans l'interface du jeu (cordon dunaire, cordon de galets, enrochements, etc...)
