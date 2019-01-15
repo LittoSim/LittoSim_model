@@ -52,12 +52,12 @@ Ce fichier correspond à la fusion de toutes les communes ('communes.shp'), afin
 Pas d'attributs requis.
 
 ## Architecture du fichier 'defense_cote.shp'
-Les attributs requis sont "OBJECTID", "Commune", "INSEE_COM", "type", "Etat_ouvr", "alt" et "hauteur" 
+Les champs requis sont "OBJECTID", "Commune", "INSEE_COM", "type", "Etat_ouvr", "alt" et "hauteur" 
 - "OBJECTID" (integer, 10) : identifiant unique
 - "Commune" (string, 30) : nom de la commune
 - "INSEE_COM" (string, 5) : code INSEE des communes
 - "type" (string, 20) : type de défense, 2 types d'occurrence possible, soit 'Naturel', soit 'Autre' (exemple pour Oléron : 'Ouvrage longitudinal').
-L'occurrence 'Naturel' indique que le linéaire est une dune. Toutes les autres occurrences différentes de 'Naturel' seront considérées comme des 'Digues'. Si aucun type défini, le modèle le considère, par défaut, comme 'inconnu'.
+L'occurrence (attribut) 'Naturel' indique que le linéaire est une dune. Toutes les autres occurrences différentes de 'Naturel' seront considérées comme des 'Digues'. Si aucun type défini, le modèle le considère, par défaut, comme 'inconnu'.
  - "Etat_ouvr" (string, 20) : état de l'ouvrage : 3 occurrences : bon, moyen, mauvais. Si aucun état est renseigné, le modèle le considère comme bon.
 - "alt" (real double, 18) : altitude en m (NGF)
 - "hauteur" (real double, 10) : hauteur en m de l'ouvrage de défense (de sa fondation à son sommet). Si la hauteur est nulle, alors le modele indique 1.5 m par défaut.
@@ -65,7 +65,7 @@ L'attribut facultatif "Nature_def" permet d'identifier les types de côte dans l
 
 ## Architecture du fichier 'emprise_ZE.shp'
 Ce fichier correspond à l'emprise du MNT 'mnt_2016.asc'.
-Pas d'attributs requis.
+Pas de champs obligatoires requis.
 
 ## Architecture du fichier 'mnt_2016.asc'
 Ce fichier correspond au MNT qui a été ré-échantillonné, avec un pas de 20m et enrichi avec les données relatives à l'altitude maximum du fichier 'defense_cote_littoSIM-05122015.shp'
@@ -76,20 +76,20 @@ Ce fichier est une grille de pas de 20m, correspondant aux valeurs de rugosité 
 
 ## Architecture du fichier 'PPR.shp'
 Ce fichier correspond aux zones d'aléa submersion du PPR (exemples : 1B2, B1, B2, R2, R2a)
-Pas d'attributs requis.
+Pas de champs obligatoires requis.
 
 ## Architecture du fichier 'routes.shp'
 Ce fichier correspond aux routes principales, telles que les routes départementales.
-Pas d'attributs requis.
+Pas de champs obligatoires requis.
 
 ## Architecture du fichier 'trait_cote.shp'
 Ce fichier permet de déterminer différentes zones, par rapport à leur distance au trait de côte (buffer), telle que la zone pour identifier les rétro digues.
-Pas d'attributs requis.
+Pas de champs obligatoires requis.
 
 ## Architecture du fichier 'zones.shp'
 Ce fichier correspond à un carroyage de 200x200m et qui regroupe diverses informations.
 L'emprise et les limites de ce carroyage doivent se superposer parfaitement avec le MNT.
-Les attributs requis sont "FID_1", "grid_code", "Avg_ind_c", "coutexpr"
+Les champs requis sont "FID_1", "grid_code", "Avg_ind_c", "coutexpr"
 - "FID_1" (integer, 10) : identifiant unique
 - "grid_code" (integer, 10) : 4 occurences correspondant aux zones du PLU. 1=N, 2=U, 4=AU, 5=A.
 - "Avg_ind_c" (integer, 10) : le ratio entre le nombre d’habitant dans la commune et la superficie de bâtiments sur chaque carré de 200X200. 
@@ -100,5 +100,5 @@ Si une cellule est en zone U, mais si 'Avg_ind_c' = 0, alors le modèle considè
 - "coutexpr" (real, 12) : coût de l'expropriation
 
 ## Architecture du fichier 'zps_sic.shp'
-Ce fichier correspond aux sites Natura 2000, regroupant les Zones de Protection Spéciale (Z.P.S.) de la directive Oiseaux 79/409/CEE et les Sites d’Importance Communautaire (S.I.C.) de la directive Habitats 92/43/CEE(réseau Natura 2000).
+Ce fichier correspond aux sites Natura 2000, regroupant les Zones de Protection Spéciale (Z.P.S.) de la directive Oiseaux 79/409/CEE et les Sites d’Importance Communautaire (S.I.C.) de la directive Habitats 92/43/CEE (réseau Natura 2000).
 L'attribut requis est "SITECODE" correspondant au code unique des zones protégées.
