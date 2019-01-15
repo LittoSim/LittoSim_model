@@ -49,14 +49,14 @@ Deux champs sont requis : "INSEE_COM" et "id_jeu" qui est à créer :
 
 ## Architecture du fichier 'contour_neg_100m.shp'
 Ce fichier correspond à la fusion de toutes les communes ('communes.shp'), afin de ne former qu'une entité géographique avec un buffer intérieur de 100m.
-Pas d'attributs requis.
+Pas de champs obligatoires requis.
 
 ## Architecture du fichier 'defense_cote.shp'
 Les champs requis sont "OBJECTID", "Commune", "INSEE_COM", "type", "Etat_ouvr", "alt" et "hauteur" 
 - "OBJECTID" (integer, 10) : identifiant unique
 - "Commune" (string, 30) : nom de la commune
 - "INSEE_COM" (string, 5) : code INSEE des communes
-- "type" (string, 20) : type de défense, 2 types d'occurrence possible, soit 'Naturel', soit 'Autre' (exemple pour Oléron : 'Ouvrage longitudinal').
+- "type" (string, 20) : type de défense, 2 types d'occurrence (attribut) possible, soit 'Naturel', soit 'Autre' (exemple pour Oléron : 'Ouvrage longitudinal').
 L'occurrence (attribut) 'Naturel' indique que le linéaire est une dune. Toutes les autres occurrences différentes de 'Naturel' seront considérées comme des 'Digues'. Si aucun type défini, le modèle le considère, par défaut, comme 'inconnu'.
  - "Etat_ouvr" (string, 20) : état de l'ouvrage : 3 occurrences : bon, moyen, mauvais. Si aucun état est renseigné, le modèle le considère comme bon.
 - "alt" (real double, 18) : altitude en m (NGF)
