@@ -43,7 +43,7 @@ L'ensemble des autres fichiers sont des données SIG, projetées en RGF93 / Lamb
 
 ## Architecture du fichier 'communes.shp'
 Ce fichier comprend les communes du jeu et correspond au découpage administratif national de la base de données  ADMIN EXPRESS® de l'IGN(découpage adminsitratif) : libre téléchargement  http://professionnels.ign.fr/adminexpress#tab-3 
-Deux attributs sont requis : "INSEE_COM" et "id_jeu" qui est à créer :
+Deux champs sont requis : "INSEE_COM" et "id_jeu" qui est à créer :
 - "id_jeu" (integer, 1) : 0 : communes affichées, mais non jouées. Valeurs de 1 à n correspondant au numéro des joueurs.
 - "INSEE_COM" (string, 5) : code INSEE des communes
 
