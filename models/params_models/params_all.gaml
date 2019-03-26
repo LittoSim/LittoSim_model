@@ -1,53 +1,51 @@
 /**
-* Name: paramsleader
-* Author: 
+* Name: paramsleader 
 */
 
 model paramsall
 
 global{
 	
-	////////// CONFIGURATION LITTOSIM_GEN //////////
-	// Paramètres de Communication Network 
+	// Configuration files
+	// main file pointing to others
+	string config_file_name <- "../includes/config/littosim.csv";
+	map<string,string> configuration_file <- read_configuration_file(config_file_name,";");
+	
+	// Shapefiles data
+	map<string,string> shapes_def <- read_configuration_file(configuration_file["SHAPE_DEF_FILE"],";");
+	// Flooding model
+	map<string,string> flooding_def <- read_configuration_file(configuration_file["FLOODING_DEF_FILE"],";");
+	// Actions, costs and delays
+	matrix<string> actions_def <- matrix<string>(csv_file(configuration_file["ACTION_DEF_FILE"],";"));	
+	// Languages
+	map<string,map> langs_def <- store_csv_data_into_map_of_map(configuration_file["LANG_DEF_FILE"],";");
+	// Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
+	map<string,map> data_action <- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";");
+		
+	// Network 
 	string SERVER <- configuration_file["SERVER_ADDRESS"]; 
 	string COMMAND_SEPARATOR <- ":";
 	string GAME_MANAGER <- "GAME_MANAGER";
 	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
 	
-	// common parameters
+	// Common parameters
 	string UNAM_DISPLAY <- "UnAm";
 	string LEADER_COMMAND <- "leader_command";
+	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
+	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
 	
-	// Codification des actions pour Communication Network 
-	//Liste de l'ensemble des messages possibles à envoyer via Communication Network
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N];
+	// Constant vars
+	string DIKE <- "Dike";
+	string DUNE <- "Dune";
+	string STATUS_GOOD <- "Good";
+	string STATUS_MEDIUM <- "Medium";
+	string STATUS_BAD <- "Bad";
 	
-	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]); // 50#m; // zone considéré autour de l'endroit où l'on clic pour repérer si un bouton de l'interface a été cliqué 
+	// Building dikes parameters
+	string BUILT_DIKE_TYPE <- "New Dike";
+	string BUILT_DIKE_STATUS <- shapes_def["BUILT_DIKE_STATUS"];
 	
-	////////// PARAMETRES DES MODULES //////////
-	// Paramètres des actions de construction et de réhaussement de digues
-	string BUILT_DIKE_TYPE <- "nouvelle digue"; // type de nouvelle digue
-	string BUILT_DIKE_STATUS <- shapes_def["BUILT_DIKE_STATUS"]; // status de nouvelle digue
-	
-	////////// CHARGEMENT DES FICHIERS //////////
-	// le fichier de configuration principale
-	string config_file_name <- "../includes/config/littosim.csv";
-	map<string,string> configuration_file <- read_configuration_file(config_file_name,";");
-	// le fichier de configuration des données shape
-	map<string,string> shapes_def <- read_configuration_file(configuration_file["SHAPE_DEF_FILE"],";");
-	// le fichier de configuration du modèle de flooding
-	map<string,string> flooding_def <- read_configuration_file(configuration_file["FLOODING_DEF_FILE"],";");
-	// le fichier de configuration des actions, des couts et des délais
-	matrix<string> actions_def <- matrix<string>(csv_file(configuration_file["ACTION_DEF_FILE"],";"));	
-	//le fichier de configuration des langues
-	map<string,map> langs_def <- store_csv_data_into_map_of_map(configuration_file["LANG_DEF_FILE"],";");
-	// Chargement des paramètres des actions 
-	// Pour utiliser la map data_action, utiliser la syntaxe data_action at NOM_ACTION at nom_du_paramètre (action code, delay, cost ou entity). Exemple data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' at 'cost'; 
-	map<string,map> data_action <- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";");
-	
-	
-	////////// CONFIGURATION DE LA ZONE D'ETUDE //////////
-	// Chargements des données SIG	
+	// Loading GIS data
 	file communes_shape <- file(shapes_def["COMMUNE_SHAPE"]);
 	file road_shape <- file(shapes_def["ROAD_SHAPE"]);
 	file zone_protegee_shape <- file(shapes_def["ZONES_PROTEGEES_SHAPE"]);
@@ -63,7 +61,12 @@ global{
 	map table_correspondance_insee_com_nom <- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM"]);
 	map table_correspondance_insee_com_nom_rac <- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM_RAC"]);
 	
-	// Liste des actions avec leur code correspondant
+	// List of all possible actions to send over network
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,
+							ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,
+							ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N
+					];
+	// List of actions with their parameters
 	int ACTION_REPAIR_DIKE <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action code');
 	int ACTION_CREATE_DIKE <- int(data_action at 'ACTION_CREATE_DIKE' at 'action code');
 	int ACTION_DESTROY_DIKE <- int(data_action at 'ACTION_DESTROY_DIKE' at 'action code');
@@ -88,7 +91,7 @@ global{
 	int ENTITY_TYPE_CODE_DEF_COTE <-36;
 	int ENTITY_TYPE_CODE_UA <-37;
 	
-	// Actions to acknowledge client requests.
+	// Actions to acknowledge client requests
 	int ACTION_DIKE_CREATED <- 16;
 	int ACTION_DIKE_DROPPED <- 17;
 	int UPDATE_BUDGET <- 19;
@@ -99,10 +102,10 @@ global{
 	int INFORM_GRANT_RECEIVED <-27;
 	int INFORM_FINE_RECEIVED <-28;
 	
-	// Messages à afficher en multilangues
+	// Messages to display in multi-languages
 	string MSG_SIM_NOT_STARTED <- langs_def at 'MSG_SIM_NOT_STARTED' at configuration_file["LANGUAGE"];
 		
-	////////// FONCTIONS POUR LA LECTURE DES FICHIERS DE CONFIGURATION //////////
+	// Shared methods to load configuration files into maps
 	map<string, string> read_configuration_file(string fileName,string separator){
 		map<string, string> res <- map<string, string>([]);
 		string line <-"";
@@ -137,7 +140,6 @@ global{
 		return res;
 	}
 	
-	// on récupère d'abord l'action name, puis on récupère le label approprié à partir du fichier de langues
 	string labelOfAction (int action_code){
 		string rslt <- "";
 		loop i from:0 to: (length(actions_def) /3) - 1 {

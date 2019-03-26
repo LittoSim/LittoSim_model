@@ -84,8 +84,8 @@ global  {
 
 	init{
 		create data_retreive number:1;
-		create commune from:communes_shape with: [insee_com::string(read("INSEE_COM")),
-				commune_name::string(read("NOM_RAC")),id::int(read("id_jeu"))]{
+		create commune from:communes_shape with: [insee_com::string(read("dist_code")),
+				commune_name::string(read("dist_sname")),id::int(read("player_id"))]{
 			write ""+langs_def at 'MSG_COMMUNE' at configuration_file["LANGUAGE"]+" " + commune_name +"("+insee_com+")" + " "+id;
 		}
 		
@@ -106,20 +106,20 @@ global  {
 		do addElementIn_list_flooding_events ("Submersion initiale","results");
 		
 		//Création des agents à partir des données SIG
-		create def_cote from:defenses_cotes_shape with:[dike_id::int(read("OBJECTID")),
-								type::string(read("type")), status::string(read("Etat_ouvr")),
-								alt::float(get("alt")), height::float(get("hauteur")), insee_com::string(read("INSEE_COM"))];
+		create def_cote from:defenses_cotes_shape with:[dike_id::int(read("object_id")),
+								type::string(read("type")), status::string(read("status")),
+								alt::float(get("alt")), height::float(get("height")), insee_com::string(read("dist_code"))];
 		
 		create road from: road_shape;
-		create protected_area from: zone_protegee_shape with: [name::string(read("SITECODE"))];
+		create protected_area from: zone_protegee_shape with: [name::string(read("site_code"))];
 		all_protected_area <- union(protected_area);
 		create flood_risk_area from: zone_PPR_shape;
 		all_flood_risk_area <- union(flood_risk_area);
 		create coast_border_area from: coastline_shape { shape <-  shape + coastBorderBuffer #m; }
 		create inland_dike_area from: contour_ile_moins_100m_shape;
 		
-		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")),
-					population::int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]{ //FIXME
+		create UA from: unAm_shape with: [id::int(read("unit_id")),ua_code::int(read("unit_code")),
+					population::int(get("unit_pop"))/*, cout_expro:: int(get("exp_cost"))*/]{ //FIXME
 			ua_name <- nameOfUAcode(ua_code);
 			my_color <- cell_color();
 			if ua_name = "U" and population = 0 {	population <- minPopUArea;	}
@@ -180,11 +180,11 @@ global  {
 	}
 
 	action new_round{
-		if sauver_shp {do save_cells_as_shp_file;}
+		if save_shp {do save_cells_as_shp_file;}
 		write MSG_NEW_ROUND + " " + (round +1);
 		if round != 0{
-			ask def_cote where (each.type != 'Naturel') {  do evolveStatus_ouvrage;}
-		   	ask def_cote where (each.type = 'Naturel') { do evolve_dune;}
+			ask def_cote where (each.type != DUNE) {  do evolveStatus_ouvrage;}
+		   	ask def_cote where (each.type = DUNE) { do evolve_dune;}
 			new_comers_still_to_dispatch <- new_comers_to_dispatch() ;
 			ask shuffle(UA) {pop_updated <- false; do evolve_AU_to_U ;}
 			ask shuffle(UA) {do evolve_U_densification ;}
@@ -721,7 +721,7 @@ species action_done schedules:[]{
 	bool is_sent_to_leader <-false;
 	bool is_applied <- false;
 	bool should_be_applied ->{round >= actual_application_round} ;
-	string action_type <- "dike" ; //can be "dike" or "PLU"
+	string action_type <- DIKE ; //can be "dike" or "PLU"
 	string previous_ua_name <-"";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
@@ -888,7 +888,7 @@ species network_player skills:[network]{
 							element_shape <- tmp.shape;
 							location <- tmp.location;
 						}
-						match "dike" {element_shape <- (def_cote first_with(each.dike_id = self.element_id)).shape;
+						match DIKE {element_shape <- (def_cote first_with(each.dike_id = self.element_id)).shape;
 									length_def_cote <- int(element_shape.perimeter);
 						}
 						default {
@@ -1428,7 +1428,7 @@ species def_cote{
 	int dike_id;
 	string insee_com;
 	string type;
-	string status;	//  "bon" "moyen" "mauvais"  
+	string status;	//  "Good" "Medium" "Bad"  
 	float height;  // height au pied en mètre
 	float alt;     // altitude de la crete de la digue
 	rgb color <- # pink;
@@ -1439,7 +1439,7 @@ species def_cote{
 	bool not_updated <- false;
 	bool ganivelle <- false;
 	float height_avant_ganivelle;
-	string type_def_cote -> {type = 'Naturel'?"dune":"digue"};
+	string type_def_cote -> {type};
 	
 	action init_from_map(map<string, unknown> a ){
 		self.dike_id <- int(a at "dike_id");
@@ -1498,23 +1498,20 @@ species def_cote{
 	}
 	
 	action init_dike {
-		if status = "" {status <- "bon";} 
-		if type ='' {type <- "inconnu";}
-		if status = '' {status <- "bon";} 
-		if status = "tres bon" {status <- "bon";} 
-		if status = "tres mauvais" {status <- "mauvais";} 
+		if status = "" {status <- STATUS_GOOD;} 
+		if type ='' {type <- "Unknown";}
 		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
-		cptStatus <- type = 'Naturel'?rnd(STEPS_DEGRAD_STATUS_DUNE-1):rnd(STEPS_DEGRAD_STATUS_OUVRAGE-1);
+		cptStatus <- type = DUNE?rnd(STEPS_DEGRAD_STATUS_DUNE-1):rnd(STEPS_DEGRAD_STATUS_OUVRAGE-1);
 		cells <- cell overlapping self;
-		if type = 'Naturel' {height_avant_ganivelle <- height;}
+		if type = DUNE {height_avant_ganivelle <- height;}
 	}
 	
 	action evolveStatus_ouvrage {
 		cptStatus <- cptStatus +1;
 		if cptStatus = (STEPS_DEGRAD_STATUS_OUVRAGE + 1) {
 			cptStatus <-0;
-			if status = "moyen" {status <- "mauvais";}
-			if status = "bon" {status <- "moyen";}
+			if status = STATUS_MEDIUM {status <- STATUS_BAD;}
+			if status = STATUS_GOOD {status <- STATUS_MEDIUM;}
 			not_updated<-true; 
 		}
 	}
@@ -1525,8 +1522,8 @@ species def_cote{
 			cptStatus <- cptStatus +1;
 			if cptStatus = (STEPS_REGAIN_STATUS_GANIVELLE + 1) {
 				cptStatus <-0;
-				if status = "moyen" {status <- "bon";}
-				if status = "mauvais" {status <- "moyen";}
+				if status = STATUS_MEDIUM {status <- STATUS_GOOD;}
+				if status = STATUS_BAD {status <- STATUS_MEDIUM;}
 				not_updated <- true; 
 			}
 			if height < height_avant_ganivelle + H_MAX_GANIVELLE {
@@ -1549,8 +1546,8 @@ species def_cote{
 			cptStatus <- cptStatus +1;
 			if cptStatus = (STEPS_DEGRAD_STATUS_DUNE + 1) {
 				cptStatus <-0;
-				if status = "moyen" {status <- "mauvais";}
-				if status = "bon" {status <- "moyen";}
+				if status = STATUS_MEDIUM {status <- STATUS_BAD;}
+				if status = STATUS_GOOD {status <- STATUS_MEDIUM;}
 				not_updated<-true;  
 			}
 		}
@@ -1558,12 +1555,12 @@ species def_cote{
 		
 	action calcRupture {
 		int p <- 0;
-		if type != 'Naturel' and status = "mauvais" {p <- PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS;}
-		if type != 'Naturel' and status = "moyen" {p <- PROBA_RUPTURE_DIGUE_ETAT_MOYEN;}
-		if type != 'Naturel' and status = "bon" {p <- PROBA_RUPTURE_DIGUE_ETAT_BON;}
-		if type = 'Naturel' and status = "mauvais" {p <- PROBA_RUPTURE_DUNE_ETAT_MAUVAIS;}
-		if type = 'Naturel' and status = "moyen" {p <- PROBA_RUPTURE_DUNE_ETAT_MOYEN;}
-		if type = 'Naturel' and status = "bon" {p <- PROBA_RUPTURE_DUNE_ETAT_BON;}
+		if type != DUNE and status = STATUS_BAD {p <- PROBA_RUPTURE_DIKE_STATUS_BAD;}
+		if type != DUNE and status = STATUS_MEDIUM {p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM;}
+		if type != DUNE and status = STATUS_GOOD {p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;}
+		if type = DUNE and status = STATUS_BAD {p <- PROBA_RUPTURE_DUNE_STATUS_BAD;}
+		if type = DUNE and status = STATUS_MEDIUM {p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM;}
+		if type = DUNE and status = STATUS_GOOD {p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;}
 		if rnd (100) <= p {
 			rupture <- 1;
 			// on applique la rupture a peu pres au milieu du linéaire
@@ -1574,8 +1571,8 @@ species def_cote{
 			ask cells overlapping zoneRupture  {
 						if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 			}
-			write "rupture "+type_def_cote+" n°" + dike_id + "("+", état " + status +", hauteur "+height+", alt "+alt +")";
-			write "rupture "+type_def_cote+" n°" + dike_id + "("+ world.table_correspondance_insee_com_nom_rac at (insee_com)+", état " + status +", hauteur "+height+", alt "+alt +")";
+			write "rupture "+type_def_cote+" n°" + dike_id + "("+", status " + status +", height "+height+", alt "+alt +")";
+			write "rupture "+type_def_cote+" n°" + dike_id + "("+ world.table_correspondance_insee_com_nom_rac at (insee_com)+", status " + status +", height "+height+", alt "+alt +")";
 		}
 	}
 	
@@ -1587,13 +1584,13 @@ species def_cote{
 
 	//La commune répare la digue
 	action repair_by_commune (int a_commune_id) {
-		status <- "bon";
+		status <- STATUS_GOOD;
 		cptStatus <- 0;
 	}
 	
 	//La commune relève la digue
 	action increase_height_by_commune (int a_commune_id) {
-		status <- "bon";
+		status <- STATUS_GOOD;
 		cptStatus <- 0;
 		height <- height + RAISE_DIKE_HEIGHT; // le réhaussement d'ouvrage est défini par 
 		alt <- alt + RAISE_DIKE_HEIGHT;
@@ -1628,7 +1625,7 @@ species def_cote{
 	
 	//La commune installe des ganivelles sur la dune
 	action install_ganivelle_by_commune (int a_commune_id) {
-		if status = "mauvais"{
+		if status = STATUS_BAD{
 			cptStatus <- 2;
 		}
 		else{				
@@ -1639,21 +1636,27 @@ species def_cote{
 	}
 	
 	aspect base{  	
-		if type = 'Naturel'{
+		if type = DUNE {
 			switch status {
-				match  "bon" {color <- rgb (222, 134, 14,255);}
-				match "moyen" {color <-  rgb (231, 189, 24,255);} 
-				match "mauvais" {color <- rgb (241, 230, 14,255);} 
-				default { write "Dune status problem";}
+				match STATUS_GOOD	{	color <- rgb (222, 134, 14,255);	}
+				match STATUS_MEDIUM {	color <-  rgb (231, 189, 24,255);	} 
+				match STATUS_BAD 	{	color <- rgb (241, 230, 14,255);	} 
+				default{
+					write langs_def at 'MSG_DUNE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];
+				}
 			}
 			draw 50#m around shape color: color;
-			if ganivelle {loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}} 
+			if ganivelle {
+				loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}
+			} 
 		} else{
 			switch status {
-				match  "bon" {color <- # green;}
-				match "moyen" {color <-  rgb (255,102,0);} 
-				match "mauvais" {color <- # red;} 
-				default {write "Dike status problem";}
+				match STATUS_GOOD	{	color <- # green;			}
+				match STATUS_MEDIUM {	color <-  rgb (255,102,0);	} 
+				match STATUS_BAD 	{	color <- # red;				} 
+				default {
+					write langs_def at 'MSG_DIKE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];
+				}
 			}
 			draw 20#m around shape color: color size:300#m;
 		}
@@ -1999,8 +2002,8 @@ species commune{
 	
 	action calculate_indicators_t0 {
 		list<def_cote> my_def_cote <- def_cote where(each.insee_com = insee_com);
-		length_dikes_t0 <- my_def_cote where (each.type_def_cote = 'digue') sum_of (each.shape.perimeter);
-		length_dunes_t0 <- my_def_cote where (each.type_def_cote = 'dune') sum_of (each.shape.perimeter);
+		length_dikes_t0 <- my_def_cote where (each.type_def_cote = DIKE) sum_of (each.shape.perimeter);
+		length_dunes_t0 <- my_def_cote where (each.type_def_cote = DUNE) sum_of (each.shape.perimeter);
 		count_UA_urban_t0 <- length (UAs where (each.isUrbanType));
 		count_UA_UandAU_inCoastBorderArea_t0 <- length (UAs where (each.isUrbanType and not(each.isAdapte) and each intersects first(coast_border_area)));
 		count_UA_urban_infloodRiskArea_t0 <- length (UAs where (each.isUrbanType and each intersects all_flood_risk_area));
