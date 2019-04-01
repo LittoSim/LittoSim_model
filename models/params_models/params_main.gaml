@@ -9,6 +9,14 @@ import "params_all.gaml"
 
 global{
 	
+	// Simulation states
+	string SIM_NOT_STARTED <- 'not started';
+	string SIM_GAME <- 'game';
+	string SIM_EXEC_LISFLOOD <- 'executing lisflood';
+	string SIM_SHOWING_LISFLOOD <- 'showing lisflood';
+	string SIM_CALCULATING_FLOOD_STATS <- 'calculating flood stats';
+	string SIM_SHOWING_FLOOD_STATS <- 'showing flood stats';
+	
 	// Messages to display in multi-languages
 	string MSG_NEW_ROUND <- langs_def at 'MSG_NEW_ROUND' at configuration_file["LANGUAGE"];
 	string MSG_GAME_DONE <- langs_def at 'MSG_GAME_DONE' at configuration_file["LANGUAGE"];

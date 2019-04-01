@@ -14,43 +14,41 @@ import "params_models/params_main.gaml"
 
 global  {
 
-	////////// CONFIG LITTOSIM_GEN //////////
-	// Config Lisflood pour la zone d'étude
-	string application_name <- shapes_def["APPLICATION_NAME"]; // Nom utilisé pour spécifier les noms des fichiers d'export
-	string lisflood_bdy_file -> // Nom du fichier de hauteurs de la mer envoyé a lisflood en fonction du type d'évènement sélectionné.
-		{	 floodEventType ="HIGH_FLOODING"?flooding_def["LISFLOOD_BDY_HIGH_FILENAME"]   // Pour l'application Oléron, l'évenement de submersion "HIGH_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur d'eau "oleron2016_Xynthia.bdy" qui correspond au niveau de Xynthia    
-			:(floodEventType ="LOW_FLOODING"?flooding_def["LISFLOOD_BDY_LOW_FILENAME"] // Pour l'application Oléron, l'évenement de submersion "LOW_FLOODING" écrit dans le fichier de conf de  lisflood, le nom du fichier de hauteur "oleron2016_Xynthia-50.bdy" qui correspond au niveau de Xynthia moins 50 cm 
-		    :"Match Error for floodEventType")
-		};
+	// Lisflood configuration for the study area
+	string application_name <- shapes_def["APPLICATION_NAME"]; // used to name exported files
+	// sea heights file sent to Lisflood
+	string lisflood_bdy_file ->{floodEventType ="HIGH_FLOODING"?flooding_def["LISFLOOD_BDY_HIGH_FILENAME"]   // "oleron2016_Xynthia.bdy" 
+								:(floodEventType ="LOW_FLOODING"?flooding_def["LISFLOOD_BDY_LOW_FILENAME"] // "oleron2016_Xynthia-50.bdy" : Xynthia - 50 cm 
+		  						:langs_def at 'MSG_FLOODING_TYPE_PROBLEM' at configuration_file["LANGUAGE"])};
+	// paths to Lisflood
+	string lisfloodPath <- flooding_def["LISFLOOD_PATH"]; // absolute path to Lisflood : "C:/lisflood-fp-604/"
+	string lisfloodRelativePath <- flooding_def["LISFLOOD_RELATIVE_PATH"]; // Lisflood folder relatife path 
+	string results_lisflood_rep <- flooding_def["RESULTS_LISFLOOD_REP"]; // Lisflood results folder
+	string lisflood_par_file -> {"inputs/"+"LittoSIM_GEN_"+application_name+"_config_"+floodEventType+timestamp+".par"}; // parameter file
+	string lisflood_DEM_file -> {"inputs/"+"LittoSIM_GEN_"+application_name+"_DEM"+ timestamp + ".asc"}  ; // DEM file 
+	string lisflood_rugosityGrid_file -> {"inputs/"+"LittoSIM_GEN_"+application_name+"_n" + timestamp + ".asc"}; // rugosity file
+	string lisflood_bat_file <- flooding_def["LISFLOOD_BAT_FILE"] ; //  Lisflood executable
 	
-	// Chemin d'accès à lisflood sur la machine
-	string lisfloodPath <- flooding_def["LISFLOOD_PATH"]; //C:/lisflood-fp-604/"; // chemin absolu du répertoire lisflood sur la machine  
-	string lisfloodRelativePath <- flooding_def["LISFLOOD_RELATIVE_PATH"]; // chemin relatif (par rapport au fichier gaml) de répertoire lisflood sur la machine 
-	string current_lisflood_rep <- flooding_def["CURRENT_LISFLOOD_REP"]; //results"; // nom du répertoire de sauvegarde des résultats de simu de lisflood
-	string lisflood_par_file -> {"inputs/"+"LittoSIM_GEN_"+application_name+"_config_"+floodEventType+timestamp+".par"}; //  Nom du fichier de config envoyé a lisflood pour simu submersion
-	string lisflood_DEM_file -> {"inputs/"+"LittoSIM_GEN_"+application_name+"_DEM"+ timestamp + ".asc"}  ; // Nom du fichier d'altitude envoyé a lisflood pour simu submersion 
-	string lisflood_rugosityGrid_file -> {"inputs/"+"LittoSIM_GEN_"+application_name+"_n" + timestamp + ".asc"}; //  Nom du fichier de rugosité envoyé a lisflood pour simu submersion
-	string lisflood_bat_file <- flooding_def["LISFLOOD_BAT_FILE"] ; //  Nom de l'executable lisflood
+	// variables for Lisflood calculs 
+	map<string,string> list_flooding_events ;  // list of submersions of a round
+	int lisfloodReadingStep <- 9999999; // to indicate to which step of Lisflood results, the current cycle corresponds // lisfloodReadingStep = 9999999 it means that there is no Lisflood result corresponding to the current cycle 
+	string timestamp <- ""; // used to specify a unique name to the folder of flooding results
+	string flood_results <- "";   //  text of flood results per district // saved as a txt file
+	string floodEventType ;
 	
-	//  Paramètres des sauvegardes des résultats de simulation
-	string results_rep <- current_lisflood_rep+ "/results"+EXPERIMENT_START_TIME; // nom du répertoire de sauvegarde des résultats de simu du main model
-	string shape_export_filePath -> {results_rep+"/resultats_SHP_Tour"+round+".shp"}; //	nom du fichier de sauvegarde des cells au format SHP
-	string log_export_filePath <- results_rep+"/log_"+machine_time+".csv"; 	// nom du ficheir sauvegarde des logs, coté main model, des actions des joueurs  
-
-	////////// VARIABLES D'OPERATION //////////
-	// Définition de l'enveloppe SIG de travail
-	geometry shape <- envelope(emprise_shape);
-	// Sauvegarde du machine_time à l'initialisation de la simulation
-	float EXPERIMENT_START_TIME <- machine_time;
-	// Définition de géométries agrégeant  plusieurs polygones   
-	geometry all_flood_risk_area;
-	geometry all_protected_area;	
-	// Variables d'opération de Communication Network 
-	int messageID <- 0;
-	// Variables d'état de l'étape en cours de la simulation 	
-	string stateSimPhase <- 'not started'; // stateSimPhase defines the currrent phase of the simulation {'not started' 'game' 'execute lisflood' 'show lisflood' , 'calculate flood stats' and 'show flood stats'} 
+	// parameters for saving submersion results
+	string results_rep <- results_lisflood_rep+ "/results"+EXPERIMENT_START_TIME; // folder to save main model results
+	string shape_export_filePath -> {results_rep+"/results_SHP_Tour"+round+".shp"}; //	shapefile to save cells
+	string log_export_filePath <- results_rep+"/log_"+machine_time+".csv"; 	// file to save user actions (main model and players actions)  
 	
-	// Tableau des données de budget des communes pour tracer le graph d'évolution des budgets
+	// operation variables
+	geometry shape <- envelope(emprise_shape); // world geometry
+	float EXPERIMENT_START_TIME <- machine_time; // machine time at simulation initialization 
+	geometry all_flood_risk_area; // geometry agrregating risked area polygons
+	geometry all_protected_area; // geometry agrregating protected area polygons
+	int messageID <- 0; // network communication	
+	
+	// budget tables to draw evolution graphs
 	list<int> data_budget_C1 <- [];
 	list<int> data_budget_C2 <- [];
 	list<int> data_budget_C3 <- [];	
@@ -60,33 +58,27 @@ global  {
 	int count_N_to_AU_C3 <-0;	
 	int count_N_to_AU_C4 <-0;
 
-	// Variable de calcul de la dynamique de Population
+	// population dynamics
 	int new_comers_still_to_dispatch <- 0;
 
-	// Variables de calcul pour lisflood 
-	map<string,string> list_flooding_events ;  // listing des répertoires des innondations de la partie
-	int lisfloodReadingStep <- 9999999; // lisfloodReadingStep is used to indicate to which step of lisflood results, the current cycle corresponds //  lisfloodReadingStep = 9999999 it means that their is no lisflood result corresponding to the current cycle 
-	string timestamp <- ""; // variable utilisée pour spécifier un nom unique au répertoire de sauvegarde des résultats de simulation de lisflood
-	string flood_results <- "";   //  text of flood results per commune   // la variable flood_results est sauvegardé sous forme de fichier txt
-	string floodEventType ;
-
-    // Variables d'opérations des interfaces
+    // interface variables
 	string active_display <- nil;
 	point previous_clicked_point <- nil;
     bool show_max_water_height<- false ;// defines if the water_height displayed on the map should be the max one or the current one
     
-	// Divers variables de calcul
+	// other variables
+	string stateSimPhase <- SIM_NOT_STARTED; // state variable of current simulation state 
 	int round <- 0;
-	list<commune> communes_en_jeu;
+	list<District> communes_en_jeu;
 	list<rgb> listC <- brewer_colors("YlOrRd",8);
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	init{
 		create data_retreive number:1;
-		create commune from:communes_shape with: [insee_com::string(read("dist_code")),
+		create District from:communes_shape with: [district_code::string(read("dist_code")),
 				commune_name::string(read("dist_sname")),id::int(read("player_id"))]{
-			write ""+langs_def at 'MSG_COMMUNE' at configuration_file["LANGUAGE"]+" " + commune_name +"("+insee_com+")" + " "+id;
+			write ""+langs_def at 'MSG_COMMUNE' at configuration_file["LANGUAGE"]+" " + commune_name +"("+district_code+")" + " "+id;
 		}
 		
 		loop i from: 0 to: (length(listC)-1) {
@@ -102,13 +94,13 @@ global  {
 		
 		// initialisation des boutons
 		do init_buttons;
-		stateSimPhase <- 'not started';
+		stateSimPhase <- SIM_NOT_STARTED;
 		do addElementIn_list_flooding_events ("Submersion initiale","results");
 		
 		//Création des agents à partir des données SIG
 		create def_cote from:defenses_cotes_shape with:[dike_id::int(read("object_id")),
 								type::string(read("type")), status::string(read("status")),
-								alt::float(get("alt")), height::float(get("height")), insee_com::string(read("dist_code"))];
+								alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))];
 		
 		create road from: road_shape;
 		create protected_area from: zone_protegee_shape with: [name::string(read("site_code"))];
@@ -132,7 +124,7 @@ global  {
 		
 		do load_rugosity;
 		ask UA {	cells <- cell overlapping self;	}
-		ask commune where (each.id > 0){
+		ask District where (each.id > 0){
 			UAs <- UA overlapping self;
 			cells <- cell overlapping self;
 			budget <- int(current_population(self) * impot_unit * (1 +  pctBudgetInit/100));
@@ -141,7 +133,7 @@ global  {
 		}
 		
 		ask def_cote {do init_dike;}
-		communes_en_jeu <- (commune where (each.id > 0)) sort_by (each.id);
+		communes_en_jeu <- (District where (each.id > 0)) sort_by (each.id);
 	} // fin init
 	
 	int getMessageID{
@@ -172,7 +164,7 @@ global  {
 	} 
 		 
 	int current_total_population {
-		return sum(commune where (each.id > 0) accumulate (each.current_population(each)));
+		return sum(District where (each.id > 0) accumulate (each.current_population(each)));
 	}
 	
 	int new_comers_to_dispatch {
@@ -189,31 +181,31 @@ global  {
 			ask shuffle(UA) {pop_updated <- false; do evolve_AU_to_U ;}
 			ask shuffle(UA) {do evolve_U_densification ;}
 			ask shuffle(UA) {do evolve_U_standard ;} 
-			ask commune where (each.id > 0) { do calcul_impots;	}
+			ask District where (each.id > 0) { do calcul_impots;	}
 		}
-		else {stateSimPhase <- 'game'; write stateSimPhase;}
+		else {stateSimPhase <- SIM_GAME; write stateSimPhase;}
 		round <- round + 1;
-		ask commune {do inform_new_round;} 
+		ask District {do inform_new_round;} 
 		ask network_listen_to_leader{do informLeader_round_number;}
 		do save_budget_data;
 		write MSG_GAME_DONE + " !";
 	} 	
 	
 	int commune_id(string xx){ //FIXME  Il y a des chances que cette méthode ne marche plus du fait qu'on a changé commune_name par insee_com
-		commune m <- commune first_with(each.network_name = xx);
+		District m <- District first_with(each.network_name = xx);
 		if(m = nil){
-			m <- (commune first_with (xx contains each.insee_com));
+			m <- (District first_with (xx contains each.district_code));
 			m.network_name <- xx;
 		}
 		return m.id;
 	}
 
-	reflex show_flood_stats when: stateSimPhase = 'show flood stats'{// fin innondation
+	reflex show_flood_stats when: stateSimPhase = 'SIM_SHOWING_FLOOD_STATS'{// fin innondation
 		// affichage des résultats 
 		write flood_results;
 		save flood_results to: lisfloodRelativePath+results_rep+"/flood_results-"+machine_time+"-Tour"+round+".txt" type: "text";
 
-		map values <- user_input([(MSG_OK_CONTINUE) :: ""]);
+		map values <- user_input([(MSG_OK_CONTINUE):: ""]);
 		
 		// remise à zero des hauteurs d'eau
 		loop r from: 0 to: nb_rows -1{	loop c from:0 to: nb_cols -1 {cell[c,r].water_height <- 0.0;}}
@@ -224,23 +216,23 @@ global  {
 		}
 		// redémarage du jeu
 		if round = 0{
-			stateSimPhase <- 'not started';
+			stateSimPhase <- SIM_NOT_STARTED;
 			write stateSimPhase;
 		}
 		else{
-			stateSimPhase <- 'game';
+			stateSimPhase <- SIM_GAME;
 			write stateSimPhase + " - "+ langs_def at 'MSG_ROUND' at configuration_file["LANGUAGE"] +" "+round;
 		}
 	}
 	
-	reflex calculate_flood_stats when: stateSimPhase = 'calculate flood stats'{// fin innondation
+	reflex calculate_flood_stats when: stateSimPhase = 'SIM_CALCULATING_FLOOD_STATS'{// fin innondation
 		// calcul des résultats 
 		do calculate_communes_results;
-		stateSimPhase <- 'show flood stats';
+		stateSimPhase <- 'SIM_SHOWING_FLOOD_STATS';
 		write stateSimPhase;
 	}
 		
-	reflex show_lisflood when: stateSimPhase = 'show lisflood'{
+	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD{
 		// lecture des fichiers innondation
 		do readLisflood;
 	}
@@ -261,8 +253,8 @@ global  {
 		write replayed_flooding_event;
 		loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
 		set lisfloodReadingStep <- 0;
-		current_lisflood_rep <- list_flooding_events at replayed_flooding_event;
-		stateSimPhase <- 'show lisflood'; write stateSimPhase;
+		results_lisflood_rep <- list_flooding_events at replayed_flooding_event;
+		stateSimPhase <- SIM_SHOWING_LISFLOOD; write stateSimPhase;
 	}
 		
 	action launchFlood_event{
@@ -277,11 +269,11 @@ global  {
 		if round != 0{
 			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
 			ask def_cote {do calcRupture;}
-			stateSimPhase <- 'execute lisflood';	write stateSimPhase;
+			stateSimPhase <- SIM_EXEC_LISFLOOD;	write stateSimPhase;
 			do executeLisflood; // comment this line if you only want to read already existing results
 		} 
 		set lisfloodReadingStep <- 0;
-		stateSimPhase <- 'show lisflood'; write stateSimPhase;
+		stateSimPhase <- SIM_SHOWING_LISFLOOD; write stateSimPhase;
 	}
 
 	action addElementIn_list_flooding_events (string sub_name, string sub_rep){
@@ -293,19 +285,19 @@ global  {
 		
 	action executeLisflood{
 		timestamp <- "_R"+round+"_t"+machine_time ;
-		current_lisflood_rep <- "results"+timestamp;
+		results_lisflood_rep <- "results"+timestamp;
 		do save_dem;  
 		do save_rugosityGrid;
 		do save_lf_launch_files;
-		do addElementIn_list_flooding_events("Submersion Tour "+round,current_lisflood_rep);
-		save "directory created by littoSIM Gama model" to: lisfloodRelativePath+current_lisflood_rep+"/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
+		do addElementIn_list_flooding_events("Submersion Tour "+round,results_lisflood_rep);
+		save "directory created by littoSIM Gama model" to: lisfloodRelativePath+results_lisflood_rep+"/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
 		ask network_listen_to_leader{
 			do execute command:"cmd /c start "+lisfloodPath+lisflood_bat_file; }
  	}
  		
 	action save_lf_launch_files {
 		save ("DEMfile         "+lisfloodPath+lisflood_DEM_file+"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+lisflood_rugosityGrid_file+"\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+lisflood_bdy_file+"\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath+lisflood_par_file type: "text"  ;
-		save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+current_lisflood_rep +" "+(lisfloodPath+lisflood_par_file)) rewrite: true  to: lisfloodRelativePath+lisflood_bat_file type: "text" ;
+		save (lisfloodPath+"lisflood.exe -dir "+ lisfloodPath+results_lisflood_rep +" "+(lisfloodPath+lisflood_par_file)) rewrite: true  to: lisfloodRelativePath+lisflood_bat_file type: "text" ;
 	}       
 
 	action save_dem {
@@ -325,9 +317,9 @@ global  {
 	action readLisflood{  
 	 	string nb <- string(lisfloodReadingStep);
 		loop i from: 0 to: 3-length(nb) { nb <- "0"+nb; }
-		string fileName <- lisfloodRelativePath+current_lisflood_rep+"/res-"+ nb +".wd";
+		string fileName <- lisfloodRelativePath+results_lisflood_rep+"/res-"+ nb +".wd";
 		write "lisfloodRelativePath " + lisfloodRelativePath;
-		write "current_lisflood_rep " + current_lisflood_rep;
+		write "results_lisflood_rep " + results_lisflood_rep;
 		write "nb  " + nb;
 		if file_exists (fileName){
 			write fileName;
@@ -345,11 +337,11 @@ global  {
      		lisfloodReadingStep <-  9999999;
      		if nb = "0000" {
      			map values <- user_input([(MSG_NO_FLOOD_FILE_EVENT) :: ""]);
-     			stateSimPhase <- 'game';
+     			stateSimPhase <- SIM_GAME;
      			write stateSimPhase + " - "+langs_def at 'MSG_ROUND' at configuration_file["LANGUAGE"]+" "+round;
      		}
      		else{
-				stateSimPhase <- 'calculate flood stats'; write stateSimPhase;}
+				stateSimPhase <- 'SIM_CALCULATING_FLOOD_STATS'; write stateSimPhase;}
 		}
 	}
 	
@@ -365,7 +357,7 @@ global  {
 	
 	action calculate_communes_results{
 		string text <- "";
-			ask ((commune where (each.id > 0)) sort_by (each.id)){
+			ask ((District where (each.id > 0)) sort_by (each.id)){
 				int tot <- length(cells) ;
 				int myid <-  self.id; 
 				int U_0_5 <-0;	int U_1 <-0;	int U_max <-0;
@@ -480,7 +472,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			flood_results <-  text;
 				
 			write langs_def at 'MSG_FLOODED_AREA_DISTRICT' at configuration_file["LANGUAGE"];
-			ask ((commune where (each.id > 0)) sort_by (each.id)){
+			ask ((District where (each.id > 0)) sort_by (each.id)){
 				surface_inondee <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ;
 					add surface_inondee to: data_surface_inondee; 
 					write ""+ commune_name + " : " + surface_inondee +" ha";
@@ -620,10 +612,10 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 	}
 	
 	action save_budget_data{
-		add (commune first_with(each.id =1)).budget to: data_budget_C1  ;
-		add (commune first_with(each.id =2)).budget to: data_budget_C2  ;
-		add (commune first_with(each.id =3)).budget to: data_budget_C3  ;
-		add (commune first_with(each.id =4)).budget to: data_budget_C4  ;
+		add (District first_with(each.id =1)).budget to: data_budget_C1  ;
+		add (District first_with(each.id =2)).budget to: data_budget_C2  ;
+		add (District first_with(each.id =3)).budget to: data_budget_C3  ;
+		add (District first_with(each.id =4)).budget to: data_budget_C4  ;
 	}	
 	
 	rgb color_of_water_height (float aWaterHeight){
@@ -640,13 +632,14 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
  *  **********************************************************************************************
  */
 
-// réception et application des actions des joueurs
+// Receiving and applying players actions
 species data_retreive skills:[network] schedules:[]{
 	init {
 		write langs_def at 'MSG_START_SENDER' at configuration_file["LANGUAGE"];
 		 do connect to:SERVER with_name:GAME_MANAGER+"_retreive";
 	}
-	action send_data_to_commune(commune m){
+	
+	action send_data_to_commune(District m){
 		write ""+langs_def at 'MSG_SEND_DATA_TO' at configuration_file["LANGUAGE"]+" "+ m.network_name;
 		ask m {do send_player_commune_update();}
 		do retreive_def_cote(m);
@@ -655,8 +648,8 @@ species data_retreive skills:[network] schedules:[]{
 		do retreive_activated_lever(m);
 	}
 	
-	action retreive_def_cote(commune aCommune){	
-		list<def_cote> def_list <- def_cote where(each.insee_com = aCommune.insee_com);
+	action retreive_def_cote(District aCommune){	
+		list<def_cote> def_list <- def_cote where(each.district_code = aCommune.district_code);
 		def_cote tmp;
 		loop tmp over:def_list{
 			write ""+langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"]+" "+ aCommune.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
@@ -664,7 +657,7 @@ species data_retreive skills:[network] schedules:[]{
 		}
 	}
 	
-	action retreive_UA(commune m){
+	action retreive_UA(District m){
 		UA tmp<- nil;
 		loop tmp over:m.UAs{
 			write ""+langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] +" "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
@@ -672,8 +665,8 @@ species data_retreive skills:[network] schedules:[]{
 		}
 	}
 
-	action retreive_action_done(commune m){
-		list<action_done> action_list <- action_done where(each.insee_com = m.insee_com);
+	action retreive_action_done(District m){
+		list<action_done> action_list <- action_done where(each.district_code = m.district_code);
 		action_done tmp<- nil;
 		loop tmp over:action_list 	{
 			write ""+langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] +" "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
@@ -681,7 +674,7 @@ species data_retreive skills:[network] schedules:[]{
 		}
 	}
 	
-	action lock_window(commune m, bool are_allowed){
+	action lock_window(District m, bool are_allowed){
 		string val <- are_allowed=true?"UN_LOCKED":"LOCKED";
 		map<string,string> me <- [
 			"OBJECT_TYPE"::"lock_unlock",
@@ -690,8 +683,8 @@ species data_retreive skills:[network] schedules:[]{
 		do send to:m.network_name+"_retreive" contents:me;
 	}
 	
-	action retreive_activated_lever(commune m){
-		list<activated_lever> lever_list <- activated_lever where(each.insee_com = m.insee_com);
+	action retreive_activated_lever(District m){
+		list<activated_lever> lever_list <- activated_lever where(each.district_code = m.district_code);
 		activated_lever tmp<- nil;
 		loop tmp over:lever_list {
 			write ""+langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] +" "+ m.network_name+"_retreive" + " "+tmp.build_map_from_attribute();
@@ -704,7 +697,7 @@ species action_done schedules:[]{
 	string id;
 	int element_id;
 	geometry element_shape;
-	string insee_com<-"";
+	string district_code<-"";
 	bool not_updated <- false;
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	int command_round<- -1;
@@ -740,7 +733,7 @@ species action_done schedules:[]{
 			"OBJECT_TYPE"::"action_done",
 			"id"::id,
 			"element_id"::string(element_id),
-			"insee_com"::insee_com,
+			"insee_com"::district_code,
 			"command"::string(command),
 			"label"::label,
 			"cost"::string(cost),
@@ -777,7 +770,7 @@ species action_done schedules:[]{
 		float x_loc2 <- float(font_interleave + 20* (font_size+font_interleave));
 		shape <- rectangle({font_size+2*font_interleave,y_loc},{x_loc2,y_loc+font_size/2} );
 		draw shape color:#white;
-		string txt <-  ""+world.table_correspondance_insee_com_nom_rac at (insee_com)+": "+ label;
+		string txt <-  ""+world.table_correspondance_insee_com_nom_rac at (district_code)+": "+ label;
 		txt <- txt +" ("+string(initial_application_round-round)+")"; 
 		draw txt at:{font_size+2*font_interleave,y_loc+font_size/2} size:font_size#m color:#black;
 		draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;	
@@ -787,7 +780,7 @@ species action_done schedules:[]{
 		int next_dike_id <- max(def_cote collect(each.dike_id))+1;
 		create def_cote number:1 returns:new_dikes{
 			dike_id <- next_dike_id;
-			insee_com <- act.insee_com;
+			district_code <- act.district_code;
 			shape <- act.element_shape;
 			location <- act.location;
 			type <- BUILT_DIKE_TYPE ;
@@ -816,7 +809,7 @@ species network_player skills:[network]{
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
 					if(CONNECTION_MESSAGE = int(data[0])){
 						int idCom <-world.commune_id(m_sender);
-						ask(commune where(each.id= idCom)){
+						ask(District where(each.id= idCom)){
 							do inform_current_round;
 							do send_player_commune_update;
 						}
@@ -826,7 +819,7 @@ species network_player skills:[network]{
 						if(REFRESH_ALL = int(data[0])){
 							int idCom <-world.commune_id(m_sender);
 							write " Update ALL !!!! " + idCom+ " ";
-							commune cm <- first(commune where(each.id=idCom));
+							District cm <- first(District where(each.id=idCom));
 							ask first(data_retreive) {
 								do send_data_to_commune(cm);
 							}
@@ -861,7 +854,7 @@ species network_player skills:[network]{
 			self.command_round <-round; 
 			self.id <- data[1];
 			self.initial_application_round <- int(data[2]);
-			self.insee_com <- sender;
+			self.district_code <- sender;
 			if !(self.command in [REFRESH_ALL]){
 				self.element_id <- int(data[3]);
 				self.action_type <- data[4];
@@ -912,13 +905,13 @@ species network_player skills:[network]{
 					
 				if(log_user_action)
 				{
-					save ([string(machine_time-EXPERIMENT_START_TIME),self.insee_com]+data) to:log_export_filePath rewrite: false type:"csv";
+					save ([string(machine_time-EXPERIMENT_START_TIME),self.district_code]+data) to:log_export_filePath rewrite: false type:"csv";
 				}
 			}
 		}
 		//  le paiement est déjà fait coté commune, lorsque le joueur a validé le panier. On renregistre ici le paiement pour garder les comptes à jour coté serveur
-		int idCom <-world.commune_id(new_action.insee_com);
-		ask commune first_with(each.id = idCom) {do record_payment_for_action_done(new_action);}
+		int idCom <-world.commune_id(new_action.district_code);
+		ask District first_with(each.id = idCom) {do record_payment_for_action_done(new_action);}
 	}
 	
 	reflex update_UA  when:length(UA where(each.not_updated))>0 {
@@ -933,7 +926,7 @@ species network_player skills:[network]{
 		int i <- 0;
 		loop while: i< length(update_messages){
 			string msg <- update_messages at i;
-			list<commune> cms <- commune overlapping (updated_UA at i);
+			list<District> cms <- District overlapping (updated_UA at i);
 			loop cm over:cms{
 				do send to:cm.network_name contents:msg;
 			}
@@ -943,7 +936,7 @@ species network_player skills:[network]{
 	
 	action send_destroy_dike_message(def_cote a_dike){
 		string msg <- ""+ACTION_DIKE_DROPPED+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+a_dike.dike_id;
-		list<commune> cms <- commune overlapping a_dike;
+		list<District> cms <- District overlapping a_dike;
 		loop cm over:cms{
 			do send to:cm.network_name contents:msg;
 		}
@@ -964,7 +957,7 @@ species network_player skills:[network]{
 		COMMAND_SEPARATOR+act.id+
 		COMMAND_SEPARATOR+new_dike.location.x+
 		COMMAND_SEPARATOR+new_dike.location.y;
-		list<commune> cms <- commune overlapping new_dike;
+		list<District> cms <- District overlapping new_dike;
 		loop cm over:cms{
 			do send  to:cm.network_name contents:msg;
 		}
@@ -973,9 +966,9 @@ species network_player skills:[network]{
 	action acknowledge_application_of_action_done (action_done act){
 		map<string,string> msg <- [
 			"TOPIC"::"action_done is_applied",
-			"insee_com"::act.insee_com,
+			"insee_com"::act.district_code,
 			"id"::act.id];
-		do send  to:act.insee_com+"_map_msg" contents:msg;
+		do send  to:act.district_code+"_map_msg" contents:msg;
 	}
 	
 	float min_dike_elevation(def_cote ovg){
@@ -996,7 +989,7 @@ species network_player skills:[network]{
 		int i <- 0;
 		loop while: i< length(update_messages){
 			string msg <- update_messages at i;
-			list<commune> cms <- commune overlapping (update_ouvrage at i);
+			list<District> cms <- District overlapping (update_ouvrage at i);
 			loop cm over:cms{
 				do send to:cm.network_name contents:msg;
 			}
@@ -1009,14 +1002,14 @@ species network_player skills:[network]{
 	// Pour une raison bizarre la ligne au dessus ne fonctionne pas alors que les 2 lignes ci dessous fonctionnent. Pourtant je ne vois aucune difference
 		ask action_done {
 			if should_be_applied and is_alive and !shouldWaitLeaderToActivate{
-				string tmp <- self.insee_com;
+				string tmp <- self.district_code;
 				int idCom <-world.commune_id(tmp);
 				action_done act <- self;
 				switch(command){
 				match REFRESH_ALL{////  Pourquoi est ce que REFRESH_ALL est une  Action_done ??
-					write " Update ALL !!!! " + idCom+ " "+  world.table_correspondance_insee_com_nom_rac at (insee_com);
-					string dd <- insee_com;
-					commune cm <- first(commune where(each.id=idCom));
+					write " Update ALL !!!! " + idCom+ " "+  world.table_correspondance_insee_com_nom_rac at (district_code);
+					string dd <- district_code;
+					District cm <- first(District where(each.id=idCom));
 					ask first(data_retreive) {
 						do send_data_to_commune(cm);
 					}
@@ -1178,7 +1171,7 @@ species network_round_manager skills:[remoteGUI]{
 	
 	action lock_unlock_window(bool value){
 		data_retreive agt <- first(data_retreive);
-		ask commune{
+		ask District{
 			ask agt {
 				do lock_window(myself,value);
 			}
@@ -1197,7 +1190,7 @@ species activated_lever {
 	
 	//attributes sent through network
 	int id;
-	string insee_com;
+	string district_code;
 	string lever_type;
 	string lever_explanation <- "";
 	string act_done_id <- "";
@@ -1209,7 +1202,7 @@ species activated_lever {
 	action init_from_map(map<string, string> m ){
 		id <- int(m["id"]);
 		lever_type <- m["lever_type"];
-		insee_com <- m["insee_com"];
+		district_code <- m["insee_com"];
 		act_done_id <- m["act_done_id"];
 		added_cost <- int(m["added_cost"]);
 		nb_rounds_delay <- int(m["nb_rounds_delay"]);
@@ -1223,7 +1216,7 @@ species activated_lever {
 			"OBJECT_TYPE"::"activated_lever",
 			"id"::id,
 			"lever_type"::lever_type,
-			"insee_com"::insee_com,
+			"insee_com"::district_code,
 			"act_done_id"::act_done_id,
 			"added_cost"::added_cost,
 			"nb_rounds_delay"::nb_rounds_delay,
@@ -1248,7 +1241,7 @@ species network_activated_lever skills:[network]{
 				create activated_lever number:1{
 					do init_from_map(m_contents);
 					act_done <- action_done first_with (each.id = act_done_id);
-					commune aCommune <- commune first_with (each.insee_com = insee_com);
+					District aCommune <- District first_with (each.district_code = district_code);
 					aCommune.budget <-aCommune.budget - added_cost; 
 					add self to:act_done.activated_levers;
 					act_done.a_lever_has_been_applied<- true;
@@ -1282,15 +1275,15 @@ species network_listen_to_leader skills:[network]{
 			write "command " + cmd;
 			switch(cmd){
 				match CREDITER{
-					string insee_com <- m_contents[COMMUNE];
+					string district_code <- m_contents[COMMUNE];
 					int amount <- int(m_contents[AMOUNT]);
-					commune cm <- commune first_with(each.insee_com=insee_com);
+					District cm <- District first_with(each.district_code=district_code);
 					cm.budget <- cm.budget + amount;
 				}
 				match PRELEVER{
-					string insee_com <- m_contents[COMMUNE];
+					string district_code <- m_contents[COMMUNE];
 					int amount <- int(m_contents[AMOUNT]); 
-					commune cm <- commune first_with(each.insee_com=insee_com);
+					District cm <- District first_with(each.district_code=district_code);
 					cm.budget <- cm.budget - amount;
 				}
 				match ASK_NUM_ROUND {
@@ -1321,10 +1314,10 @@ species network_listen_to_leader skills:[network]{
 	}
 				
 	action informLeader_Indicators_t0  {
-		ask commune where (each.id > 0) {
+		ask District where (each.id > 0) {
 			map<string,string> msg <- [];
 			put myself.INDICATORS_T0 key:OBSERVER_MESSAGE_COMMAND in:msg ;
-			put insee_com key: "insee_com" in: msg;
+			put district_code key: "insee_com" in: msg;
 			put string(length_dikes_t0) key: "length_dikes_t0" in: msg;
 			put string(length_dunes_t0) key: "length_dunes_t0" in: msg;
 			put string(count_UA_urban_t0) key: "count_UA_urban_t0" in: msg;
@@ -1426,7 +1419,7 @@ grid cell file: dem_file schedules:[] neighbors: 8 {
 
 species def_cote{	
 	int dike_id;
-	string insee_com;
+	string district_code;
 	string type;
 	string status;	//  "Good" "Medium" "Bad"  
 	float height;  // height au pied en mètre
@@ -1572,7 +1565,7 @@ species def_cote{
 						if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
 			}
 			write "rupture "+type_def_cote+" n°" + dike_id + "("+", status " + status +", height "+height+", alt "+alt +")";
-			write "rupture "+type_def_cote+" n°" + dike_id + "("+ world.table_correspondance_insee_com_nom_rac at (insee_com)+", status " + status +", height "+height+", alt "+alt +")";
+			write "rupture "+type_def_cote+" n°" + dike_id + "("+ world.table_correspondance_insee_com_nom_rac at (district_code)+", status " + status +", height "+height+", alt "+alt +")";
 		}
 	}
 	
@@ -1909,9 +1902,9 @@ species UA {
 	}
 }
 
-species commune{	
+species District{	
 	int id<-0;
-	string insee_com; 
+	string district_code; 
 	string commune_name;
 	string network_name;
 	int budget;
@@ -1964,7 +1957,7 @@ species commune{
 		draw shape color: rgb (0,0,0,0) border:#black;
 	}
 	
-	int current_population (commune aC){
+	int current_population (District aC){
 		return sum(aC.UAs accumulate (each.population));
 	}
 	
@@ -1972,10 +1965,10 @@ species commune{
 		ask network_player{
 			map<string,string> msg <- [
 			"TOPIC"::"INFORM_CURRENT_ROUND",
-			"insee_com"::myself.insee_com,
+			"insee_com"::myself.district_code,
 			"round"::round
 			];
-			do send  to:myself.insee_com+"_map_msg" contents:msg;
+			do send  to:myself.district_code+"_map_msg" contents:msg;
 		}
 	}
 
@@ -1983,10 +1976,10 @@ species commune{
 		ask network_player{
 			map<string,string> msg <- [
 			"TOPIC"::"COMMUNE_UPDATE",
-			"insee_com"::myself.insee_com,
+			"insee_com"::myself.district_code,
 			"budget"::myself.budget
 			];
-			do send  to:myself.insee_com+"_map_msg" contents:msg;
+			do send  to:myself.district_code+"_map_msg" contents:msg;
 		}
 	}
 	
@@ -1994,14 +1987,14 @@ species commune{
 		ask network_player{
 			map<string,string> msg <- [
 			"TOPIC"::"INFORM_NEW_ROUND",
-			"insee_com"::myself.insee_com
+			"insee_com"::myself.district_code
 			];
-			do send  to:myself.insee_com+"_map_msg" contents:msg;
+			do send  to:myself.district_code+"_map_msg" contents:msg;
 		}
 	}
 	
 	action calculate_indicators_t0 {
-		list<def_cote> my_def_cote <- def_cote where(each.insee_com = insee_com);
+		list<def_cote> my_def_cote <- def_cote where(each.district_code = district_code);
 		length_dikes_t0 <- my_def_cote where (each.type_def_cote = DIKE) sum_of (each.shape.perimeter);
 		length_dunes_t0 <- my_def_cote where (each.type_def_cote = DUNE) sum_of (each.shape.perimeter);
 		count_UA_urban_t0 <- length (UAs where (each.isUrbanType));
@@ -2084,7 +2077,7 @@ experiment Oleron type: gui{
 		display "Map"{ //autosave : true
 			grid cell ;
 			species cell aspect: elevation_eau_ou_eau_max; //elevation_eau;
-			species commune aspect:outline;
+			species District aspect:outline;
 			species road aspect:base;
 			species def_cote aspect:base;
 			species UA aspect: conditional_outline;
@@ -2094,7 +2087,7 @@ experiment Oleron type: gui{
 		}
 		
 		display "Planning"{
-			species commune aspect: base;
+			species District aspect: base;
 			species UA aspect: base;
 			species road aspect:base;
 			species def_cote aspect:base;
@@ -2103,7 +2096,7 @@ experiment Oleron type: gui{
 		display "Population density"{	
 			species UA aspect: densite_pop;
 			species road aspect:base;
-			species commune aspect: outline;			
+			species District aspect: outline;			
 		}
 		
 		display "Game master control"{
@@ -2114,10 +2107,10 @@ experiment Oleron type: gui{
 			
 		display "Budgets" {
 			chart "Districts' budgets" type: series {
-			 	data (commune first_with(each.id =1)).commune_name value:data_budget_C1 color:#red;
-			 	data (commune first_with(each.id =2)).commune_name value:data_budget_C2 color:#blue;
-			 	data (commune first_with(each.id =3)).commune_name value:data_budget_C3 color:#green;
-			 	data (commune first_with(each.id =4)).commune_name value:data_budget_C4 color:#black;			
+			 	data (District first_with(each.id =1)).commune_name value:data_budget_C1 color:#red;
+			 	data (District first_with(each.id =2)).commune_name value:data_budget_C2 color:#blue;
+			 	data (District first_with(each.id =3)).commune_name value:data_budget_C3 color:#green;
+			 	data (District first_with(each.id =4)).commune_name value:data_budget_C4 color:#black;			
 			}
 		}
 		
@@ -2156,43 +2149,43 @@ experiment Oleron type: gui{
 				
 		display "Flooded area per district"{
 			chart "Flooded area per district" type: series{
-				datalist value: length(commune)= 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_surface_inondee),((commune first_with(each.id = 2)).data_surface_inondee),((commune first_with(each.id = 3)).data_surface_inondee),((commune first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:length(commune)= 0 ?"":(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value: length(District)= 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_surface_inondee),((District first_with(each.id = 2)).data_surface_inondee),((District first_with(each.id = 3)).data_surface_inondee),((District first_with(each.id = 4)).data_surface_inondee)] color:[#red,#blue,#green,#black]  legend:length(District)= 0 ?"":(((District where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 		
 		display "Flooded U area per district"{
 			chart "Flooded U area per district" type: series{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totU),((commune first_with(each.id = 2)).data_totU),((commune first_with(each.id = 3)).data_totU),((commune first_with(each.id = 4)).data_totU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totU),((District first_with(each.id = 2)).data_totU),((District first_with(each.id = 3)).data_totU),((District first_with(each.id = 4)).data_totU)] color:[#red,#blue,#green,#black]  legend:(((District where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 		
 		display "Flooded Us area per district"{
 			chart "Flooded Us area per district" type: series{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUs),((commune first_with(each.id = 2)).data_totUs),((commune first_with(each.id = 3)).data_totUs),((commune first_with(each.id = 4)).data_totUs)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totUs),((District first_with(each.id = 2)).data_totUs),((District first_with(each.id = 3)).data_totUs),((District first_with(each.id = 4)).data_totUs)] color:[#red,#blue,#green,#black]  legend:(((District where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 		
 		display "Flooded dense U area per district"{
 			chart "Flooded dense U area per district" type: series{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totUdense),((commune first_with(each.id = 2)).data_totUdense),((commune first_with(each.id = 3)).data_totUdense),((commune first_with(each.id = 4)).data_totUdense)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totUdense),((District first_with(each.id = 2)).data_totUdense),((District first_with(each.id = 3)).data_totUdense),((District first_with(each.id = 4)).data_totUdense)] color:[#red,#blue,#green,#black]  legend:(((District where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 		
 		display "Flooded AU area per district"{
 			chart "Flooded AU area per district" type: series{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totAU),((commune first_with(each.id = 2)).data_totAU),((commune first_with(each.id = 3)).data_totAU),((commune first_with(each.id = 4)).data_totAU)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totAU),((District first_with(each.id = 2)).data_totAU),((District first_with(each.id = 3)).data_totAU),((District first_with(each.id = 4)).data_totAU)] color:[#red,#blue,#green,#black]  legend:(((District where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 		
 		display "Flooded N area per district"{
 			chart "Flooded N area per district" type: series{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totN),((commune first_with(each.id = 2)).data_totN),((commune first_with(each.id = 3)).data_totN),((commune first_with(each.id = 4)).data_totN)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totN),((District first_with(each.id = 2)).data_totN),((District first_with(each.id = 3)).data_totN),((District first_with(each.id = 4)).data_totN)] color:[#red,#blue,#green,#black]  legend:(((District where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 		
 		display "Flooded A area per district"{
 			chart "Flooded A area per district" type: series{
-				datalist value:length(commune) = 0 ? [0,0,0,0]:[((commune first_with(each.id = 1)).data_totA),((commune first_with(each.id = 2)).data_totA),((commune first_with(each.id = 3)).data_totA),((commune first_with(each.id = 4)).data_totA)] color:[#red,#blue,#green,#black]  legend:(((commune where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totA),((District first_with(each.id = 2)).data_totA),((District first_with(each.id = 3)).data_totA),((District first_with(each.id = 4)).data_totA)] color:[#red,#blue,#green,#black]  legend:(((District where (each.id > 0)) sort_by (each.id)) collect each.commune_name); 			
 			}
 		}
 	}
