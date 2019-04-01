@@ -304,7 +304,7 @@ global{
 
 	action create_commune{
 		//int i <- 0;
-		create commune from:communes_shape with: [commune_name::string(read("NOM_RAC")),com_id::int(read("id_jeu")),com_large_name::string(read("NOM"))]{
+		create commune from: districts_shape with: [commune_name::string(read("NOM_RAC")),com_id::int(read("id_jeu")),com_large_name::string(read("NOM"))]{
 			if(com_id = 0){	do die;	}
 			//location <- {5, i*20 + 10}; TODO uncomment this ??
 			//i <- i +1;

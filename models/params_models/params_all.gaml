@@ -46,16 +46,16 @@ global{
 	string BUILT_DIKE_STATUS <- shapes_def["BUILT_DIKE_STATUS"];
 	
 	// Loading GIS data
-	file communes_shape <- file(shapes_def["COMMUNE_SHAPE"]);
-	file road_shape <- file(shapes_def["ROAD_SHAPE"]);
-	file zone_protegee_shape <- file(shapes_def["ZONES_PROTEGEES_SHAPE"]);
-	file zone_PPR_shape <- file(shapes_def["ZONES_PPR_SHAPE"]);
+	file districts_shape <- file(shapes_def["COMMUNE_SHAPE"]);
+	file roads_shape <- file(shapes_def["ROAD_SHAPE"]);
+	file protected_areas_shape <- file(shapes_def["ZONES_PROTEGEES_SHAPE"]);
+	file rpp_area_shape <- file(shapes_def["ZONES_PPR_SHAPE"]);
 	file coastline_shape <- file(shapes_def["COASTLINES_SHAPE"]);
-	file defenses_cotes_shape <- file(shapes_def["DEFENSES_COTES_SHAPE"]);
-	file unAm_shape <- file(shapes_def["UNAM_SHAPE"]);	
+	file coastal_defenses_shape <- file(shapes_def["DEFENSES_COTES_SHAPE"]);
+	file land_use_shape <- file(shapes_def["UNAM_SHAPE"]);	
 	file emprise_shape <- file(shapes_def["EMPRISE_SHAPE"]); 
 	file dem_file <- file(shapes_def["DEM_FILE"]) ;
-	file contour_ile_moins_100m_shape <- file(shapes_def["CONTOUR_ILE_INF_100M"]);
+	file contour_neg_100m_shape <- file(shapes_def["CONTOUR_ILE_INF_100M"]);
 	int nb_cols <- int(shapes_def["DEM_NB_COLS"]);
 	int nb_rows <- int(shapes_def["DEM_NB_ROWS"]);
 	map table_correspondance_insee_com_nom <- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM"]);

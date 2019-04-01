@@ -100,14 +100,14 @@ global{
 		game_manager <- first(net);
 		create network_player_new number:1 ;
 		create network_listen_to_leader number:1;
-		create commune from: communes_shape with:[insee_com::string(read("INSEE_COM")),commune_name::string(read("NOM_RAC"))];
+		create commune from: districts_shape with:[insee_com::string(read("INSEE_COM")),commune_name::string(read("NOM_RAC"))];
 		my_commune <- commune first_with(each.insee_com = insee_com);
 		local_shape <-envelope(my_commune);
 		do init_buttons;
-		create def_cote from:defenses_cotes_shape with:[dike_id::int(read("OBJECTID")),type::string(read("type")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune_name_shpfile::string(read("Commune"))];
-		create road from:road_shape;
-		create protected_area from: zone_protegee_shape with: [name::string(read("SITENAME"))];
-		create flood_risk_area from: zone_PPR_shape;
+		create def_cote from:coastal_defenses_shape with:[dike_id::int(read("OBJECTID")),type::string(read("type")),status::string(read("Etat_ouvr")), alt::float(read("alt")), height::float(get("hauteur")) , commune_name_shpfile::string(read("Commune"))];
+		create road from:roads_shape;
+		create protected_area from: protected_areas_shape with: [name::string(read("SITENAME"))];
+		create flood_risk_area from: rpp_area_shape;
 		
 		switch (commune_name){
 			match communes_names[0] {commune_name_shpfile <- table_correspondance_insee_com_nom at table_correspondance_nom_rac_insee_com at communes_names[0];}
@@ -121,7 +121,7 @@ global{
 		ask def_cote {
 			do init_dike;
 		}
-		create UA from: unAm_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")),
+		create UA from: land_use_shape with: [id::int(read("FID_1")),ua_code::int(read("grid_code")),
 			population:: int(get("Avg_ind_c"))/*, cout_expro:: int(get("coutexpr"))*/]{
 			ua_name <- nameOfUAcode(ua_code);
 			//cout_expro <- (round (cout_expro /2000 /50))*100; //50= tx de conversion Euros->Boyard on divise par 2 la valeur du cout expro car elle semble surévaluée
@@ -133,8 +133,7 @@ global{
 		ask UA where(!(each overlaps my_commune)){
 			do die;
 		}
-		// buffer(a_geometry,a_float)
-		// population_area <- smooth(union((cell_UnAm where(each.land_cover = "U" or each.land_cover = "AU")) collect (buffer(each.shape,100#m))),0.1);
+
 		population_area <- union(UA where(each.ua_name = "U" or each.ua_name = "AU"));
 		
 		previous_population <- current_population();
