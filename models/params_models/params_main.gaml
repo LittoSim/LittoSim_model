@@ -28,9 +28,24 @@ global{
 	string MSG_NUMBER <- langs_def at 'MSG_NUMBER' at configuration_file["LANGUAGE"];
 	
 	// Network
-	string GAME_LEADER <- "GAME_LEADER";
-	string UPDATE_ACTION_DONE <- "update_action_done";
+	string GAME_LEADER 		        <- "GAME_LEADER";
+	string UPDATE_ACTION_DONE       <- "update_action_done";
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
+	
+	int ACTION_ACTION_DONE_UPDATE				<- 101;
+	int ACTION_ACTION_LIST 						<- 211;
+	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
+	int ACTION_LAND_COVER_UPDATE   				<-9;
+	int ACTION_DIKE_UPDATE		   				<-10;
+	int INFORM_ROUND 			   				<-34;
+	int ENTITY_TYPE_CODE_COAST_DEF 				<-36;
+	int ENTITY_TYPE_CODE_LU		   				<-37;
+	
+	// pop density
+	string POP_EMPTY 		  <- "empty";
+	string POP_FEW_DENSITY 	  <- "few density";
+	string POP_MEDIUM_DENSITY <- "medium density";
+	string POP_DENSE 		  <- "dense";	
 	
 	// // Building and raising dikes parameters
 	float BUILT_DIKE_HEIGHT <- float(shapes_def["BUILT_DIKE_HEIGHT"]);

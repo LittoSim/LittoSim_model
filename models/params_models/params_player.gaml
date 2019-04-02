@@ -32,6 +32,7 @@ global{
 	string ACTION_ID <- "action_id";
 	string DATA <- "data";
 	string PLAYER_MSG <-"player_msg";
+	string UNAM_DISPLAY <- "UnAm";
 
 	// User messages
 	string MSG_POSSIBLE_REGLEMENTATION_DELAY <- langs_def at 'MSG_POSSIBLE_REGLEMENTATION_DELAY' at configuration_file["LANGUAGE"];

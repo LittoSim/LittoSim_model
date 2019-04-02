@@ -29,7 +29,6 @@ global{
 	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
 	
 	// Common parameters
-	string UNAM_DISPLAY <- "UnAm";
 	string LEADER_COMMAND <- "leader_command";
 	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
@@ -80,16 +79,6 @@ global{
 	int ACTION_MODIFY_LAND_COVER_Us <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' at 'action code');
 	int ACTION_MODIFY_LAND_COVER_Ui <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' at 'action code');
 	int ACTION_EXPROPRIATION <- int(data_action at 'ACTION_EXPROPRIATION' at 'action code');
-	
-	int ACTION_ACTION_DONE_UPDATE<- 101;
-	int ACTION_ACTION_LIST <- 211;
-	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
-	int ACTION_LAND_COVER_UPDATE<-9;
-	int ACTION_DIKE_UPDATE<-10;
-	int INFORM_ROUND <-34;
-	int NOTIFY_DELAY <-35;
-	int ENTITY_TYPE_CODE_DEF_COTE <-36;
-	int ENTITY_TYPE_CODE_UA <-37;
 	
 	// Actions to acknowledge client requests
 	int ACTION_DIKE_CREATED <- 16;

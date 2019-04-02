@@ -53,12 +53,9 @@ global {
 	
 	// population dynamics
 	int new_comers_still_to_dispatch <- 0;
-
-    // interface variables
-	string active_display <- nil;
-    bool show_max_water_height<- false ;// defines if the water_height displayed on the map should be the max one or the current one
     
 	// other variables
+	bool show_max_water_height<- false ;// defines if the water_height displayed on the map should be the max one or the current one
 	string stateSimPhase <- SIM_NOT_STARTED; // state variable of current simulation state 
 	int round <- 0;
 	list<District> districts_in_game;
@@ -66,7 +63,6 @@ global {
 	
 	init{
 		create Data_retreive;
-		
 		// Create GIS agents
 		create District from: districts_shape with: [district_code::string(read("dist_code")),
 													 district_name::string(read("dist_sname")),
@@ -87,12 +83,12 @@ global {
 		create Coast_border_area from: coastline_shape { shape <-  shape + coastBorderBuffer #m; }
 		create Inland_dike_area from: contour_neg_100m_shape;
 		
-		create Land_use from: land_use_shape with: [id::int(read("unit_id")), ua_code::int(read("unit_code")),
+		create Land_use from: land_use_shape with: [id::int(read("unit_id")), lu_code::int(read("unit_code")),
 													population::int(get("unit_pop")), cout_expro:: int(get("exp_cost"))]{
-			ua_name <- nameOfUAcode(ua_code);
+			lu_name <- nameOfUAcode(lu_code);
 			my_color <- cell_color();
-			if ua_name = "U" and population = 0 { population <- minPopUArea;	}
-			if ua_name = "AU" {	AU_to_U_counter <- flip(0.5)?1:0;	not_updated <- true;	}
+			if lu_name = "U" and population = 0 { population <- minPopUArea;	}
+			if lu_name = "AU" {	AU_to_U_counter <- flip(0.5)?1:0;	not_updated <- true;	}
 		}
 		
 		// Create Network agents
@@ -143,41 +139,41 @@ global {
 			 {rslt <- actions_def at {4,i};}
 		}
 		switch rslt {
-			match "def_cote" {return ENTITY_TYPE_CODE_DEF_COTE; }
-			match "UA" 		 {return ENTITY_TYPE_CODE_UA;		}
-			default 		 {return 0;							}
+			match "COAST_DEF" {return ENTITY_TYPE_CODE_COAST_DEF; }
+			match "LU" 		  {return ENTITY_TYPE_CODE_LU;		  }
+			default 		  {return 0;						  }
 		}
 	} 
 		 
 	int current_total_population {	return sum(District where (each.id > 0) accumulate (each.current_population(each)));	}
 	
-	int new_comers_to_dispatch {	return round(current_total_population() * ANNUAL_POP_GROWTH_RATE);	}
+	int new_comers_to_dispatch 	 {	return round(current_total_population() * ANNUAL_POP_GROWTH_RATE);	}
 
 	action new_round{
 		if save_shp {	do save_cells_as_shp_file;	}
 		write MSG_NEW_ROUND + " " + (round +1);
-		if round != 0{
+		if round != 0 {
 			ask Coastal_defense where (each.type != DUNE) {  do evolveStatus_ouvrage;}
-		   	ask Coastal_defense where (each.type = DUNE)  {  do evolve_dune;}
+		   	ask Coastal_defense where (each.type  = DUNE) {  do evolve_dune;		 }
 			new_comers_still_to_dispatch <- new_comers_to_dispatch() ;
 			ask shuffle(Land_use) 			 { pop_updated <- false; do evolve_AU_to_U ; }
-			ask shuffle(Land_use) 			 { do evolve_U_densification ; }
-			ask shuffle(Land_use) 			 { do evolve_U_standard ; } 
-			ask District where (each.id > 0) { do calcul_taxes;	}
+			ask shuffle(Land_use) 			 { do evolve_U_densification ; 				 }
+			ask shuffle(Land_use) 			 { do evolve_U_standard ; 					 } 
+			ask District where (each.id > 0) { do calcul_taxes;							 }
 		}
 		else {
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
 		}
 		round <- round + 1;
-		ask District 				 {	do inform_new_round;			} 
-		ask Network_listener_to_leader {	do informLeader_round_number;	}
+		ask District 				 	{	do inform_new_round;			} 
+		ask Network_listener_to_leader  {	do informLeader_round_number;	}
 		do save_budget_data;
 		write MSG_GAME_DONE + " !";
 	} 	
 	
-	int district_id(string xx){ //FIXME  Il y a des chances que cette méthode ne marche plus du fait qu'on a changé district_name par district_code
-		District m <- District first_with(each.network_name = xx);
+	int district_id(string xx){ // FIXME quoi ?!!
+		District m <- District first_with (each.network_name = xx);
 		if(m = nil){
 			m <- (District first_with (xx contains each.district_code));
 			m.network_name <- xx;
@@ -240,20 +236,24 @@ global {
 	action launchFlood_event{
 		if round = 0 {
 			map values <- user_input([(MSG_SIM_NOT_STARTED) :: ""]);
-	     			write stateSimPhase;
+	     	write stateSimPhase;
 		}
-		// faire un tour juste avant de déclencher l'innondation
-		// l'innondation à lieu en Janvier (début d'année), juste après le changement d'année civile (le tour change au 31 déc)
-		if round != 0 {	do new_round; }
-		// déclenchement innondation
-		if round != 0{
-			loop r from: 0 to: nb_rows -1  { loop c from:0 to: nb_cols -1 {cell[c,r].max_water_height <- 0.0; } } // remise à zero de max_water_height
-			ask Coastal_defense {do calcRupture;}
-			stateSimPhase <- SIM_EXEC_LISFLOOD;	write stateSimPhase;
-			do executeLisflood; // comment this line if you only want to read already existing results
+		// excuting Lisflood
+		if round != 0 {
+			do new_round;
+			loop r from: 0 to: nb_rows -1  {
+				loop c from:0 to: nb_cols -1 {
+					cell[c,r].max_water_height <- 0.0;  // reset of max_water_height
+				}
+			}
+			ask Coastal_defense {	do calcRupture;		}
+			stateSimPhase <- SIM_EXEC_LISFLOOD;
+			write stateSimPhase;
+			do executeLisflood;
 		} 
-		set lisfloodReadingStep <- 0;
-		stateSimPhase <- SIM_SHOWING_LISFLOOD; write stateSimPhase;
+		lisfloodReadingStep <- 0;
+		stateSimPhase <- SIM_SHOWING_LISFLOOD;
+		write stateSimPhase;
 	}
 
 	action addElementIn_list_flooding_events (string sub_name, string sub_rep){
@@ -315,16 +315,14 @@ global {
 					cell[c,r-6].water_height <- w;}}	
 	        lisfloodReadingStep <- lisfloodReadingStep +1;
 	     }
-	     else{ // fin innondation
+	     else{ // end of flooding
      		lisfloodReadingStep <-  9999999;
      		if nb = "0000" {
      			map values <- user_input([(MSG_NO_FLOOD_FILE_EVENT) :: ""]);
      			stateSimPhase <- SIM_GAME;
      			write stateSimPhase + " - "+langs_def at 'MSG_ROUND' at configuration_file["LANGUAGE"]+" "+round;
      		}
-     		else{
-				stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase;}
-		}
+     		else{	stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase; }	}
 	}
 	
 	action load_rugosity{
@@ -332,9 +330,7 @@ global {
 		loop r from: 6 to: length(rug_data) -1 {
 			string l <- rug_data[r];
 			list<string> res <- l split_with " ";
-			loop c from: 0 to: length(res) - 1{
-				cell[c,r-6].rugosity <- float(res[c]);}
-		}	
+			loop c from: 0 to: length(res) - 1 { cell[c,r-6].rugosity <- float(res[c]);} }	
 	}
 	
 	action calculate_districts_results{
@@ -352,22 +348,22 @@ global {
 				ask UAs{
 					ask cells {
 						if max_water_height > 0{
-							switch myself.ua_name{ //"U","Us","AU","N","A"    -> et  "AUs" impossible normallement
+							switch myself.lu_name{ //"U","Us","AU","N","A"    -> et  "AUs" impossible normallement
 								match "AUs" {
 									write "STOP :  AUs " + langs_def at 'MSG_IMPOSSIBLE_NORMALLY' at configuration_file["LANGUAGE"];
 								}
 								match "U" {
 									if max_water_height <= 0.5 				{
 										U_0_5 <- U_0_5 +1;
-										if myself.classe_densite = "dense" 	{	Udense_0_5 <- Udense_0_5 +1;	}
+										if myself.classe_densite = POP_DENSE 	{	Udense_0_5 <- Udense_0_5 +1;	}
 									}
 									if between (max_water_height ,0.5, 1.0) {
 										U_1 <- U_1 +1;
-										if myself.classe_densite = "dense" 	{	Udense_1 <- Udense_1 +1;		}
+										if myself.classe_densite = POP_DENSE 	{	Udense_1 <- Udense_1 +1;		}
 									}
 									if max_water_height >= 1				{
 										U_max <- U_max +1 ;
-										if myself.classe_densite = "dense" 	{	Udense_0_5 <- Udense_0_5 +1;	}
+										if myself.classe_densite = POP_DENSE 	{	Udense_0_5 <- Udense_0_5 +1;	}
 									}
 								}
 								match "Us" {
@@ -451,25 +447,21 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			nb_button <- 0;					label 	 <- "One step";
 			shape <- square(button_size);	location <- { 1000,1000 };
 			my_icon <- image_file("../images/icones/one_step.png");
-			display_name <- UNAM_DISPLAY;
 		}
 		create Buttons{
 			nb_button <- 3; 				label	 <- "HIGH_FLOODING";
 			shape <- square(button_size);	location <- { 5000,1000 };
 			my_icon <- image_file("../images/icones/launch_lisflood.png");
-			display_name <- UNAM_DISPLAY;
 		}
 		create Buttons{
 			nb_button <- 5;					label	 <- "LOW_FLOODING";
 			shape <- square(button_size);	location <- { 7000,1000 };
 			my_icon <- image_file("../images/icones/launch_lisflood_small.png");
-			display_name <- UNAM_DISPLAY;
 		}
 		create Buttons{
 			nb_button <- 6;					label 	 <- "Replay flooding";
 			shape <- square(button_size);	location <- { 9000,1000 };
 			my_icon <- image_file("../images/icones/replay_flooding.png");
-			display_name <- UNAM_DISPLAY;
 		}
 		create Buttons{
 			nb_button <- 4;					label 	 <- "Show UA grid";
@@ -491,8 +483,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		active_display <- UNAM_DISPLAY;
-		list<Buttons> buttonsMaster <- ( Buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name= active_display);
+		list<Buttons> buttonsMaster <- ( Buttons where (each distance_to loc < MOUSE_BUFFER));
 		if(length(buttonsMaster) > 0){
 			do clear_selected_button;
 			ask(buttonsMaster){
@@ -607,7 +598,7 @@ species Action_done schedules:[]{
 	bool is_applied <- false;
 	bool should_be_applied ->{round >= actual_application_round} ;
 	string action_type <- DIKE ; //can be "dike" or "PLU"
-	string previous_ua_name <-"";  // for PLU action
+	string previous_lu_name <-"";  // for PLU action
 	bool isExpropriation <- false; // for PLU action
 	bool inProtectedArea <- false; // for dike action
 	bool inCoastBorderArea <- false; // for PLU action // c'est la bande des 400 m par rapport au trait de cote
@@ -625,7 +616,7 @@ species Action_done schedules:[]{
 			"district_code"::district_code, "command"::string(command), "label"::label, "cost"::string(cost),
 			"initial_application_round"::string(initial_application_round), "isInlandDike"::string(isInlandDike),
 			"inRiskArea"::string(inRiskArea), "inCoastBorderArea"::string(inCoastBorderArea), "isExpropriation"::string(isExpropriation),
-			"inProtectedArea"::string(inProtectedArea), "previous_ua_name"::previous_ua_name, "action_type"::action_type,
+			"inProtectedArea"::string(inProtectedArea), "previous_lu_name"::previous_lu_name, "action_type"::action_type,
 			"locationx"::string(location.x), "locationy"::string(location.y), "is_applied"::string(is_applied), "is_sent"::string(is_sent),
 			"command_round"::string(command_round), "element_shape"::string(element_shape), "length_def_cote"::string(length_def_cote),
 			"a_lever_has_been_applied"::string(a_lever_has_been_applied)];
@@ -667,6 +658,7 @@ species Action_done schedules:[]{
 		return first(new_dikes);
 	}
 }
+//------------------------------ End of Action_done -------------------------------//
 
 species Network_player skills:[network]{
 	
@@ -682,7 +674,7 @@ species Network_player skills:[network]{
 					write "" +langs_def at 'MSG_READ_MESSAGE' at configuration_file["LANGUAGE"] + " : " + m_contents["stringContents"];
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
 					if(int(data[0]) = CONNECTION_MESSAGE){
-						int idCom <-world.district_id (m_sender);
+						int idCom <- world.district_id (m_sender);
 						ask(District where(each.id = idCom)){
 							do inform_current_round;
 							do send_player_district_update;
@@ -706,9 +698,7 @@ species Network_player skills:[network]{
 						}
 					}
 				}
-				else{
-					map<string,unknown> data <- m_contents["objectContent"];
-				}				
+				else{	map<string,unknown> data <- m_contents["objectContent"];	}				
 			}					
 		}
 	}
@@ -730,7 +720,7 @@ species Network_player skills:[network]{
 				self.element_id <- int(data[3]);
 				self.action_type <- data[4];
 				self.inProtectedArea <- bool(data[5]);
-				self.previous_ua_name <- data[6];
+				self.previous_lu_name <- data[6];
 				self.isExpropriation <- bool(data[7]);
 				self.cost <- float(data[8]);
 				if command = ACTION_CREATE_DIKE{
@@ -778,7 +768,7 @@ species Network_player skills:[network]{
 		list<string> update_messages <-[];
 		list<Land_use> updated_UA <- [];
 		ask Land_use where(each.not_updated){
-			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.ua_code+COMMAND_SEPARATOR+self.population+COMMAND_SEPARATOR+self.isEnDensification;
+			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.lu_code+COMMAND_SEPARATOR+self.population+COMMAND_SEPARATOR+self.isEnDensification;
 			update_messages <- update_messages + msg;	
 			not_updated <- false;
 			updated_UA <- updated_UA + self;
@@ -868,11 +858,11 @@ species Network_player skills:[network]{
 						do send_created_dike(new_dike, act);
 						do acknowledge_application_of_action_done(act);
 					}
-					ask(new_dike){ do new_dike_by_commune (idCom) ;	 }
+					ask(new_dike){ do build_dike;	 }
 				}
 				match ACTION_REPAIR_DIKE {
 					ask(Coastal_defense first_with(each.dike_id=element_id)){
-						do repair_by_commune(idCom);
+						do repaire_dike;
 						not_updated <- true;
 					}
 					ask Network_player{	do acknowledge_application_of_action_done(act);	}		
@@ -883,20 +873,20 @@ species Network_player skills:[network]{
 							do send_destroy_dike_message(myself);
 							do acknowledge_application_of_action_done(act);
 						}
-						do destroy_by_commune (idCom) ;
+						do destroy_dike;
 						not_updated <- true;
 					}		
 				}
 			 	match ACTION_RAISE_DIKE {
 			 		ask(Coastal_defense first_with(each.dike_id=element_id)){
-						do increase_height_by_commune (idCom) ;
+						do raise_dike;
 						not_updated <- true;
 					}
 					ask Network_player{	do acknowledge_application_of_action_done(act);	}
 				}
 				 match ACTION_INSTALL_GANIVELLE {
 				 	ask(Coastal_defense first_with(each.dike_id=element_id)){
-						do install_ganivelle_by_commune (idCom) ;
+						do install_ganivelle ;
 						not_updated <- true;
 					}
 					ask Network_player{	do acknowledge_application_of_action_done(act);	}
@@ -952,6 +942,7 @@ species Network_player skills:[network]{
 		}		
 	}
 }
+//------------------------------ End of Network player -------------------------------//
 
 species Network_round_manager skills:[remoteGUI]{
 	list<string> mtitle <- list_flooding_events.keys;
@@ -1004,6 +995,7 @@ species Network_round_manager skills:[remoteGUI]{
 	
 	action add_element(string nom_submersion, string path_to_see){	do update_submersion_list;	}
 }
+//------------------------------ End of Network_round_manager -------------------------------//
 
 species Activated_lever {
 	Action_done act_done;
@@ -1048,6 +1040,7 @@ species Activated_lever {
 		return res;
 	}
 }
+//------------------------------ End of Activated_lever -------------------------------//
 
 species Network_activated_lever skills:[network]{
 	
@@ -1071,6 +1064,7 @@ species Network_activated_lever skills:[network]{
 		}	
 	}
 }
+//------------------------------ End of Network_activated_lever -------------------------------//
 
 species Network_listener_to_leader skills:[network]{
 	string PRELEVER <- "Percevoir Recette";
@@ -1210,8 +1204,8 @@ species Coastal_defense {
 	string district_code;
 	string type;
 	string status;	//  "Good" "Medium" "Bad"  
-	float height;  // height au pied en mètre
-	float alt;     // altitude de la crete de la digue
+	float height;
+	float alt; 
 	rgb color <- # pink;
 	list<cell> cells ;
 	int cptStatus <-0;
@@ -1255,20 +1249,10 @@ species Coastal_defense {
 	
 	map<string,unknown> build_map_from_attributes{
 		map<string,unknown> res <- [
-			"OBJECT_TYPE"::"def_cote",
-			"dike_id"::string(dike_id),
-			"type"::type,
-			"status"::status,
-			"height"::string(height),
-			"alt"::string(alt),
-			"rupture"::string(rupture),
-			"zoneRupture"::zoneRupture,
-			"not_updated"::string(not_updated),
-			"ganivelle"::string(ganivelle),
-			"height_avant_ganivelle"::string(height_avant_ganivelle),
-			"locationx"::string(location.x),
-			"locationy"::string(location.y)];
-			point pp<-nil;
+			"OBJECT_TYPE"::"COAST_DEF",	"dike_id"::string(dike_id),	"type"::type, "status"::status,
+			"height"::string(height), "alt"::string(alt), "rupture"::string(rupture), "zoneRupture"::zoneRupture,
+			"not_updated"::string(not_updated), "ganivelle"::string(ganivelle), "height_avant_ganivelle"::string(height_avant_ganivelle),
+			"locationx"::string(location.x), "locationy"::string(location.y)];
 			int i <- 0;
 			loop pp over:shape.points{
 				put string(pp.x) key:"locationx"+i in: res;
@@ -1279,12 +1263,12 @@ species Coastal_defense {
 	}
 	
 	action init_dike {
-		if status = "" {status <- STATUS_GOOD;} 
-		if type ='' {type <- "Unknown";}
-		if height = 0.0 {height  <- 1.5;}////////  Les ouvrages de défense qui n'ont pas de hauteur sont mis d'office à 1.5 mètre
-		cptStatus <- type = DUNE?rnd(STEPS_DEGRAD_STATUS_DUNE-1):rnd(STEPS_DEGRAD_STATUS_OUVRAGE-1);
+		if status = ""  {status <- STATUS_GOOD; } 
+		if type ='' 	{type <- "Unknown";		}
+		if height = 0.0 {height  <- 1.5;		} // if no height, 1.5 m by default
+		cptStatus <- type = DUNE ?rnd(STEPS_DEGRAD_STATUS_DUNE-1) : rnd(STEPS_DEGRAD_STATUS_OUVRAGE-1);
 		cells <- cell overlapping self;
-		if type = DUNE {height_avant_ganivelle <- height;}
+		if type = DUNE  {height_avant_ganivelle <- height;}
 	}
 	
 	action evolveStatus_ouvrage {
@@ -1299,7 +1283,7 @@ species Coastal_defense {
 
 	action evolve_dune {
 		if ganivelle {
-			//Dynamique de la dune avec ganivelle 
+			// a dune with a ganivelle
 			cptStatus <- cptStatus +1;
 			if cptStatus = (STEPS_REGAIN_STATUS_GANIVELLE + 1) {
 				cptStatus <-0;
@@ -1317,41 +1301,39 @@ species Coastal_defense {
 				}
 				not_updated <- true;
 			}
-			else {//la dune a recouvert toute la hauteur de la ganivelle. On remet a zero le processus Ganivelle
+			else { // if the dune covers all the ganivelle we reset the ganivelle
 				ganivelle <- false;
 				not_updated<- true;
 			}
 		}
 		else {
-			//Dynamique de la dune sans ganivelle 
+			// a dune without a ganivelle
 			cptStatus <- cptStatus +1;
 			if cptStatus = (STEPS_DEGRAD_STATUS_DUNE + 1) {
-				cptStatus <-0;
+				cptStatus   <-0;
 				if status = STATUS_MEDIUM {status <- STATUS_BAD;}
-				if status = STATUS_GOOD {status <- STATUS_MEDIUM;}
-				not_updated<-true;  
+				if status = STATUS_GOOD   {status <- STATUS_MEDIUM;}
+				not_updated <-true;  
 			}
 		}
 	}
 		
 	action calcRupture {
 		int p <- 0;
-		if type != DUNE and status = STATUS_BAD {p <- PROBA_RUPTURE_DIKE_STATUS_BAD;}
-		if type != DUNE and status = STATUS_MEDIUM {p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM;}
-		if type != DUNE and status = STATUS_GOOD {p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;}
-		if type = DUNE and status = STATUS_BAD {p <- PROBA_RUPTURE_DUNE_STATUS_BAD;}
-		if type = DUNE and status = STATUS_MEDIUM {p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM;}
-		if type = DUNE and status = STATUS_GOOD {p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;}
+		if type != DUNE and status = STATUS_BAD 	{p <- PROBA_RUPTURE_DIKE_STATUS_BAD;	}
+		if type != DUNE and status = STATUS_MEDIUM  {p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM; }
+		if type != DUNE and status = STATUS_GOOD	{p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	}
+		if type = DUNE and status = STATUS_BAD 		{p <- PROBA_RUPTURE_DUNE_STATUS_BAD;	}
+		if type = DUNE and status = STATUS_MEDIUM 	{p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM; }
+		if type = DUNE and status = STATUS_GOOD 	{p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	}
 		if rnd (100) <= p {
 			rupture <- 1;
-			// on applique la rupture a peu pres au milieu du linéaire
+			// the rupture is applied in the middle
 			int cIndex <- int(length(cells) /2);
-			// on défini la zone de rupture ds un rayon de 30 mètre autour du point de rupture 
+			// rupture area is about RADIUS_RUPTURE m arount rupture point 
 			zoneRupture <- circle(RADIUS_RUPTURE#m,(cells[cIndex]).location);
-			// on applique la rupture sur les cells de cette zone
-			ask cells overlapping zoneRupture  {
-						if soil_height >= 0 {soil_height <-   max([0,soil_height - myself.height]);}
-			}
+			// rupture is applied on relevant area cells
+			ask cells overlapping zoneRupture  {	if soil_height >= 0 {soil_height <- max([0,soil_height - myself.height]);} }
 			write "rupture "+type_def_cote+" n°" + dike_id + "("+", status " + status +", height "+height+", alt "+alt +")";
 			write "rupture "+type_def_cote+" n°" + dike_id + "("+ world.table_correspondance_insee_com_nom_rac at (district_code)+", status " + status +", height "+height+", alt "+alt +")";
 		}
@@ -1359,18 +1341,16 @@ species Coastal_defense {
 	
 	action removeRupture {
 		rupture <- 0;
-		ask cells overlapping zoneRupture {if soil_height >= 0 {soil_height <-   soil_height_before_broken;}}
+		ask cells overlapping zoneRupture {if soil_height >= 0 {soil_height <- soil_height_before_broken;}}
 		zoneRupture <- nil;
 	}
-
-	//La commune répare la digue
-	action repair_by_commune (int a_commune_id) {
+	
+	action repaire_dike {
 		status <- STATUS_GOOD;
 		cptStatus <- 0;
 	}
-	
-	//La commune relève la digue
-	action increase_height_by_commune (int a_commune_id) {
+
+	action raise_dike {
 		status <- STATUS_GOOD;
 		cptStatus <- 0;
 		height <- height + RAISE_DIKE_HEIGHT; // le réhaussement d'ouvrage est défini par 
@@ -1382,8 +1362,7 @@ species Coastal_defense {
 		}
 	}
 	
-	//la commune détruit la digue
-	action destroy_by_commune (int a_commune_id) {
+	action destroy_dike {
 		ask cells {
 			soil_height <- soil_height - myself.height ;
 			soil_height_before_broken <- soil_height ;
@@ -1392,8 +1371,7 @@ species Coastal_defense {
 		do die;
 	}
 	
-	//La commune construit une digue
-	action new_dike_by_commune (int a_commune_id) {
+	action build_dike {
 		///  Une nouvelle digue réhausse tout le terrain à la hauteur de la cell la plus haute
 		float h <- cells max_of (each.soil_height);
 		alt <- h + height;
@@ -1405,13 +1383,9 @@ species Coastal_defense {
 	}
 	
 	//La commune installe des ganivelles sur la dune
-	action install_ganivelle_by_commune (int a_commune_id) {
-		if status = STATUS_BAD{
-			cptStatus <- 2;
-		}
-		else{				
-			cptStatus <- 0;
-		}		
+	action install_ganivelle{
+		if status = STATUS_BAD {	cptStatus <- 2;	}
+		else				   {	cptStatus <- 0; }		
 		ganivelle <- true;
 		write "INSTALL GANIVELLE";
 	}
@@ -1422,22 +1396,16 @@ species Coastal_defense {
 				match STATUS_GOOD	{	color <- rgb (222, 134, 14,255);	}
 				match STATUS_MEDIUM {	color <-  rgb (231, 189, 24,255);	} 
 				match STATUS_BAD 	{	color <- rgb (241, 230, 14,255);	} 
-				default{
-					write langs_def at 'MSG_DUNE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];
-				}
+				default				{	write langs_def at 'MSG_DUNE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];	}
 			}
 			draw 50#m around shape color: color;
-			if ganivelle {
-				loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}
-			} 
+			if ganivelle {	loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}	} 
 		} else{
 			switch status {
 				match STATUS_GOOD	{	color <- # green;			}
 				match STATUS_MEDIUM {	color <-  rgb (255,102,0);	} 
 				match STATUS_BAD 	{	color <- # red;				} 
-				default {
-					write langs_def at 'MSG_DIKE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];
-				}
+				default {	write langs_def at 'MSG_DIKE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];	}
 			}
 			draw 20#m around shape color: color size:300#m;
 		}
@@ -1451,25 +1419,25 @@ species Coastal_defense {
 //------------------------------ End of Coastal defense -------------------------------//
 
 species Land_use {
-	string ua_name;
 	int id;
-	int ua_code;
+	string lu_name;
+	int lu_code;
 	rgb my_color <- cell_color() update: cell_color();
 	int nb_stepsForAU_toU <-1;// On doit mettre 1 pour en fait obtenir un délai de 3 ans (car il y a un tour décompté de chgt de A/N à AU et un autre de AU à U 
 	int AU_to_U_counter <- 0;
 	list<cell> cells ;
 	int population ;
-	string classe_densite -> {population =0?"vide":(population <40?"peu dense":(population <80?"densité intermédiaire":"dense"))};
+	string classe_densite -> {population =0? POP_EMPTY :(population < 40 ? POP_FEW_DENSITY:(population < 80 ? POP_MEDIUM_DENSITY : POP_DENSE))};
 	int cout_expro -> {round( population * 400* population ^ (-0.5))};
-	bool isUrbanType -> {ua_name in ["U","Us","AU","AUs"] };
-	bool isAdapte -> {ua_name in ["Us","AUs"]};
+	bool isUrbanType -> {lu_name in ["U","Us","AU","AUs"] };
+	bool isAdapte -> {lu_name in ["Us","AUs"]};
 	bool isEnDensification <- false;
 	bool not_updated <- false;
 	bool pop_updated <- false;
 	
 	action init_from_map(map<string, unknown> a ){
 		self.id <- int(a at "id");
-		self.ua_name <- string(a at "ua_name");
+		self.lu_name <- string(a at "lu_name");
 		self.nb_stepsForAU_toU <- int(a at "nb_stepsForAU_toU");
 		self.AU_to_U_counter <- int(a at "AU_to_U_counter");
 		self.population <- int(a at "population");
@@ -1487,9 +1455,7 @@ species Land_use {
 				pp <- {float(xd), float(a at ("locationy"+i))  };
 				all_points <- all_points + pp;
 			}
-			else{
-				pp<-nil;
-			}
+			else{	pp<-nil;	}
 			i<- i + 1;
 		}
 		shape <- polygon(all_points);
@@ -1498,21 +1464,12 @@ species Land_use {
 	
 	map<string,unknown> build_map_from_attributes{
 		map<string,string> res <- [
-			"OBJECT_TYPE"::"UA",
-			"id"::string(id),
-			"ua_name"::ua_name,
-			"ua_code"::string(ua_code),
-			"nb_stepsForAU_toU"::string(nb_stepsForAU_toU),
-			"AU_to_U_counter"::string(AU_to_U_counter),
-			"population"::string(population),
-			"isEnDensification"::string(isEnDensification),
-			"not_updated"::string(not_updated),
-			"pop_updated"::string(pop_updated),
-			"locationx"::string(location.x),
-			"locationy"::string(location.y)
-			];
-			
-			point pp<-nil;
+			"OBJECT_TYPE"::"LU",		"id"::string(id),	"lu_name"::lu_name,
+			"lu_code"::string(lu_code),	"nb_stepsForAU_toU"::string(nb_stepsForAU_toU),
+			"AU_to_U_counter"::string(AU_to_U_counter),	"population"::string(population),
+			"isEnDensification"::string(isEnDensification),	"not_updated"::string(not_updated),
+			"pop_updated"::string(pop_updated), "locationx"::string(location.x), "locationy"::string(location.y)];
+
 			int i <- 0;
 			loop pp over:shape.points{
 				put string(pp.x) key:"locationx"+i in: res;
@@ -1522,19 +1479,19 @@ species Land_use {
 		return res;
 	}
 	
-	string nameOfUAcode (int a_ua_code) {
-		switch (a_ua_code){
-			match 1 {return "N";}
-			match 2 {return "U";}
-			match 4 {return "AU";}
-			match 5 {return "A";}
-			match 6 {return "Us";}
+	string nameOfUAcode (int a_lu_code) {
+		switch (a_lu_code){
+			match 1 {return "N";  }
+			match 2 {return "U";  }
+			match 4 {return "AU"; }
+			match 5 {return "A";  }
+			match 6 {return "Us"; }
 			match 7 {return "AUs";}
 		}
 	}
 		
-	int codeOfUAname (string a_ua_name) {
-		switch (a_ua_name){
+	int codeOfUAname (string a_lu_name) {
+		switch (a_lu_name){
 			match "N" 	{return 1;}
 			match "U" 	{return 2;}
 			match "AU" 	{return 4;}
@@ -1544,35 +1501,33 @@ species Land_use {
 		}
 	}
 		
-	action modify_UA (int a_id_commune, string new_ua_name){
-		if  (ua_name in ["U","Us"])and new_ua_name = "N" /*expropriation */ {population <-0;}
-		ua_name <- new_ua_name;
-		ua_code <- codeOfUAname(ua_name);
+	action modify_UA (int a_id_commune, string new_lu_name){
+		if  (lu_name in ["U","Us"])and new_lu_name = "N" /*expropriation */ {population <-0;}
+		lu_name <- new_lu_name;
+		lu_code <- codeOfUAname(lu_name);
 		
 		//on affecte la rugosité correspondant aux cells
-		float rug <- rugosityValueOfUA_name (ua_name);
+		float rug <- rugosityValueOfUA_name (lu_name);
 		ask cells {rugosity <- rug;} 	
 	}
 	
-	action apply_Densification (int a_id_commune) {
-		isEnDensification <-true;
-	}	
+	action apply_Densification (int a_id_commune) {		isEnDensification <-true;	}	
 	
 	action evolve_AU_to_U{
-	if ua_name in ["AU","AUs"]
-		{AU_to_U_counter<-AU_to_U_counter+1;
-		if AU_to_U_counter = (nb_stepsForAU_toU +1)
-			{	AU_to_U_counter<-0;
-				ua_name <- ua_name="AU"?"U":"Us";
-				ua_code<-codeOfUAname(ua_name);
-				not_updated<-true;
-				do assign_pop (POP_FOR_NEW_U);
+	if lu_name in ["AU","AUs"]{
+		AU_to_U_counter<-AU_to_U_counter+1;
+		if AU_to_U_counter = (nb_stepsForAU_toU +1){
+			AU_to_U_counter<-0;
+			lu_name <- lu_name="AU"?"U":"Us";
+			lu_code<-codeOfUAname(lu_name);
+			not_updated<-true;
+			do assign_pop (POP_FOR_NEW_U);
 			}
 		}	
 	}
 	
 	action evolve_U_densification {
-		if !pop_updated and isEnDensification and (ua_name in ["U","Us"]){
+		if !pop_updated and isEnDensification and (lu_name in ["U","Us"]){
 			string previous_d_classe <- classe_densite; 
 			do assign_pop (POP_FOR_U_DENSIFICATION);
 			if previous_d_classe != classe_densite {isEnDensification <- false;}
@@ -1580,9 +1535,7 @@ species Land_use {
 	}
 		
 	action evolve_U_standard {
-		if !pop_updated and (ua_name in ["U","Us"]){
-			do assign_pop (POP_FOR_U_STANDARD);
-		}
+		if !pop_updated and (lu_name in ["U","Us"]){	do assign_pop (POP_FOR_U_STANDARD);	}
 	}	
 	
 	action assign_pop (int nbPop) {
@@ -1594,24 +1547,22 @@ species Land_use {
 		}
 	}
 	
-	float rugosityValueOfUA_name (string a_ua_name) {
-		return float((eval_gaml("RUGOSITY_"+a_ua_name))) ;
-	}
+	float rugosityValueOfUA_name (string a_lu_name) {	return float((eval_gaml("RUGOSITY_"+a_lu_name))) ;	}
 
 	rgb cell_color{
 		rgb res <- nil;
-		switch (ua_name){
-			match "N" {res <- # palegreen;} // naturel
-			match_one ["U","Us"] { //  urbanisé
-				switch classe_densite {
-					match "vide" {res <- # red; } // Problème
-					match "peu dense" {res <-  rgb( 150, 150, 150 ); }
-					match "densité intermédiaire" {res <- rgb( 120, 120, 120 ) ;}
-					match "dense" {res <- rgb( 80,80,80 ) ;}
+		switch (lu_name){
+			match 	  "N" 					 {res <- #palegreen;} // naturel
+			match_one ["U","Us"] { 								 //  urbanisé
+				switch classe_densite 		 {
+					match POP_EMPTY 		 {res <- #red; 				} // Problem ?
+					match POP_FEW_DENSITY	 {res <-  rgb( 150, 150, 150 ); }
+					match POP_MEDIUM_DENSITY {res <- rgb( 120, 120, 120 ) ; }
+					match POP_DENSE 		 {res <- rgb( 80,80,80 ) ;		}
 				}
 			}
-			match_one ["AU","AUs"] {res <- # yellow;} // à urbaniser
-			match "A" {res <- rgb (225, 165,0);} // agricole
+			match_one ["AU","AUs"]  {res <- # yellow;		 } // to urbanize
+			match "A" 				{res <- rgb (225, 165,0);} // agricultural
 		}
 		return res;
 	}
@@ -1625,14 +1576,14 @@ species Land_use {
 	aspect population {
 		rgb acolor <- nil;
 		switch population {
-			 match 0 {acolor <- # white; }
-			 match_between [1 , 20] {acolor <- listC[2]; }
-			 match_between [20 , 40] {acolor <- listC[3]; }
-			 match_between [40 , 60] {acolor <- listC[4]; }
-			 match_between [60 , 80] {acolor <- listC[5]; }
-			 match_between [80 , 100] {acolor <- listC[6]; }
+			 match 0 					{acolor <- # white;  }
+			 match_between [1 , 20]  	{acolor <- listC[2]; }
+			 match_between [20 , 40]  	{acolor <- listC[3]; }
+			 match_between [40 , 60]  	{acolor <- listC[4]; }
+			 match_between [60 , 80]  	{acolor <- listC[5]; }
+			 match_between [80 , 100] 	{acolor <- listC[6]; }
 			 match_between [100 , 4000] {acolor <- listC[7]; }
-			 default {acolor <- #yellow; }
+			 default 					{acolor <- #yellow;  }
 		}
 		draw shape color: acolor;
 	}
@@ -1640,19 +1591,17 @@ species Land_use {
 	aspect densite_pop {
 		rgb acolor <- nil;
 		switch classe_densite {
-			match "vide" {acolor <- # white; }
-			match "peu dense" {acolor <- listC[2];} 
-			match "densité intermédiaire" {acolor <- listC[5];}
-			match "dense" {acolor <- listC[7];}
-			default {acolor <- # yellow; }
+			match POP_EMPTY 		{acolor <- # white; }
+			match POP_FEW_DENSITY 	{acolor <- listC[2];} 
+			match POP_MEDIUM_DENSITY{acolor <- listC[5];}
+			match POP_DENSE 		{acolor <- listC[7];}
+			default 				{acolor <- # yellow;}
 		}
 		draw shape color: acolor;
 	}
 	
 	aspect conditional_outline{
-		if (Buttons first_with(each.nb_button=4)).is_selected{
-		 draw shape color: rgb (0,0,0,0) border:#black;
-		}
+		if (Buttons first_with(each.nb_button=4)).is_selected{	draw shape color: rgb (0,0,0,0) border:#black;	}
 	}
 }
 //------------------------------ End of Land_use -------------------------------//
@@ -1743,10 +1692,10 @@ species District{
 		count_UA_urban_infloodRiskArea_t0 <- length (UAs where (each.isUrbanType and each intersects all_flood_risk_area));
 		count_UA_urban_dense_infloodRiskArea_t0 <- length (UAs where (each.isUrbanType and each.classe_densite = 'dense' and each intersects all_flood_risk_area));
 		count_UA_urban_dense_inCoastBorderArea_t0 <- length (UAs where (each.isUrbanType and each.classe_densite = 'dense' and each intersects union(Coast_border_area)));
-		count_UA_A_t0 <- length (UAs where (each.ua_name = 'A'));
-		count_UA_N_t0 <- length (UAs where (each.ua_name = 'N'));
-		count_UA_AU_t0 <- length (UAs where (each.ua_name = 'AU'));
-		count_UA_U_t0 <- length (UAs where (each.ua_name = 'U'));
+		count_UA_A_t0 <- length (UAs where (each.lu_name = 'A'));
+		count_UA_N_t0 <- length (UAs where (each.lu_name = 'N'));
+		count_UA_AU_t0 <- length (UAs where (each.lu_name = 'AU'));
+		count_UA_U_t0 <- length (UAs where (each.lu_name = 'U'));
 	}
 	
 	action calcul_taxes {
@@ -1765,21 +1714,21 @@ species District{
 species Buttons{
 	int command <- -1;
 	int nb_button <- 0;
-	string display_name <- "no name";
+	//string display_name <- "no name";
 	string label <- "no name";
 	bool is_selected <- false;
 	geometry shape <- square(500#m);
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if( display_name = UNAM_DISPLAY){
+		if( nb_button in [0,3,5,6]){
 			draw shape   color:  #white border: is_selected ? # red : # white;
 			draw my_icon size:	 button_size-50#m ;
 		}
 	}
 	
 	aspect buttons_map {
-		if( nb_button = 4 or nb_button = 7){
+		if( nb_button in [4,7]){
 			draw shape   color: #white border: is_selected ? # red : # white;
 			draw my_icon size:  800#m ;
 		}
