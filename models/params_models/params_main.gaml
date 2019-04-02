@@ -86,6 +86,7 @@ global{
 	
 	map impot_unit_table <- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); // received tax in Boyard for each inhabitant of the district 	
 	int pctBudgetInit <- int(eval_gaml(shapes_def["PCT_BUDGET_TABLE"])); // at initialization, each district has a budget equal to an annual tax + %
+	
 	float coastBorderBuffer <- float(eval_gaml(shapes_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (<400m)	
 	
 	// Logging user actions

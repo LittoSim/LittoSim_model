@@ -1872,7 +1872,7 @@ species network_player_new skills:[network]{
 						round <- int(m_contents["round"]);
 						if round != 0 { ask world {do user_msg(msg+" "+round, INFORMATION_MESSAGE);} }
 					}
-					match "COMMUNE_UPDATE"{ //  USED WHEN A COMMUNE CONNECTS TO GIVE THE CURRENT STATE OF THE COMMNUNE
+					match "DISTRICT_UPDATE"{
 						budget <- int(m_contents["budget"]);
 					}
 				}
