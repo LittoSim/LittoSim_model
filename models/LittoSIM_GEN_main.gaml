@@ -55,6 +55,7 @@ global {
 	int new_comers_still_to_dispatch <- 0;
     
 	// other variables
+	list<string> lu_type_names <- [nil,"N","U",nil,"AU","A","Us","AUs"];
 	bool show_max_water_height<- false ;// defines if the water_height displayed on the map should be the max one or the current one
 	string stateSimPhase <- SIM_NOT_STARTED; // state variable of current simulation state 
 	int round <- 0;
@@ -1479,30 +1480,11 @@ species Land_use {
 		return res;
 	}
 	
-	string nameOfUAcode (int a_lu_code) {
-		switch (a_lu_code){
-			match 1 {return "N";  }
-			match 2 {return "U";  }
-			match 4 {return "AU"; }
-			match 5 {return "A";  }
-			match 6 {return "Us"; }
-			match 7 {return "AUs";}
-		}
-	}
-		
-	int codeOfUAname (string a_lu_name) {
-		switch (a_lu_name){
-			match "N" 	{return 1;}
-			match "U" 	{return 2;}
-			match "AU" 	{return 4;}
-			match "A"	{return 5;}
-			match "Us" 	{return 6;}
-			match "AUs" {return 7;}
-		}
-	}
+	string nameOfUAcode (int a_lu_code) {	return lu_type_names[a_lu_code];		 }
+	int codeOfUAname (string a_lu_name) {	return lu_type_names index_of a_lu_name; }
 		
 	action modify_UA (int a_id_commune, string new_lu_name){
-		if  (lu_name in ["U","Us"])and new_lu_name = "N" /*expropriation */ {population <-0;}
+		if  (lu_name in ["U","Us"]) and new_lu_name = "N" /*expropriation */ {population <-0;}
 		lu_name <- new_lu_name;
 		lu_code <- codeOfUAname(lu_name);
 		
