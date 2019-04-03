@@ -23,13 +23,27 @@ global{
 	map<string,map> data_action <- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";");
 		
 	// Network 
-	string SERVER <- configuration_file["SERVER_ADDRESS"]; 
-	string COMMAND_SEPARATOR <- ":";
-	string GAME_MANAGER <- "GAME_MANAGER";
-	string MSG_FROM_LEADER <- "MSG_FROM_LEADER";
+	string SERVER 				<- configuration_file["SERVER_ADDRESS"]; 
+	string COMMAND_SEPARATOR 	<- ":";
+	string GAME_MANAGER 		<- "GAME_MANAGER";
+	string MSG_FROM_LEADER 		<- "MSG_FROM_LEADER";
 	
-	// Common parameters
-	string LEADER_COMMAND <- "leader_command";
+	// Main-Leader network communication
+	string ACTIVATED_LEVER		<- "ACTIVATED_LEVER";
+	string COLLECT_REC 			<- "COLLECT_RECETTE";
+	string SUBSIDIZE 			<- "SUBSIDIZE";
+	string LEADER_COMMAND   	<- "LEADER_COMMAND";
+	string AMOUNT 				<- "AMOUNT";
+	string BUDGET 				<- "BUDGET";
+	string DISTRICT_CODE 		<- "DISTRICT_CODE";
+	string ASK_NUM_ROUND 		<- "LEADER_ASKS_FOR_ROUND_NUMBER";
+	string NUM_ROUND 			<- "ROUND_NUMBER";
+	string ASK_INDICATORS_T0	<- "LEADER_ASKS_FOR_T0_IDICATORS";
+	string INDICATORS_T0 		<- "INDICATORS_AT_T0";
+	string RETREIVE_ACTION_DONE <- "RETREIVE_ACTION_DONE";
+	string ACTION_DONE_ID 		<- "ACTION_DONE_ID"; 
+	string ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE";
+	
 	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
 	
