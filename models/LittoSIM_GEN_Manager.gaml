@@ -8,7 +8,7 @@
  *  par les utilisateurs de la simulation en fonction de leur rôle. 
  */
 
-model LittoSIM_GEN
+model Manager
 
 import "params_models/params_manager.gaml"
 

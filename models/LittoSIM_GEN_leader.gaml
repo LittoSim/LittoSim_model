@@ -5,7 +5,7 @@
 * Tags: Tag1, Tag2, TagN
 */
 
-model leader
+model Leader
 
 import "params_models/params_leader.gaml"
 

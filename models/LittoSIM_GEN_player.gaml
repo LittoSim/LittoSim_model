@@ -4,7 +4,7 @@
  *  Author: nicolas
  *  Description: 
  */
-model Commune
+model Player
 
 import "params_models/params_player.gaml"
 
