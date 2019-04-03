@@ -10,7 +10,7 @@
 
 model LittoSIM_GEN
 
-import "params_models/params_main.gaml"
+import "params_models/params_manager.gaml"
 
 global {
 
@@ -555,7 +555,7 @@ species Data_retreive skills:[network] schedules:[] { // Receiving and applying 
 	}
 
 	action retreive_action_done(District d){
-		loop tmp over: Action_done where(each.district_code = d.district_code){
+		loop tmp over: Player_action where(each.district_code = d.district_code){
 			write "" + langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] + " " + d.network_name+ "_retreive " + tmp.build_map_from_attributes();
 			do send to: d.network_name+"_retreive" contents: tmp.build_map_from_attributes();
 		}
@@ -577,12 +577,11 @@ species Data_retreive skills:[network] schedules:[] { // Receiving and applying 
 }
 //------------------------------ End of Data_retrieve -------------------------------//
 
-species Action_done schedules:[]{
+species Player_action schedules:[]{
 	string id;
 	int element_id;
 	geometry element_shape;
 	string district_code<-"";
-	bool not_updated <- false;
 	int command <- -1 on_change: {label <- world.labelOfAction(command);};
 	int command_round<- -1;
 	string label <- "no name";
@@ -632,7 +631,7 @@ species Action_done schedules:[]{
 	}
 	
 	aspect base{
-		int indx <- Action_done index_of self;
+		int indx <- Player_action index_of self;
 		float y_loc <- float((indx +1)  * font_size) ;
 		float x_loc <- float(font_interleave + 12* (font_size+font_interleave));
 		float x_loc2 <- float(font_interleave + 20* (font_size+font_interleave));
@@ -644,7 +643,7 @@ species Action_done schedules:[]{
 		draw "    "+ round(cost) at:{x_loc,y_loc+font_size/2} size:font_size#m color:#black;	
 	}
 	
-	Coastal_defense create_dike(Action_done act){
+	Coastal_defense create_dike(Player_action act){
 		int next_dike_id <- max(Coastal_defense collect(each.dike_id))+1;
 		create Coastal_defense number:1 returns:new_dikes{
 			dike_id <- next_dike_id;
@@ -660,7 +659,7 @@ species Action_done schedules:[]{
 		return first(new_dikes);
 	}
 }
-//------------------------------ End of Action_done -------------------------------//
+//------------------------------ End of Player_action -------------------------------//
 
 species Network_player skills:[network]{
 	
@@ -709,8 +708,8 @@ species Network_player skills:[network]{
 		
 		if(! (int(data[0]) in ACTION_LIST) ){	return;	}
 		
-		create Action_done returns: tmp_agent_list;
-		Action_done new_action <- first(tmp_agent_list);
+		create Player_action returns: tmp_agent_list;
+		Player_action new_action <- first(tmp_agent_list);
 		ask(new_action){
 			self.command <- int(data[0]);
 			self.command_round <-game_round; 
@@ -790,7 +789,7 @@ species Network_player skills:[network]{
 		loop cm over:cms{	do send to: cm.network_name contents: msg;	}
 	}
 	
-	action send_created_dike(Coastal_defense new_dike, Action_done act){
+	action send_created_dike(Coastal_defense new_dike, Player_action act){
 		new_dike.shape <- act.element_shape;
 		point p1 <- first(act.element_shape.points);
 		point p2 <- last(act.element_shape.points);
@@ -810,7 +809,7 @@ species Network_player skills:[network]{
 		}
 	}
 	
-	action acknowledge_application_of_action_done (Action_done act){
+	action acknowledge_application_of_action_done (Player_action act){
 		map<string,string> msg <- ["TOPIC"::"action_done is_applied","id"::act.id];
 		put act.district_code  at: DISTRICT_CODE in: msg;
 		do send to: act.district_code + "_map_msg" contents:msg;
@@ -838,16 +837,16 @@ species Network_player skills:[network]{
 		}
 	}
 
-	reflex apply_action when: length(Action_done where (each.is_alive)) > 0{
+	reflex apply_action when: length(Player_action where (each.is_alive)) > 0{
 	//	ask(action_done where(each.should_be_applied and each.is_alive and not(each.shouldWaitLeaderToActivate)))
 	// Pour une raison bizarre la ligne au dessus ne fonctionne pas alors que les 2 lignes ci dessous fonctionnent. Pourtant je ne vois aucune difference
-		ask Action_done {
+		ask Player_action {
 			if should_be_applied and is_alive and !shouldWaitLeaderToActivate {
 				string tmp <- self.district_code;
 				int idCom <- world.district_id(tmp);
-				Action_done act <- self;
+				Player_action act <- self;
 				switch(command){
-				match REFRESH_ALL{////  Pourquoi est ce que REFRESH_ALL est une  Action_done ??
+				match REFRESH_ALL{////  Pourquoi est ce que REFRESH_ALL est une  Player_action ??
 					write " Update ALL !!!! " + idCom+ " "+  world.table_correspondance_insee_com_nom_rac at (district_code);
 					string dd <- district_code;
 					District cm <- first(District where(each.id=idCom));
@@ -999,7 +998,7 @@ species Network_round_manager skills:[remoteGUI]{
 //------------------------------ End of Network_round_manager -------------------------------//
 
 species Activated_lever {
-	Action_done act_done;
+	Player_action act_done;
 	float activation_time;
 	bool applied <- false;
 	
@@ -1025,7 +1024,7 @@ species Network_activated_lever skills:[network]{
 			if empty(Activated_lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
 				create Activated_lever{
 					do init_from_map(m_contents);
-					act_done <- Action_done first_with (each.id =  my_map["act_done_id"]);
+					act_done <- Player_action first_with (each.id =  my_map["act_done_id"]);
 					District d <- District first_with (each.district_code = district_code);
 					d.budget <-d.budget -  int(my_map["added_cost"]); 
 					add self to:act_done.activated_levers;
@@ -1062,9 +1061,9 @@ species Network_listener_to_leader skills:[network]{
 				}
 				match ASK_NUM_ROUND 		 {	do informLeader_round_number;	}
 				match ASK_INDICATORS_T0 	 {	do informLeader_indicators_t0;	}
-				match RETREIVE_ACTION_DONE	 {	ask Action_done {is_sent_to_leader <- false ; } }
+				match RETREIVE_ACTION_DONE	 {	ask Player_action {is_sent_to_leader <- false ; } }
 				match ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE {
-					Action_done aAct <- Action_done first_with (each.id = string(m_contents[ACTION_DONE_ID]));
+					Player_action aAct <- Player_action first_with (each.id = string(m_contents[ACTION_DONE_ID]));
 					write "msg shouldWait on " + aAct;
 					aAct.shouldWaitLeaderToActivate <- bool(m_contents[ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
 					write "msg shouldWait value " + aAct.shouldWaitLeaderToActivate;
@@ -1087,6 +1086,16 @@ species Network_listener_to_leader skills:[network]{
 			put district_code key: DISTRICT_CODE 			in: msg;
 			ask myself { do send to: GAME_LEADER contents: msg; }
 		}		
+	}
+	
+	reflex informLeader_action_state when: cycle mod 10 = 0 {
+		loop act over: Player_action where (!each.is_sent_to_leader){
+			map<string,string> msg <- act.build_map_from_attributes();
+			put UPDATE_ACTION_DONE key:OBSERVER_MESSAGE_COMMAND in:msg ;
+			do send to:GAME_LEADER contents:msg;
+			act.is_sent_to_leader <- true;
+			write "send message to leader "+ msg;
+		}
 	}
 }
 //------------------------------ End of Network_listener_to_leader -------------------------------//
@@ -1598,7 +1607,7 @@ species District{
 		write district_name + "-> tax " + received_tax + " ; budget "+ budget;
 	}
 	
-	action record_payment_for_action_done (Action_done aAction){
+	action record_payment_for_action_done (Player_action aAction){
 		budget <- int(budget - aAction.cost);
 	}					
 }

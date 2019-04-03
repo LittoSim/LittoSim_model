@@ -269,7 +269,7 @@ global{
 	
 	action send_message_from_leader(map<string,unknown> msg){
 		ask network_leader{
-			do send to:MSG_FROM_LEADER contents:msg;
+			do send to: LISTENER_TO_LEADER contents:msg;
 		}		
 	}
 	
