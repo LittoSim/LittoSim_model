@@ -32,15 +32,6 @@ global{
 	string UPDATE_ACTION_DONE       <- "update_action_done";
 	string OBSERVER_MESSAGE_COMMAND <- "observer_command";
 	
-	int ACTION_ACTION_DONE_UPDATE				<- 101;
-	int ACTION_ACTION_LIST 						<- 211;
-	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
-	int ACTION_LAND_COVER_UPDATE   				<-9;
-	int ACTION_DIKE_UPDATE		   				<-10;
-	int INFORM_ROUND 			   				<-34;
-	int ENTITY_TYPE_CODE_COAST_DEF 				<-36;
-	int ENTITY_TYPE_CODE_LU		   				<-37;
-	
 	// pop density
 	string POP_EMPTY 		  <- "empty";
 	string POP_FEW_DENSITY 	  <- "few density";
@@ -99,7 +90,7 @@ global{
 	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs_SUBSIDY' at 'cost');
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us_SUBSIDY' at 'cost');
 	
-	map impot_unit_table <- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); // received tax in Boyard for each inhabitant of the district 	
+	map tax_unit_table <- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); // received tax in Boyard for each inhabitant of the district 	
 	int pctBudgetInit <- int(eval_gaml(shapes_def["PCT_BUDGET_TABLE"])); // at initialization, each district has a budget equal to an annual tax + %
 	
 	float coastBorderBuffer <- float(eval_gaml(shapes_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (<400m)	

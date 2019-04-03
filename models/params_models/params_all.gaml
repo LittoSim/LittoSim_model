@@ -65,6 +65,15 @@ global{
 							ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,
 							ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N
 					];
+	int ACTION_ACTION_DONE_UPDATE				<- 101;
+	int ACTION_ACTION_LIST 						<- 211;
+	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
+	int ACTION_LAND_COVER_UPDATE   				<-9;
+	int ACTION_DIKE_UPDATE		   				<-10;
+	int INFORM_ROUND 			   				<-34;
+	int ENTITY_TYPE_CODE_COAST_DEF 				<-36;
+	int ENTITY_TYPE_CODE_LU		   				<-37;
+	
 	// List of actions with their parameters
 	int ACTION_REPAIR_DIKE <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action code');
 	int ACTION_CREATE_DIKE <- int(data_action at 'ACTION_CREATE_DIKE' at 'action code');
@@ -93,8 +102,8 @@ global{
 	
 	// Messages to display in multi-languages
 	string MSG_SIM_NOT_STARTED <- langs_def at 'MSG_SIM_NOT_STARTED' at configuration_file["LANGUAGE"];
-		
-	// Shared methods to load configuration files into maps
+	
+	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){
 		map<string, string> res <- map<string, string>([]);
 		string line <-"";
@@ -139,5 +148,6 @@ global{
 		}
 		return rslt;
 	}
+	//------------------------------ End of methods -------------------------------//
 }
 
