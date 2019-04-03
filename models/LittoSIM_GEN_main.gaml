@@ -103,7 +103,7 @@ global {
 		loop i from: 0 to: (length(listC)-1) {	listC[i] <- blend (listC[i], #red , 0.9);	}
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
-		do addElementIn_list_flooding_events ("Submersion initiale","results");
+		do addElementIn_list_flooding_events ("Initial submersion","results");
 		
 		do load_rugosity;
 		ask Land_use {	cells <- cell overlapping self;	}
@@ -356,15 +356,15 @@ global {
 								match "U" {
 									if max_water_height <= 0.5 					{
 										U_0_5 <- U_0_5 +1;
-										if myself.classe_densite = POP_DENSE 	{	Udense_0_5 <- Udense_0_5 +1;	}
+										if myself.density_class = POP_DENSE 	{	Udense_0_5 <- Udense_0_5 +1;	}
 									}
 									if between (max_water_height ,0.5, 1.0) 	{
 										U_1 <- U_1 +1;
-										if myself.classe_densite = POP_DENSE 	{	Udense_1 <- Udense_1 +1;		}
+										if myself.density_class = POP_DENSE 	{	Udense_1 <- Udense_1 +1;		}
 									}
 									if max_water_height >= 1					{
 										U_max <- U_max +1 ;
-										if myself.classe_densite = POP_DENSE 	{	Udense_0_5 <- Udense_0_5 +1;	}
+										if myself.density_class = POP_DENSE 	{	Udense_0_5 <- Udense_0_5 +1;	}
 									}
 								}
 								match "Us" {
@@ -543,14 +543,14 @@ species Data_retreive skills:[network] schedules:[] { // Receiving and applying 
 	action retreive_coastal_defense(District d){	
 		loop tmp over: Coastal_defense where(each.district_code = d.district_code){
 			write "" + langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] +" "+ d.network_name + "_retreive " + tmp.build_map_from_attributes();
-			do send to: d.network_name+"_retreive" contents: tmp.build_map_from_attributes();
+			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
 		}
 	}
 	
 	action retreive_LU(District d){
 		loop tmp over: d.LUs{
 			write "" + langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] + " " + d.network_name + "_retreive " + tmp.build_map_from_attributes();
-			do send to: d.network_name+"_retreive" contents: tmp.build_map_from_attributes();
+			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
 		}
 	}
 
@@ -671,11 +671,12 @@ species Network_player skills:[network]{
 			message msg <- fetch_message();
 			string m_sender <- msg.sender;
 			map<string, unknown> m_contents <- msg.contents;
-			if(m_sender!= GAME_MANAGER ){
+			if(m_sender != GAME_MANAGER ){
 				if(m_contents["stringContents"] != nil){
 					write "" + langs_def at 'MSG_READ_MESSAGE' at configuration_file["LANGUAGE"] + " : " + m_contents["stringContents"];
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
-					if(int(data[0]) = CONNECTION_MESSAGE){
+					
+					if(int(data[0]) = CONNECTION_MESSAGE){ // a client district wants to connect
 						int id_dist <- world.district_id (m_sender);
 						ask(District where(each.id = id_dist)){
 							do informDistrict_current_round;
@@ -683,25 +684,23 @@ species Network_player skills:[network]{
 						}
 						write "" + langs_def at 'MSG_CONNECTION_FROM' at configuration_file["LANGUAGE"] + " " + m_sender + " " + id_dist;
 					}
-					else{
-						if(int(data[0]) = REFRESH_ALL){
-							int id_dist <- world.district_id(m_sender);
-							write " Update ALL !!!! " + id_dist + " ";
-							District cm <- first(District where(each.id=id_dist));
-							ask first(Data_retreive) {
-								do send_data_to_district(cm);
-							}
+					else if(int(data[0]) = REFRESH_ALL){
+						int id_dist <- world.district_id(m_sender);
+						write " Update ALL !!!! " + id_dist + " ";
+						District d <- first(District where(each.id = id_dist));
+						ask first(Data_retreive) {
+							do send_data_to_district(d);
 						}
-						else{
-							if(game_round > 0) {
-								write "" + langs_def at 'MSG_READ_ACTION' at configuration_file["LANGUAGE"]+ " " + m_contents["stringContents"];
-								do read_action(string(m_contents["stringContents"]),m_sender);
-							}
+					}
+					else{
+						if(game_round > 0) {
+							write "" + langs_def at 'MSG_READ_ACTION' at configuration_file["LANGUAGE"] + " " + m_contents["stringContents"];
+							do read_action(string(m_contents["stringContents"]), m_sender);
 						}
 					}
 				}
 				else{	map<string,unknown> data <- m_contents["objectContent"];	}				
-			}					
+			}				
 		}
 	}
 		
@@ -762,15 +761,15 @@ species Network_player skills:[network]{
 			}
 		}
 		//  le paiement est déjà fait coté commune, lorsque le joueur a validé le panier. On renregistre ici le paiement pour garder les comptes à jour coté serveur
-		int idCom <- world.district_id(new_action.district_code);
-		ask District first_with(each.id = idCom) {	do record_payment_for_action_done(new_action);	}
+		int id_dis <- world.district_id (new_action.district_code);
+		ask District first_with(each.id = id_dis) {	do record_payment_for_action_done(new_action);	}
 	}
 	
 	reflex update_LU  when:length(Land_use where(each.not_updated)) > 0 {
 		list<string> update_messages <-[];
 		list<Land_use> updated_LU <- [];
 		ask Land_use where(each.not_updated){
-			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.lu_code+COMMAND_SEPARATOR+self.population+COMMAND_SEPARATOR+self.isEnDensification;
+			string msg <- ""+ACTION_LAND_COVER_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+id+COMMAND_SEPARATOR+self.lu_code+COMMAND_SEPARATOR+self.population+COMMAND_SEPARATOR+self.isInDensification;
 			update_messages <- update_messages + msg;	
 			not_updated <- false;
 			updated_LU <- updated_LU + self;
@@ -778,8 +777,9 @@ species Network_player skills:[network]{
 		int i <- 0;
 		loop while: i< length(update_messages){
 			string msg <- update_messages at i;
-			list<District> cms <- District overlapping (updated_LU at i);
-			loop cm over: cms {	do send to:cm.network_name contents:msg;	}
+			loop d over: District overlapping (updated_LU at i) {
+				do send to: d.network_name contents: msg;
+			}
 			i <- i + 1;
 		}
 	}
@@ -805,9 +805,8 @@ species Network_player skills:[network]{
 		COMMAND_SEPARATOR+act.id+
 		COMMAND_SEPARATOR+new_dike.location.x+
 		COMMAND_SEPARATOR+new_dike.location.y;
-		list<District> cms <- District overlapping new_dike;
-		loop cm over:cms{
-			do send  to:cm.network_name contents:msg;
+		loop d over: District overlapping new_dike{
+			do send  to:d.network_name contents:msg;
 		}
 	}
 	
@@ -1040,7 +1039,7 @@ species Network_activated_lever skills:[network]{
 
 species Network_listener_to_leader skills:[network]{
 	
-	init{	do connect to:SERVER with_name:MSG_FROM_LEADER;	}
+	init{	do connect to:SERVER with_name: LISTENER_TO_LEADER;	}
 	
 	reflex wait_message {
 		loop while:has_more_message(){
@@ -1362,18 +1361,18 @@ species Land_use {
 	int id;
 	string lu_name;
 	int lu_code;
-	rgb my_color <- cell_color() update: cell_color();
-	int nb_stepsForAU_toU <-1;// On doit mettre 1 pour en fait obtenir un délai de 3 ans (car il y a un tour décompté de chgt de A/N à AU et un autre de AU à U 
-	int AU_to_U_counter <- 0;
+	rgb my_color 			<- cell_color() update: cell_color();
+	int nb_stepsForAU_toU 	<- 1;// we put 1 to impose a delay of 3 years (1 round to change from A/N to AU and 1 from AU to U 
+	int AU_to_U_counter 	<- 0;
 	list<cell> cells ;
 	int population ;
-	string classe_densite -> {population =0? POP_EMPTY :(population < 40 ? POP_FEW_DENSITY:(population < 80 ? POP_MEDIUM_DENSITY : POP_DENSE))};
-	int cout_expro -> {round( population * 400* population ^ (-0.5))};
-	bool isUrbanType -> {lu_name in ["U","Us","AU","AUs"] };
-	bool isAdapte -> {lu_name in ["Us","AUs"]};
-	bool isEnDensification <- false;
-	bool not_updated <- false;
-	bool pop_updated <- false;
+	string density_class 	-> {population =0? POP_EMPTY :(population < 40 ? POP_FEW_DENSITY: (population < 80 ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	int cout_expro 			-> {round( population * 400* population ^ (-0.5))};
+	bool isUrbanType 		-> {lu_name in ["U","Us","AU","AUs"] };
+	bool isAdapted 			-> {lu_name in ["Us","AUs"]};
+	bool isInDensification 	<- false;
+	bool not_updated 		<- false;
+	bool pop_updated 		<- false;
 	
 	action init_from_map(map<string, unknown> a ){
 		self.id <- int(a at "id");
@@ -1381,7 +1380,7 @@ species Land_use {
 		self.nb_stepsForAU_toU <- int(a at "nb_stepsForAU_toU");
 		self.AU_to_U_counter <- int(a at "AU_to_U_counter");
 		self.population <- int(a at "population");
-		self.isEnDensification <- bool(a at "isEnDensification");
+		self.isInDensification <- bool(a at "isInDensification");
 		self.not_updated <- bool(a at "not_updated");
 		self.pop_updated <- bool(a at "pop_updated");
 		
@@ -1407,7 +1406,7 @@ species Land_use {
 			"OBJECT_TYPE"::"LU",		"id"::string(id),	"lu_name"::lu_name,
 			"lu_code"::string(lu_code),	"nb_stepsForAU_toU"::string(nb_stepsForAU_toU),
 			"AU_to_U_counter"::string(AU_to_U_counter),	"population"::string(population),
-			"isEnDensification"::string(isEnDensification),	"not_updated"::string(not_updated),
+			"isInDensification"::string(isInDensification),	"not_updated"::string(not_updated),
 			"pop_updated"::string(pop_updated), "locationx"::string(location.x), "locationy"::string(location.y)];
 
 			int i <- 0;
@@ -1420,7 +1419,10 @@ species Land_use {
 	}
 	
 	string nameOfLUcode (int a_lu_code) {	return lu_type_names[a_lu_code];		 }
+	
 	int codeOfLUname (string a_lu_name) {	return lu_type_names index_of a_lu_name; }
+	
+	action apply_Densification { isInDensification <-true; }	
 		
 	action modify_LU (string new_lu_name){
 		if (lu_name in ["U","Us"]) and new_lu_name = "N" {population <-0;} //expropriation
@@ -1430,8 +1432,6 @@ species Land_use {
 		float rug <- rugosityValueOfLU_name (lu_name);
 		ask cells {rugosity <- rug;} 	
 	}
-	
-	action apply_Densification { isEnDensification <-true; }	
 	
 	action evolve_AU_to_U{
 	if lu_name in ["AU","AUs"]{
@@ -1447,10 +1447,10 @@ species Land_use {
 	}
 	
 	action evolve_U_densification {
-		if !pop_updated and isEnDensification and (lu_name in ["U","Us"]){
-			string previous_d_classe <- classe_densite; 
+		if !pop_updated and isInDensification and (lu_name in ["U","Us"]){
+			string previous_d_classe <- density_class; 
 			do assign_pop (POP_FOR_U_DENSIFICATION);
-			if previous_d_classe != classe_densite {isEnDensification <- false;}
+			if previous_d_classe != density_class {isInDensification <- false;}
 		}
 	}
 		
@@ -1460,10 +1460,10 @@ species Land_use {
 	
 	action assign_pop (int nbPop) {
 		if new_comers_still_to_dispatch > 0 {
-			population <- population + nbPop;
+			population 					 <- population + nbPop;
 			new_comers_still_to_dispatch <- new_comers_still_to_dispatch - nbPop;
-			not_updated<-true;
-			pop_updated <- true;
+			not_updated 				 <-true;
+			pop_updated 				 <- true;
 		}
 	}
 	
@@ -1476,7 +1476,7 @@ species Land_use {
 			match	  	"A" 				 {res <- rgb (225, 165,0);} // agricultural
 			match_one ["AU","AUs"]  		 {res <- #yellow;		 } // to urbanize
 			match_one ["U","Us"] { 								 	   // urbanised
-				switch classe_densite 		 {
+				switch density_class 		 {
 					match POP_EMPTY 		 {res <- #red; 				} // Problem ?
 					match POP_FEW_DENSITY	 {res <-  rgb( 150, 150, 150 ); }
 					match POP_MEDIUM_DENSITY {res <- rgb( 120, 120, 120 ) ; }
@@ -1489,28 +1489,13 @@ species Land_use {
 
 	aspect base{
 		draw shape color: my_color;
-		if isAdapte			 {	draw "A" color:#black;	}
-		if isEnDensification {	draw "D" color:#black;	}
-	}
-	
-	aspect population {
-		rgb acolor <- nil;
-		switch population {
-			 match 0 					{acolor <- # white;  }
-			 match_between [1 , 20]  	{acolor <- listC[2]; }
-			 match_between [20 , 40]  	{acolor <- listC[3]; }
-			 match_between [40 , 60]  	{acolor <- listC[4]; }
-			 match_between [60 , 80]  	{acolor <- listC[5]; }
-			 match_between [80 , 100] 	{acolor <- listC[6]; }
-			 match_between [100 , 4000] {acolor <- listC[7]; }
-			 default 					{acolor <- #yellow;  }
-		}
-		draw shape color: acolor;
+		if isAdapted		 {	draw "A" color:#black;	}
+		if isInDensification {	draw "D" color:#black;	}
 	}
 
-	aspect densite_pop {
+	aspect population_density {
 		rgb acolor <- nil;
-		switch classe_densite {
+		switch density_class {
 			match POP_EMPTY 		{acolor <- # white; }
 			match POP_FEW_DENSITY 	{acolor <- listC[2];} 
 			match POP_MEDIUM_DENSITY{acolor <- listC[5];}
@@ -1521,7 +1506,7 @@ species Land_use {
 	}
 	
 	aspect conditional_outline{
-		if (Buttons first_with(each.nb_button=4)).is_selected{	draw shape color: rgb (0,0,0,0) border:#black;	}
+		if (Buttons first_with(each.nb_button=4)).is_selected {	draw shape color: rgb (0,0,0,0) border:#black;	}
 	}
 }
 //------------------------------ End of Land_use -------------------------------//
@@ -1563,18 +1548,18 @@ species District{
 	action informDistrict_current_round {// informs about the current round
 		ask Network_player{
 			map<string,string> msg <- ["TOPIC"::"INFORM_CURRENT_ROUND"];
-			put myself.district_code  at: DISTRICT_CODE in: msg;
-			put string(game_round) 		  at: NUM_ROUND		in: msg;
+			put myself.district_code  		at: DISTRICT_CODE 	in: msg;
+			put string(game_round) 		  	at: NUM_ROUND		in: msg;
 			do send to: myself.district_code+"_map_msg" contents: msg;
 		}
 	}
 
 	action informDistrict_budget_update{// gives the current state of the district when connected
 		ask Network_player{
-			map<string,string> msg <- ["TOPIC"::"DISTRICT_UPDATE"];
-			put myself.district_code  at: DISTRICT_CODE in: msg;
-			put string(myself.budget) at: BUDGET		in: msg;
-			do send to: myself.district_code+"_map_msg" contents: msg;
+			map<string,string> msg <- ["TOPIC"::"DISTRICT_BUDGET_UPDATE"];
+			put myself.district_code  	at: DISTRICT_CODE 	in: msg;
+			put string(myself.budget) 	at: BUDGET			in: msg;
+			do send to: myself.district_code + "_map_msg" contents: msg;
 		}
 	}
 	
@@ -1582,7 +1567,7 @@ species District{
 		ask Network_player{
 			map<string,string> msg <- ["TOPIC"::"INFORM_NEW_ROUND"];
 			put myself.district_code at: DISTRICT_CODE in: msg;
-			do send to: myself.district_code+"_map_msg" contents: msg;
+			do send to: myself.district_code + "_map_msg" contents: msg;
 		}
 	}
 	
@@ -1594,13 +1579,13 @@ species District{
 		// built cells (U , AU, Us and AUs)
 		put string(length(LUs where (each.isUrbanType))) key: "count_LU_urban_t0" in: my_indicators_t0;
 		// non adapted built cells in littoral area (<400m)
-		put string(length(LUs where (each.isUrbanType and not(each.isAdapte) and each intersects first(Coast_border_area)))) key: "count_LU_UandAU_inCoastBorderArea_t0" in: my_indicators_t0;
+		put string(length(LUs where (each.isUrbanType and not(each.isAdapted) and each intersects first(Coast_border_area)))) key: "count_LU_UandAU_inCoastBorderArea_t0" in: my_indicators_t0;
 		// built cells in flooded area
 		put string(length(LUs where (each.isUrbanType and each intersects all_flood_risk_area))) key: "count_LU_urban_infloodRiskArea_t0" in: my_indicators_t0;
 		// dense cells in risk area 
-		put string(length(LUs where (each.isUrbanType and each.classe_densite = POP_DENSE and each intersects all_flood_risk_area))) key: "count_LU_urban_dense_infloodRiskArea_t0" in: my_indicators_t0;
+		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_flood_risk_area))) key: "count_LU_urban_dense_infloodRiskArea_t0" in: my_indicators_t0;
 		//dense cells in littoral area
-		put string(length(LUs where (each.isUrbanType and each.classe_densite = POP_DENSE and each intersects union(Coast_border_area)))) key: "count_LU_urban_dense_inCoastBorderArea_t0" in: my_indicators_t0;
+		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects union(Coast_border_area)))) key: "count_LU_urban_dense_inCoastBorderArea_t0" in: my_indicators_t0;
 		put string(length(LUs where (each.lu_name = 'A'))) key: "count_LU_A_t0" in: my_indicators_t0; // count cells of type A
 		put string(length(LUs where (each.lu_name = 'N'))) key: "count_LU_N_t0" in: my_indicators_t0; // count cells of type N
 		put string(length(LUs where (each.lu_name = 'AU'))) key: "count_LU_AU_t0" in: my_indicators_t0;// count cells of type AU
@@ -1677,7 +1662,7 @@ experiment LittoSIM_GEN type: gui{
 			species Coastal_defense aspect: base;
 		}
 		display "Population density"{	
-			species Land_use aspect: densite_pop;
+			species Land_use aspect: population_density;
 			species Road 	 aspect: base;
 			species District aspect: outline;			
 		}

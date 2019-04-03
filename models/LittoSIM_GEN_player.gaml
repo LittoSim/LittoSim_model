@@ -1882,19 +1882,11 @@ species network_player_new skills:[network]{
 }
 
 species network_listen_to_leader skills:[network]{
-	string PRELEVER <- "Percevoir Recette";
-	string CREDITER <- "Subventionner";
+
 	string MSG_TO_PLAYER <-"Message au joueur";
-	string LEADER_COMMAND <- "leader_command";
-	string AMOUNT <- "amount";
-	string COMMUNE <- "COMMUNE_ID";
-	string ASK_NUM_ROUND <- "Leader demande numero du tour";
-	string NUM_ROUND <- "Numero du tour";
-	string ASK_INDICATORS_T0 <- "Leader demande Indicateurs a t0";
-	string INDICATORS_T0 <- 'Indicateurs a t0';
 	
 	init{
-		 do connect to:SERVER with_name:MSG_FROM_LEADER;
+		 do connect to:SERVER with_name: LISTENER_TO_LEADER;
 	}
 	
 	
@@ -1902,14 +1894,14 @@ species network_listen_to_leader skills:[network]{
 		loop while:has_more_message(){
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
-			if m_contents[COMMUNE] =insee_com{
+			if m_contents[DISTRICT_CODE] = insee_com{
 				switch(m_contents[LEADER_COMMAND]){
-					match CREDITER{
+					match SUBSIDIZE{
 						int amount <- int(m_contents[AMOUNT]);
 						budget <- budget + amount;
 						ask world {do user_msg(string(m_contents[PLAYER_MSG])+amount+ ' By',BUDGET_MESSAGE);}
 					}
-					match PRELEVER{
+					match COLLECT_REC{
 						int amount <- int(m_contents[AMOUNT]);
 						budget <- budget - amount;
 						ask world {do user_msg(string(m_contents[PLAYER_MSG])+amount+ ' By',BUDGET_MESSAGE);}
@@ -1938,8 +1930,6 @@ species network_player skills:[network]{
 		string mm<- ""+CONNECTION_MESSAGE+COMMAND_SEPARATOR+world.insee_com;
 			map<string,string> data <- ["stringContents"::mm];
 			do send to:GAME_MANAGER contents:data;
-		
-	//	do send to:MANAGER_NAME contents:data;
 	}
 	
 	reflex receive_message {
