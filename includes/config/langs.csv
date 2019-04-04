@@ -1,7 +1,7 @@
 ﻿element;fr;en
-ACTION_REPAIR_DIKE;Renover une digue;Repair a dike
+ACTION_REPAIR_DIKE;Rénover une digue;Repair a dike
 ACTION_CREATE_DIKE;Construire une digue;Create a dike
-ACTION_DESTROY_DIKE;Dementeler une digue;Destroy a dike
+ACTION_DESTROY_DIKE;Démanteler une digue;Destroy a dike
 ACTION_RAISE_DIKE;Rehausser une digue;Raise a dike
 ACTION_INSTALL_GANIVELLE;Installer des ganivelles;Install ganivelles
 ACTION_MODIFY_LAND_COVER_AU;Changer en zone a urbaniser;Change to authorized urbanization
@@ -10,26 +10,26 @@ ACTION_MODIFY_LAND_COVER_U;Cliquez sur la cellule a modifier;Click on the cell t
 ACTION_MODIFY_LAND_COVER_N;Changer en zone naturelle;Change to natural
 ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N;Changer une zone a urbaniser en zone naturelle;Change an urban zone to natural
 ACTON_MODIFY_LAND_COVER_FROM_A_TO_N;Changer une zone agricole en zone naturelle;Change an agricultural zone to natural
-ACTION_MODIFY_LAND_COVER_AUs;Changer en zone a urbaniser adaptee;Change to an adapted urbanized zone
+ACTION_MODIFY_LAND_COVER_AUs;Changer en zone a urbaniser adaptée;Change to an adapted urbanized zone
 ACTION_MODIFY_LAND_COVER_Us;Transformer en Us;Change to Us
 ACTION_MODIFY_LAND_COVER_Ui;Inciter a la densification;Incite to densification
 ACTION_EXPROPRIATION;Cliquez sur la cellule a modifier;Click on the cell to modify
-ACTION_MODIFY_LAND_COVER_AUs_SUBSIDY;Changer en zone a urbaniser adaptee avec subvention;Change to an authorized urbanization zone with subsidy
-ACTION_MODIFY_LAND_COVER_Us_SUBSIDY;Changer en zone urbanisee adaptee avec subvention;Change to an adapted urbanized zone with subsidy
-ACTION_INSPECT_LAND_USE;Inspecter une unite d'amenagement;Inspect a planning unit
+ACTION_MODIFY_LAND_COVER_AUs_SUBSIDY;Changer en zone à urbaniser adaptée avec subvention;Change to an authorized urbanization zone with subsidy
+ACTION_MODIFY_LAND_COVER_Us_SUBSIDY;Changer en zone urbanisée adaptée avec subvention;Change to an adapted urbanized zone with subsidy
+ACTION_INSPECT_LAND_USE;Inspecter une unite d’aménagement;Inspect a planning unit
 ACTION_INSPECT_DIKE;Inspecter un ouvrage de defense;Inspect a dike
 ACTION_DISPLAY_PROTECTED_AREA;Afficher les zones protegees;Display protected areas
-ACTION_DISPLAY_FLOODED_AREA;Afficher les zones innondees;Display flooded areas
+ACTION_DISPLAY_FLOODED_AREA;Afficher les zones inondées;Display flooded areas
 MSG_NEW_ROUND;Nouveau tour de jeu;New round
 MSG_GAME_DONE;Termine;Done
 MSG_SIM_NOT_STARTED;La simulation n'a pas encore commence;The simulation has not started yet
-MSG_NO_FLOOD_FILE_EVENT;Il n'y a pas de fichier de resultat Lisflood pour cet evenement;There is no Lisflood result file for this event
+MSG_NO_FLOOD_FILE_EVENT;Il n'y a pas de fichier de résultat Lisflood pour cet événement;There is no Lisflood result file for this event
 MSG_OK_CONTINUE;Cliquez sur OK pour continuer;Click ok to continue
-MSG_SUBMERSION_NUMBER;Indiquer le numero de la submersion que vous voulez reafficher;Indicate the submersion number to redisplay
-MSG_NUMBER;Numero;Number
-HELP_MSG_REPAIR_DIKE;Cliquez sur la digue a renover;Click on the dike to repair
-HELP_MSG_CREATE_DIKE;Cliquez aux deux extremites du lineaire de digue;Click on the two extremities of the dike
-HELP_MSG_DESTROY_DIKE;Cliquez sur la digue a dementeler;Click on the dike to destroy
+MSG_SUBMERSION_NUMBER;Indiquer le numéro de la submersion que vous voulez ré-afficher;Indicate the submersion number to re-display
+MSG_NUMBER;Numéro;Number
+HELP_MSG_REPAIR_DIKE;Cliquez sur la digue a rénover;Click on the dike to repair
+HELP_MSG_CREATE_DIKE;Cliquez aux deux extrémités du linéaire de digue;Click on the two extremities of the dike
+HELP_MSG_DESTROY_DIKE;Cliquez sur la digue a démanteler;Click on the dike to destroy
 HELP_MSG_RAISE_DIKE;Cliquer sur la digue a rehausser;Click on the dike to raise
 HELP_MSG_INSTALL_GANIVELLE;Cliquez sur la dune pour installer une ganivelle;Click on the dune to install a ganivelle
 HELP_MSG_MODIFY_LAND_COVER_AU;Cliquez sur la cellule a modifier;Click on the cell to edit
@@ -47,57 +47,57 @@ HELP_MSG_MODIFY_LAND_COVER_Us_SUBSIDY;Cliquez sur la cellule a modifier;Click on
 HELP_MSG_INSPECT_LAND_USE;Glissez le pointeur sur les cellules a inspecter;Drag the pointer on the cells to inspect
 HELP_MSG_INSPECT_DIKE;Glissez le pointeur sur les digues et dunes;Drag the pointer on the dikes to inspect
 LDR_MSG_SEND_MONEY;Envoyer de l'argent;Send money
-LDR_MSG_WITHDRAW_MONEY;Prelever de l'argent;Take money
+LDR_MSG_WITHDRAW_MONEY;Prélever de l'argent;Take money
 LDR_MSG_SEND_MONEY_TO;Envoyer de l'argent a;Send money to
-LDR_MSG_TAKE_MONEY_FROM;Prelever de l'argent a;Take money from
+LDR_MSG_TAKE_MONEY_FROM;Prélever de l'argent a;Take money from
 LDR_MSG_SEND_MSG;Envoyer un message;Send a message
 LDR_MSG_SEND_MSG_TO;Envoyer un message a;Send a message to
 LDR_MSG_AMOUNT_REVENUE;Montant de la recette;Amount of revenue
 LDR_MSG_AMOUNT_SUBSIDY;Montant de la subvention;Amount of subsidy
-BTN_TAKE_MONEY_MSG1;Les autorites reorientent leur politique: vos actions vous coutent plus cher que prevu. Vous etes preleve de;The authorities are reorienting their policies: your actions cost you more than expected. You are withdrawn with
-BTN_TAKE_MONEY_MSG2;Les couts dans le BTP augmentent considerablement et votre budget en est impacté. Vous etes preleve de;not translated yet
-BTN_TAKE_MONEY_MSG3;L'agence du risque preleve une amende en raison de vos actions de gestion des risques. Vous etes preleve de;not translated yet
-BTN_TAKE_MONEY_MSG4;Indiquer le montant preleve a;Indicate the Not translated yet
-MSG_CHOOSE_MSG_TO_SEND;Choix du message envoye au joueur;Choose the message to send to the player
+BTN_TAKE_MONEY_MSG1;Les autorités réorientent leur politique: vos actions vous coutent plus cher que prévu. Vous êtes prélevé de;The authorities are reorienting their policies: your actions cost you more than expected. You are withdrawn with
+BTN_TAKE_MONEY_MSG2;Les coûts dans le BTP augmentent considérablement et votre budget en est impacté. Vous êtes prélevé de;not translated yet
+BTN_TAKE_MONEY_MSG3;L'agence du risque prélevé une amende en raison de vos actions de gestion des risques. Vous êtes prélevé de;not translated yet
+BTN_TAKE_MONEY_MSG4;Indiquer le montant prélevé a;Indicate the Not translated yet
+MSG_CHOOSE_MSG_TO_SEND;Choix du message envoyé au joueur;Choose the message to send to the player
 MSG_TYPE_CUSTOMIZED_MSG;Ou tapez votre message personnalise sans utiliser de guillemets;Or type a customized message without using quotation marks
 MSG_TO_CANCEL;pour annuler;to cancel
 BTN_GIVE_MONEY_MSG1;L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez;Not translated yet
 BTN_GIVE_MONEY_MSG2;Les autorités subventionnent vos actions de gestion des risques. Vous recevez;Not translated yet
-BTN_GIVE_MONEY_MSG3;Vos efforts en matiere de gestion des risques sont financierement encourages. Vous recevez;Not translated yet
-BTN_GIVE_MONEY_MSG4;Indiquer le montant envoye a ;Not translated yet
+BTN_GIVE_MONEY_MSG3;Vos efforts en matière de gestion des risques sont financierement encourages. Vous recevez;Not translated yet
+BTN_GIVE_MONEY_MSG4;Indiquer le montant envoyé a ;Not translated yet
 MSG_AMOUNT;Montant;Amount
 MSG_123_OR_CUSTOMIZED;Message (1,2,3 ou message personnalise); Message (1,2,3 or a customized message)
-BTN_SEND_MSG_MSG0;Indiquer le message envoye a;Indicate the message sent to
+BTN_SEND_MSG_MSG0;Indiquer le message envoyé a;Indicate the message sent to
 BTN_SEND_MSG_MSG1;Un renforcement de la loi littorale retarde vos mesures de gestion du risque;Not translated yet
-BTN_SEND_MSG_MSG2;L'agence du risque desapprouve votre gestion du risque : vos dossiers sont retardes;Not translated yet
+BTN_SEND_MSG_MSG2;L'agence du risque désapprouvé votre gestion du risque : vos dossiers sont retardes;Not translated yet
 BTN_SEND_MSG_MSG3;L'agence du risque facilite vos pratiques alternatives de gestion des risques et active vos dossiers;Not translated yet
-BTN_SEND_MSG_MSG4;Un changement legislatif est opere en faveur de vos pratiques de gestion des risques : vous etes encourages a poursuivre votre strategie;Not translated yet
+BTN_SEND_MSG_MSG4;Un changement législatif est opéré en faveur de vos pratiques de gestion des risques : vous êtes encourages a poursuivre votre stratégie;Not translated yet
 BTN_EMPTY_MSG_TO_CANCEL;message vide pour annuler;empty message to cancel
-BTN_GET_REVENUE_MSG1;Vous allez prelever une recette en provenance de;You will take a tax from
+BTN_GET_REVENUE_MSG1;Vous allez prélever une recette en provenance de;You will take a tax from
 BTN_GET_REVENUE_MSG2;Mettre un montant de 0 pour annuler;Put an amount of 0 to cancel
 BTN_GET_REVENUE_MSG3;Montant de la recette;Amount of the revenue
 BTN_SUBSIDIZE_MSG1;Vous allez subventionner la commune de ;You will subsidize the district of
 BTN_SUBSIDIZE_MSG3;Montant de la subvention;Amount of the subsidy
 MSG_WARNING;Avertissement;Warning
-PLR_OVERFLOW_WARNING;Vous avez atteint la capacite maximum de votre panier. Veuillez valider votre panier avant de continuer;You have reached the maximum capacity of your basket. Please validate your basket before to proceed
+PLR_OVERFLOW_WARNING;Vous avez atteint la capacité maximum de votre panier. Veuillez valider votre panier avant de continuer;You have reached the maximum capacity of your basket. Please validate your basket before to proceed
 PLR_EMPTY_BASKET;Votre panier est vide;Your basket is empty
-PLR_INSUFFICIENT_BUDGET;Vous ne disposez pas du budget suffisant pour realiser toutes ces actions;You don't have sufficient budget to accomplish all those actions
-PLR_VALIDATE_BASKET;Vous etes sur le point de valider votre panier;You are about to validate your basket
+PLR_INSUFFICIENT_BUDGET;Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions;You don't have sufficient budget to accomplish all those actions
+PLR_VALIDATE_BASKET;Vous êtes sur le point de valider votre panier;You are about to validate your basket
 PLR_CHECK_BOX_VALIDATE;Cocher la case pour accepter le panier et valider;Check the box to accept and validate the basket
-MSG_COST_APPLIED_PARCEL;Cout si applique a une parcelle;Cost if applied to a parcel
-MSG_COST_ACTION;Cout de l'action;Cost of the action
-MSG_COST_EXPROPRIATION;cout d'expropriation;expropriation cost
-LEGEND_UNAM;Amenagement, PLU et habitat;Planning, PLU and habitation
+MSG_COST_APPLIED_PARCEL;Coût si applique a une parcelle;Cost if applied to a parcel
+MSG_COST_ACTION;Coût de l'action;Cost of the action
+MSG_COST_EXPROPRIATION;coût d'expropriation;expropriation cost
+LEGEND_UNAM;Aménagement, PLU et habitat;Planning, PLU and habitation
 LEGEND_DYKE;Defense des cotes;Coasts defense
-LEGEND_NAME_ACTIONS;€ Actions envisagees;$ Projected actions
+LEGEND_NAME_ACTIONS;€ Actions envisagées;$ Projected actions
 MSG_INITIAL_BUDGET;Budget initial;Initial budget
 MSG_REMAINING_BUDGET;Budget restant;Remaining budget
-MSG_SIM_STARTED_ROUND1;La simulation demarre. C'est le tour 1;Simulation starts. It's round 1
-MSG_POSSIBLE_REGLEMENTATION_DELAY;La zone de travaux est soumise a des contraintes reglementaires.\nLe dossier est susceptible d'etre retarde.\nSouhaitez vous poursuivre ?;Not translated yet
+MSG_SIM_STARTED_ROUND1;La simulation démarre. C'est le tour 1;Simulation starts. It's round 1
+MSG_POSSIBLE_REGLEMENTATION_DELAY;La zone de travaux est soumise a des contraintes réglementaires.\nLe dossier est susceptible d’être retarde.\nSouhaitez vous poursuivre ?;Not translated yet
 MSG_ITS_ROUND;C'est le tour;It's round
 MSG_THE_ROUND;Le tour;The round
 MSG_HAS_STARTED;a commence;has started
-MSG_TAXES_RECEIVED_FROM;Vous avez perçu des impots de;You received taxes from
+MSG_TAXES_RECEIVED_FROM;Vous avez perçu des impôts de;You received taxes from
 MSG_DISTRICT_RECEIVE;Votre commune accueille;Your district receives
 MSG_NEW_COMERS;nouveaux arrivants;new comers
 MSG_DISTRICT_POPULATION;La population de votre commune est de;The population of your district is
@@ -106,15 +106,19 @@ MSG_EXPROPRIATION_PROCEDURE;Vous allez entamer une procedure d'expropriation.\nS
 MSG_IMPOSSIBLE_DELETE_ADAPTED;Impossible de supprimer un habitat adapte;Impossible to delete an adapted habitation
 MSG_ROUND;Tour;Round
 MSG_IMPOSSIBLE_NORMALLY;impossible normalement;normally impossible
-MSG_FLOODED_AREA_DISTRICT;Surface inondee par commune;Flooded area per district
-MSG_START_SENDER;Demarrer le sender;Start sender
-MSG_SEND_DATA_TO;Envoyer les donnees... a;Send data.... to
+MSG_FLOODED_AREA_DISTRICT;Surface inondée par commune;Flooded area per district
+MSG_START_SENDER;Démarrer le sender;Start sender
+MSG_SEND_DATA_TO;Envoyer les données... a;Send data.... to
 MSG_SEND_TO;Envoyer a;Send to
 MSG_SIMULATION_CHOICE;choix simulation;simulation choice
 MSG_SEND_MSG_LEADER;envoyer un message au leader;send message to leader
 MSG_READ_MESSAGE;lire message;read message
 MSG_CONNECTION_FROM;connexion de;connection from
 MSG_READ_ACTION;lire action;read action
-MSG_EXPROPRIATION_TRIGGERED;Procédure d'expropriation declenchée pour l'UA;Expropriation procedure has been triggered by PA
+MSG_EXPROPRIATION_TRIGGERED;Procédure d'expropriation déclenchée pour l'UA;Expropriation procedure has been triggered by PA
 MSG_ERROR_ACTION_DONE;Problème de reconnaissance du type de action_done;Recognition problem of action_done type
 MSG_COMMUNE;commune;district
+MSG_DIKE_STATUS_PROBLEM;Problème de statut d'une digue;Dike status problem
+MSG_DUNE_STATUS_PROBLEM;Problème de statut d'une dune;Dune status problem
+MSG_FLOODING_TYPE_PROBLEM;Erreur dans le type d'événement de submersion;Match Error for flood event type
+MSG_INSTALL_GANIVELLE;Installation de ganivelles;Installing ganivelles

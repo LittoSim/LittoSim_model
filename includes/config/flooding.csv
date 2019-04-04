@@ -2,7 +2,7 @@
 LISFLOOD_PATH;C:/littosim/workspace/LittoDev/includes/lisflood/;
 LISFLOOD_RELATIVE_PATH;../includes/lisflood/;
 LISFLOOD_BAT_FILE;LittoSIM_GEN_Lisflood.bat;
-CURRENT_LISFLOOD_REP;results;
+RESULTS_LISFLOOD_REP;results;
 
 [ Submersions]
 LISFLOOD_BDY_LOW_FILENAME;oleron2016_Xynthia-50.bdy;

@@ -1,0 +1,27 @@
+DEMfile         C:/littosim/workspace/LittoDev/includes/lisflood/inputs/LittoSIM_GEN_Oleron_DEM_R19_t1.554214759988E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+initial_tstep   10.0
+massint         100.0
+saveint         3600.0
+#checkpoint     0.00001
+#overpass       100000.0
+#fpfric         0.06
+#infiltration   0.000001
+#overpassfile   buscot.opts
+manningfile     C:/littosim/workspace/LittoDev/includes/lisflood/inputs/LittoSIM_GEN_Oleron_n_R19_t1.554214759988E12.asc
+#riverfile      buscot.river
+bcifile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron2016.bci
+bdyfile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron2016_Xynthia-50.bdy
+#weirfile       buscot.weir
+startfile       C:/littosim/workspace/LittoDev/includes/lisflood/oleron.start
+startelev
+#stagefile      buscot.stage
+elevoff
+#depthoff
+#adaptoff
+#qoutput
+#chainageoff
+SGC_enable
+

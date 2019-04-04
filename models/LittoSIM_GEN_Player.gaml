@@ -218,16 +218,16 @@ global{
 	image_file au_icone(UA mc){
 		string val<-"";
 		if(mc.isEnDensification){
-			return image_file("../images/icones/urban_intensifie.png");
+			return image_file("../images/icons/urban_intensifie.png");
 		}
 		
 		switch(mc.ua_code){
-			match 1 {return image_file("../images/icones/tree_nature.png");}
-			match 2 {return image_file("../images/icones/urban.png");}
-			match 4 {return image_file("../images/icones/urban.png");}
-			match 5 {return image_file("../images/icones/agriculture.png");}
-			match 6 {return image_file("../images/icones/urban_adapte2.png");}
-			match 7 {return image_file("../images/icones/urban_adapte2.png");}
+			match 1 {return image_file("../images/icons/tree_nature.png");}
+			match 2 {return image_file("../images/icons/urban.png");}
+			match 4 {return image_file("../images/icons/urban.png");}
+			match 5 {return image_file("../images/icons/agriculture.png");}
+			match 6 {return image_file("../images/icons/urban_adapte2.png");}
+			match 7 {return image_file("../images/icons/urban_adapte2.png");}
 		}
 		return nil;
 	}
@@ -2147,10 +2147,10 @@ species action_UA parent:action_done{
 			draw shape at:location empty:true border:highlighted?#red:((is_sent)?define_color():#black) ;
 			
 			if(ACTION_MODIFY_LAND_COVER_Ui = command){
-				draw file("../images/icones/crowd.png") size:self.shape.width;
+				draw file("../images/icons/crowd.png") size:self.shape.width;
 			}
 			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command{
-				draw file("../images/icones/wave.png") size:self.shape.width;
+				draw file("../images/icons/wave.png") size:self.shape.width;
 			}
 		}
 	}
@@ -2363,10 +2363,10 @@ species UA{
 	action draw_display{
 			draw shape color: my_color;
 			if(isAdapte){
-				draw file("../images/icones/wave.png") size:self.shape.width;
+				draw file("../images/icons/wave.png") size:self.shape.width;
 			}
 			if(isEnDensification){
-				draw file("../images/icones/crowd.png") size:self.shape.width;
+				draw file("../images/icons/crowd.png") size:self.shape.width;
 			}	
 	}
 	
@@ -2567,9 +2567,9 @@ experiment game type: gui{
 						point image_loc <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dike.location.y + 50#px  };
 						string to_draw <- nil;
 						switch(explored_dike.status){
-							//match "bon" { draw file("../images/icones/conforme.png") at:image_loc size:50#px; }
-							match "moyen" { draw file("../images/icones/danger.png") at:image_loc size:50#px; }
-							match "mauvais" { draw file("../images/icones/rupture.png") at:image_loc size:50#px; }
+							//match "bon" { draw file("../images/icons/conforme.png") at:image_loc size:50#px; }
+							match "moyen" { draw file("../images/icons/danger.png") at:image_loc size:50#px; }
+							match "mauvais" { draw file("../images/icons/rupture.png") at:image_loc size:50#px; }
 						}	
 					}
 				}
@@ -2613,7 +2613,7 @@ experiment game type: gui{
 					point target2 <- {mcell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),mcell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Changement d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
-					draw file("../images/icones/fleche.png") at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px}  size:50#px;
+					draw file("../images/icons/fleche.png") at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px}  size:50#px;
 					draw ""+ (explored_action_UA.actual_application_round)   at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size:20#px; 
 					draw world.chooseActionIcone(explored_action_UA.command) at:  { target2.x - 50#px, target.y +50#px} size:50#px;
 					draw world.au_icone(mcell) at:  { target.x +50#px,target.y + 50#px} size:50#px;

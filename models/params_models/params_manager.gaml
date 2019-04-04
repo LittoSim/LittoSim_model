@@ -36,7 +36,9 @@ global{
 	string POP_EMPTY 		  <- "EMPTY";
 	string POP_FEW_DENSITY 	  <- "FEW_DENSITY";
 	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";
-	string POP_DENSE 		  <- "DENSE";	
+	string POP_DENSE 		  <- "DENSE";
+	int    POP_FEW_NUMBER 	  <- 40;
+	int    POP_MEDIUM_NUMBER  <- 80;
 	
 	// // Building and raising dikes parameters
 	float BUILT_DIKE_HEIGHT <- float(shapes_def["BUILT_DIKE_HEIGHT"]);
@@ -45,9 +47,10 @@ global{
 	// Coastal defenses (dikes and dunes) evolution parameters
 	float H_MAX_GANIVELLE 				<- float(shapes_def["H_MAX_GANIVELLE"]); // A dune cannot exceed this height
 	float H_DELTA_GANIVELLE 			<- float(shapes_def["H_DELTA_GANIVELLE"]); // The height by which a ganivelle can raise a dune
-	int STEPS_DEGRAD_STATUS_OUVRAGE 	<- int(shapes_def["STEPS_DEGRAD_STATUS_OUVRAGE"]); // Number of years for a dike to change status
-	int STEPS_DEGRAD_STATUS_DUNE 		<-int(shapes_def["STEPS_DEGRAD_STATUS_DUNE"]); // Number of years for a dune to change status
-	int STEPS_REGAIN_STATUS_GANIVELLE   <-int(shapes_def["STEPS_REGAIN_STATUS_GANIVELLE"]); // With a ganivelle, a dune regenerates 2 times fatser than it degrades
+	int STEPS_DEGRAD_STATUS_DIKE	 	<- int  (shapes_def["STEPS_DEGRAD_STATUS_OUVRAGE"]); // Number of years for a dike to change status
+	int STEPS_DEGRAD_STATUS_DUNE 		<- int  (shapes_def["STEPS_DEGRAD_STATUS_DUNE"]); // Number of years for a dune to change status
+	int STEPS_REGAIN_STATUS_GANIVELLE   <- int  (shapes_def["STEPS_REGAIN_STATUS_GANIVELLE"]); // With a ganivelle, a dune regenerates 2 times fatser than it degrades
+	int STEPS_FOR_AU_TO_U 				<- 2;// 2 years to change from AU to U)
 
 	// Coastal defenses rupture parameters
 	int PROBA_RUPTURE_DIKE_STATUS_BAD 		<- int(shapes_def["PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS"]);
@@ -63,11 +66,11 @@ global{
 	int POP_FOR_U_DENSIFICATION <- int(shapes_def["POP_FOR_U_DENSIFICATION"]) ; // new population for densified cells
 	int POP_FOR_U_STANDARD 		<- int(shapes_def["POP_FOR_U_STANDARD"]) ; // new population for other cells types
 	float ANNUAL_POP_GROWTH_RATE<- float(eval_gaml(shapes_def["ANNUAL_POP_GROWTH_RATE"]));
-	int minPopUArea 			<- int(eval_gaml(shapes_def["MIN_POPU_AREA"]));
+	int MIN_POP_AREA 			<- int  (eval_gaml(shapes_def["MIN_POPU_AREA"]));
 	
 	// Rugosity parameters
 	float RUGOSITY_N 			<- float(shapes_def["RUGOSITY_N"]); 	
-	float RUGOSITY_U 			<-float(shapes_def["RUGOSITY_U"]);
+	float RUGOSITY_U 			<- float(shapes_def["RUGOSITY_U"]);
 	float RUGOSITY_AU 			<- float(shapes_def["RUGOSITY_AU"]);
 	float RUGOSITY_A 			<- float(shapes_def["RUGOSITY_A"]);
 	float RUGOSITY_AUs 			<- float(shapes_def["RUGOSITY_AUs"]);
