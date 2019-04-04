@@ -486,7 +486,7 @@ species action_done schedules:[]{
 	int element_id;
 	string commune_name<-"";
 	//string command_group <- "";
-	int command <- -1 on_change: {label <- world.labelOfAction(command);};
+	int command <- -1 on_change: {label <- world.label_of_action(command);};
 	string label <- "no name";
 	int cost <- 0;	
 	bool is_applied  ->{round >= initial_application_round} ;
@@ -1570,7 +1570,7 @@ species network_leader skills:[network]{
 			string cmd <- m_contents[OBSERVER_MESSAGE_COMMAND];
 			string data <- m_contents[OBSERVER_MESSAGE_COMMAND]; // Q à NM -> Pourquoi cette ligne ? C'est bizarre non ?
 			switch(cmd){
-				match UPDATE_ACTION_DONE { do update_action(m_contents); }
+				match UPDATE_PLAYER_ACTION { do update_action(m_contents); }
 				match NUM_ROUND{
 					round<-int(m_contents['num tour']);
 					//ask world { do write_profile; }

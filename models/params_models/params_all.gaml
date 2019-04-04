@@ -22,26 +22,29 @@ global{
 	map<string,map> data_action 			<- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";");
 		
 	// Network 
-	string SERVER 				<- configuration_file["SERVER_ADDRESS"]; 
-	string COMMAND_SEPARATOR 	<- ":";
-	string GAME_MANAGER 		<- "GAME_MANAGER";
-	string ACTIVATED_LEVER		<- "ACTIVATED_LEVER";
-	string LISTENER_TO_LEADER 	<- "LISTENER_TO_LEADER";
+	string SERVER 					<- configuration_file["SERVER_ADDRESS"]; 
+	string COMMAND_SEPARATOR 		<- ":";
+	string GAME_MANAGER 			<- "GAME_MANAGER";
+	string GAME_LEADER	     	 	<- "GAME_LEADER";
+	string ACTIVATED_LEVER			<- "ACTIVATED_LEVER";
+	string LISTENER_TO_LEADER	 	<- "LISTENER_TO_LEADER";
+	string UPDATE_PLAYER_ACTION   	<- "UPDATE_PLAYER_ACTION";
+	string OBSERVER_MESSAGE_COMMAND <- "COMMAND_OBSERVER";
 	
 	// Main-Leader network communication
-	string COLLECT_REC 			<- "COLLECT_RECETTE";
-	string SUBSIDIZE 			<- "SUBSIDIZE";
-	string LEADER_COMMAND   	<- "LEADER_COMMAND";
-	string AMOUNT 				<- "AMOUNT";
-	string BUDGET 				<- "BUDGET";
-	string DISTRICT_CODE 		<- "DISTRICT_CODE";
-	string ASK_NUM_ROUND 		<- "LEADER_ASKS_FOR_ROUND_NUMBER";
-	string NUM_ROUND 			<- "ROUND_NUMBER";
-	string ASK_INDICATORS_T0	<- "LEADER_ASKS_FOR_T0_IDICATORS";
-	string INDICATORS_T0 		<- "INDICATORS_AT_T0";
-	string RETREIVE_ACTION_DONE <- "RETREIVE_ACTION_DONE";
-	string ACTION_DONE_ID 		<- "ACTION_DONE_ID"; 
-	string ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE";
+	string COLLECT_REC 				<- "COLLECT_RECETTE";
+	string SUBSIDIZE 				<- "SUBSIDIZE";
+	string LEADER_COMMAND   		<- "LEADER_COMMAND";
+	string AMOUNT 					<- "AMOUNT";
+	string BUDGET 					<- "BUDGET";
+	string DISTRICT_CODE 			<- "DISTRICT_CODE";
+	string ASK_NUM_ROUND 			<- "LEADER_ASKS_FOR_ROUND_NUMBER";
+	string NUM_ROUND 				<- "ROUND_NUMBER";
+	string ASK_INDICATORS_T0		<- "LEADER_ASKS_FOR_T0_IDICATORS";
+	string INDICATORS_T0 			<- "INDICATORS_AT_T0";
+	string RETREIVE_ACTION_STATE 	<- "RETREIVE_ACTION_STATE";
+	string PLAYER_ACTION_ID 		<- "PLAYER_ACTION_ID"; 
+	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
 	
 	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
@@ -114,7 +117,7 @@ global{
 	int INFORM_FINE_RECEIVED 	<- 28;
 	
 	// Messages to display in multi-languages
-	string MSG_SIM_NOT_STARTED 	<- langs_def at 'MSG_SIM_NOT_STARTED' at configuration_file["LANGUAGE"];
+	string MSG_SIM_NOT_STARTED 	<- get_message('MSG_SIM_NOT_STARTED');
 	
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){
@@ -151,15 +154,19 @@ global{
 		return res;
 	}
 	
-	string labelOfAction (int action_code){
+	string label_of_action (int action_code){
 		string rslt <- "";
 		loop i from:0 to: (length(actions_def) /3) - 1 {
 			if ((int(actions_def at {1,i})) = action_code){
 				rslt <- actions_def at {0,i}; // action name
-				rslt <- langs_def at rslt at configuration_file["LANGUAGE"]; // action label
+				rslt <- get_message(rslt); // action label
 			}
 		}
 		return rslt;
+	}
+	
+	string get_message(string code_msg){
+		return langs_def at code_msg at configuration_file["LANGUAGE"];
 	}
 	//------------------------------ End of methods -------------------------------//
 }

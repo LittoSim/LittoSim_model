@@ -19,7 +19,7 @@ global {
 	// sea heights file sent to Lisflood
 	string lisflood_bdy_file 	->{floodEventType ="HIGH_FLOODING"?flooding_def["LISFLOOD_BDY_HIGH_FILENAME"]   // "oleron2016_Xynthia.bdy" 
 								:(floodEventType ="LOW_FLOODING"?flooding_def["LISFLOOD_BDY_LOW_FILENAME"] // "oleron2016_Xynthia-50.bdy" : Xynthia - 50 cm 
-		  						:langs_def at 'MSG_FLOODING_TYPE_PROBLEM' at configuration_file["LANGUAGE"])};
+		  						:get_message('MSG_FLOODING_TYPE_PROBLEM'))};
 	// paths to Lisflood
 	string lisfloodPath 				<- flooding_def["LISFLOOD_PATH"]; // absolute path to Lisflood : "C:/lisflood-fp-604/"
 	string lisfloodRelativePath 		<- flooding_def["LISFLOOD_RELATIVE_PATH"]; // Lisflood folder relatife path 
@@ -70,7 +70,7 @@ global {
 		create District from: districts_shape with: [district_code::string(read("dist_code")),
 													 district_name::string(read("dist_sname")),
 													id::int(read("player_id"))]{
-			write "" + langs_def at 'MSG_COMMUNE' at configuration_file["LANGUAGE"] + " " + district_name + "("+district_code+")" + " "+id;
+			write world.get_message('MSG_COMMUNE') + " " + district_name + "("+district_code+")" + " "+id;
 		}
 		districts_in_game <- (District where (each.id > 0)) sort_by (each.id);
 		
@@ -96,10 +96,10 @@ global {
 		
 		// Create Network agents
 		if activemq_connect {
-			create Network_round_manager;
-			create Network_listener_to_leader;
+			create Network_Round_Manager;
+			create Network_Listener_To_Leader;
 			create Network_player;
-			create Network_activated_lever;
+			create Network_Activated_Lever;
 		}
 		
 		loop i from: 0 to: (length(listC)-1) {	listC[i] <- blend (listC[i], #red , 0.9);	}
@@ -113,7 +113,7 @@ global {
 			LUs <- Land_Use overlapping self;
 			cells <- Cell overlapping self;
 			budget <- int(self.current_population() * tax_unit * (1 +  pctBudgetInit/100));
-			write district_name +" "+ langs_def at 'MSG_INITIAL_BUDGET' at configuration_file["LANGUAGE"] + " : " + budget;
+			write district_name + " "+ world.get_message('MSG_INITIAL_BUDGET') + " : " + budget;
 			do calculate_indicators_t0;
 		}
 		ask Coastal_Defense {	do init_coastal_def;	}
@@ -170,7 +170,7 @@ global {
 		}
 		game_round <- game_round + 1;
 		ask District 				 	{	do inform_new_round;			} 
-		ask Network_listener_to_leader  {	do informLeader_round_number;	}
+		ask Network_Listener_To_Leader  {	do inform_leader_round_number;	}
 		do save_budget_data;
 		write MSG_GAME_DONE + " !";
 	} 	
@@ -204,7 +204,7 @@ global {
 		}
 		else{
 			stateSimPhase <- SIM_GAME;
-			write stateSimPhase + " - "+ langs_def at 'MSG_ROUND' at configuration_file["LANGUAGE"] +" "+ game_round;
+			write stateSimPhase + " - "+ get_message('MSG_ROUND') +" "+ game_round;
 		}
 	}
 	
@@ -262,7 +262,7 @@ global {
 
 	action addElementIn_list_flooding_events (string sub_name, string sub_rep){
 		put sub_rep key: sub_name in: list_flooding_events;
-		ask Network_round_manager{
+		ask Network_Round_Manager{
 			do add_element(sub_name,sub_rep);
 		}
 	}
@@ -275,7 +275,7 @@ global {
 		do save_lf_launch_files;
 		do addElementIn_list_flooding_events("Submersion Tour "+ game_round ,results_lisflood_rep);
 		save "directory created by littoSIM Gama model" to: lisfloodRelativePath+results_lisflood_rep+"/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it buy himself
-		ask Network_listener_to_leader{
+		ask Network_Listener_To_Leader{
 			do execute command:"cmd /c start "+lisfloodPath+lisflood_bat_file; }
  	}
  		
@@ -324,7 +324,7 @@ global {
      		if nb = "0000" {
      			map values <- user_input([(MSG_NO_FLOOD_FILE_EVENT) :: ""]);
      			stateSimPhase <- SIM_GAME;
-     			write stateSimPhase + " - "+langs_def at 'MSG_ROUND' at configuration_file["LANGUAGE"]+" "+ game_round;
+     			write stateSimPhase + " - "+get_message('MSG_ROUND')+" "+ game_round;
      		}
      		else{	stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase; }	}
 	}
@@ -354,7 +354,7 @@ global {
 						if max_water_height > 0{
 							switch myself.lu_name{ //"U","Us","AU","N","A"    -> et  "AUs" impossible normallement
 								match "AUs" {
-									write "STOP :  AUs " + langs_def at 'MSG_IMPOSSIBLE_NORMALLY' at configuration_file["LANGUAGE"];
+									write "STOP :  AUs " + world.get_message('MSG_IMPOSSIBLE_NORMALLY');
 								}
 								match "U" {
 									if max_water_height <= 0.5 					{
@@ -424,7 +424,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			}
 			flood_results <-  text;
 				
-			write langs_def at 'MSG_FLOODED_AREA_DISTRICT' at configuration_file["LANGUAGE"];
+			write get_message('MSG_FLOODED_AREA_DISTRICT');
 			ask ((District where (each.id > 0)) sort_by (each.id)){
 				flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ;
 					add flooded_area to: data_flooded_area; 
@@ -450,33 +450,33 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		create Buttons{
 			nb_button <- 0;					command 	 <- "ONE_STEP";
 			shape <- square(button_size);	location <- { 1000,1000 };
-			my_icon <- image_file("../images/icones/one_step.png");
+			my_icon <- image_file("../images/icons/one_step.png");
 		}
 		create Buttons{
 			nb_button <- 3; 				command	 <- "HIGH_FLOODING";
 			shape <- square(button_size);	location <- { 5000,1000 };
-			my_icon <- image_file("../images/icones/launch_lisflood.png");
+			my_icon <- image_file("../images/icons/launch_lisflood.png");
 		}
 		create Buttons{
 			nb_button <- 5;					command	 <- "LOW_FLOODING";
 			shape <- square(button_size);	location <- { 7000,1000 };
-			my_icon <- image_file("../images/icones/launch_lisflood_small.png");
+			my_icon <- image_file("../images/icons/launch_lisflood_small.png");
 		}
 		create Buttons{
 			nb_button <- 6;					command 	 <- "REPLAY_FLOODING";
 			shape <- square(button_size);	location <- { 9000,1000 };
-			my_icon <- image_file("../images/icones/replay_flooding.png");
+			my_icon <- image_file("../images/icons/replay_flooding.png");
 		}
 		create Buttons{
 			nb_button <- 4;					command 	 <- "SHOW_LU_GRID";
 			shape <- square(850);			location <- { 800,14000 };
-			my_icon <- image_file("../images/icones/sans_quadrillage.png");
+			my_icon <- image_file("../images/icons/sans_quadrillage.png");
 			is_selected <- false;
 		}
 		create Buttons{
 			nb_button <- 7;					command	 <- "SHOW_MAX_WATER_HEIGHT";
 			shape <- square(850);			location <- { 1800,14000 };
-			my_icon <- image_file("../images/icones/max_water_height.png");
+			my_icon <- image_file("../images/icons/max_water_height.png");
 			is_selected <- false;
 		}
 	}
@@ -509,7 +509,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			ask a_button{
 				is_selected <- not(is_selected);
 				if(a_button.nb_button = 4){
-					my_icon		<-  is_selected ? image_file("../images/icones/avec_quadrillage.png") : image_file("../images/icones/sans_quadrillage.png");
+					my_icon		<-  is_selected ? image_file("../images/icons/avec_quadrillage.png") : image_file("../images/icons/sans_quadrillage.png");
 				}else if(a_button.nb_button = 7){
 					show_max_water_height <- is_selected;
 				}
@@ -530,12 +530,12 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
  
 species Data_retreive skills:[network] schedules:[] { // Receiving and applying players actions
 	init {
-		write langs_def at 'MSG_START_SENDER' at configuration_file["LANGUAGE"];
+		write world.get_message('MSG_START_SENDER');
 		do connect to: SERVER with_name: GAME_MANAGER+"_retreive";
 	}
 	
 	action send_data_to_district (District d){
-		write "" + langs_def at 'MSG_SEND_DATA_TO' at configuration_file["LANGUAGE"] +" "+ d.network_name;
+		write world.get_message('MSG_SEND_DATA_TO') +" "+ d.network_name;
 		ask d {	do inform_budget_update(); }
 		do retreive_coastal_defense(d);
 		do retreive_LU(d);
@@ -545,28 +545,28 @@ species Data_retreive skills:[network] schedules:[] { // Receiving and applying 
 	
 	action retreive_coastal_defense(District d){	
 		loop tmp over: Coastal_Defense where(each.district_code = d.district_code){
-			write "" + langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] +" "+ d.network_name + "_retreive " + tmp.build_map_from_attributes();
+			write world.get_message('MSG_SEND_TO') +" "+ d.network_name + "_retreive " + tmp.build_map_from_attributes();
 			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
 		}
 	}
 	
 	action retreive_LU (District d){
 		loop tmp over: d.LUs{
-			write "" + langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] + " " + d.network_name + "_retreive " + tmp.build_map_from_attributes();
+			write world.get_message('MSG_SEND_TO') + " " + d.network_name + "_retreive " + tmp.build_map_from_attributes();
 			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
 		}
 	}
 
 	action retreive_action_done(District d){
 		loop tmp over: Player_Action where(each.district_code = d.district_code){
-			write "" + langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] + " " + d.network_name+ "_retreive " + tmp.build_map_from_attributes();
+			write world.get_message('MSG_SEND_TO') + " " + d.network_name+ "_retreive " + tmp.build_map_from_attributes();
 			do send to: d.network_name+"_retreive" contents: tmp.build_map_from_attributes();
 		}
 	}
 	
 	action retreive_activated_lever(District d){
-		loop tmp over: Activated_lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
-			write "" + langs_def at 'MSG_SEND_TO' at configuration_file["LANGUAGE"] + " " + d.network_name + "_retreive " + tmp.my_map;
+		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
+			write world.get_message('MSG_SEND_TO') + " " + d.network_name + "_retreive " + tmp.my_map;
 			do send to: d.network_name+"_retreive" contents: tmp.my_map;
 		}
 	}
@@ -584,8 +584,8 @@ species Player_Action schedules:[]{
 	string id;
 	int element_id;
 	geometry element_shape;
-	string district_code<-"";
-	int command <- -1 on_change: {label <- world.labelOfAction(command);};
+	string district_code <-"";
+	int command <- -1 on_change: {label <- world.label_of_action(command);};
 	int command_round<- -1;
 	string label <- "no name";
 	int initial_application_round <- -1;
@@ -608,7 +608,7 @@ species Player_Action schedules:[]{
 	bool inRiskArea <- false; // for PLU action / Ca correspond à la zone PPR qui est un shp chargé
 	bool isInlandDike <- false; // for dike action // ce sont les rétro-digues
 	bool is_alive <- true;
-	list<Activated_lever> activated_levers <-[];
+	list<Activated_Lever> activated_levers <-[];
 	bool shouldWaitLeaderToActivate <- false;
 	int length_def_cote<-0;
 	bool a_lever_has_been_applied<- false;
@@ -675,7 +675,7 @@ species Network_player skills:[network]{
 			map<string, unknown> m_contents <- msg.contents;
 			if(m_sender != GAME_MANAGER ){
 				if(m_contents["stringContents"] != nil){
-					write "" + langs_def at 'MSG_READ_MESSAGE' at configuration_file["LANGUAGE"] + " : " + m_contents["stringContents"];
+					write world.get_message('MSG_READ_MESSAGE') + " : " + m_contents["stringContents"];
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
 					
 					if(int(data[0]) = CONNECTION_MESSAGE){ // a client district wants to connect
@@ -684,7 +684,7 @@ species Network_player skills:[network]{
 							do inform_current_round;
 							do inform_budget_update;
 						}
-						write "" + langs_def at 'MSG_CONNECTION_FROM' at configuration_file["LANGUAGE"] + " " + m_sender + " " + id_dist;
+						write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + id_dist;
 					}
 					else if(int(data[0]) = REFRESH_ALL){
 						int id_dist <- world.district_id(m_sender);
@@ -696,7 +696,7 @@ species Network_player skills:[network]{
 					}
 					else{
 						if(game_round > 0) {
-							write "" + langs_def at 'MSG_READ_ACTION' at configuration_file["LANGUAGE"] + " " + m_contents["stringContents"];
+							write world.get_message('MSG_READ_ACTION') + " " + m_contents["stringContents"];
 							do read_action(string(m_contents["stringContents"]), m_sender);
 						}
 					}
@@ -736,7 +736,7 @@ species Network_player skills:[network]{
 					location <- loc; 
 				}
 				else {
-					if isExpropriation {	write "" + langs_def at 'MSG_EXPROPRIATION_TRIGGERED' at configuration_file["LANGUAGE"]+" "+self.id;	}
+					if isExpropriation {	write world.get_message('MSG_EXPROPRIATION_TRIGGERED')+" "+self.id;	}
 					switch self.action_type {
 						match "PLU" {
 							Land_Use tmp <- (Land_Use first_with(each.id = self.element_id));
@@ -747,7 +747,7 @@ species Network_player skills:[network]{
 							element_shape <- (Coastal_Defense first_with(each.dike_id = self.element_id)).shape;
 							length_def_cote <- int(element_shape.perimeter);
 						}
-						default {	write ""+langs_def at 'MSG_ERROR_ACTION_DONE' at configuration_file["LANGUAGE"];	}
+						default {	write world.get_message('MSG_ERROR_ACTION_DONE');	}
 					}
 				}
 				// calcul des attributs qui n'ont pas été calculé au niveau de Participatif et qui ne sont donc pas encore renseigné
@@ -947,7 +947,7 @@ species Network_player skills:[network]{
 }
 //------------------------------ End of Network player -------------------------------//
 
-species Network_round_manager skills:[remoteGUI]{
+species Network_Round_Manager skills:[remoteGUI]{
 	list<string> mtitle <- list_flooding_events.keys;
 	list<string> mfile <- [];
 	string selected_action;
@@ -986,7 +986,7 @@ species Network_round_manager skills:[remoteGUI]{
 	}
 	
 	reflex show_submersion when: choix_simu_temp!=nil{
-		write "network_round_manager : "+ langs_def at 'MSG_SIMULATION_CHOICE' at configuration_file["LANGUAGE"] +" " + choix_simu_temp;
+		write "network_round_manager : "+ world.get_message('MSG_SIMULATION_CHOICE') +" " + choix_simu_temp;
 		choix_simulation <- choix_simu_temp;
 		choix_simu_temp <-nil;
 	}
@@ -998,40 +998,35 @@ species Network_round_manager skills:[remoteGUI]{
 	
 	action add_element(string nom_submersion, string path_to_see){	do update_submersion_list;	}
 }
-//------------------------------ End of Network_round_manager -------------------------------//
+//------------------------------ End of Network_Round_Manager -------------------------------//
 
-species Activated_lever {
-	Player_Action act_done;
-	float activation_time;
-	bool applied <- false;
+species Activated_Lever {
+	Player_Action ply_action;
+	map<string, string> my_map <- []; // contains attributes sent through network
 	
-	// contains attributes sent through network
-	map<string, string> my_map <- [];
-	
-	action init_from_map(map<string, string> m ){
+	action init_from_map (map<string, string> m ){
 		my_map <- m;
 		put ACTIVATED_LEVER at: "OBJECT_TYPE" in: my_map;
 	}
 }
 //------------------------------ End of Activated_lever -------------------------------//
 
-species Network_activated_lever skills:[network]{
+species Network_Activated_Lever skills:[network]{
 	
 	init{ do connect to:SERVER with_name: ACTIVATED_LEVER;	}
 	
 	reflex wait_message{
-		loop while:has_more_message(){
+		loop while: has_more_message(){
 			message msg <- fetch_message();
-			string m_sender <- msg.sender;
 			map<string, string> m_contents <- msg.contents;
-			if empty(Activated_lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
-				create Activated_lever{
-					do init_from_map(m_contents);
-					act_done <- Player_Action first_with (each.id =  my_map["act_done_id"]);
-					District d <- District first_with (each.district_code = district_code);
-					d.budget <-d.budget -  int(my_map["added_cost"]); 
-					add self to:act_done.activated_levers;
-					act_done.a_lever_has_been_applied<- true;
+			if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
+				create Activated_Lever{
+					do init_from_map (m_contents);
+					ply_action	<- Player_Action first_with (each.id 			= my_map["act_done_id"]);
+					District d 	<- District 	 first_with (each.district_code = my_map["district_code"]);
+					d.budget 	<- d.budget  -  int(my_map["added_cost"]); 
+					add self to: ply_action.activated_levers;
+					ply_action.a_lever_has_been_applied <- true;
 				}
 			}			
 		}	
@@ -1039,69 +1034,69 @@ species Network_activated_lever skills:[network]{
 }
 //------------------------------ End of Network_activated_lever -------------------------------//
 
-species Network_listener_to_leader skills:[network]{
+species Network_Listener_To_Leader skills:[network]{
 	
-	init{	do connect to:SERVER with_name: LISTENER_TO_LEADER;	}
+	init{	do connect to: SERVER with_name: LISTENER_TO_LEADER;	}
 	
 	reflex wait_message {
-		loop while:has_more_message(){
+		loop while: has_more_message(){
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
 			string cmd <- m_contents[LEADER_COMMAND];
 			write "command " + cmd;
 			switch(cmd){
-				match SUBSIDIZE{
-					string district_code <- m_contents[DISTRICT_CODE];
-					int amount <- int(m_contents[AMOUNT]);
-					District d <- District first_with(each.district_code=district_code);
-					d.budget <- d.budget + amount;
+				match SUBSIDIZE {
+					string dist_code <- m_contents[DISTRICT_CODE];
+					int amount 			 <- int(m_contents[AMOUNT]);
+					District d 			 <- District first_with(each.district_code = dist_code);
+					d.budget 			 <- d.budget + amount;
 				}
-				match COLLECT_REC{
-					string district_code <- m_contents[DISTRICT_CODE];
-					int amount <- int(m_contents[AMOUNT]); 
-					District d <- District first_with(each.district_code=district_code);
+				match COLLECT_REC {
+					string dist_code <- m_contents[DISTRICT_CODE];
+					int amount 			 <- int(m_contents[AMOUNT]); 
+					District d 			 <- District first_with(each.district_code = dist_code);
 					d.budget <- d.budget - amount;
 				}
-				match ASK_NUM_ROUND 		 {	do informLeader_round_number;	}
-				match ASK_INDICATORS_T0 	 {	do informLeader_indicators_t0;	}
-				match RETREIVE_ACTION_DONE	 {	ask Player_Action {is_sent_to_leader <- false ; } }
-				match ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE {
-					Player_Action aAct <- Player_Action first_with (each.id = string(m_contents[ACTION_DONE_ID]));
-					write "msg shouldWait on " + aAct;
-					aAct.shouldWaitLeaderToActivate <- bool(m_contents[ACTION_DONE_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-					write "msg shouldWait value " + aAct.shouldWaitLeaderToActivate;
+				match ASK_NUM_ROUND 		 {	do inform_leader_round_number;	}
+				match ASK_INDICATORS_T0 	 {	do inform_leader_indicators_t0;	}
+				match RETREIVE_ACTION_STATE  {	ask Player_Action { is_sent_to_leader <- false ; } }
+				match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
+					Player_Action act <- Player_Action first_with (each.id = string(m_contents[PLAYER_ACTION_ID]));
+					write "Action : " + act;
+					act.shouldWaitLeaderToActivate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
+					write "Should wait ? " + act.shouldWaitLeaderToActivate;
 				}
 			}	
 		}
 	}
 	
-	action informLeader_round_number {
+	reflex inform_leader_action_state when: cycle mod 10 = 0 {
+		loop act over: Player_Action where (!each.is_sent_to_leader){
+			map<string,string> msg <- act.build_map_from_attributes();
+			put UPDATE_PLAYER_ACTION 	key: OBSERVER_MESSAGE_COMMAND in:msg ;
+			do send to: GAME_LEADER 	contents:msg;
+			act.is_sent_to_leader <- true;
+			write "" + world.get_message('MSG_SEND_TO_LEADER') + " : " + msg;
+		}
+	}
+	
+	action inform_leader_round_number {
 		map<string,string> msg <- [];
-		put NUM_ROUND 		key: OBSERVER_MESSAGE_COMMAND in:msg ;
-		put string(game_round) 	key: NUM_ROUND in: msg;
+		put NUM_ROUND 			key: OBSERVER_MESSAGE_COMMAND 	in:msg ;
+		put string(game_round) 	key: NUM_ROUND 					in: msg;
 		do send to: GAME_LEADER contents:msg;
 	}
 				
-	action informLeader_indicators_t0  {
+	action inform_leader_indicators_t0  {
 		ask District where (each.id > 0) {
 			map<string,string> msg <- self.my_indicators_t0;
-			put INDICATORS_T0 key: OBSERVER_MESSAGE_COMMAND in: msg;
-			put district_code key: DISTRICT_CODE 			in: msg;
+			put INDICATORS_T0 		key: OBSERVER_MESSAGE_COMMAND 	in: msg;
+			put district_code 		key: DISTRICT_CODE 				in: msg;
 			ask myself { do send to: GAME_LEADER contents: msg; }
 		}		
 	}
-	
-	reflex informLeader_action_state when: cycle mod 10 = 0 {
-		loop act over: Player_Action where (!each.is_sent_to_leader){
-			map<string,string> msg <- act.build_map_from_attributes();
-			put UPDATE_ACTION_DONE key:OBSERVER_MESSAGE_COMMAND in:msg ;
-			do send to:GAME_LEADER contents:msg;
-			act.is_sent_to_leader <- true;
-			write "send message to leader "+ msg;
-		}
-	}
 }
-//------------------------------ End of Network_listener_to_leader -------------------------------//
+//------------------------------ End of Network_Listener_To_Leader -------------------------------//
 
 species Coastal_Defense {	
 	int dike_id;
@@ -1252,7 +1247,7 @@ species Coastal_Defense {
 		if status = STATUS_BAD {	counter_status <- 2;	}
 		else				   {	counter_status <- 0; 	}		
 		ganivelle <- true;
-		write "" + langs_def at 'MSG_INSTALL_GANIVELLE' at configuration_file["LANGUAGE"];
+		write "" + world.get_message('MSG_INSTALL_GANIVELLE');
 	}
 	
 	aspect base {  	
@@ -1261,7 +1256,7 @@ species Coastal_Defense {
 				match STATUS_GOOD	{	color <-  rgb (222, 134, 14,255);	}
 				match STATUS_MEDIUM {	color <-  rgb (231, 189, 24,255);	} 
 				match STATUS_BAD 	{	color <-  rgb (241, 230, 14,255);	} 
-				default				{	write langs_def at 'MSG_DUNE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];	}
+				default				{	write world.get_message('MSG_DUNE_STATUS_PROBLEM');	}
 			}
 			draw 50#m around shape color: color;
 			if ganivelle {	loop i over: points_on (shape, 40#m) { draw circle(10,i) color: #black; } } 
@@ -1270,14 +1265,14 @@ species Coastal_Defense {
 				match STATUS_GOOD	{	color <- # green;			}
 				match STATUS_MEDIUM {	color <-  rgb (255,102,0);	} 
 				match STATUS_BAD 	{	color <- # red;				} 
-				default 			{	write langs_def at 'MSG_DIKE_STATUS_PROBLEM' at configuration_file["LANGUAGE"];	}
+				default 			{	write world.get_message('MSG_DIKE_STATUS_PROBLEM');	}
 			}
 			draw 20#m around shape color: color size: 300#m;
 		}
 		if(rupture = 1){
 			list<point> pts <- shape.points;
 			point tmp <- length(pts) > 2? pts[int(length(pts)/2)] : shape.centroid;
-			draw image_file("../images/icones/rupture.png") at: tmp size: 30#px;
+			draw image_file("../images/icons/rupture.png") at: tmp size: 30#px;
 		}	
 	}
 }

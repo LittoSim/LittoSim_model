@@ -18,21 +18,16 @@ global{
 	string SIM_SHOWING_FLOOD_STATS 		<- 'SHOWING_FLOOD_STATS';
 	
 	// Messages to display in multi-languages
-	string MSG_NEW_ROUND 			<- langs_def at 'MSG_NEW_ROUND' at configuration_file["LANGUAGE"];
-	string MSG_GAME_DONE 			<- langs_def at 'MSG_GAME_DONE' at configuration_file["LANGUAGE"];
-	string MSG_LOG_USER_ACTION 		<- langs_def at 'MSG_LOG_USER_ACTION' at configuration_file["LANGUAGE"];
-	string MSG_CONNECT_ACTIVMQ 		<- langs_def at 'MSG_LOG_USER_ACTION' at configuration_file["LANGUAGE"];
-	string MSG_NO_FLOOD_FILE_EVENT  <- langs_def at 'MSG_NO_FLOOD_FILE_EVENT' at configuration_file["LANGUAGE"];
-	string MSG_OK_CONTINUE 			<- langs_def at 'MSG_OK_CONTINUE' at configuration_file["LANGUAGE"];
-	string MSG_SUBMERSION_NUMBER 	<- langs_def at 'MSG_SUBMERSION_NUMBER' at configuration_file["LANGUAGE"];
-	string MSG_NUMBER 				<- langs_def at 'MSG_NUMBER' at configuration_file["LANGUAGE"];
+	string MSG_NEW_ROUND 			<- get_message('MSG_NEW_ROUND');
+	string MSG_GAME_DONE 			<- get_message('MSG_GAME_DONE');
+	string MSG_LOG_USER_ACTION 		<- get_message('MSG_LOG_USER_ACTION');
+	string MSG_CONNECT_ACTIVMQ 		<- get_message('MSG_LOG_USER_ACTION');
+	string MSG_NO_FLOOD_FILE_EVENT  <- get_message('MSG_NO_FLOOD_FILE_EVENT');
+	string MSG_OK_CONTINUE 			<- get_message('MSG_OK_CONTINUE');
+	string MSG_SUBMERSION_NUMBER 	<- get_message('MSG_SUBMERSION_NUMBER');
+	string MSG_NUMBER 				<- get_message('MSG_NUMBER');
 	
-	// Network
-	string GAME_LEADER 		        <- "GAME_LEADER";
-	string UPDATE_ACTION_DONE       <- "UPDATE_ACTION_DONE";
-	string OBSERVER_MESSAGE_COMMAND <- "COMMAND_OBSERVER";
-	
-	// pop density
+	// Population density
 	string POP_EMPTY 		  <- "EMPTY";
 	string POP_FEW_DENSITY 	  <- "FEW_DENSITY";
 	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";

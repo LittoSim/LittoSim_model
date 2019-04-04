@@ -2179,7 +2179,7 @@ species buttons skills:[UI_location]{
 		
 	action init_att {
 		command <- int(data_action at action_name at 'action code');
-		label <- world.labelOfAction(command);
+		label <- world.label_of_action(command);
 		action_cost <- float(data_action at action_name at 'cost');
 		//  on récupère d'abord le nom du message d'aide, puis on le recherche dans le fichier langues
 		my_help <- langs_def at (data_action at action_name at 'BUTTON_help_message') at configuration_file["LANGUAGE"];
