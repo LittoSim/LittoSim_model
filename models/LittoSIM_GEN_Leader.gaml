@@ -38,6 +38,13 @@ global{
 				+lever_densification_outCoastBorderAndRiskArea+lever_expropriation+lever_destroy_dike) sort_by (each.my_commune.com_id)};
 	
 	init{
+		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
+		MSG_TYPE_CUSTOMIZED_MSG <- get_message('MSG_TYPE_CUSTOMIZED_MSG');
+		MSG_TO_CANCEL 			<- get_message('MSG_TO_CANCEL');
+		MSG_AMOUNT 				<- get_message('MSG_AMOUNT');
+		MSG_123_OR_CUSTOMIZED 	<- get_message('MSG_123_OR_CUSTOMIZED');
+		BTN_GET_REVENUE_MSG2	<- get_message('BTN_GET_REVENUE_MSG2');
+		
 		sim_id <- machine_time;
 		create network_leader number:1;
 		do create_commune; 
@@ -63,6 +70,7 @@ global{
 				location<- (grille grid_at{i,0}).location- {1, -1};
 			}
 		}
+		
 	} // fin init
 	
 	action write_profile{

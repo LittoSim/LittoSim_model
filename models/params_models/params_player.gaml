@@ -35,13 +35,9 @@ global{
 	string UNAM_DISPLAY <- "UnAm";
 
 	// User messages
-	string MSG_POSSIBLE_REGLEMENTATION_DELAY <- get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY');
 	string INFORMATION_MESSAGE <- "INFORMATION_MESSAGE";
 	string BUDGET_MESSAGE <- "BUDGET_MESSAGE";
 	string POPULATION_MESSAGE <- "POPULATION_MESSAGE";
-	
-	string LEGEND_UNAM <- get_message('LEGEND_UNAM');
-	string LEGEND_DYKE <- get_message('LEGEND_DYKE');
 	
 	int BASKET_MAX_SIZE <- 7;
 	
@@ -52,7 +48,11 @@ global{
 	string DIKE_DISPLAY <- "sloap";
 	string BOTH_DISPLAY <- "both";
 	
-	// Messages à affichier en multilangues
-	string MSG_WARNING <- get_message('MSG_WARNING');
+	string LEGEND_UNAM;
+	string LEGEND_DYKE;
+	string MSG_WARNING;
+	string MSG_POSSIBLE_REGLEMENTATION_DELAY;
+	string MSG_SIM_NOT_STARTED;
+	
 }
 

@@ -7,26 +7,19 @@ model paramsall
 global{
 	
 	// Configuration files
-	// main file pointing to others
-	string config_file_name 				<- "../includes/config/littosim.csv";
-	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";");
-	// Shapefiles data
-	map<string,string> shapes_def 			<- read_configuration_file(configuration_file["SHAPE_DEF_FILE"],";");
-	// Flooding model
-	map<string,string> flooding_def 		<- read_configuration_file(configuration_file["FLOODING_DEF_FILE"],";");
-	// Actions, costs and delays
-	matrix<string> actions_def 				<- matrix<string>(csv_file(configuration_file["ACTION_DEF_FILE"],";"));	
-	// Languages
-	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANG_DEF_FILE"],";");
-	// Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
-	map<string,map> data_action 			<- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";");
+	string config_file_name 				<- "../includes/config/littosim.csv"; 
+	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
+	map<string,string> shapes_def 			<- read_configuration_file(configuration_file["SHAPE_DEF_FILE"],";"); // Shapefiles data
+	map<string,string> flooding_def 		<- read_configuration_file(configuration_file["FLOODING_DEF_FILE"],";"); // Flooding model
+	matrix<string> actions_def 				<- matrix<string>(csv_file(configuration_file["ACTION_DEF_FILE"],";"));	// Actions, costs and delays
+	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANG_DEF_FILE"],";"); // Languages
+	map<string,map> data_action 			<- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
 		
 	// Network 
 	string SERVER 					<- configuration_file["SERVER_ADDRESS"]; 
 	string COMMAND_SEPARATOR 		<- ":";
 	string GAME_MANAGER 			<- "GAME_MANAGER";
 	string GAME_LEADER	     	 	<- "GAME_LEADER";
-	string ACTIVATED_LEVER			<- "ACTIVATED_LEVER";
 	string LISTENER_TO_LEADER	 	<- "LISTENER_TO_LEADER";
 	string UPDATE_PLAYER_ACTION   	<- "UPDATE_PLAYER_ACTION";
 	string OBSERVER_MESSAGE_COMMAND <- "COMMAND_OBSERVER";
@@ -43,13 +36,15 @@ global{
 	string ASK_INDICATORS_T0		<- "LEADER_ASKS_FOR_T0_IDICATORS";
 	string INDICATORS_T0 			<- "INDICATORS_AT_T0";
 	string RETREIVE_ACTION_STATE 	<- "RETREIVE_ACTION_STATE";
-	string PLAYER_ACTION_ID 		<- "PLAYER_ACTION_ID"; 
+	string PLAYER_ACTION_ID 		<- "PLAYER_ACTION_ID";
+	string NEW_ACTIVATED_LEVER		<- "NEW_ACTIVATED_LEVER";
 	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
 	
 	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
 	
 	// Constant vars
+	string PLU				<- "PLU";
 	string DIKE 			<- "Dike";
 	string DUNE 			<- "Dune";
 	string STATUS_GOOD 		<- "Good";
@@ -79,9 +74,8 @@ global{
 	// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,
 							ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,
-							ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N
-					];
-	int ACTION_ACTION_DONE_UPDATE				<- 101;
+							ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N];
+	
 	int ACTION_ACTION_LIST 						<- 211;
 	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
 	int ACTION_LAND_COVER_UPDATE   				<-9;
@@ -115,9 +109,6 @@ global{
 	int INFORM_TAX_GAIN 		<- 24;
 	int INFORM_GRANT_RECEIVED 	<- 27;
 	int INFORM_FINE_RECEIVED 	<- 28;
-	
-	// Messages to display in multi-languages
-	string MSG_SIM_NOT_STARTED 	<- get_message('MSG_SIM_NOT_STARTED');
 	
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){
@@ -166,8 +157,7 @@ global{
 	}
 	
 	string get_message(string code_msg){
-		return langs_def at code_msg at configuration_file["LANGUAGE"];
+		return langs_def at code_msg at configuration_file["LANGUAGE"]; // getting the right message from languages file
 	}
 	//------------------------------ End of methods -------------------------------//
 }
-

@@ -107,7 +107,7 @@ MSG_IMPOSSIBLE_DELETE_ADAPTED;Impossible de supprimer un habitat adapte;Impossib
 MSG_ROUND;Tour;Round
 MSG_IMPOSSIBLE_NORMALLY;impossible normalement;normally impossible
 MSG_FLOODED_AREA_DISTRICT;Surface inondée par commune;Flooded area per district
-MSG_START_SENDER;Démarrer le sender;Start sender
+MSG_START_SENDER;Démarrage du maître du jeu;Starting the game manager
 MSG_SEND_DATA_TO;Envoyer les données... a;Send data.... to
 MSG_SEND_TO;Envoyer a;Send to
 MSG_SIMULATION_CHOICE;choix simulation;simulation choice

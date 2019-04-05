@@ -64,13 +64,11 @@ global{
 	string HAUSSE_RENOVATION_DIGUE <- "Hausse du coût de rénovation des digues";
 	string HAUSSE_COUT_BATI <- "Hausse du coût de construction du bâti";*/
 	
-	// messages to display in multi-lang
-	string MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
-	string MSG_TYPE_CUSTOMIZED_MSG 	<- get_message('MSG_TYPE_CUSTOMIZED_MSG');
-	string MSG_TO_CANCEL 			<- get_message('MSG_TO_CANCEL');
-	string MSG_AMOUNT 				<- get_message('MSG_AMOUNT');
-	string MSG_123_OR_CUSTOMIZED 	<- get_message('MSG_123_OR_CUSTOMIZED');
-	string BTN_GET_REVENUE_MSG2		<- get_message('BTN_GET_REVENUE_MSG2');
-	
+	string MSG_CHOOSE_MSG_TO_SEND;	
+	string MSG_TYPE_CUSTOMIZED_MSG;
+	string MSG_TO_CANCEL; 			
+	string MSG_AMOUNT;			
+	string MSG_123_OR_CUSTOMIZED;
+	string BTN_GET_REVENUE_MSG2;
 }
 

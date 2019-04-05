@@ -75,6 +75,12 @@ global{
 	action_done highlight_action;
 	
 	init{
+		MSG_WARNING <- get_message('MSG_WARNING');
+		MSG_POSSIBLE_REGLEMENTATION_DELAY <- get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY');
+		LEGEND_UNAM <- get_message('LEGEND_UNAM');
+		LEGEND_DYKE <- get_message('LEGEND_DYKE');
+		MSG_SIM_NOT_STARTED <- get_message('MSG_SIM_NOT_STARTED');
+		
 		communes_names <- table_correspondance_nom_rac_insee_com.keys;
 		insee_com <- table_correspondance_nom_rac_insee_com at commune_name;
 		is_active_gui <- true;
