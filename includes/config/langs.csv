@@ -116,7 +116,7 @@ MSG_READ_MESSAGE;lire message;read message
 MSG_CONNECTION_FROM;connexion de;connection from
 MSG_READ_ACTION;lire action;read action
 MSG_EXPROPRIATION_TRIGGERED;Procédure d'expropriation déclenchée pour l'UA;Expropriation procedure has been triggered by PA
-MSG_ERROR_ACTION_DONE;Problème de reconnaissance du type de action_done;Recognition problem of action_done type
+MSG_ERROR_PLAYER_ACTION;Problème de reconnaissance du type de Player Action;Recognition problem of Player Action type
 MSG_COMMUNE;commune;district
 MSG_DIKE_STATUS_PROBLEM;Problème de statut d'une digue;Dike status problem
 MSG_DUNE_STATUS_PROBLEM;Problème de statut d'une dune;Dune status problem

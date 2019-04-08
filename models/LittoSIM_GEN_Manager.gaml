@@ -1,11 +1,12 @@
 /**
- *  littoSIM_GEN
+ *  LittoSIM_GEN
  *  Authors: Brice, Cécilia, Elise, Etienne, Fredéric, Marion, Nicolas B, Nicolas M, Xavier 
  * 
- *  Description : LittoSim est un jeu sérieux qui se présente sous la forme d’une simulation intégrant à la fois 
- *  un modèle de submersion marine, la modélisation de différents rôles d’acteurs agissant sur le territoire 
- *  et la possibilité de mettre en place différents scénarios de prévention des submersions qui seront contrôlés
- *  par les utilisateurs de la simulation en fonction de leur rôle. 
+ *  Description : LittoSIM_GEN is a participatory simulation platform implementing a serious playing-game for local authorities.
+ * 				  The project aims at modeling effects of coastal flooding on urban areas and at enabling the transfer of scientific
+ * 				  findings to risk managers, as well as awareness of those concerned by the risk of coastal flooding.
+ * 
+ * LittoSIM_GEN_Manager : this module reprsents the game manager.
  */
 
 model Manager
@@ -24,10 +25,10 @@ global {
 	string lisfloodPath 				<- flooding_def["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
 	string lisfloodRelativePath 		<- flooding_def["LISFLOOD_RELATIVE_PATH"]; 								// Lisflood folder relatife path 
 	string results_lisflood_rep 		<- flooding_def["RESULTS_LISFLOOD_REP"]; 								// Lisflood results folder
-	string lisflood_par_file 			-> {"inputs/"+"LittoSIM_GEN_" + application_name + "_config_" + floodEventType+timestamp+".par"};   // parameter file
-	string lisflood_DEM_file 			-> {"inputs/"+"LittoSIM_GEN_" + application_name + "_DEM"     + timestamp + ".asc"}; 				// DEM file 
-	string lisflood_rugosityGrid_file 	-> {"inputs/"+"LittoSIM_GEN_" + application_name + "_n"       + timestamp + ".asc"}; 				// rugosity file
-	string lisflood_bat_file 			<- flooding_def["LISFLOOD_BAT_FILE"] ; 														        // Lisflood executable
+	string lisflood_par_file 			-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_config_" + floodEventType + timestamp + ".par"};   // parameter file
+	string lisflood_DEM_file 			-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_DEM"     + timestamp + ".asc"}; 					  // DEM file 
+	string lisflood_rugosityGrid_file 	-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_n"       + timestamp + ".asc"}; 					  // rugosity file
+	string lisflood_bat_file 			<- flooding_def["LISFLOOD_BAT_FILE"] ; 														       		  // Lisflood executable
 	
 	// variables for Lisflood calculs 
 	map<string,string> list_flooding_events ;  			// list of submersions of a round
@@ -37,9 +38,9 @@ global {
 	string flood_results 	<- "";   					// text of flood results per district // saved as a txt file
 	
 	// parameters for saving submersion results
-	string results_rep 			<- results_lisflood_rep+ "/results"+EXPERIMENT_START_TIME; 		// folder to save main model results
-	string shape_export_filePath -> {results_rep+"/results_SHP_Tour"+game_round+".shp"}; 		// shapefile to save cells
-	string log_export_filePath 	<- results_rep+"/log_"+machine_time+".csv"; 					// file to save user actions (main model and players actions)  
+	string results_rep 			<- results_lisflood_rep + "/results" + EXPERIMENT_START_TIME; 		// folder to save main model results
+	string shape_export_filePath -> {results_rep + "/results_SHP_Tour" + game_round + ".shp"}; 		// shapefile to save cells
+	string log_export_filePath 	<- results_rep + "/log_" + machine_time + ".csv"; 					// file to save user actions (main model and players actions)  
 	
 	// operation variables
 	geometry shape 				<- envelope(emprise_shape); 				// world geometry
@@ -53,6 +54,9 @@ global {
 	
 	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
     list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
+    list<string> lu_names_actions <- ['A','AU','N','Us','AUs'];
+	list<int> lu_codes_actions <- [ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
+								ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs];
 	
 	// other variables 
 	bool show_max_water_height	<- false ;						// defines if the water_height displayed on the map should be the max one or the current one
@@ -71,7 +75,7 @@ global {
 		}
 		districts_in_game <- (District where (each.id > 0)) sort_by (each.id);
 		
-		create Coastal_Defense from: coastal_defenses_shape with: [dike_id::int(read("object_id")),
+		create Coastal_Defense from: coastal_defenses_shape with: [coast_def_id::int(read("object_id")),
 										type::string(read("type")), status::string(read("status")),
 										alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))];
 		
@@ -545,9 +549,8 @@ species Network_Game_Manager skills: [network]{
 				if(m_contents["stringContents"] != nil){
 					write world.get_message('MSG_READ_MESSAGE') + " : " + m_contents["stringContents"];
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
-					
+					int id_dist <- world.district_id (m_sender);
 					if(int(data[0]) = CONNECTION_MESSAGE){ // a client district wants to connect
-						int id_dist <- world.district_id (m_sender);
 						ask(District where(each.id = id_dist)){
 							do inform_current_round;
 							do inform_budget_update;
@@ -555,279 +558,205 @@ species Network_Game_Manager skills: [network]{
 						write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + id_dist;
 					}
 					else if(int(data[0]) = REFRESH_ALL){ // a player asks to refresh his GUI
-						int id_dist <- world.district_id(m_sender);
-						write " Update ALL !!!! " + id_dist + " ";
+						write " Update ALL ! " + id_dist + " " + world.table_correspondance_insee_com_nom_rac at (id_dist);
 						do send_data_to_district(first(District where(each.id = id_dist)));
 					}
 					else{
 						if(game_round > 0) {
 							write world.get_message('MSG_READ_ACTION') + " " + m_contents["stringContents"];
-							do read_action(string(m_contents["stringContents"]), m_sender);
+							if(int(data[0]) in ACTION_LIST) {
+								create Player_Action {
+									self.command 					<- int(data[0]);
+									self.command_round  			<- game_round; 
+									self.id 						<- data[1];
+									self.initial_application_round 	<- int(data[2]);
+									self.district_code 				<- m_sender;
+									self.element_id 				<- int(data[3]);
+									self.action_type 				<- data[4];
+									self.is_in_protected_area 		<- bool(data[5]);
+									self.previous_lu_name 			<- data[6];
+									self.is_expropriation 			<- bool(data[7]);
+									self.cost 						<- float(data[8]);
+									if command = ACTION_CREATE_DIKE { 
+										element_shape 	 <- polyline([{float(data[9]), float(data[10])}, {float(data[11]), float(data[12])}]);
+										shape 			 <- element_shape;
+										length_coast_def <- int(element_shape.perimeter);
+										location 		 <- {float(data[13]),float(data[14])}; 
+									}
+									else{
+										if is_expropriation 	{	write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.id;	}
+										switch self.action_type {
+											match PLU {
+												Land_Use tmp  	<- Land_Use first_with(each.id = self.element_id);
+												element_shape 	<- tmp.shape;
+												location 		<- tmp.location;
+											}
+											match COAST_DEF {
+												element_shape 	 <- (Coastal_Defense first_with(each.coast_def_id = self.element_id)).shape;
+												length_coast_def <- int(element_shape.perimeter);
+											}
+											default {	write world.get_message('MSG_ERROR_PLAYER_ACTION');	}
+										}
+									}
+									if  self.element_shape intersects all_flood_risk_area 		 {	is_in_risk_area 		<- true;	}
+									if  self.element_shape intersects first(Coastal_Border_Area) {	is_in_coast_border_area <- true;	}
+									if  self.element_shape intersects all_protected_area 		 {	is_in_protected_area 	<- true;	}
+									if command = ACTION_CREATE_DIKE and (self.element_shape.centroid overlaps first(Inland_Dike_Area))	{	is_inland_dike <- true;	}
+									if(log_user_action){
+										save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + data) to: log_export_filePath rewrite: false type:"csv";
+									}
+									ask District first_with(each.id = world.district_id (self.district_code)) {
+										do record_payment_for_player_action(myself); // updating players payment (server side)
+									}
+								}
+							}
 						}
 					}
 				}			
 			}				
 		}
 	}
-		
-	action read_action(string act, string sender){
-		list<string> data <- act split_with COMMAND_SEPARATOR;
-		if(int(data[0]) in ACTION_LIST) {
-			create Player_Action returns: tmp_agents_list {
-				self.command 					<- int(data[0]);
-				self.command_round  			<-game_round; 
-				self.id 						<- data[1];
-				self.initial_application_round 	<- int(data[2]);
-				self.district_code 				<- sender;
-				if(command != REFRESH_ALL){
-					self.element_id 			<- int(data[3]);
-					self.action_type 			<- data[4];
-					self.is_in_protected_area 	<- bool(data[5]);
-					self.previous_lu_name 		<- data[6];
-					self.is_expropriation 		<- bool(data[7]);
-					self.cost 					<- float(data[8]);
-					if command = ACTION_CREATE_DIKE{ 
-						element_shape 	 <- polyline([{float(data[9]), float(data[10])}, {float(data[11]), float(data[12])}]);
-						shape 			 <- element_shape;
-						length_coast_def <- int(element_shape.perimeter);
-						location 		 <- {float(data[13]),float(data[14])}; 
-					}
-					else{
-						if is_expropriation {	write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.id;	}
-						switch self.action_type {
-							match PLU {
-								Land_Use tmp  	<- Land_Use first_with(each.id = self.element_id);
-								element_shape 	<- tmp.shape;
-								location 		<- tmp.location;
-							}
-							match DIKE {
-								element_shape 	 <- (Coastal_Defense first_with(each.dike_id = self.element_id)).shape;
-								length_coast_def <- int(element_shape.perimeter);
-							}
-							default {	write world.get_message('MSG_ERROR_ACTION_DONE');	}
-						}
-					}
-					if  self.element_shape intersects all_flood_risk_area 		 {	is_in_risk_area 		<- true;	}
-					if  self.element_shape intersects first(Coastal_Border_Area) {	is_in_coast_border_area <- true;	}
-					if  self.element_shape intersects all_protected_area 		 {	is_in_protected_area 	<- true;	}
-					if command = ACTION_CREATE_DIKE and (self.element_shape.centroid overlaps first(Inland_Dike_Area))	{	is_inland_dike <- true;	}
-					if(log_user_action){
-						save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + data) to: log_export_filePath rewrite: false type:"csv";
-					}
-				}
-			}
-			Player_Action new_action <- first(tmp_agents_list);
-			int id_dis 				 <- world.district_id (new_action.district_code);
-			ask District first_with(each.id = id_dis) {
-				do record_payment_for_player_action(new_action); // updating players payment (server side)
-			}	
-		}
-	}
 	
-	reflex update_LU  when:length(Land_Use where(each.not_updated)) > 0 {
+	reflex update_LU when: length (Land_Use where(each.not_updated)) > 0 {
 		list<string> update_messages <-[];
 		list<Land_Use> updated_LU <- [];
-		ask Land_Use where(each.not_updated){
+		ask Land_Use where(each.not_updated) {
 			string msg <- "" + ACTION_LAND_COVER_UPDATE + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + id + COMMAND_SEPARATOR +
 							self.lu_code + COMMAND_SEPARATOR + self.population + COMMAND_SEPARATOR + self.isInDensification;
 			update_messages <- update_messages + msg;	
-			not_updated <- false;
-			updated_LU <- updated_LU + self;
+			updated_LU 		<- updated_LU + self;
+			not_updated 	<- false;
 		}
-		int i <- 0;
-		loop while: i< length(update_messages){
-			string msg <- update_messages at i;
-			loop d over: District overlapping (updated_LU at i) {
-				do send to: d.network_name contents: msg;
+		loop i from: 0 to: length(update_messages) - 1{
+			loop d over: District overlapping (updated_LU[i]) {
+				do send to: d.network_name contents:  update_messages[i];
 			}
-			i <- i + 1;
 		}
 	}
 	
-	action send_destroy_dike_message(Coastal_Defense a_dike){
-		string msg <- "" + ACTION_DIKE_DROPPED + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + a_dike.dike_id;
-		loop dist over: District overlapping a_dike {
-			do send to: dist.network_name contents: msg;
-		}
-	}
-	
-	action send_created_dike(Coastal_Defense new_dike, Player_Action act){
-		new_dike.shape <- act.element_shape;
-		point p1 <- first(act.element_shape.points);
-		point p2 <- last(act.element_shape.points);
-		string msg <- "" + ACTION_DIKE_CREATED + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR +
-						new_dike.dike_id + COMMAND_SEPARATOR + p1.x + COMMAND_SEPARATOR + p1.y + COMMAND_SEPARATOR +
-						p2.x + COMMAND_SEPARATOR + p2.y + COMMAND_SEPARATOR + new_dike.height + COMMAND_SEPARATOR +
-						new_dike.type + COMMAND_SEPARATOR + new_dike.status + COMMAND_SEPARATOR + min_dike_elevation(new_dike) +
-						COMMAND_SEPARATOR + act.id + COMMAND_SEPARATOR+new_dike.location.x + COMMAND_SEPARATOR + new_dike.location.y;
-		loop d over: District overlapping new_dike {
-			do send to: d.network_name contents:msg;
-		}
-	}
-	
-	action acknowledge_application_of_Player_Action (Player_Action act){
-		map<string,string> msg <- ["TOPIC"::"Player_Action is_applied","id"::act.id];
-		put act.district_code  at: DISTRICT_CODE in: msg;
-		do send to: act.district_code + "_map_msg" contents:msg;
-	}
-	
-	float min_dike_elevation(Coastal_Defense ovg){	return min(Cell overlapping ovg collect(each.soil_height));	}
-	
-	reflex update_dike when: length(Coastal_Defense where(each.not_updated)) > 0 {
+	reflex update_coast_def when: length (Coastal_Defense where(each.not_updated)) > 0 {
 		list<string> update_messages <-[]; 
-		list<Coastal_Defense> update_ouvrage <- [];
+		list<Coastal_Defense> update_coast_def <- [];
 		ask Coastal_Defense where(each.not_updated){
 			point p1 <- first(self.shape.points);
 			point p2 <- last(self.shape.points);
-			string msg <- ""+ACTION_DIKE_UPDATE+COMMAND_SEPARATOR+world.getMessageID() +COMMAND_SEPARATOR+self.dike_id+COMMAND_SEPARATOR+p1.x+COMMAND_SEPARATOR+p1.y+COMMAND_SEPARATOR+p2.x+COMMAND_SEPARATOR+p2.y+COMMAND_SEPARATOR+self.height+COMMAND_SEPARATOR+self.type+COMMAND_SEPARATOR+self.status+COMMAND_SEPARATOR+self.ganivelle+COMMAND_SEPARATOR+myself.min_dike_elevation(self);
-			update_messages <- update_messages + msg;
-			update_ouvrage <- update_ouvrage + self;
-			not_updated <- false;
+			string msg <- "" + ACTION_DIKE_UPDATE + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + self.coast_def_id +
+						COMMAND_SEPARATOR + p1.x + COMMAND_SEPARATOR + p1.y + COMMAND_SEPARATOR + p2.x + COMMAND_SEPARATOR + p2.y +
+						COMMAND_SEPARATOR + self.height + COMMAND_SEPARATOR + self.type + COMMAND_SEPARATOR + self.status +
+						COMMAND_SEPARATOR + self.ganivelle + COMMAND_SEPARATOR + self.min_dike_elevation;
+			update_messages  <- update_messages + msg;
+			update_coast_def <- update_coast_def + self;
+			not_updated 	 <- false;
 		}
-		int i <- 0;
-		loop while: i< length(update_messages){
-			string msg <- update_messages at i;
-			list<District> cms <- District overlapping (update_ouvrage at i);
-			loop cm over:cms{	do send to:cm.network_name contents:msg;	}
-			i <- i + 1;
+		loop i from: 0 to: length(update_messages) - 1{
+			loop d over: District overlapping (update_coast_def[i]){
+				do send to: d.network_name contents: update_messages[i];
+			}
 		}
 	}
 
-	reflex apply_action when: length(Player_Action where (each.is_alive)) > 0{
-	//	ask(Player_Action where(each.should_be_applied and each.is_alive and not(each.should_wait_lever_to_activate)))
-	// Pour une raison bizarre la ligne au dessus ne fonctionne pas alors que les 2 lignes ci dessous fonctionnent. Pourtant je ne vois aucune difference
-		ask Player_Action {
-			if should_be_applied and is_alive and !should_wait_lever_to_activate {
-				int id_dist <- world.district_id (district_code);
-				Player_Action act <- self;
-				switch(command){
-				match REFRESH_ALL{////  Pourquoi est ce que REFRESH_ALL est une  Player_Action ??
-					write " Update ALL !!!! " + id_dist + " "+  world.table_correspondance_insee_com_nom_rac at (district_code);
-					ask myself{
-						do send_data_to_district(first( District where(each.id = id_dist) ));
-					}
-				}
+	reflex apply_player_action when: length (Player_Action where (each.is_alive)) > 0{
+		ask Player_Action where (each.is_alive and each.should_be_applied and !each.should_wait_lever_to_activate) {
+			int id_dist <- world.district_id (district_code);
+			bool acknowledge <- false;
+			switch(command){
 				match ACTION_CREATE_DIKE{	
-					Coastal_Defense new_dike <- create_dike(act);
+					Coastal_Defense new_dike <- create_dike(self);
 					ask Network_Game_Manager	{
-						do send_created_dike(new_dike, act);
-						do acknowledge_application_of_Player_Action(act);
+						new_dike.shape  <- myself.element_shape;
+						point p1 		<- first(myself.element_shape.points);
+						point p2 		<- last(myself.element_shape.points);
+						string msg 		<- "" + ACTION_DIKE_CREATED + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR +
+										new_dike.coast_def_id + COMMAND_SEPARATOR + p1.x + COMMAND_SEPARATOR + p1.y + COMMAND_SEPARATOR +
+										p2.x + COMMAND_SEPARATOR + p2.y + COMMAND_SEPARATOR + new_dike.height + COMMAND_SEPARATOR +
+										new_dike.type + COMMAND_SEPARATOR + new_dike.status + COMMAND_SEPARATOR + new_dike.min_dike_elevation +
+										COMMAND_SEPARATOR + myself.id + COMMAND_SEPARATOR+new_dike.location.x + COMMAND_SEPARATOR + new_dike.location.y;
+						loop d over: District overlapping new_dike {
+							do send to: d.network_name contents: msg;
+						}
+						acknowledge <- true;
 					}
-					ask(new_dike){ do build_dike; }
+					ask(new_dike) { do build_dike; }
 				}
 				match ACTION_REPAIR_DIKE {
-					ask(Coastal_Defense first_with(each.dike_id=element_id)){
+					ask(Coastal_Defense first_with(each.coast_def_id=element_id)){
 						do repaire_dike;
 						not_updated <- true;
 					}
-					ask Network_Game_Manager{	do acknowledge_application_of_Player_Action(act);	}		
+					acknowledge <- true;		
 				}
 			 	match ACTION_DESTROY_DIKE {
-			 		ask(Coastal_Defense first_with(each.dike_id=element_id)){
+			 		ask(Coastal_Defense first_with(each.coast_def_id=element_id)){
 						ask Network_Game_Manager{
-							do send_destroy_dike_message(myself);
-							do acknowledge_application_of_Player_Action(act);
+							string msg <- "" + ACTION_DIKE_DROPPED + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + myself.coast_def_id;
+							loop dist over: District overlapping myself {
+								do send to: dist.network_name contents: msg;
+							}
+							acknowledge <- true;
 						}
 						do destroy_dike;
 						not_updated <- true;
 					}		
 				}
 			 	match ACTION_RAISE_DIKE {
-			 		ask(Coastal_Defense first_with(each.dike_id=element_id)){
+			 		ask(Coastal_Defense first_with(each.coast_def_id=element_id)){
 						do raise_dike;
 						not_updated <- true;
 					}
-					ask Network_Game_Manager{	do acknowledge_application_of_Player_Action(act);	}
+					acknowledge <- true;
 				}
 				 match ACTION_INSTALL_GANIVELLE {
-				 	ask(Coastal_Defense first_with(each.dike_id=element_id)){
+				 	ask(Coastal_Defense first_with(each.coast_def_id=element_id)){
 						do install_ganivelle ;
 						not_updated <- true;
 					}
-					ask Network_Game_Manager{	do acknowledge_application_of_Player_Action(act);	}
+					acknowledge <- true;
 				}
-			 	match ACTION_MODIFY_LAND_COVER_A {
-			 		ask Land_Use first_with(each.id=element_id){
-			 		  do modify_LU ("A");
+				match_one lu_codes_actions {
+					ask Land_Use first_with(each.id = element_id){
+			 		  do modify_LU (lu_names_actions[lu_codes_actions index_of myself.command]);
 			 		  not_updated <- true;
 			 		 }
-			 		 ask Network_Game_Manager{ do acknowledge_application_of_Player_Action(act); }
-			 	}
-			 	match ACTION_MODIFY_LAND_COVER_AU {
-			 		ask Land_Use first_with(each.id=element_id){
-			 		 	do modify_LU ("AU");
-			 		 	not_updated <- true;
-			 		 }
-			 		 ask Network_Game_Manager{ do acknowledge_application_of_Player_Action(act); }
-			 	}
-				match ACTION_MODIFY_LAND_COVER_N {
-					ask Land_Use first_with(each.id=element_id){
-			 		 	do modify_LU ("N");
-			 		 	not_updated <- true;
-			 		 }
-			 		 ask Network_Game_Manager{ do acknowledge_application_of_Player_Action(act); }
-			 	}
-			 	match ACTION_MODIFY_LAND_COVER_Us {
-			 		ask Land_Use first_with(each.id=element_id){
-			 		 	do modify_LU ("Us");
-			 		 	not_updated <- true;
-			 		 }
-			 		ask Network_Game_Manager{
-						do acknowledge_application_of_Player_Action(act);
-					}
-			 	 }
-			 	 match ACTION_MODIFY_LAND_COVER_Ui {
+			 		 acknowledge <- true;
+				}
+			 	match ACTION_MODIFY_LAND_COVER_Ui {
 			 		ask Land_Use first_with(each.id=element_id){
 			 		 	isInDensification <- true;
 			 		 	not_updated <- true;
 			 		 }
-			 		ask Network_Game_Manager{	do acknowledge_application_of_Player_Action(act);	}
+			 		acknowledge <- true;
 			 	 }
-			 	match ACTION_MODIFY_LAND_COVER_AUs {
-			 		ask Land_Use first_with(each.id=element_id){
-			 		 	do modify_LU ("AUs");
-			 		 	not_updated <- true;
-			 		 }
-			 		ask Network_Game_Manager{	do acknowledge_application_of_Player_Action(act);	}
-			 	}
-				}
-			is_alive <- false; 
-			is_applied <- true;
+			 	
 			}
+			if(acknowledge) {	ask Network_Game_Manager { do acknowledge_application_of_player_action(myself); }	}
+			is_alive 	<- false; 
+			is_applied 	<- true;
 		}		
 	}
 	
-	action send_data_to_district (District d){
-		write world.get_message('MSG_SEND_DATA_TO') +" "+ d.network_name;
-		ask d {	do inform_budget_update(); }
-		do retreive_coastal_defense(d);
-		do retreive_LU(d);
-		do retreive_Player_Action(d);
-		do retreive_activated_lever(d);
+	action acknowledge_application_of_player_action (Player_Action act){
+		map<string,string> msg <- ["TOPIC"::PLAYER_ACTION_IS_APPLIED,"id"::act.id];
+		put act.district_code  at: DISTRICT_CODE in: msg;
+		do send to: act.district_code + "_map_msg" contents:msg;
 	}
 	
-	action retreive_coastal_defense(District d){	
+	action send_data_to_district (District d){
+		write world.get_message('MSG_SEND_DATA_TO') + " " + d.network_name;
+		ask d {
+			do inform_budget_update();
+		}
 		loop tmp over: Coastal_Defense where(each.district_code = d.district_code){
 			write world.get_message('MSG_SEND_TO') +" "+ d.network_name + "_retreive " + tmp.build_map_from_attributes();
 			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
 		}
-	}
-	
-	action retreive_LU (District d){
 		loop tmp over: d.LUs{
 			write world.get_message('MSG_SEND_TO') + " " + d.network_name + "_retreive " + tmp.build_map_from_attributes();
 			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
 		}
-	}
-
-	action retreive_Player_Action(District d){
 		loop tmp over: Player_Action where(each.district_code = d.district_code){
 			write world.get_message('MSG_SEND_TO') + " " + d.network_name+ "_retreive " + tmp.build_map_from_attributes();
 			do send to: d.network_name+"_retreive" contents: tmp.build_map_from_attributes();
 		}
-	}
-	
-	action retreive_activated_lever(District d){
 		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
 			write world.get_message('MSG_SEND_TO') + " " + d.network_name + "_retreive " + tmp.my_map;
 			do send to: d.network_name+"_retreive" contents: tmp.my_map;
@@ -918,16 +847,16 @@ species Network_Listener_To_Leader skills:[network]{
 			write "command " + cmd;
 			switch(cmd){
 				match SUBSIDIZE {
-					string dist_code <- m_contents[DISTRICT_CODE];
+					string dist_code 	 <- m_contents[DISTRICT_CODE];
 					int amount 			 <- int(m_contents[AMOUNT]);
 					District d 			 <- District first_with(each.district_code = dist_code);
 					d.budget 			 <- d.budget + amount;
 				}
 				match COLLECT_REC {
-					string dist_code <- m_contents[DISTRICT_CODE];
+					string dist_code 	 <- m_contents[DISTRICT_CODE];
 					int amount 			 <- int(m_contents[AMOUNT]); 
 					District d 			 <- District first_with(each.district_code = dist_code);
-					d.budget <- d.budget - amount;
+					d.budget 			 <- d.budget - amount;
 				}
 				match ASK_NUM_ROUND 		 {	do inform_leader_round_number;	}
 				match ASK_INDICATORS_T0 	 {	do inform_leader_indicators_t0;	}
@@ -991,22 +920,22 @@ species Player_Action schedules:[]{
 	int length_coast_def	<-0;
 	string district_code 	<- "";
 	int command 			<- -1 on_change: { label <- world.label_of_action(command); };
-	int command_round<- 	-1;
+	int command_round		<- 	-1;
 	string label 			<- "";
 	int initial_application_round <- -1;
-	int round_delay 			  -> {activated_levers sum_of int (each.my_map["nb_rounds_delay"])} ; // nb rounds of delay
-	int actual_application_round  -> {initial_application_round+round_delay};
+	int round_delay 			  -> {activated_levers sum_of int (each.my_map["nb_rounds_delay"])} ;
+	int actual_application_round  -> {initial_application_round + round_delay};
 	bool is_delayed 			  -> { round_delay >0 } ;
 	float cost 			<- 0.0;
 	int added_cost  	-> {activated_levers sum_of int(each.my_map["added_cost"])} ;
 	float actual_cost 	-> {cost+added_cost	};
 	bool has_added_cost -> {added_cost>0 	};
-	bool is_sent 			<-true;
-	bool is_sent_to_leader 	<-false;
+	bool is_sent 			<- true;
+	bool is_sent_to_leader 	<- false;
 	bool is_applied 		<- false;
 	bool should_be_applied	-> {game_round >= actual_application_round} ;
-	string action_type 		<- DIKE;		 				// can be "dike" or "PLU"
-	string previous_lu_name <-"";  							// for PLU action
+	string action_type 		<- COAST_DEF;		 				// can be "COAST_DEF" or "PLU"
+	string previous_lu_name <-"";  								// for PLU action
 	bool is_expropriation 				<- false; 				// for PLU action
 	bool is_in_protected_area 			<- false; 				// for dike action
 	bool is_in_coast_border_area	 	<- false; 				// for PLU action  // 400m to coast line
@@ -1037,9 +966,9 @@ species Player_Action schedules:[]{
 	}
 	
 	Coastal_Defense create_dike (Player_Action act){
-		int next_dike_id <- max(Coastal_Defense collect(each.dike_id)) +1 ;
+		int next_dike_id <- max(Coastal_Defense collect(each.coast_def_id)) +1 ;
 		create Coastal_Defense returns: new_dike{
-			dike_id 		<- next_dike_id;
+			coast_def_id 	<- next_dike_id;
 			district_code 	<- act.district_code;
 			shape 			<- act.element_shape;
 			location 		<- act.location;
@@ -1048,14 +977,14 @@ species Player_Action schedules:[]{
 			height 			<- BUILT_DIKE_HEIGHT;	
 			cells 			<- Cell overlapping self;
 		}
-		act.element_id 		<- first(new_dike).dike_id;
+		act.element_id 		<- first(new_dike).coast_def_id;
 		return first(new_dike);
 	}
 }
 //------------------------------ End of Player_Action -------------------------------//
 
 species Coastal_Defense {	
-	int dike_id;
+	int coast_def_id;
 	string district_code;
 	string type;     // Dike or Dune
 	string status;	//  "Good" "Medium" "Bad"  
@@ -1072,7 +1001,7 @@ species Coastal_Defense {
 	
 	map<string,unknown> build_map_from_attributes{
 		map<string,unknown> res <- [
-			"OBJECT_TYPE"::"Coastal_Defense",	"dike_id"::string(dike_id),	"type"::type, "status"::status,
+			"OBJECT_TYPE"::"Coastal_Defense",	"dike_id"::string(coast_def_id),	"type"::type, "status"::status,
 			"height"::string(height), "alt"::string(alt), "rupture"::string(rupture), "rupture_area"::rupture_area,
 			"not_updated"::string(not_updated), "ganivelle"::string(ganivelle), "height_before_ganivelle"::string(height_before_ganivelle),
 			"locationx"::string(location.x), "locationy"::string(location.y)];
@@ -1169,6 +1098,10 @@ species Coastal_Defense {
 			}
 		}
 	}
+	
+	float min_dike_elevation{
+		return min(Cell overlapping self collect(each.soil_height));
+	}
 		
 	action calculate_rupture {
 		int p <- 0;
@@ -1188,8 +1121,8 @@ species Coastal_Defense {
 			ask cells overlapping rupture_area {
 				if soil_height >= 0 {	soil_height <- max([0, soil_height - myself.height]);	}
 			}
-			write "rupture " + type + " n°" + dike_id + "(" + ", status " + status + ", height " + height + ", alt " + alt + ")";
-			write "rupture " + type + " n°" + dike_id + "(" + world.table_correspondance_insee_com_nom_rac at (district_code)+ ", status " + status + ", height " + height + ", alt " + alt + ")";
+			write "rupture " + type + " n°" + coast_def_id + "(" + ", status " + status + ", height " + height + ", alt " + alt + ")";
+			write "rupture " + type + " n°" + coast_def_id + "(" + world.table_correspondance_insee_com_nom_rac at (district_code)+ ", status " + status + ", height " + height + ", alt " + alt + ")";
 		}
 	}
 	
@@ -1385,7 +1318,7 @@ species Land_Use {
 }
 //------------------------------ End of Land_Use -------------------------------//
 
-species District{	
+species District {	
 	int id <-0;
 	string district_code; 
 	string district_name;

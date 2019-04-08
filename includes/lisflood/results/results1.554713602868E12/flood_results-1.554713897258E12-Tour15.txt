@@ -1,0 +1,33 @@
+Résultats commune stpierre
+Surface U innondée : moins de 50cm 99.3 ha (3.3%) | entre 50cm et 1m 73.3 ha (2.5%) | plus de 1m 70.7 ha (2.4%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface A innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface N innondée : moins de 50cm 37.0 ha (1.2%) | entre 50cm et 1m 25.1 ha (0.8%) | plus de 1m 29.2 ha (1.0%) 
+--------------------------------------------------------------------------------------------------------------------
+Résultats commune dolus
+Surface U innondée : moins de 50cm 128.1 ha (4.4%) | entre 50cm et 1m 138.0 ha (4.7%) | plus de 1m 156.3 ha (5.4%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface A innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface N innondée : moins de 50cm 3.9 ha (0.1%) | entre 50cm et 1m 4.8 ha (0.2%) | plus de 1m 7.7 ha (0.3%) 
+--------------------------------------------------------------------------------------------------------------------
+Résultats commune lechateau
+Surface U innondée : moins de 50cm 104.8 ha (6.6%) | entre 50cm et 1m 119.2 ha (7.5%) | plus de 1m 146.1 ha (9.3%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface A innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface N innondée : moins de 50cm 9.3 ha (0.6%) | entre 50cm et 1m 15.2 ha (1.0%) | plus de 1m 20.0 ha (1.3%) 
+--------------------------------------------------------------------------------------------------------------------
+Résultats commune sttrojan
+Surface U innondée : moins de 50cm 16.1 ha (1.0%) | entre 50cm et 1m 24.1 ha (1.5%) | plus de 1m 58.6 ha (3.7%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.1 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface A innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface N innondée : moins de 50cm 14.0 ha (0.9%) | entre 50cm et 1m 16.0 ha (1.0%) | plus de 1m 23.6 ha (1.5%) 
+--------------------------------------------------------------------------------------------------------------------
+

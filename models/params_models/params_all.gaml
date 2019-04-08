@@ -40,11 +40,15 @@ global{
 	string NEW_ACTIVATED_LEVER		<- "NEW_ACTIVATED_LEVER";
 	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
 	
+	// Manager-Player network communication
+	string PLAYER_ACTION_IS_APPLIED <- "PLAYER_ACTION_IS_APPLIED";
+	
 	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
 	
 	// Constant vars
 	string PLU				<- "PLU";
+	string COAST_DEF		<- "COAST_DEF";
 	string DIKE 			<- "Dike";
 	string DUNE 			<- "Dune";
 	string STATUS_GOOD 		<- "Good";
