@@ -1,5 +1,5 @@
 /**
-* Name: paramsleader 
+* Name: params_all
 */
 
 model paramsall
@@ -47,7 +47,7 @@ global{
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
 	
 	// Constant vars
-	string PLU				<- "PLU";
+	string LU				<- "LU";
 	string COAST_DEF		<- "COAST_DEF";
 	string DIKE 			<- "Dike";
 	string DUNE 			<- "Dune";

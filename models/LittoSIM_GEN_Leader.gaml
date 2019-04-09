@@ -15,8 +15,8 @@ global{
 	lever explored_lever;
 	list<string> leader_activities;	
 		
-	commune selected_commune <- nil;
-	action_button selected_action <- nil;
+	District selected_district		<- nil;
+	action_button selected_action 	<- nil;
 	action_done selection_action_done;
 	
 	string current_selected_action -> {selected_action!= nil? selected_action.displayName:"NAN"};
@@ -29,7 +29,6 @@ global{
 	bool subventionner_habitat_adapte -> {selected_action!= nil and selected_action.displayName= "Subventionner habitat adapté"};
 	
 	geometry shape <- square(100#m);
-	//float time_at_initialization;
 	map<string,list<map<string,int>>> profils<-[];
 	
 	list<lever> all_levers -> {(lever_create_dike+lever_raise_dike+lever_repair_dike+lever_AUorUi_inCoastBorderArea+lever_AUorUi_inRiskArea
@@ -46,11 +45,11 @@ global{
 		BTN_GET_REVENUE_MSG2	<- get_message('BTN_GET_REVENUE_MSG2');
 		
 		sim_id <- machine_time;
-		create network_leader number:1;
+		create network_leader;
 		do create_commune; 
 		do create_commune_action_buttons;
 
-		ask commune{	put [] key:self.commune_name in:profils;	}
+		ask District {	put [] key:self.commune_name in:profils; }
 
 		//pour les test
 		int i <- 0;
@@ -60,19 +59,16 @@ global{
 			commune_name<-"dolus";
 			i<- i+1;
 		}
-		//time_at_initialization <- machine_time;
-		/////////////////////////////////////////////////////////////////////////////////////////
-		////////////////////////////////////////////////////////////////////////////////////////
 
-		loop i from:0 to: 3{
-			create nom_commune{
-				displayName <- commune[i].commune_name;
-				location<- (grille grid_at{i,0}).location- {1, -1};
+		loop i from: 0 to: 3 {
+			create District_Name {
+				display_name <- District[i].commune_name;
+				location	<- (grille grid_at{i,0}).location- {1, -1};
 			}
 		}
 		
-	} // fin init
-	
+	}
+	//------------------------------ end of init -------------------------------//
 	action write_profile{
 		int i <- 0;
 		string cm<-"";
@@ -81,7 +77,7 @@ global{
 			write "commune : "+ cm;
 			loop while:length(data_commune)>i{
 				map<string,int> state <- data_commune[i];
-				write "tour["+i +"] " + BATISSEUR+": "+state[BATISSEUR]+" ; "+DEFENSE_DOUCE+": "+state[DEFENSE_DOUCE]+" ; "+RETRAIT+": "+state[RETRAIT];
+				write "tour["+i +"] " + BUILDER+": "+state[BUILDER]+" ; "+SOFT_DEFENSE+": "+state[SOFT_DEFENSE]+" ; "+WITHDRAWAL+": "+state[WITHDRAWAL];
 				i<-i+1;
 			}	
 		}
@@ -95,12 +91,12 @@ global{
 	
 	action save_leader_records{
 		loop a over: leader_activities {
-			save a to: "leader_records-"+sim_id+"/leader_activities_Tour"+round+".txt" type: "text" rewrite:false;
+			save a to: "leader_records-"+sim_id+"/leader_activities_Tour"+game_round+".txt" type: "text" rewrite:false;
 		}
-		save action_done to: "leader_records-"+sim_id+"/action_done_Tour"+round+".csv" type: "csv";
-		save activated_lever to: "leader_records-"+sim_id+"/activated_lever_Tour"+round+".csv" type: "csv"; 
+		save action_done to: "leader_records-"+sim_id+"/action_done_Tour"+game_round+".csv" type: "csv";
+		save activated_lever to: "leader_records-"+sim_id+"/activated_lever_Tour"+game_round+".csv" type: "csv"; 
 		loop a over:all_levers{
-			save a to:"leader_records-"+sim_id+"/all_levers_Tour"+round+".csv"  type:"csv" rewrite:false;
+			save a to:"leader_records-"+sim_id+"/all_levers_Tour"+game_round+".csv"  type:"csv" rewrite:false;
 		}
 	}
 	
@@ -108,13 +104,12 @@ global{
 		list<map<string,int>> profil_commune<- profils[act_dn.commune_name];
 		loop while:length(profil_commune)<=act_round{
 			map<string,int> state <- [];
-			put 0 key:BATISSEUR in: state;
-			put 0 key:DEFENSE_DOUCE in: state;
-			put 0 key:RETRAIT in: state;
+			put 0 key: BUILDER 		in: state;
+			put 0 key: SOFT_DEFENSE in: state;
+			put 0 key: WITHDRAWAL 	in: state;
 			add state to:profil_commune;
 		}
 		map<string,int> chosen_round <- profil_commune[act_round];
-	//	write "action de type "+ act_dn.tracked_profil + " : "+ chosen_round[act_dn.tracked_profil]; // ToDO NM A voir si il n'y a pas un bug ici
 		put chosen_round[act_dn.tracked_profil] +1 key:act_dn.tracked_profil in: chosen_round;
 	}
 	
@@ -147,7 +142,7 @@ global{
 	}
 	
 	action generate_historique_profils {
-		ask commune {
+		ask District {
 			write "<<"+commune_name+">>";
 			write world.generate_historique_profils_for(commune_name);
 		}
@@ -157,7 +152,7 @@ global{
 		loop prof over: ["builder","soft defense", "withdrawal"]{
 			list<int> aSerie;
 			list<action_done> lad <- action_done where (each.commune_name = aCommune and each.tracked_profil = prof);
-			loop i from: 1 to:round {
+			loop i from: 1 to:game_round {
 				add (length (lad where (each.command_round = i))) to: aSerie ;
 			}	
 			write prof + " : " +aSerie;
@@ -171,7 +166,7 @@ global{
 	
 	action button_commune {
 		point loc <- #user_location;
-		selected_commune <- (commune first_with (each overlaps loc ));
+		selected_district <- (District first_with (each overlaps loc));
 	}
 	
 	action button_action{
@@ -179,26 +174,26 @@ global{
 		selected_action <- (action_button first_with (each overlaps loc ));
 		if selected_action = nil {return;} 
 		switch(selected_action.displayName){
-			match PRELEVER {
-				if(selected_commune != nil){
-					do percevoir_recette( selected_commune);
+			match COLLECT_REC {
+				if(selected_district != nil){
+					do percevoir_recette( selected_district);
 					selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
 				}
 			}
-			match CREDITER {
-				if(selected_commune != nil){
-					do subventionner( selected_commune);
+			match SUBSIDIZE {
+				if(selected_district != nil){
+					do subventionner( selected_district);
 					selected_action<-nil; // désélection pour etre sur de ne pas appliquer 2 fois la meme action 
 				}
 			}
 			match SUBVENTIONNER_GANIVELLE_NAME {
-				if(selected_commune != nil){
+				if(selected_district != nil){
 					do subventionner_ganivelle();
 					write "SUBVENTIONNER_GANIVELLE Cliqué";
 				}
 			}	
 			match SUBVENTIONNER_HABITAT_ADAPTE_NAME {
-				if(selected_commune != nil){
+				if(selected_district != nil){
 					do subventionner_habitat_adapte();
 					write "SUBVENTIONNER_HABITAT_ADAPTE Cliqué";
 				}
@@ -233,46 +228,42 @@ global{
 				do button_cliked();
 			}
 		}
-		/*unknown aButtonT <- ((all_levers + commune_action_button) first_with (each overlaps loc ));
-		if aButtonT = nil {return;} 
-		if aButtonT in commune_action_button {ask commune_action_button where (each = aButtonT){do button_cliked();}  
-		}*/
 	}
 	
-	action percevoir_recette(commune com){
+	action percevoir_recette(District com){
 		string answere <- string(langs_def at 'LDR_MSG_AMOUNT_REVENUE' at configuration_file["LANGUAGE"]) + " : ";
 		string msg1<- string(langs_def at 'BTN_GET_REVENUE_MSG1' at configuration_file["LANGUAGE"]);
 		string msg3<- string(langs_def at 'BTN_GET_REVENUE_MSG3' at configuration_file["LANGUAGE"]);
 		map values <- user_input(msg1 +com.com_large_name+"\n"+BTN_GET_REVENUE_MSG2,[msg3+" : " :: "2000"]);
 		map<string, unknown> msg <-[];//LEADER_COMMAND::RECETTE,AMOUNT::int(values[answere]),COMMUNE::com.com_id];
 		if int(values[answere])=0 {return;}// permet d'annuler l'action si le leader change d'avis ou est arriver la par hazard
-		put PRELEVER key: LEADER_COMMAND in: msg;
+		put COLLECT_REC key: LEADER_COMMAND in: msg;
 		put int(values[answere]) key: AMOUNT in: msg;
-		put com.com_id key: COMMUNE in: msg;
+		put com.com_id key: DISTRICT_CODE in: msg;
 		do send_message_from_leader(msg);	
 	}
 
-	action subventionner(commune com){
+	action subventionner(District com){
 		string answere <- string(langs_def at 'LDR_MSG_AMOUNT_SUBSIDY' at configuration_file["LANGUAGE"]) + " : ";
 		string msg1<- string(langs_def at 'BTN_SUBSIDIZE_MSG1' at configuration_file["LANGUAGE"]);
 		string msg3<- string(langs_def at 'BTN_SUBSIDIZE_MSG3' at configuration_file["LANGUAGE"]);
 		map values <- user_input(msg1 +com.com_large_name+"\n"+BTN_GET_REVENUE_MSG2,[ msg3 + " : " :: "2000"]);
 		map<string, unknown> msg <-[]; //LEADER_COMMAND::SUBVENTIONNER,AMOUNT::int(values[answere]),COMMUNE::com.com_id];
 		if int(values[answere])=0 {return;}// permet d'annuler l'action si le leader change d'avis ou est arriver la par hazard
-		put CREDITER key: LEADER_COMMAND in: msg;
+		put SUBSIDIZE key: LEADER_COMMAND in: msg;
 		put int(values[answere]) key: AMOUNT in: msg;
-		put com.com_id key: COMMUNE in: msg;
+		put com.com_id key: DISTRICT_CODE in: msg;
 		do send_message_from_leader(msg);	
 	}
 	
 	action subventionner_ganivelle{
 		string msg <- ""+SUBVENTIONNER_GANIVELLE+COMMAND_SEPARATOR+999/*pour un mettre un action_id bidon */;
-		do send_message_to_commune(msg,selected_commune.commune_name);	
+		do send_message_to_commune(msg,selected_district.commune_name);	
 	}
 	
 	action subventionner_habitat_adapte{	
 		string msg <- ""+SUBVENTIONNER_HABITAT_ADAPTE+COMMAND_SEPARATOR+999/*pour un mettre un action_id bidon */;
-		do send_message_to_commune(msg,selected_commune.commune_name);	
+		do send_message_to_commune(msg,selected_district.commune_name);	
 	}
 	
 	action send_message_from_leader(map<string,unknown> msg){
@@ -312,14 +303,14 @@ global{
 
 	action create_commune{
 		//int i <- 0;
-		create commune from: districts_shape with: [commune_name::string(read("NOM_RAC")),com_id::int(read("id_jeu")),com_large_name::string(read("NOM"))]{
+		create District from: districts_shape with: [commune_name::string(read("NOM_RAC")),com_id::int(read("id_jeu")),com_large_name::string(read("NOM"))]{
 			if(com_id = 0){	do die;	}
 			//location <- {5, i*20 + 10}; TODO uncomment this ??
 			//i <- i +1;
 		}
 		
 		do create_lever_buttons;
-		int nb_comm <- length(commune);
+		int nb_comm <- length(District);
 		int nb_lev_comm <- int(length(all_levers) / nb_comm); // nb de leviers par commune
 		int nb_rows_comm <- 2 ; // nb de rangées de leviers par commune
 		int width_screen_view <- 100;
@@ -356,103 +347,103 @@ global{
 			
 			if levers_def at 'LEVER_CREATE_DIKE' at 'active' = 'yes'{
 					create lever_create_dike {
-					my_commune <- commune[i];
+					my_commune <- District[i];
 					location<- (grille[i,2]).location - {0,3};
 				}
 			}
 			if levers_def at 'LEVER_RAISE_DIKE' at 'active' = 'yes'{
 	   			create lever_raise_dike {
-	   				my_commune <- commune[i];
+	   				my_commune <- District[i];
 	   				location<- (grille[i,2]).location + {0,1.5};
 	   			}	
 	   		}
 	   		if levers_def at 'LEVER_REPAIR_DIKE' at 'active' = 'yes'{
 	   			create lever_repair_dike {
-	   				my_commune <- commune[i];
+	   				my_commune <- District[i];
 	   				location<- (grille[i,3]).location - {0,3};
 	   			}
 	   		}
 	   		if levers_def at 'LEVER_AU_Ui_COAST_BORDER_AREA' at 'active' = 'yes'{
 		 		create lever_AUorUi_inCoastBorderArea {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,3]).location + {0,1.5};
 		 		}	
 		 	}
 		 	if levers_def at 'LEVER_AU_Ui_RISK_AREA' at 'active' = 'yes'{
 		 		create lever_AUorUi_inRiskArea {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,4]).location - {0,3};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_GANIVELLE' at 'active' = 'yes'{
 		 		create lever_ganivelle {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,4]).location + {0,1.5};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_Us_COAST_BORDER_RISK_AREA' at 'active' = 'yes'{
 		 		create lever_Us_outCoastBorderOrRiskArea {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location <- (grille[i,5]).location - {0,3};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_Us_COAST_BORDER_AREA' at 'active' = 'yes'{
 		 		create lever_Us_inCoastBorderArea {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,5]).location + {0,1.5};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_Us_RISK_AREA' at 'active' = 'yes'{
 		 		create lever_Us_inRiskArea {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,6]).location - {0,3};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_INLAND_DIKE' at 'active' = 'yes'{
 		 		create lever_inland_dike {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,6]).location + {0,1.5};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_NO_DIKE_CREATION' at 'active' = 'yes'{
 		 		create lever_no_dike_creation {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,7]).location - {0,3};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_NO_DIKE_RAISE' at 'active' = 'yes'{
 		 		create lever_no_dike_raise {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,7]).location + {0,1.5};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_NO_DIKE_REPAIR' at 'active' = 'yes'{
 		 		create lever_no_dike_repair {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,8]).location - {0,3};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_A_N_COAST_BORDER_RISK_AREA' at 'active' = 'yes'{
 		 		create lever_AtoN_inCoastBorderOrRiskArea {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,8]).location + {0,1.5};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA' at 'active' = 'yes'{
 		 		create lever_densification_outCoastBorderAndRiskArea {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,9]).location - {0,3};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_EXPROPRIATION' at 'active' = 'yes'{
 		 		create lever_expropriation {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,9]).location + {0,1.5};
 		 		}
 		 	}
 		 	if levers_def at 'LEVER_DESTROY_DIKE' at 'active' = 'yes'{
 		 		create lever_destroy_dike {
-		 			my_commune <- commune[i];
+		 			my_commune <- District[i];
 		 			location<- (grille[i,10]).location - {0,3};
 		 		}	
 		 	}
@@ -463,21 +454,21 @@ global{
 		loop i from:0 to:3{
 			create commune_action_button{
 				command <- "give_money";
-				displayName <- langs_def at "LDR_MSG_SEND_MONEY" at configuration_file["LANGUAGE"];
+				display_name <- langs_def at "LDR_MSG_SEND_MONEY" at configuration_file["LANGUAGE"];
 				location<- (grille[i,1]).location - {0,5};
-				my_commune <- commune[i];
+				my_commune <- District[i];
 			}
 			create commune_action_button{
 				command <- "take_money";
-				displayName <- langs_def at "LDR_MSG_WITHDRAW_MONEY" at configuration_file["LANGUAGE"];
+				display_name <- langs_def at "LDR_MSG_WITHDRAW_MONEY" at configuration_file["LANGUAGE"];
 				location<- (grille[i,1]).location - {0,1.5};
-				my_commune <- commune[i];
+				my_commune <- District[i];
 			}
 			create commune_action_button{
 				command <- "send_msg";
-				displayName <- langs_def at "LDR_MSG_SEND_MSG" at configuration_file["LANGUAGE"];
+				display_name <- langs_def at "LDR_MSG_SEND_MSG" at configuration_file["LANGUAGE"];
 				location<- (grille[i,1]).location + {0,2};
-				my_commune <- commune[i];
+				my_commune <- District[i];
 			}
 		}
 
@@ -497,7 +488,7 @@ species action_done schedules:[]{
 	int command <- -1 on_change: {label <- world.label_of_action(command);};
 	string label <- "no name";
 	int cost <- 0;	
-	bool is_applied  ->{round >= initial_application_round} ;
+	bool is_applied  ->{game_round >= initial_application_round} ;
 	int initial_application_round <- -1;
 	int command_round <- -1;
 	int round_delay -> {activated_levers sum_of (each.nb_rounds_delay)} ; // nb rounds of delay
@@ -539,7 +530,7 @@ species action_done schedules:[]{
 				}
 				default {res <-"error";}
 				}
-		return (res+ " "+(is_applied?("(à T"+initial_application_round+")"):("("+(initial_application_round-round)+")"+(is_delayed?"+"+round_delay:""))));
+		return (res+ " "+(is_applied?("(à T"+initial_application_round+")"):("("+(initial_application_round-game_round)+")"+(is_delayed?"+"+round_delay:""))));
 	}
 	
 	
@@ -662,7 +653,7 @@ species action_done schedules:[]{
 	}	
 	
 	aspect base{
-		if(selected_commune.commune_name = commune_name){
+		if(selected_district.commune_name = commune_name){
 			if !is_applied and requestAttention() {draw custom_shape()+0.5#m color: #red;}
 			draw custom_shape() color:selection_action_done=self? #lightyellow:color_tracked_profil() border:#black;
 			draw full_label() at:{location.x - 4.5#m, location.y} font: font("Arial", 14 , #bold) color:#black;
@@ -714,14 +705,14 @@ species action_button{
 	}
 }
 
-species commune{
+species District{
 	string commune_name;
 	string com_large_name;
 	string budget;
 	int com_id;
 	bool not_updated <- false;
 	geometry shape <- rectangle(50#m,10#m);
-	bool is_selected -> {selected_commune = self};
+	bool is_selected -> {selected_district = self};
 	list<lever> levers ;
 	
 	// Indicateurs calculés par le Modèle à l’initialisation. Lorsque Leader se connecte, le Modèle lui renvoie la valeur de ces indicateurs en même temps	
@@ -930,7 +921,7 @@ species activated_lever {
 //////////////////////////////////////////////////////////////////////////////////////////
 
 species lever{
-	commune my_commune ;
+	District my_commune ;
 	bool status_on <- true  ;// can be on or off . If off then the checkLeverActivation is not performed
 	float threshold;
 	float indicator;
@@ -1009,7 +1000,7 @@ species lever{
 			self.act_done <- a_act_done;
 			act_done_id <- a_act_done.id;
 			activation_time <-  machine_time + myself.timer_duration ;
-			round_creation <- round;
+			round_creation <- game_round;
 			add self to: myself.activation_queue;
 		}
 		ask world {do record_leader_activity("Levier "+myself.lever_type+" programmé à ", myself.my_commune.commune_name, a_act_done.label +"("+a_act_done+")");}
@@ -1123,7 +1114,7 @@ species cost_lever parent: lever{
 	
 	action apply_lever(activated_lever lev){
 		lev.applied <- true;
-		lev.round_application <-round;
+		lev.round_application <- game_round;
 		lev.lever_explanation <- player_msg;
 		lev.added_cost <- int(lev.act_done.cost * added_cost_percentage);
 		
@@ -1209,7 +1200,7 @@ species delay_lever parent: lever{
 	action informNetwork_shouldWaitLeaderToActivate(action_done act_done){
 		map<string, unknown> msg <-[];
 		put "action_done shouldWaitLeaderToActivate" key: LEADER_COMMAND in: msg;
-		put my_commune.commune_name key: COMMUNE in: msg;
+		put my_commune.commune_name key: DISTRICT_CODE in: msg;
 		put act_done.id key: "action_done id" in: msg;
 		put act_done.shouldWaitLeaderToActivate key: "action_done shouldWaitLeaderToActivate" in: msg;
 		ask world {do send_message_from_leader(msg);}
@@ -1416,7 +1407,7 @@ species cost_lever_if_no_associatedActionA_for_N_rounds_with_impacted_on_actionB
 	}	
 
 	action check_activation_at_new_round{
-		if round > 1{
+		if game_round > 1{
 			nb_rounds_before_activation <- nb_rounds_before_activation - 1;
 			do checkActivation_andImpactOnFirstElementOf(listOfImpactedAction);
 		}
@@ -1580,14 +1571,14 @@ species network_leader skills:[network]{
 			switch(cmd){
 				match UPDATE_PLAYER_ACTION { do update_action(m_contents); }
 				match NUM_ROUND{
-					round<-int(m_contents['num tour']);
+					game_round<-int(m_contents['num tour']);
 					//ask world { do write_profile; }
-					write "--- Tour "+round+" commence ---";
+					write "--- Tour "+game_round+" commence ---";
 					ask all_levers {do check_activation_at_new_round();}
 					ask world{do save_leader_records;}
 				}
 				match INDICATORS_T0{ //write m_contents;
-					ask commune where (each.commune_name = m_contents['commune_name']) {
+					ask District where (each.commune_name = m_contents['commune_name']) {
 						length_dikes_t0 <- int (m_contents['length_dikes_t0']);
 						length_dunes_t0 <- int (m_contents['length_dunes_t0']);
 						count_UA_urban_t0 <- int (m_contents['count_UA_urban_t0']);
@@ -1617,9 +1608,9 @@ species network_leader skills:[network]{
 				location <- any_location_in(polygon([{0,0}, {20,0},{20,100},{0,100},{0,0}]));
 				do init_from_map(msg);
 				ask world{
-					do add_action_done_to_profile(myself,round);	
+					do add_action_done_to_profile(myself,game_round);	
 				}
-				ask commune first_with (each.commune_name = commune_name) {
+				ask District first_with (each.commune_name = commune_name) {
 					do update_indicators_and_register_action_done (myself);
 				}
 			}
@@ -1640,15 +1631,15 @@ grid grille width: 4 height: 11 {
 	rgb color <- #white ;
 }
 
-species commune_action_button parent: nom_commune{
+species commune_action_button parent: District_Name{
 	geometry shape <- rectangle(17,3);
 	
 	string command;
-	commune my_commune;
+	District my_commune;
 
 	aspect default{
 		draw shape color: rgb(176,97,188) border: #black;
-		draw ""+displayName color:#white at: location - {length(displayName)/3,-0.5};
+		draw ""+display_name color:#white at: location - {length(display_name)/3,-0.5};
 	}
 	
 	action button_cliked {	
@@ -1673,8 +1664,8 @@ species commune_action_button parent: nom_commune{
 					match 3 {msgJoueur<-msg3;}
 					default {msgJoueur<-(values[MSG_123_OR_CUSTOMIZED]);}
 				}
-				put PRELEVER key: LEADER_COMMAND in: msg;
-				put my_commune.commune_name key: COMMUNE in: msg;
+				put COLLECT_REC key: LEADER_COMMAND in: msg;
+				put my_commune.commune_name key: DISTRICT_CODE in: msg;
 				put int(values[MSG_AMOUNT+" :"]) key: AMOUNT in: msg;
 				put msgJoueur key: PLAYER_MSG in:msg;
 
@@ -1706,8 +1697,8 @@ species commune_action_button parent: nom_commune{
 					match 3 {msgJoueur<-msg3;}
 					default {msgJoueur<-(values[MSG_123_OR_CUSTOMIZED]);}
 				}
-				put CREDITER key: LEADER_COMMAND in: msg;
-				put my_commune.commune_name key: COMMUNE in: msg;
+				put SUBSIDIZE key: LEADER_COMMAND in: msg;
+				put my_commune.commune_name key: DISTRICT_CODE in: msg;
 				put int(values[MSG_AMOUNT+" :"]) key: AMOUNT in: msg;
 				put msgJoueur key: PLAYER_MSG in:msg;
 
@@ -1744,7 +1735,7 @@ species commune_action_button parent: nom_commune{
 				}
 				map<string, string> msg <-[];
 				put MSG_TO_PLAYER key: LEADER_COMMAND in: msg;
-				put my_commune.commune_name key: COMMUNE in: msg;
+				put my_commune.commune_name key: DISTRICT_CODE in: msg;
 				put msgJoueur key: PLAYER_MSG in:msg;
 				
 				ask world {
@@ -1759,23 +1750,24 @@ species commune_action_button parent: nom_commune{
 	}
 }
 
-species nom_commune{
-	string displayName;
+species District_Name{
+	string display_name;
 	
 	aspect default{
-		draw ""+displayName color:#black font: font("Arial", 20 , #bold) at: location - {length(displayName)/2,0};
+		draw "" + display_name color:#black font: font("Arial", 20 , #bold) at: location - {length(display_name)/2,0};
 	}
 }
+//------------------------------ end of District_Name -------------------------------//
 
-experiment lead_the_game{
+experiment LittoSIM_GEN_Leader {
 	float minimum_cycle_duration <- 0.5;
 	output{
 		display levers{
 			graphics "Round" {
-				string msg_round <- langs_def at 'MSG_ROUND' at configuration_file["LANGUAGE"];
-				draw (msg_round + " : "+round)  at:{45,3} font: font("Arial", 20 , #bold) color:#red ;
+				string msg_round <- world.get_message('MSG_ROUND');
+				draw  (msg_round + " : " + game_round)  at: {45,3} font: font("Arial", 20 , #bold) color: #red ;
 			}
-			species nom_commune;
+			species District_Name;
 			species commune_action_button;
 			species lever_create_dike;
 			species lever_AUorUi_inCoastBorderArea;
@@ -1796,12 +1788,10 @@ experiment lead_the_game{
 			species lever_destroy_dike;
 			
 			event [mouse_down] action: user_click;
-			//event mouse_move action: action_move_infobulle;
 			
-			graphics "infobulle levier" transparency:0.4{
+			graphics "Lever tooltip" transparency:0.4{
 				if(explored_lever != nil and MOUSE_LOC !=nil){
 					geometry rec <- rectangle(20,0.7);
-					//draw rec at:MOUSE_LOC color:#black;
 					draw explored_lever.texte_infobulle()  at: (MOUSE_LOC /*-{9.8,0}*/) font: font("Arial", 12 , #bold) color: #red;
 				}
 			}

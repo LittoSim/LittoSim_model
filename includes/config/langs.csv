@@ -24,7 +24,6 @@ MSG_NEW_ROUND;Nouveau tour de jeu;New round
 MSG_GAME_DONE;Termine;Done
 MSG_SIM_NOT_STARTED;La simulation n'a pas encore commence;The simulation has not started yet
 MSG_NO_FLOOD_FILE_EVENT;Il n'y a pas de fichier de résultat Lisflood pour cet événement;There is no Lisflood result file for this event
-MSG_OK_CONTINUE;Cliquez sur OK pour continuer;Click ok to continue
 MSG_SUBMERSION_NUMBER;Indiquer le numéro de la submersion que vous voulez ré-afficher;Indicate the submersion number to re-display
 MSG_NUMBER;Numéro;Number
 HELP_MSG_REPAIR_DIKE;Cliquez sur la digue a rénover;Click on the dike to repair
@@ -117,7 +116,7 @@ MSG_CONNECTION_FROM;connexion de;connection from
 MSG_READ_ACTION;lire action;read action
 MSG_EXPROPRIATION_TRIGGERED;Procédure d'expropriation déclenchée pour l'UA;Expropriation procedure has been triggered by PA
 MSG_ERROR_PLAYER_ACTION;Problème de reconnaissance du type de Player Action;Recognition problem of Player Action type
-MSG_COMMUNE;commune;district
+MSG_COMMUNE;Commune;District
 MSG_DIKE_STATUS_PROBLEM;Problème de statut d'une digue;Dike status problem
 MSG_DUNE_STATUS_PROBLEM;Problème de statut d'une dune;Dune status problem
 MSG_FLOODING_TYPE_PROBLEM;Erreur dans le type d'événement de submersion;Match Error for flood event type

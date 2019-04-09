@@ -2,17 +2,17 @@
 APPLICATION_NAME;Caen
 
 [ Shapes]
-COMMUNE_SHAPE;../includes/config/caen/communes.shp;
+COMMUNE_SHAPE;../includes/config/caen/districts.shp;
 CONTOUR_ILE_INF_100M;../includes/config/caen/contour_neg_100m.shp;
-DEFENSES_COTES_SHAPE;../includes/config/caen/defense_cotes.shp;
-EMPRISE_SHAPE;../includes/config/caen/emprise_ZE.shp;
-DEM_FILE;../includes/config/caen/mnt_2016.asc;
-RUGOSITE_PAR_DEFAUT;../includes/config/oleron/oleron.n.ascii;
-ZONES_PPR_SHAPE;../includes/config/caen/PPR.shp;
-ROAD_SHAPE;../includes/config/caen/routes.shp;
-COASTLINES_SHAPE;../includes/config/caen/trait_cote.shp;
-UNAM_SHAPE;../includes/config/caen/zones.shp;
-ZONES_PROTEGEES_SHAPE;../includes/config/caen/zps_sic.shp;
+DEFENSES_COTES_SHAPE;../includes/config/caen/coastal_defenses.shp;
+EMPRISE_SHAPE;../includes/config/caen/emprise.shp;
+DEM_FILE;../includes/config/caen/dem.asc;
+RUGOSITE_PAR_DEFAUT;../includes/config/caen/rugosity.asc;
+ZONES_PPR_SHAPE;../includes/config/caen/rpp.shp;
+ROAD_SHAPE;../includes/config/caen/roads.shp;
+COASTLINES_SHAPE;../includes/config/caen/coastline.shp;
+UNAM_SHAPE;../includes/config/caen/land_use.shp;
+ZONES_PROTEGEES_SHAPE;../includes/config/caen/spa.shp;
 DEM_NB_COLS;667;
 DEM_NB_ROWS;504;
 CORRESPONDANCE_INSEE_COM_NOM;["76414"::"Martin-Eglise","76217"::"Dieppe","76192"::"Criel-sur-Mer","76545"::"Rouxmesnil-Bouteilles"];

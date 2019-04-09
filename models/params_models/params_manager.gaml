@@ -1,9 +1,9 @@
 /**
-* Name: paramsmain
+* Name: params_manager
 * Author: 
 */
 
-model paramsmain
+model paramsmanager
 
 import "params_all.gaml"
 

@@ -10,7 +10,7 @@ LOG_USER_ACTION;true;
 SAVE_SHP;false;
 
 [ Files]
-SHAPE_DEF_FILE;../includes/config/study_area_oleron.csv;
+SHAPE_DEF_FILE;../includes/config/study_area_caen.csv;
 ACTION_DEF_FILE;../includes/config/actions.csv;
 FLOODING_DEF_FILE;../includes/config/flooding.csv;
 LANG_DEF_FILE;../includes/config/langs.csv;
