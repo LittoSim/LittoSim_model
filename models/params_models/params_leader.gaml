@@ -54,5 +54,12 @@ global{
 	string MSG_AMOUNT;			
 	string MSG_123_OR_CUSTOMIZED;
 	string BTN_GET_REVENUE_MSG2;
+	
+	string get_lever_name(string lever_id){
+		return levers_def at lever_id at configuration_file["LANGUAGE"];
+	}
+	string get_lever_type(string lever_id){
+		return levers_def at lever_id at 'type';
+	}	
 }
 

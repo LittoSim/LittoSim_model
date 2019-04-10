@@ -516,7 +516,7 @@ species Activated_Lever {
 	//attributes sent through network
 	int id 					 <- length(Activated_Lever);
 	string district_code;
-	string lever_type;
+	string lever_name;
 	string lever_explanation <- "";
 	string p_action_id 		 <- "";
 	int nb_rounds_delay 	 <- 0;
@@ -526,7 +526,7 @@ species Activated_Lever {
 	
 	action init_from_map(map<string, string> m ){
 		id 					<- int(m["id"]);
-		lever_type 			<- m["lever_type"];
+		lever_name 			<- m["lever_name"];
 		district_code 		<- m["district_code"];
 		p_action_id 		<- m["p_action_id"];
 		added_cost 			<- int(m["added_cost"]);
@@ -540,7 +540,7 @@ species Activated_Lever {
 		map<string,string> res <- [
 			"OBJECT_TYPE"::"Activated_Lever",
 			"id"::id,
-			"lever_type"::lever_type,
+			"lever_name"::lever_name,
 			"district_code"::district_code,
 			"p_action_id"::p_action_id,
 			"added_cost"::string(added_cost),
@@ -572,9 +572,9 @@ species Lever {
 	bool timer_activated 	 	-> { !empty(activation_queue) };
 	bool has_activated_levers	-> { !empty(activated_levers) };
 	int timer_duration 		 	<- 240000;							// 1 minute = 60000 milliseconds //   4 mn = 240000
-	string profile_name		 	<-	"";
 	string lever_type		 	<-	"";
-	string box_title 		 	-> {lever_type +' ('+length(associated_actions)+')'};
+	string lever_name		 	<-	"";
+	string box_title 		 	-> {lever_name +' ('+length(associated_actions)+')'};
 	string progression_bar		<-	"";
 	string help_lever_msg 	 	<-	"";
 	string activation_label_L1	<-	"";
@@ -623,14 +623,15 @@ species Lever {
 			}
 			else{	threshold_reached <- false;	}	
 		}
-	} 
-	action apply_lever(Activated_Lever lev) {}
+	}
+	
+	action apply_lever(Activated_Lever lev);
 	
 	string info_of_next_activated_lever { return ""; }
 	
-	action check_activation_at_new_round {}
+	action check_activation_at_new_round;
 	
-	action cancel_lever(Activated_Lever lev){}
+	action cancel_lever(Activated_Lever lev);
 	
 	action checkActivation_andImpactOnFirstElementOf (list<Player_Action> list_p_action){
 		if !empty(list_p_action){
@@ -640,7 +641,7 @@ species Lever {
 	
 	action queue_activated_lever( Player_Action a_p_action){
 		create Activated_Lever number: 1 {
-			lever_type <- myself.lever_type;
+			lever_name <- myself.lever_name;
 			district_code <- myself.my_district.district_code;
 			self.p_action <- a_p_action;
 			p_action_id <- a_p_action.id;
@@ -648,7 +649,7 @@ species Lever {
 			round_creation <- game_round;
 			add self to: myself.activation_queue;
 		}
-		ask world {do record_leader_activity("Levier "+myself.lever_type+" programmé à ", myself.my_district.district_name, a_p_action.label +"("+a_p_action+")");}
+		ask world {do record_leader_activity("Levier "+myself.lever_name+" programmé à ", myself.my_district.district_name, a_p_action.label +"("+a_p_action+")");}
 	}
 
 	action toggle_status {
@@ -668,14 +669,14 @@ species Lever {
 		map values <- user_input("Message envoyé au joueur lorsque le levier se déclenche",
 			["Message :":: player_msg]);
 		player_msg <- string(values["Message :"]);
-		ask world {do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_district.district_name, "-> Le nouveau message envoyé au joueur est : "+ myself.player_msg);}
+		ask world {do record_leader_activity("Changer levier "+myself.lever_name+" à ", myself.my_district.district_name, "-> Le nouveau message envoyé au joueur est : "+ myself.player_msg);}
 	}
 	action change_lever_threshold_value{
-		map values <- user_input(("Le seuil actuel du levier "+lever_type+"\nest de "+string(threshold)),["Entrer la nouvelle valeur seuil du levier :":: threshold]);
+		map values <- user_input(("Le seuil actuel du levier "+lever_name+"\nest de "+string(threshold)),["Entrer la nouvelle valeur seuil du levier :":: threshold]);
 		float n_val  <- float(values["Entrer la nouvelle valeur seuil du levier :"]);
 		threshold <- n_val ;
 		
-		ask world {do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_district.district_name, "-> La nouvelle valeur seuil est : "+string(myself.threshold));}	
+		ask world {do record_leader_activity("Changer levier "+myself.lever_name+" à ", myself.my_district.district_name, "-> La nouvelle valeur seuil est : "+string(myself.threshold));}	
 	}
 	
 	float activation_time{
@@ -698,7 +699,7 @@ species Lever {
 	action cancel_next_activated_action{		
 		if !empty(activation_queue){
 			do cancel_lever(activation_queue[0]);
-			ask world {do record_leader_activity("Levier "+myself.lever_type+" annulé à ", myself.my_district.district_name,  " Annulation de " +myself.activation_queue[0].p_action);}
+			ask world {do record_leader_activity("Levier "+myself.lever_name+" annulé à ", myself.my_district.district_name,  " Annulation de " +myself.activation_queue[0].p_action);}
 			remove index: 0 from: activation_queue ;	
 		}
 	}
@@ -716,7 +717,7 @@ species Lever {
 	}
 	
 	rgb color_profile{
-		switch profile_name{
+		switch lever_type{
 			match "builder" {return #deepskyblue;}
 			match "soft defense" {return #lightgreen;}
 			match "withdrawal" {return #moccasin;}
@@ -735,12 +736,12 @@ species cost_lever parent: Lever{
 	int last_lever_amount <-0;
 	
 	action change_lever_added_cost_percentage{
-		map values <- user_input(("Le % actuel par rapport au cout du levier "+lever_type+"\nest de "+string(added_cost_percentage)),["Entrer le nouveau % :":: added_cost_percentage]);
+		map values <- user_input(("Le % actuel par rapport au cout du levier "+lever_name+"\nest de "+string(added_cost_percentage)),["Entrer le nouveau % :":: added_cost_percentage]);
 		float n_val <- float(values["Entrer le nouveau % :"]);
 		added_cost_percentage <- n_val;
 		
 		ask world {
-			do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_district.district_name, "-> Le nouveau % du levier est : "+string(myself.added_cost_percentage));
+			do record_leader_activity("Changer levier "+myself.lever_name+" à ", myself.my_district.district_name, "-> Le nouveau % du levier est : "+string(myself.added_cost_percentage));
 		}
 	}
 	
@@ -760,7 +761,7 @@ species cost_lever parent: Lever{
 		activation_label_L1 <- "Dernier "+(last_lever_amount>=0?"prélevement":"versement")+" : "+abs(last_lever_amount)+ ' By.';
 		activation_label_L2 <- "Total "+(last_lever_amount>=0?"prélevé":"versé")+" : "+string(abs(tot_lever_amont()))+' By';
 		
-		ask world {do record_leader_activity("Levier "+myself.lever_type+" validé à ", myself.my_district.district_name, myself.help_lever_msg + " : "+(lev.added_cost)+"By"+"("+lev.p_action+")");}
+		ask world {do record_leader_activity("Levier "+myself.lever_name+" validé à ", myself.my_district.district_name, myself.help_lever_msg + " : "+(lev.added_cost)+"By"+"("+lev.p_action+")");}
 	}
 	
 	int tot_lever_amont {
@@ -773,14 +774,13 @@ species delay_lever parent: Lever{
 	user_command "Change the % impact on the delay" action: change_lever_rounds_delay_added;
 	
 	int rounds_delay_added;
-	
 
 	action change_lever_rounds_delay_added{
-		map values <- user_input(("Le nb de tours de délai actuel du levier "+lever_type+"\nest de "+string(rounds_delay_added)),["Entrer le nouveau nb :":: rounds_delay_added]);
+		map values <- user_input(("Le nb de tours de délai actuel du levier "+lever_name+"\nest de "+string(rounds_delay_added)),["Entrer le nouveau nb :":: rounds_delay_added]);
 		int n_val <- int(values["Entrer le nouveau nb :"]);
 		rounds_delay_added <- n_val;
 		
-		ask world {do record_leader_activity("Changer levier "+myself.lever_type+" à ", myself.my_district.district_name, "-> Le nouveau nb de tours du levier est : "+string(myself.rounds_delay_added));}
+		ask world {do record_leader_activity("Changer levier "+myself.lever_name+" à ", myself.my_district.district_name, "-> Le nouveau nb de tours du levier est : "+string(myself.rounds_delay_added));}
 	}
 	
 	action checkActivation_andImpactOn (Player_Action p_action){
@@ -813,7 +813,7 @@ species delay_lever parent: Lever{
 		lev.p_action.shouldWaitLeaderToActivate <- false;
 		do inform_network_should_wait_lever_to_activate(lev.p_action);
 		
-		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_district.district_name, myself.help_lever_msg + " : "+(lev.nb_rounds_delay)+" tours"+"("+lev.p_action+")");}
+		ask world {do record_leader_activity(myself.lever_name+" déclenché à ", myself.my_district.district_name, myself.help_lever_msg + " : "+(lev.nb_rounds_delay)+" tours"+"("+lev.p_action+")");}
 	}
 	
 	action cancel_lever(Activated_Lever lev){
@@ -840,8 +840,8 @@ species lever_create_dike parent: cost_lever{
 	string progression_bar -> {""+my_district.length_created_dikes+ " m. / "+threshold+" * "+ my_district.length_dikes_t0+" m. à t0"};
 	
 	init{
-		lever_type <- levers_def at 'LEVER_CREATE_DIKE' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_CREATE_DIKE' at 'type';
+		lever_name <- world.get_lever_name('LEVER_CREATE_DIKE');
+		lever_type<- world.get_lever_type('LEVER_CREATE_DIKE');
 		threshold <- 0.2;
 		added_cost_percentage <- 0.25 ;
 		help_lever_msg <-"prélevement de la commune au prorata du linéaire construit : "+int(100*added_cost_percentage)+"% du prix de construction";
@@ -853,8 +853,8 @@ species lever_raise_dike parent: cost_lever{
 	float indicator -> {my_district.length_raised_dikes / my_district.length_dikes_t0};
 	string progression_bar -> {""+my_district.length_raised_dikes+ " m. / "+threshold+" * "+ my_district.length_dikes_t0+" m. à t0"};
 	init{
-		lever_type <- levers_def at 'LEVER_RAISE_DIKE' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_RAISE_DIKE' at 'type';
+		lever_name <- world.get_lever_name('LEVER_RAISE_DIKE');
+		lever_type<- world.get_lever_type('LEVER_RAISE_DIKE');
 		threshold <- 0.2;
 		added_cost_percentage <- 0.25 ;
 		help_lever_msg <-"prélevement de la commune au prorata du linéaire réhaussé : "+int(100*added_cost_percentage)+"% du prix de réhaussement";
@@ -868,8 +868,8 @@ species lever_repair_dike parent: cost_lever{
 	string progression_bar -> {""+my_district.length_repaired_dikes+ " m. / "+threshold+" * "+ my_district.length_dikes_t0+" m. à t0"};
 	
 	init{
-		lever_type <- levers_def at 'LEVER_REPAIR_DIKE' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_REPAIR_DIKE' at 'type';
+		lever_name <- world.get_lever_name('LEVER_REPAIR_DIKE');
+		lever_type<- world.get_lever_type('LEVER_REPAIR_DIKE');
 		threshold <- 0.2;
 		added_cost_percentage <- 0.25 ;
 		help_lever_msg <-"prélevement de la commune au prorata du linéaire rénové : "+int(100*added_cost_percentage)+"% du prix de rénovation ; si a aussi construit ou réhaussé";
@@ -883,8 +883,8 @@ species lever_AUorUi_inCoastBorderArea parent: delay_lever{
 	int indicator -> {my_district.count_AU_or_Ui_in_coast_border_area};
 	
 	init{
-		lever_type <- levers_def at 'LEVER_AU_Ui_COAST_BORDER_AREA' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_AU_Ui_COAST_BORDER_AREA' at 'type';
+		lever_name <- world.get_lever_name('LEVER_AU_Ui_COAST_BORDER_AREA');
+		lever_type<- world.get_lever_type('LEVER_AU_Ui_COAST_BORDER_AREA');
 		rounds_delay_added <- 2;
 		threshold <- 2.0;
 		help_lever_msg <-"Retard de "+rounds_delay_added+" tours";
@@ -904,8 +904,8 @@ species lever_AUorUi_inRiskArea parent: cost_lever{
 	int indicator -> {my_district.count_AU_or_Ui_in_risk_area};
 	
 	init{
-		lever_type <- levers_def at 'LEVER_AU_Ui_RISK_AREA' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_AU_Ui_RISK_AREA' at 'type';
+		lever_name <- world.get_lever_name('LEVER_AU_Ui_RISK_AREA');
+		lever_type<- world.get_lever_type('LEVER_AU_Ui_RISK_AREA');
 		threshold <- 1.0;
 		added_cost_percentage <- 0.5 ;
 		help_lever_msg <-"prélevement de la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de construction";
@@ -925,8 +925,8 @@ species lever_ganivelle parent: cost_lever{
 	int indicator -> {int(my_district.length_created_ganivelles / my_district.length_dunes_t0)};
 	
 	init{
-		lever_type <- levers_def at 'LEVER_GANIVELLE' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_GANIVELLE' at 'type';
+		lever_name <- world.get_lever_name('LEVER_GANIVELLE');
+		lever_type<- world.get_lever_type('LEVER_GANIVELLE');
 		threshold <- 0.1;
 		added_cost_percentage <- -0.25 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de ganivelle/m";
@@ -940,8 +940,8 @@ species lever_Us_outCoastBorderOrRiskArea parent: cost_lever{
 	int rounds_delay_added <- 0; //    -2;    ANNULE POUR L INSTANT CAR INCOHERENT
 	
 	init{
-		lever_type <- levers_def at 'LEVER_Us_COAST_BORDER_RISK_AREA' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_Us_COAST_BORDER_RISK_AREA' at 'type';
+		lever_name <- world.get_lever_name('LEVER_Us_COAST_BORDER_RISK_AREA');
+		lever_type<- world.get_lever_type('LEVER_Us_COAST_BORDER_RISK_AREA');
 		threshold <- 2.0;
 		added_cost_percentage <- -0.25 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût d'adaptation"; // ET avance de "+rounds_delay_added+" tours le dossier" ;
@@ -964,7 +964,7 @@ species lever_Us_outCoastBorderOrRiskArea parent: cost_lever{
 		activation_label_L1 <- "Dernier versement : "+(-1*last_lever_amount)+ ' By';
 		activation_label_L2 <- 'Total versé : '+string((-1*tot_lever_amont()))+' By';
 		
-		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_district.district_name, myself.help_lever_msg + " : "+lev.added_cost+"Ny : "+lev.nb_rounds_delay+" tours"+"("+lev.p_action+")");}
+		ask world {do record_leader_activity(myself.lever_name+" déclenché à ", myself.my_district.district_name, myself.help_lever_msg + " : "+lev.added_cost+"Ny : "+lev.nb_rounds_delay+" tours"+"("+lev.p_action+")");}
 			
 	}
 }
@@ -974,8 +974,8 @@ species lever_Us_inCoastBorderArea parent: cost_lever{
 	int indicator -> {my_district.count_Us_in_coast_border_area };
 	
 	init{
-		lever_type <- levers_def at 'LEVER_Us_COAST_BORDER_AREA' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_Us_COAST_BORDER_AREA' at 'type';
+		lever_name <- world.get_lever_name('LEVER_Us_COAST_BORDER_AREA');
+		lever_type<- world.get_lever_type('LEVER_Us_COAST_BORDER_AREA');
 		threshold <- 2.0;
 		added_cost_percentage <- -0.5 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût d'adaptation";
@@ -992,8 +992,8 @@ species lever_Us_inRiskArea parent: cost_lever{
 	int indicator -> {my_district.count_Us_in_risk_area };
 	
 	init{
-		lever_type <- levers_def at 'LEVER_Us_RISK_AREA' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_Us_RISK_AREA' at 'type';
+		lever_name <- world.get_lever_name('LEVER_Us_RISK_AREA');
+		lever_type<- world.get_lever_type('LEVER_Us_RISK_AREA');
 		threshold <- 2.0;
 		added_cost_percentage <- -0.5 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût d'adaptation";
@@ -1009,8 +1009,8 @@ species lever_inland_dike parent: delay_lever{
 	float indicator -> {my_district.length_inland_dikes / my_district.length_dikes_t0};
 	string progression_bar -> {""+my_district.length_inland_dikes+ " m. / "+threshold+" * "+ my_district.length_dikes_t0+" m. digues à t0"};
 	init{
-		lever_type <- levers_def at 'LEVER_INLAND_DIKE' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_INLAND_DIKE' at 'type';
+		lever_name <- world.get_lever_name('LEVER_INLAND_DIKE');
+		lever_type<- world.get_lever_type('LEVER_INLAND_DIKE');
 		rounds_delay_added <- -1;
 		threshold <- 0.01;
 		help_lever_msg <-"Avance de "+abs(rounds_delay_added)+" tour"+(abs(rounds_delay_added)>1?"s":"");
@@ -1025,7 +1025,7 @@ species lever_inland_dike parent: delay_lever{
 species cost_lever_if_no_associatedActionA_for_N_rounds_with_impacted_on_actionB parent: cost_lever {
 	int nb_rounds_before_activation;
 	int nb_activations <-0;
-	string box_title -> {lever_type +' ('+nb_activations+')'};
+	string box_title -> {lever_name +' ('+nb_activations+')'};
 	bool should_be_activated -> { (nb_rounds_before_activation  <0) and !empty(listOfImpactedAction)};
 	list<Player_Action> listOfImpactedAction;
 	
@@ -1057,7 +1057,7 @@ species cost_lever_if_no_associatedActionA_for_N_rounds_with_impacted_on_actionB
 		nb_rounds_before_activation <- int(threshold);
 		nb_activations <- nb_activations +1;
 		
-		ask world {do record_leader_activity(myself.lever_type+" déclenché à ", myself.my_district.district_name, myself.help_lever_msg + " : "+(lev.added_cost)+"By"+"("+lev.p_action+")");}
+		ask world {do record_leader_activity(myself.lever_name+" déclenché à ", myself.my_district.district_name, myself.help_lever_msg + " : "+(lev.added_cost)+"By"+"("+lev.p_action+")");}
 	}
 }
 
@@ -1077,24 +1077,24 @@ species lever_no_action_on_dike parent: cost_lever_if_no_associatedActionA_for_N
 
 species lever_no_dike_creation parent: lever_no_action_on_dike{
 	init{
-		lever_type <- levers_def at 'LEVER_NO_DIKE_CREATION' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_NO_DIKE_CREATION' at 'type';
+		lever_name <- world.get_lever_name('LEVER_NO_DIKE_CREATION');
+		lever_type<- world.get_lever_type('LEVER_NO_DIKE_CREATION');
 		help_lever_msg <-"Durant "+threshold+" tours consécutifs le joueur ne contruit pas de digue.\nVersement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
 	}	
 }
 
 species lever_no_dike_raise parent: lever_no_action_on_dike{
 	init{
-		lever_type <- levers_def at 'LEVER_NO_DIKE_RAISE' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_NO_DIKE_RAISE' at 'type';
+		lever_name <- world.get_lever_name('LEVER_NO_DIKE_RAISE');
+		lever_type<- world.get_lever_type('LEVER_NO_DIKE_RAISE');
 		help_lever_msg <-"Durant "+threshold+" tours consécutifs le joueur ne réhausse pas de digue.\nVersement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
 	}
 }
 
 species lever_no_dike_repair parent: lever_no_action_on_dike{
 	init{
-		lever_type <- levers_def at 'LEVER_NO_DIKE_REPAIR' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_NO_DIKE_REPAIR' at 'type';
+		lever_name <- world.get_lever_name('LEVER_NO_DIKE_REPAIR');
+		lever_type<- world.get_lever_type('LEVER_NO_DIKE_REPAIR');
 		help_lever_msg <-"Durant "+threshold+" tours consécutifs le joueur ne rénove pas de digue.\nVersement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de Ganivelle/m";
 	}
 }
@@ -1105,8 +1105,8 @@ species lever_AtoN_inCoastBorderOrRiskArea parent: cost_lever{
 	int indicator -> {my_district.count_A_to_N_in_coast_border_or_risk_area };
 	
 	init{
-		lever_type <- levers_def at 'LEVER_A_N_COAST_BORDER_RISK_AREA' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_A_N_COAST_BORDER_RISK_AREA' at 'type';
+		lever_name <- world.get_lever_name('LEVER_A_N_COAST_BORDER_RISK_AREA');
+		lever_type<- world.get_lever_type('LEVER_A_N_COAST_BORDER_RISK_AREA');
 		threshold <- 2.0;
 		added_cost_percentage <- -0.5 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût d'une densification préalablement réalisée hors ZL et ZI";
@@ -1123,8 +1123,8 @@ species lever_densification_outCoastBorderAndRiskArea parent: cost_lever{
 	int indicator -> {my_district.count_densification_out_coast_border_and_risk_area };
 	
 	init{
-		lever_type <- levers_def at 'LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA' at 'type';
+		lever_name <- world.get_lever_name('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
+		lever_type<- world.get_lever_type('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
 		threshold <- 2.0;
 		added_cost_percentage <- -0.25 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de densification";
@@ -1141,8 +1141,8 @@ species lever_expropriation parent: cost_lever{
 	int indicator -> {my_district.count_expropriation };
 	
 	init{
-		lever_type <- levers_def at 'LEVER_EXPROPRIATION' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_EXPROPRIATION' at 'type';
+		lever_name <- world.get_lever_name('LEVER_EXPROPRIATION');
+		lever_type<- world.get_lever_type('LEVER_EXPROPRIATION');
 		threshold <- 1.0;
 		added_cost_percentage <- -0.25 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût d'expropriation";
@@ -1160,8 +1160,8 @@ species Lever_Destroy_Dike parent: cost_lever{
 	string progression_bar -> {""+my_district.length_destroyed_dikes+ " m. / "+threshold+" * "+ my_district.length_dikes_t0+" m. à t0"};
 	
 	init{
-		lever_type <- levers_def at 'LEVER_DESTROY_DIKE' at configuration_file["LANGUAGE"];
-		profile_name<- levers_def at 'LEVER_DESTROY_DIKE' at 'type';
+		lever_name <- world.get_lever_name('LEVER_DESTROY_DIKE');
+		lever_type <- world.get_lever_type('LEVER_DESTROY_DIKE');
 		threshold <- 0.01;
 		added_cost_percentage <- -0.5 ;
 		help_lever_msg <-"Versement à la commune à hauteur de "+int(100*added_cost_percentage)+"% du coût de démantellement ; si a aussi exproprié";
