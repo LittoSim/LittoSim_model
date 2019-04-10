@@ -22,10 +22,7 @@ global{
 	//actions to acknwoledge client requests.
 	int ACTION_MESSAGE 	<- 22;
 	
-	//buttons
-	string TAKE_MONEY_FROM 	<- 'TAKE_MONEY_FROM';
-	string GIVE_MONEY_TO	<- 'GIVE_MONEY_TO';
-	string SEND_MESSAGE_TO	<- 'SEND_MESSAGE_TO';
+	string MSG_TO_PLAYER 			<- "MSG_TO_PLAYER";
 
 	string REORGANISATION_AFFICHAGE <- "Réorganiser l'affichage";
 	string ABROGER 					<- "Abroger";
@@ -37,8 +34,7 @@ global{
 	string DELAY 					<- "delay";
 	string ACTION_ID 				<- "action_id";
 	string DATA 					<- "data";
-	string PLAYER_MSG 				<- "player_msg";
-	string MSG_TO_PLAYER 			<- "MESSAGE_TO_PLAYER";
+	
 	
 	string SUBSIDIZE_GANIVELLE 		<- "SUBSIDIZE_GANIVELLE";
 	string SUBSIDIZE_ADAPTED_HABITAT 	<- "SUBSIDIZE_ADAPTED_HABITAT";

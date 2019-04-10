@@ -21,21 +21,26 @@ global{
 	string GAME_MANAGER 			<- "GAME_MANAGER";
 	string GAME_LEADER	     	 	<- "GAME_LEADER";
 	string LISTENER_TO_LEADER	 	<- "LISTENER_TO_LEADER";
-	string UPDATE_PLAYER_ACTION   	<- "UPDATE_PLAYER_ACTION";
-	string OBSERVER_MESSAGE_COMMAND <- "OBSERVER_MESSAGE_COMMAND";
-	
+
 	// Main-Leader network communication
-	string COLLECT_REC 				<- "COLLECT_RECETTE";
-	string SUBSIDIZE 				<- "SUBSIDIZE";
 	string LEADER_COMMAND   		<- "LEADER_COMMAND";
-	string AMOUNT 					<- "AMOUNT";
-	string BUDGET 					<- "BUDGET";
-	string DISTRICT_CODE 			<- "DISTRICT_CODE";
+	string RESPONSE_TO_LEADER 		<- "RESPONSE_TO_LEADER";
+	
+	string TAKE_MONEY_FROM 			<- 'TAKE_MONEY_FROM';
+	string GIVE_MONEY_TO			<- 'GIVE_MONEY_TO';
+	string SEND_MESSAGE_TO			<- 'SEND_MESSAGE_TO';
+	
 	string ASK_NUM_ROUND 			<- "LEADER_ASKS_FOR_ROUND_NUMBER";
 	string NUM_ROUND 				<- "ROUND_NUMBER";
 	string ASK_INDICATORS_T0		<- "LEADER_ASKS_FOR_T0_IDICATORS";
 	string INDICATORS_T0 			<- "INDICATORS_AT_T0";
-	string RETREIVE_ACTION_STATE 	<- "RETREIVE_ACTION_STATE";
+	string ASK_ACTION_STATE 		<- "LEADER_ASKS_FOR_ACTION_STATE";
+	string ACTION_STATE 		  	<- "ACTION_STATE";
+	
+	string AMOUNT 					<- "AMOUNT";
+	string BUDGET 					<- "BUDGET";
+	string DISTRICT_CODE 			<- "DISTRICT_CODE";
+	
 	string PLAYER_ACTION_ID 		<- "PLAYER_ACTION_ID";
 	string NEW_ACTIVATED_LEVER		<- "NEW_ACTIVATED_LEVER";
 	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
@@ -158,6 +163,19 @@ global{
 			}
 		}
 		return rslt;
+	}
+	
+	string LU_name_of_command (int command) {
+		switch command {
+			match ACTION_MODIFY_LAND_COVER_AU 	{	return "AU" ;	}
+			match ACTION_MODIFY_LAND_COVER_A 	{	return "A"  ;	}
+			match ACTION_MODIFY_LAND_COVER_U 	{	return "U"  ;	}
+			match ACTION_MODIFY_LAND_COVER_N 	{	return "N"  ;	}
+			match ACTION_MODIFY_LAND_COVER_AUs 	{	return "AUs";	}
+			match ACTION_MODIFY_LAND_COVER_Us 	{	return "Us" ;	}
+			match ACTION_MODIFY_LAND_COVER_Ui 	{	return "Ui" ;	}
+			match ACTION_EXPROPRIATION 			{	return "N"  ;	}
+		}
 	}
 	
 	string get_message(string code_msg){

@@ -122,3 +122,6 @@ MSG_DUNE_STATUS_PROBLEM;Problème de statut d'une dune;Dune status problem
 MSG_FLOODING_TYPE_PROBLEM;Erreur dans le type d'événement de submersion;Match Error for flood event type
 MSG_INSTALL_GANIVELLE;Installation de ganivelles;Installing ganivelles
 MSG_SEND_TO_LEADER;Envoi du message au Leader;Send message to Leader
+LDR_MSG_ACTION_RECEIVED;Action reçue;Action received
+LDR_MSG_ALREADY_VALIDATED;Déjà validée;Already validated
+LEV_THRESHOLD_VALUE;Valeur seuil;Threshold value

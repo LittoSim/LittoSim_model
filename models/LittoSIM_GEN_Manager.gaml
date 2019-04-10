@@ -54,9 +54,6 @@ global {
 	
 	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
     list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
-    list<string> lu_names_actions <- ['A','AU','N','Us','AUs'];
-	list<int> lu_codes_actions <- [ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
-								ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs];
 	
 	// other variables 
 	bool show_max_water_height	<- false ;						// defines if the water_height displayed on the map should be the max one or the current one
@@ -69,10 +66,10 @@ global {
 		// Create GIS agents
 		create District from: districts_shape with: [district_code::string(read("dist_code")),
 													 district_name::string(read("dist_sname")),
-													id::int(read("player_id"))]{
-			write world.get_message('MSG_COMMUNE') + " " + district_name + "(" + district_code + ")" + " " + id;
+													 dist_id::int(read("player_id"))]{
+			write world.get_message('MSG_COMMUNE') + " " + district_name + "(" + district_code + ")" + " " + dist_id;
 		}
-		districts_in_game <- (District where (each.id > 0)) sort_by (each.id);
+		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
 		
 		create Coastal_Defense from: coastal_defenses_shape with: [
 									coast_def_id::int(read("object_id")), type::string(read("type")), status::string(read("status")),
@@ -153,7 +150,7 @@ global {
 	} 
 	
 	int new_comers_to_dispatch 	 {
-		return round(sum(District where (each.id > 0) accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE);
+		return round(sum(District where (each.dist_id > 0) accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE);
 	}
 
 	action new_round {
@@ -180,12 +177,12 @@ global {
 	} 	
 	
 	int district_id (string xx){
-		District m <- District first_with (each.network_name = xx);
-		if(m = nil){
-			m <- (District first_with (xx contains each.district_code));
-			m.network_name <- xx;
+		District d <- District first_with (each.network_name = xx);
+		if(d = nil){
+			d <- (District first_with (xx contains each.district_code));
+			d.network_name <- xx;
 		}
-		return m.id;
+		return d.dist_id;
 	}
 
 	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
@@ -288,7 +285,7 @@ global {
 	action save_cells_as_shp_file {	save Cell type:"shp" to: shape_export_filePath with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];	}
 	action save_budget_data{
 		loop ix from: 1 to: 4 {
-			add (District first_with(each.id = ix)).budget to: districts_budgets[ix-1];
+			add (District first_with(each.dist_id = ix)).budget to: districts_budgets[ix-1];
 		}
 	}	
 
@@ -341,9 +338,9 @@ global {
 	
 	action calculate_districts_results{
 		string text <- "";
-			ask ((District where (each.id > 0)) sort_by (each.id)){
+			ask ((District where (each.dist_id > 0)) sort_by (each.dist_id)){
 				int tot <- length(cells) ;
-				int myid <-  self.id; 
+				int myid <-  self.dist_id; 
 				int U_0_5 <-0;		int U_1 <-0;		int U_max <-0;
 				int Us_0_5 <-0;		int Us_1 <-0;		int Us_max <-0;
 				int Udense_0_5 <-0;	int Udense_1 <-0;	int Udense_max <-0;
@@ -427,7 +424,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			flood_results <-  text;
 				
 			write get_message('MSG_FLOODED_AREA_DISTRICT');
-			ask ((District where (each.id > 0)) sort_by (each.id)){
+			ask ((District where (each.dist_id > 0)) sort_by (each.dist_id)){
 				flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ;
 					add flooded_area to: data_flooded_area; 
 					write ""+ district_name + " : " + flooded_area +" ha";
@@ -549,7 +546,7 @@ species Network_Game_Manager skills: [network]{
 					list<string> data <- string(m_contents["stringContents"]) split_with COMMAND_SEPARATOR;
 					int id_dist <- world.district_id (m_sender);
 					if(int(data[0]) = CONNECTION_MESSAGE){ // a client district wants to connect
-						ask(District where(each.id = id_dist)){
+						ask(District where(each.dist_id = id_dist)){
 							do inform_current_round;
 							do inform_budget_update;
 						}
@@ -557,7 +554,7 @@ species Network_Game_Manager skills: [network]{
 					}
 					else if(int(data[0]) = REFRESH_ALL){ // a player asks to refresh his GUI
 						write " Update ALL ! " + id_dist + " " + world.table_correspondance_insee_com_nom_rac at (id_dist);
-						do send_data_to_district(first(District where(each.id = id_dist)));
+						do send_data_to_district(first(District where(each.dist_id = id_dist)));
 					}
 					else{
 						if(game_round > 0) {
@@ -603,10 +600,10 @@ species Network_Game_Manager skills: [network]{
 									if(log_user_action){
 										save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + data) to: log_export_filePath rewrite: false type:"csv";
 									}
-									ask District first_with(each.id = world.district_id (self.district_code)) {
-										do record_payment_for_player_action(myself); // updating players payment (server side)
+									ask District first_with(each.dist_id = world.district_id (self.district_code)) {
+										budget <- int(budget - myself.cost);					// updating players payment (server side)
 									}
-								}
+								} // end of create Player_Action
 							}
 						}
 					}
@@ -654,9 +651,10 @@ species Network_Game_Manager skills: [network]{
 						acknowledge <- true;
 					}
 				}
-				match_one lu_codes_actions {
+				match_one [ ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
+							ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs ] {
 					ask Land_Use first_with(each.id = element_id){
-			 			do modify_LU (lu_names_actions[lu_codes_actions index_of myself.command]);
+			 			do modify_LU (world.LU_name_of_command(myself.command));
 			 		  	not_updated <- true;
 			 		  	acknowledge <- true;
 			 		}
@@ -826,13 +824,13 @@ species Network_Listener_To_Leader skills:[network]{
 			string cmd <- m_contents[LEADER_COMMAND];
 			write "leader command : " + cmd;
 			switch(cmd){
-				match SUBSIDIZE {
+				match GIVE_MONEY_TO {
 					string dist_code 	 <- m_contents[DISTRICT_CODE];
 					int amount 			 <- int(m_contents[AMOUNT]);
 					District d 			 <- District first_with(each.district_code = dist_code);
 					d.budget 			 <- d.budget + amount;
 				}
-				match COLLECT_REC {
+				match TAKE_MONEY_FROM {
 					string dist_code 	 <- m_contents[DISTRICT_CODE];
 					int amount 			 <- int(m_contents[AMOUNT]); 
 					District d 			 <- District first_with(each.district_code = dist_code);
@@ -840,7 +838,7 @@ species Network_Listener_To_Leader skills:[network]{
 				}
 				match ASK_NUM_ROUND 		 {	do inform_leader_round_number;	}
 				match ASK_INDICATORS_T0 	 {	do inform_leader_indicators_t0;	}
-				match RETREIVE_ACTION_STATE  {
+				match ASK_ACTION_STATE  	 {
 					ask Player_Action { is_sent_to_leader <- false ; }
 				}
 				match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
@@ -868,8 +866,8 @@ species Network_Listener_To_Leader skills:[network]{
 	reflex inform_leader_action_state when: cycle mod 10 = 0 {
 		loop act over: Player_Action where (!each.is_sent_to_leader){
 			map<string,string> msg <- act.build_map_from_attributes();
-			put UPDATE_PLAYER_ACTION 	key: OBSERVER_MESSAGE_COMMAND in:msg ;
-			do send to: GAME_LEADER 	contents:msg;
+			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg ;
+			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
 			write "" + world.get_message('MSG_SEND_TO_LEADER') + " : " + msg;
 		}
@@ -877,16 +875,16 @@ species Network_Listener_To_Leader skills:[network]{
 	
 	action inform_leader_round_number {
 		map<string,string> msg <- [];
-		put NUM_ROUND 			key: OBSERVER_MESSAGE_COMMAND 	in:msg ;
-		put string(game_round) 	key: NUM_ROUND 					in: msg;
-		do send to: GAME_LEADER contents:msg;
+		put NUM_ROUND 			key: RESPONSE_TO_LEADER 	in: msg ;
+		put string(game_round) 	key: NUM_ROUND 				in: msg;
+		do send to: GAME_LEADER contents: msg;
 	}
 				
 	action inform_leader_indicators_t0  {
-		ask District where (each.id > 0) {
+		ask District where (each.dist_id > 0) {
 			map<string,string> msg <- self.my_indicators_t0;
-			put INDICATORS_T0 		key: OBSERVER_MESSAGE_COMMAND 	in: msg;
-			put district_code 		key: DISTRICT_CODE 				in: msg;
+			put INDICATORS_T0 		key: RESPONSE_TO_LEADER 	in: msg;
+			put district_code 		key: DISTRICT_CODE 			in: msg;
 			ask myself { do send to: GAME_LEADER contents: msg; }
 		}		
 	}
@@ -930,11 +928,13 @@ species Player_Action schedules:[]{
 		map<string,string> res <- ["OBJECT_TYPE"::"Player_Action", "id"::id, "element_id"::string(element_id),
 			"command"::string(command), "label"::label, "cost"::string(cost),
 			"initial_application_round"::string(initial_application_round), "is_inland_dike"::string(is_inland_dike),
-			"is_in_risk_area"::string(is_in_risk_area), "is_in_coast_border_area"::string(is_in_coast_border_area), "is_expropriation"::string(is_expropriation),
-			"is_in_protected_area"::string(is_in_protected_area), "previous_lu_name"::previous_lu_name, "action_type"::action_type,
-			"locationx"::string(location.x), "locationy"::string(location.y), "is_applied"::string(is_applied), "is_sent"::string(is_sent),
-			"command_round"::string(command_round), "element_shape"::string(element_shape), "length_coast_def"::string(length_coast_def),
-			"a_lever_has_been_applied"::string(a_lever_has_been_applied)];
+			"is_in_risk_area"::string(is_in_risk_area), "is_in_coast_border_area"::string(is_in_coast_border_area),
+			"is_expropriation"::string(is_expropriation), "is_in_protected_area"::string(is_in_protected_area),
+			"previous_lu_name"::previous_lu_name, "action_type"::action_type, "locationx"::string(location.x),
+			"locationy"::string(location.y), "is_applied"::string(is_applied), "is_sent"::string(is_sent),
+			"command_round"::string(command_round), "element_shape"::string(element_shape),
+			"length_coast_def"::string(length_coast_def), "a_lever_has_been_applied"::string(a_lever_has_been_applied)];
+			
 			put district_code at: DISTRICT_CODE in: res;
 			int i <- 0;
 			loop pp over:element_shape.points{
@@ -1319,7 +1319,7 @@ species Land_Use {
 //------------------------------ End of Land_Use -------------------------------//
 
 species District {	
-	int id <-0;
+	int dist_id <-0;
 	string district_code; 
 	string district_name;
 	string network_name;
@@ -1384,14 +1384,12 @@ species District {
 		write district_name + "-> tax " + received_tax + " ; budget "+ budget;
 	}
 	
-	action record_payment_for_player_action (Player_Action act){	budget <- int(budget - act.cost);	}
-	
 	action calculate_indicators_t0 {
 		list<Coastal_Defense> my_coast_def <- Coastal_Defense where (each.district_code = district_code);
 		put string(my_coast_def where (each.type = DIKE) sum_of (each.shape.perimeter)) key: "length_dikes_t0" in: my_indicators_t0;
 		put string(my_coast_def where (each.type = DUNE) sum_of (each.shape.perimeter)) key: "length_dunes_t0" in: my_indicators_t0;
 		put string(length(LUs where (each.isUrbanType))) key: "count_LU_urban_t0" in: my_indicators_t0; // built cells (U , AU, Us and AUs)
-		put string(length(LUs where (each.isUrbanType and not(each.isAdapted) and each intersects first(Coastal_Border_Area)))) key: "count_LU_UandAU_is_in_coast_border_area_t0" in: my_indicators_t0; // non adapted built cells in littoral area (<400m)
+		put string(length(LUs where (each.isUrbanType and not(each.isAdapted) and each intersects first(Coastal_Border_Area)))) key: "count_LU_U_and_AU_is_in_coast_border_area_t0" in: my_indicators_t0; // non adapted built cells in littoral area (<400m)
 		put string(length(LUs where (each.isUrbanType and each intersects all_flood_risk_area))) key: "count_LU_urban_in_flood_risk_area_t0" in: my_indicators_t0; // built cells in flooded area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_flood_risk_area))) key: "count_LU_urban_dense_in_flood_risk_area_t0" in: my_indicators_t0; // dense cells in risk area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects union(Coastal_Border_Area)))) key: "count_LU_urban_dense_is_in_coast_border_area_t0" in: my_indicators_t0; //dense cells in littoral area
@@ -1439,7 +1437,8 @@ species Inland_Dike_Area{		aspect base {	draw shape color: rgb (100, 100, 205,12
 //---------------------------- Experiment definiton -----------------------------//
 
 experiment LittoSIM_GEN_Manager type: gui{
-	float minimum_cycle_duration <- 0.5;
+	init { minimum_cycle_duration <- 0.5; }
+	
 	parameter "Log User Actions" 	var:log_user_action <- true;
 	parameter "Connect to ActiveMQ" var:activemq_connect<- true;
 	
@@ -1471,10 +1470,10 @@ experiment LittoSIM_GEN_Manager type: gui{
 		}			
 		display "Budgets" {
 			chart "Districts' budgets" type: series {
-			 	data (District first_with(each.id =1)).district_name value:districts_budgets[0] color:#red;
-			 	data (District first_with(each.id =2)).district_name value:districts_budgets[1] color:#blue;
-			 	data (District first_with(each.id =3)).district_name value:districts_budgets[2] color:#green;
-			 	data (District first_with(each.id =4)).district_name value:districts_budgets[3] color:#black;			
+			 	data (District first_with(each.dist_id =1)).district_name value:districts_budgets[0] color:#red;
+			 	data (District first_with(each.dist_id =2)).district_name value:districts_budgets[1] color:#blue;
+			 	data (District first_with(each.dist_id =3)).district_name value:districts_budgets[2] color:#green;
+			 	data (District first_with(each.dist_id =4)).district_name value:districts_budgets[3] color:#black;			
 			}
 		}
 		display "Barplots"{
@@ -1511,65 +1510,65 @@ experiment LittoSIM_GEN_Manager type: gui{
 		}
 		display "Flooded area per district"{
 			chart "Flooded area per district" type: series{
-				datalist value: length(District)= 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_flooded_area),
-																 ((District first_with(each.id = 2)).data_flooded_area),
-																 ((District first_with(each.id = 3)).data_flooded_area),
-																 ((District first_with(each.id = 4)).data_flooded_area)]
-						color:[#red,#blue,#green,#black] legend: (((District where (each.id > 0)) sort_by (each.id)) collect each.district_name); 			
+				datalist value: length(District)= 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_flooded_area),
+																 ((District first_with(each.dist_id = 2)).data_flooded_area),
+																 ((District first_with(each.dist_id = 3)).data_flooded_area),
+																 ((District first_with(each.dist_id = 4)).data_flooded_area)]
+						color:[#red,#blue,#green,#black] legend: (((District where (each.dist_id > 0)) sort_by (each.dist_id)) collect each.district_name); 			
 			}
 		}
 		display "Flooded U area per district"{
 			chart "Flooded U area per district" type: series{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totU),
-																 ((District first_with(each.id = 2)).data_totU),
-																 ((District first_with(each.id = 3)).data_totU),
-																 ((District first_with(each.id = 4)).data_totU)]
-						color:[#red,#blue,#green,#black] legend: (((District where (each.id > 0)) sort_by (each.id)) collect each.district_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totU),
+																 ((District first_with(each.dist_id = 2)).data_totU),
+																 ((District first_with(each.dist_id = 3)).data_totU),
+																 ((District first_with(each.dist_id = 4)).data_totU)]
+						color:[#red,#blue,#green,#black] legend: (((District where (each.dist_id > 0)) sort_by (each.dist_id)) collect each.district_name); 			
 			}
 		}
 		display "Flooded Us area per district"{
 			chart "Flooded Us area per district" type: series{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totUs),
-																 ((District first_with(each.id = 2)).data_totUs),
-																 ((District first_with(each.id = 3)).data_totUs),
-																 ((District first_with(each.id = 4)).data_totUs)]
-						color:[#red,#blue,#green,#black] legend: (((District where (each.id > 0)) sort_by (each.id)) collect each.district_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totUs),
+																 ((District first_with(each.dist_id = 2)).data_totUs),
+																 ((District first_with(each.dist_id = 3)).data_totUs),
+																 ((District first_with(each.dist_id = 4)).data_totUs)]
+						color:[#red,#blue,#green,#black] legend: (((District where (each.dist_id > 0)) sort_by (each.dist_id)) collect each.district_name); 			
 			}
 		}
 		display "Flooded dense U area per district"{
 			chart "Flooded dense U area per district" type: series{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totUdense),
-																 ((District first_with(each.id = 2)).data_totUdense),
-																 ((District first_with(each.id = 3)).data_totUdense),
-																 ((District first_with(each.id = 4)).data_totUdense)]
-						color:[#red,#blue,#green,#black] legend: (((District where (each.id > 0)) sort_by (each.id)) collect each.district_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totUdense),
+																 ((District first_with(each.dist_id = 2)).data_totUdense),
+																 ((District first_with(each.dist_id = 3)).data_totUdense),
+																 ((District first_with(each.dist_id = 4)).data_totUdense)]
+						color:[#red,#blue,#green,#black] legend: (((District where (each.dist_id > 0)) sort_by (each.dist_id)) collect each.district_name); 			
 			}
 		}
 		display "Flooded AU area per district"{
 			chart "Flooded AU area per district" type: series{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totAU),
-																 ((District first_with(each.id = 2)).data_totAU),
-																 ((District first_with(each.id = 3)).data_totAU),
-																 ((District first_with(each.id = 4)).data_totAU)]
-						color:[#red,#blue,#green,#black] legend: (((District where (each.id > 0)) sort_by (each.id)) collect each.district_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totAU),
+																 ((District first_with(each.dist_id = 2)).data_totAU),
+																 ((District first_with(each.dist_id = 3)).data_totAU),
+																 ((District first_with(each.dist_id = 4)).data_totAU)]
+						color:[#red,#blue,#green,#black] legend: (((District where (each.dist_id > 0)) sort_by (each.dist_id)) collect each.district_name); 			
 			}
 		}
 		display "Flooded N area per district"{
 			chart "Flooded N area per district" type: series{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totN),
-																 ((District first_with(each.id = 2)).data_totN),
-																 ((District first_with(each.id = 3)).data_totN),
-																 ((District first_with(each.id = 4)).data_totN)]
-						color:[#red,#blue,#green,#black] legend: (((District where (each.id > 0)) sort_by (each.id)) collect each.district_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totN),
+																 ((District first_with(each.dist_id = 2)).data_totN),
+																 ((District first_with(each.dist_id = 3)).data_totN),
+																 ((District first_with(each.dist_id = 4)).data_totN)]
+						color:[#red,#blue,#green,#black] legend: (((District where (each.dist_id > 0)) sort_by (each.dist_id)) collect each.district_name); 			
 			}
 		}
 		display "Flooded A area per district"{
 			chart "Flooded A area per district" type: series{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.id = 1)).data_totA),
-																 ((District first_with(each.id = 2)).data_totA),
-																 ((District first_with(each.id = 3)).data_totA),
-																 ((District first_with(each.id = 4)).data_totA)]
-						color:[#red,#blue,#green,#black] legend: (((District where (each.id > 0)) sort_by (each.id)) collect each.district_name); 			
+				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totA),
+																 ((District first_with(each.dist_id = 2)).data_totA),
+																 ((District first_with(each.dist_id = 3)).data_totA),
+																 ((District first_with(each.dist_id = 4)).data_totA)]
+						color:[#red,#blue,#green,#black] legend: (((District where (each.dist_id > 0)) sort_by (each.dist_id)) collect each.district_name); 			
 			}
 		}
 	}
