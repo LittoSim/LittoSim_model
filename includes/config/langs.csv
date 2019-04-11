@@ -26,23 +26,12 @@ MSG_SIM_NOT_STARTED;La simulation n'a pas encore commence;The simulation has not
 MSG_NO_FLOOD_FILE_EVENT;Il n'y a pas de fichier de résultat Lisflood pour cet événement;There is no Lisflood result file for this event
 MSG_SUBMERSION_NUMBER;Indiquer le numéro de la submersion que vous voulez ré-afficher;Indicate the submersion number to re-display
 MSG_NUMBER;Numéro;Number
-HELP_MSG_REPAIR_DIKE;Cliquez sur la digue a rénover;Click on the dike to repair
+HELP_MSG_REPAIR_DIKE;Cliquez sur la digue à rénover;Click on the dike to repair
 HELP_MSG_CREATE_DIKE;Cliquez aux deux extrémités du linéaire de digue;Click on the two extremities of the dike
-HELP_MSG_DESTROY_DIKE;Cliquez sur la digue a démanteler;Click on the dike to destroy
-HELP_MSG_RAISE_DIKE;Cliquer sur la digue a rehausser;Click on the dike to raise
+HELP_MSG_DESTROY_DIKE;Cliquez sur la digue à démanteler;Click on the dike to destroy
+HELP_MSG_RAISE_DIKE;Cliquer sur la digue à rehausser;Click on the dike to raise
 HELP_MSG_INSTALL_GANIVELLE;Cliquez sur la dune pour installer une ganivelle;Click on the dune to install a ganivelle
-HELP_MSG_MODIFY_LAND_COVER_AU;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_A;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_U;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_N;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_FROM_AU_TO_N;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_FROM_A_TO_N;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_AUs;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_Us;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_Ui;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_EXPROPRIATION;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_AUs_SUBSIDY;Cliquez sur la cellule a modifier;Click on the cell to edit
-HELP_MSG_MODIFY_LAND_COVER_Us_SUBSIDY;Cliquez sur la cellule a modifier;Click on the cell to edit
+HELP_MSG_MODIFY_LAND_COVER;Cliquez sur la cellule à modifier;Click on the cell to edit
 HELP_MSG_INSPECT_LAND_USE;Glissez le pointeur sur les cellules a inspecter;Drag the pointer on the cells to inspect
 HELP_MSG_INSPECT_DIKE;Glissez le pointeur sur les digues et dunes;Drag the pointer on the dikes to inspect
 LDR_MSG_SEND_MONEY;Envoyer de l'argent;Send money
@@ -63,9 +52,9 @@ MSG_TO_CANCEL;pour annuler;to cancel
 BTN_GIVE_MONEY_MSG1;L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez;Not translated yet
 BTN_GIVE_MONEY_MSG2;Les autorités subventionnent vos actions de gestion des risques. Vous recevez;Not translated yet
 BTN_GIVE_MONEY_MSG3;Vos efforts en matière de gestion des risques sont financierement encourages. Vous recevez;Not translated yet
-BTN_GIVE_MONEY_MSG4;Indiquer le montant envoyé a ;Not translated yet
+BTN_GIVE_MONEY_MSG4;Indiquer le montant envoyé à;Indicate the amount sent to
 MSG_AMOUNT;Montant;Amount
-MSG_123_OR_CUSTOMIZED;Message (1,2,3 ou message personnalise); Message (1,2,3 or a customized message)
+MSG_123_OR_CUSTOMIZED;Message (1,2,3 ou message personnalise);Message (1,2,3 or a customized message)
 BTN_SEND_MSG_MSG0;Indiquer le message envoyé a;Indicate the message sent to
 BTN_SEND_MSG_MSG1;Un renforcement de la loi littorale retarde vos mesures de gestion du risque;Not translated yet
 BTN_SEND_MSG_MSG2;L'agence du risque désapprouvé votre gestion du risque : vos dossiers sont retardes;Not translated yet
@@ -75,7 +64,7 @@ BTN_EMPTY_MSG_TO_CANCEL;message vide pour annuler;empty message to cancel
 BTN_GET_REVENUE_MSG1;Vous allez prélever une recette en provenance de;You will take a tax from
 BTN_GET_REVENUE_MSG2;Mettre un montant de 0 pour annuler;Put an amount of 0 to cancel
 BTN_GET_REVENUE_MSG3;Montant de la recette;Amount of the revenue
-BTN_SUBSIDIZE_MSG1;Vous allez subventionner la commune de ;You will subsidize the district of
+BTN_SUBSIDIZE_MSG1;Vous allez subventionner la commune de;You will subsidize the district of
 BTN_SUBSIDIZE_MSG3;Montant de la subvention;Amount of the subsidy
 MSG_WARNING;Avertissement;Warning
 PLR_OVERFLOW_WARNING;Vous avez atteint la capacité maximum de votre panier. Veuillez valider votre panier avant de continuer;You have reached the maximum capacity of your basket. Please validate your basket before to proceed
@@ -92,17 +81,17 @@ LEGEND_NAME_ACTIONS;€ Actions envisagées;$ Projected actions
 MSG_INITIAL_BUDGET;Budget initial;Initial budget
 MSG_REMAINING_BUDGET;Budget restant;Remaining budget
 MSG_SIM_STARTED_ROUND1;La simulation démarre. C'est le tour 1;Simulation starts. It's round 1
-MSG_POSSIBLE_REGLEMENTATION_DELAY;La zone de travaux est soumise a des contraintes réglementaires.\nLe dossier est susceptible d’être retarde.\nSouhaitez vous poursuivre ?;Not translated yet
+MSG_POSSIBLE_REGLEMENTATION_DELAY;La zone de travaux est soumise a des contraintes réglementaires.\nLe dossier est susceptible d’être retardé.\nSouhaitez vous poursuivre ?;Not translated yet
 MSG_ITS_ROUND;C'est le tour;It's round
 MSG_THE_ROUND;Le tour;The round
-MSG_HAS_STARTED;a commence;has started
+MSG_HAS_STARTED;a commencé;has started
 MSG_TAXES_RECEIVED_FROM;Vous avez perçu des impôts de;You received taxes from
 MSG_DISTRICT_RECEIVE;Votre commune accueille;Your district receives
 MSG_NEW_COMERS;nouveaux arrivants;new comers
 MSG_DISTRICT_POPULATION;La population de votre commune est de;The population of your district is
 MSG_INHABITANTS;habitants;inhabitants
-MSG_EXPROPRIATION_PROCEDURE;Vous allez entamer une procedure d'expropriation.\nSouhaitez-vous continuer ?;You will start a procedure of expropriation.\nDo you want to proceed ?
-MSG_IMPOSSIBLE_DELETE_ADAPTED;Impossible de supprimer un habitat adapte;Impossible to delete an adapted habitation
+MSG_EXPROPRIATION_PROCEDURE;Vous allez entamer une procédure d'expropriation.\nSouhaitez-vous continuer ?;You will start a procedure of expropriation.\nDo you want to proceed ?
+MSG_IMPOSSIBLE_DELETE_ADAPTED;Impossible de supprimer un habitat adapté;Impossible to delete an adapted habitation
 MSG_ROUND;Tour;Round
 MSG_IMPOSSIBLE_NORMALLY;impossible normalement;normally impossible
 MSG_FLOODED_AREA_DISTRICT;Surface inondée par commune;Flooded area per district
@@ -125,3 +114,31 @@ MSG_SEND_TO_LEADER;Envoi du message au Leader;Send message to Leader
 LDR_MSG_ACTION_RECEIVED;Action reçue;Action received
 LDR_MSG_ALREADY_VALIDATED;Déjà validée;Already validated
 LEV_THRESHOLD_VALUE;Valeur seuil;Threshold value
+LEV_MSG_SENT_TRIGGER_LEVER;Message envoyé au joueur lorsque le levier se déclenche;Message sent to the player when the lever is triggered
+LEV_MESSAGE;Message;Message
+LEV_CURRENT_THRESHOLD_LEVER;Le seuil actuel du levier;The actual threshold of lever
+LEV_MSG_IS_ABOUT;est de;is about
+LEV_MSG_LEVER_HELP;Aide levier;Lever help
+LEV_NEW_THRESHOLD_VALUE;Entrer la nouvelle valeur seuil du levier;Enter the new threshold value of the lever
+LEV_ACTUAL_PERCENTAGE_COST;Le pourcentage actuel par rapport au coût du levier;The actual percentage compared to the lever cost
+LEV_ENTER_THE_NEW;Entrer le nouveau;Enter the new one
+LEV_ACTUAL_DELAY;Le nombre de tours de délai actuel du levier;The actual rounds number of the lever
+LEV_CREATE_DIKE_HELPER1;Prélevement de la commune à hauteur de;Not translated yet
+LEV_CREATE_DIKE_HELPER2;du coût de l'action;of the action cost
+LEV_CREATE_DIKE_PLAYER;Les autorités réorientent leur politique: vos actions vous coutent plus cher que prévu.;The authorities are reorienting their policies: your actions cost you more than expected.
+LEV_REPAIR_DIKE_PLAYER;Les coûts dans les BTP augmentent considérablement;BTP costs are increasing considerably
+LEV_COAST_BORDER_AREA_HELPER1;Retard de;A delay of
+LEV_COAST_BORDER_AREA_PLAYER;Un renforcement de la loi Littoral retarde vos projets;An enhancement of littoral laws delays your projects
+LEV_GANIVELLE_PLAYER;Le gouvernement encourage les pratiques vertueuses de gestion intégrée des risques;The government promotes integrated virtuous practices of risks
+LEV_GANIVELLE_HELPER1;Versement à la commune à hauteur de;Giving the district about
+LEV_GANIVELLE_HELPER2;du coût de ganivelle;of the cost of ganivelle
+LEV_ADAPTATION_HELPER2;du coût d'adaptation;of the adaptation cost
+LEV_ADAPTATION_PLAYER;Le gouvernement encourage les stratégies de réduction de la vulnérabilité;The government promotes vulnerability reduction strategies
+LEV_ADAPTATION_HELPER1;pour la prochaine adaptation;for the next adaptation
+LEV_INLAND_HELPER1;Avance de;An advance of
+LEV_INLAND_PLAYER;Des aides existent de la part du gouvernement pour renforcer la gestion intégrée des risques;Government subventions are available to strengthen integrated risk management
+LEV_WITHDRAWAL_PLAYER;Une aide spéciale est versée aux communes engagées dans une stratégie de recul stratégique;A special aid is given to districts engaged in strategic withdrawal
+LEV_EXPROPRIATION_HELPER2;du coût d'expropriation;of the expropriation cost
+LEV_DENSIFICATION_HELPER2;du coût de densification;of the densification cost
+LEV_DENSIFICATION_HELPER3;sur la dernière densification hors ZL&ZI;on the last densification out of LA&FA
+LEV_DURING_MSG;Durant;During

@@ -1902,12 +1902,12 @@ species network_listen_to_leader skills:[network]{
 			map<string, unknown> m_contents <- msg.contents;
 			if m_contents[DISTRICT_CODE] = insee_com{
 				switch(m_contents[LEADER_COMMAND]){
-					match SUBSIDIZE{
+					match GIVE_MONEY_TO{
 						int amount <- int(m_contents[AMOUNT]);
 						budget <- budget + amount;
 						ask world {do user_msg(string(m_contents[PLAYER_MSG])+amount+ ' By',BUDGET_MESSAGE);}
 					}
-					match COLLECT_REC{
+					match TAKE_MONEY_FROM{
 						int amount <- int(m_contents[AMOUNT]);
 						budget <- budget - amount;
 						ask world {do user_msg(string(m_contents[PLAYER_MSG])+amount+ ' By',BUDGET_MESSAGE);}

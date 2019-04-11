@@ -21,6 +21,13 @@ global{
 	string GAME_MANAGER 			<- "GAME_MANAGER";
 	string GAME_LEADER	     	 	<- "GAME_LEADER";
 	string LISTENER_TO_LEADER	 	<- "LISTENER_TO_LEADER";
+	
+	// Object types sent over network : OBJECT_TYPE
+	string ACTIVATED_LEVER 	<- "ACTIVATED_LEVER";
+	string PLAYER_ACTION	<- "PLAYER_ACTION";
+	string COASTAL_DEFENSE	<- "COASTAL_DEFENSE";
+	string LAND_USE			<- "LAND_USE";
+	string WINDOW_LOCKER	<- "WINDOW_LOCKER";
 
 	// Main-Leader network communication
 	string LEADER_COMMAND   		<- "LEADER_COMMAND";

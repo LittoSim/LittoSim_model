@@ -218,7 +218,7 @@ global {
 			i <- i +1;
 		}
 		map values <- user_input((get_message('MSG_SUBMERSION_NUMBER')) + "\n" + txt,[(get_message('MSG_NUMBER'))+ " :" :: "0"]);
-		i <- int(values[(get_message('MSG_NUMBER'))+ " :"]);
+		i <- int(values at values.keys[0]);
 		if i > 0 and i <= length(list_flooding_events.keys){
 			string replayed_flooding_event  <- (list_flooding_events.keys)[i-1] ;
 			write replayed_flooding_event;
@@ -323,7 +323,7 @@ global {
      		if nb = "0000" {
      			map values <- user_input([(get_message('MSG_NO_FLOOD_FILE_EVENT')) :: ""]);
      			stateSimPhase <- SIM_GAME;
-     			write stateSimPhase + " - "+ get_message('MSG_ROUND')+" "+ game_round;
+     			write stateSimPhase + " - "+ get_message('MSG_ROUND') +" "+ game_round;
      		}
      		else{	stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase; }	}
 	}
@@ -675,8 +675,8 @@ species Network_Game_Manager skills: [network]{
 	
 	action acknowledge_application_of_player_action (Player_Action act){
 		map<string,string> msg <- ["TOPIC"::PLAYER_ACTION_IS_APPLIED,"id"::act.id];
-		put act.district_code  at: DISTRICT_CODE in: msg;
-		do send to: act.district_code + "_map_msg" contents:msg;
+		put act.district_code  at: DISTRICT_CODE   in:		 msg;
+		do send to: act.district_code + "_map_msg" contents: msg;
 	}
 	
 	reflex update_LU when: length (Land_Use where(each.not_updated)) > 0 {
@@ -742,8 +742,8 @@ species Network_Game_Manager skills: [network]{
 	}
 	
 	action lock_window (District d, bool is_allowed){ // lock or unlock the player GUI
-		string val <- is_allowed = true? "UN_LOCKED":"LOCKED";
-		map<string,string> me <- ["OBJECT_TYPE"  ::"lock_unlock",
+		string val <- is_allowed = true? "UNLOCKED":"LOCKED";
+		map<string,string> me <- ["OBJECT_TYPE"  ::WINDOW_LOCKER,
 								  "WINDOW_STATUS"::val];
 		do send to: d.network_name+"_retreive" contents: me;
 	}
@@ -925,15 +925,28 @@ species Player_Action schedules:[]{
 	list<Activated_Lever> activated_levers <-[];
 
 	map<string,string> build_map_from_attributes{
-		map<string,string> res <- ["OBJECT_TYPE"::"Player_Action", "id"::id, "element_id"::string(element_id),
-			"command"::string(command), "label"::label, "cost"::string(cost),
-			"initial_application_round"::string(initial_application_round), "is_inland_dike"::string(is_inland_dike),
-			"is_in_risk_area"::string(is_in_risk_area), "is_in_coast_border_area"::string(is_in_coast_border_area),
-			"is_expropriation"::string(is_expropriation), "is_in_protected_area"::string(is_in_protected_area),
-			"previous_lu_name"::previous_lu_name, "action_type"::action_type, "locationx"::string(location.x),
-			"locationy"::string(location.y), "is_applied"::string(is_applied), "is_sent"::string(is_sent),
-			"command_round"::string(command_round), "element_shape"::string(element_shape),
-			"length_coast_def"::string(length_coast_def), "a_lever_has_been_applied"::string(a_lever_has_been_applied)];
+		map<string,string> res <- ["OBJECT_TYPE"::PLAYER_ACTION,
+			"id"::id,
+			"element_id"::string(element_id),
+			"command"::string(command),
+			"label"::label,
+			"cost"::string(cost),
+			"initial_application_round"::string(initial_application_round),
+			"is_inland_dike"::string(is_inland_dike),
+			"is_in_risk_area"::string(is_in_risk_area),
+			"is_in_coast_border_area"::string(is_in_coast_border_area),
+			"is_expropriation"::string(is_expropriation),
+			"is_in_protected_area"::string(is_in_protected_area),
+			"previous_lu_name"::previous_lu_name,
+			"action_type"::action_type,
+			"locationx"::string(location.x),
+			"locationy"::string(location.y),
+			"is_applied"::string(is_applied),
+			"is_sent"::string(is_sent),
+			"command_round"::string(command_round),
+			"element_shape"::string(element_shape),
+			"length_coast_def"::string(length_coast_def),
+			"a_lever_has_been_applied"::string(a_lever_has_been_applied)];
 			
 			put district_code at: DISTRICT_CODE in: res;
 			int i <- 0;
@@ -994,11 +1007,18 @@ species Coastal_Defense {
 	list<Cell> cells;
 	
 	map<string,unknown> build_map_from_attributes{
-		map<string,unknown> res <- [
-			"OBJECT_TYPE"::"Coastal_Defense",	"dike_id"::string(coast_def_id),	"type"::type, "status"::status,
-			"height"::string(height), "alt"::string(alt), "rupture"::string(rupture), "rupture_area"::rupture_area,
-			"not_updated"::string(not_updated), "ganivelle"::string(ganivelle), "height_before_ganivelle"::string(height_before_ganivelle),
-			"locationx"::string(location.x), "locationy"::string(location.y)];
+		map<string,unknown> res <- ["OBJECT_TYPE"::COASTAL_DEFENSE,
+			"dike_id"::string(coast_def_id),
+			"type"::type, "status"::status,
+			"height"::string(height),
+			"alt"::string(alt),
+			"rupture"::string(rupture),
+			"rupture_area"::rupture_area,
+			"not_updated"::string(not_updated),
+			"ganivelle"::string(ganivelle),
+			"height_before_ganivelle"::string(height_before_ganivelle),
+			"locationx"::string(location.x),
+			"locationy"::string(location.y)];
 			int i <- 0;
 			loop pp over:shape.points{
 				put string(pp.x) key:"locationx"+i in: res;
@@ -1221,11 +1241,18 @@ species Land_Use {
 	
 	map<string,unknown> build_map_from_attributes {
 		map<string,string> res <- [
-			"OBJECT_TYPE"::"Land_Use",		"id"::string(id),	"lu_name"::lu_name,
-			"lu_code"::string(lu_code),	"STEPS_FOR_AU_TO_U"::string(STEPS_FOR_AU_TO_U),
-			"AU_to_U_counter"::string(AU_to_U_counter),	"population"::string(population),
-			"isInDensification"::string(isInDensification),	"not_updated"::string(not_updated),
-			"pop_updated"::string(pop_updated), "locationx"::string(location.x), "locationy"::string(location.y)];
+			"OBJECT_TYPE"::LAND_USE,
+			"id"::string(id),
+			"lu_name"::lu_name,
+			"lu_code"::string(lu_code),
+			"STEPS_FOR_AU_TO_U"::string(STEPS_FOR_AU_TO_U),
+			"AU_to_U_counter"::string(AU_to_U_counter),
+			"population"::string(population),
+			"isInDensification"::string(isInDensification),
+			"not_updated"::string(not_updated),
+			"pop_updated"::string(pop_updated),
+			"locationx"::string(location.x),
+			"locationy"::string(location.y)];
 			int i <- 0;
 			loop pp over:shape.points{
 				put string(pp.x) key:"locationx"+i in: res;
