@@ -19,9 +19,10 @@ global{
 	list<species<Lever>> all_levers 			<- [];
 	
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
-								  'Ganivelle_Lever', 'LEVER_Us_COAST_BORDER_RISK_AREA', 'LEVER_Us_COAST_BORDER_AREA', 'LEVER_Us_RISK_AREA', 'LEVER_INLAND_DIKE',
+								  'LEVER_GANIVELLE', 'LEVER_Us_COAST_BORDER_RISK_AREA', 'LEVER_Us_COAST_BORDER_AREA', 'LEVER_Us_RISK_AREA', 'LEVER_INLAND_DIKE',
 								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_N_COAST_BORDER_RISK_AREA',
 								  'LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE'];
+	
 	init{
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Border_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
 				Ganivelle_Lever, Us_out_Coast_Border_or_Risk_Area_Lever, Us_in_Coast_Border_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
@@ -41,21 +42,18 @@ global{
 			dist_id::int(read("player_id")), district_long_name::string(read("dist_lname"))]{
 			if(dist_id = 0) { do die; }
 		}
-		do create_District_Action_Buttons;
-		loop i from: 0 to: 3 {
-			create District_Name {
-				display_name <- District[i].district_name;
-				location	 <- (Grille grid_at {i,0}).location - {1,-1};
-			}
-		}
-		
+		do create_district_buttons_names;
 		do create_levers;		
 		create Network_Leader; 
 	}
 	//------------------------------ end of init -------------------------------//
 	
-	action create_District_Action_Buttons{
+	action create_district_buttons_names{
 		loop i from: 0 to: 3 {
+			create District_Name {
+				display_name <- District[i].district_name;
+				location	 <- (Grille grid_at {i,0}).location - {1,-1};
+			}
 			create District_Action_Button {
 				command 	 <- GIVE_MONEY_TO;
 				display_name <- world.get_message("LDR_MSG_SEND_MONEY");
@@ -83,8 +81,8 @@ global{
 				if levers_def at levers_names[j] at 'active' = 'yes'{
 					create all_levers[j]{
 						my_district <- District[i];
+						location	<- (Grille[i, int(j/2 + 2)]).location - {0, 3 + (-4.5 * j mod 2)};
 						add self to: my_district.levers;
-						location	<- (Grille[i, int(j/2) + 2]).location - {0, 3 + (-4.5 * j mod 2)};
 					}
 				}
 			}
@@ -462,7 +460,7 @@ species Lever {
 	list<Activated_Lever> activation_queue;
 	list<Activated_Lever> activated_levers;
 	
-	init { shape <- rectangle (20,4); }
+	init { shape <- rectangle (24, 4); }
 	
 	aspect default{
 		if timer_activated { draw shape+0.2#m color: #red; }
@@ -798,13 +796,13 @@ species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 }
 //------------------------------ End of AU_or_Ui_in_Risk_Area_Lever -------------------------------//
 
-species Ganivelle_Lever parent: Cost_Lever{
+species Ganivelle_Lever parent: Cost_Lever {
 		int indicator 			-> { int(my_district.length_created_ganivelles / my_district.length_dunes_t0) };
 		string progression_bar 	-> { "" + my_district.length_created_ganivelles + " m. / " + threshold + " * " + my_district.length_dunes_t0 + " m. dunes" };
 	
 	init{
-		lever_name	<- world.get_lever_name('Ganivelle_Lever');
-		lever_type	<- world.get_lever_type('Ganivelle_Lever');
+		lever_name	<- world.get_lever_name('LEVER_GANIVELLE');
+		lever_type	<- world.get_lever_type('LEVER_GANIVELLE');
 		threshold 	<- 0.1;
 		added_cost 	<- -0.25 ;
 		help_lever_msg 	<- world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
@@ -1175,7 +1173,7 @@ species District_Action_Button parent: District_Name{
 					put msg_player 					key: MSG_TO_PLAYER 		in: msg;
 					
 					msg_activity[0] <- world.get_message('LDR_MSG_TAKE_MONEY_FROM');
-					msg_activity[1] <- string(msg at MSG_TO_PLAYER) + " : " + string(msg at AMOUNT) + "By";
+					msg_activity[1] <- msg_player + " : " + amount_value + "By";
 				}
 			}
 			match GIVE_MONEY_TO {
@@ -1199,7 +1197,7 @@ species District_Action_Button parent: District_Name{
 					put msg_player 					key: MSG_TO_PLAYER 	in:msg;
 					
 					msg_activity[0] <- world.get_message('LDR_MSG_SEND_MONEY_TO');
-					msg_activity[1] <- string(msg at MSG_TO_PLAYER) + " : " + string(msg at AMOUNT) + "By";
+					msg_activity[1] <- msg_player + " : " + amount_value + "By";
 				}						
 			}
 			match SEND_MESSAGE_TO {
@@ -1225,7 +1223,7 @@ species District_Action_Button parent: District_Name{
 					put msg_player 					key: MSG_TO_PLAYER 	in: msg;
 					
 					msg_activity[0] <- world.get_message('LDR_MSG_SEND_MSG_TO');
-					msg_activity[1] <- msg at MSG_TO_PLAYER;		
+					msg_activity[1] <- msg_player;		
 				}	
 			}	
 		}

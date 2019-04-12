@@ -111,11 +111,11 @@ global {
 		ask districts_in_game{
 			LUs 	<- Land_Use overlapping self;
 			cells 	<- Cell overlapping self;
-			budget 	<- int(self.current_population() * tax_unit * (1 +  pctBudgetInit/100));
+			budget 	<- int(self.current_population() * tax_unit * (1 +  pctBudgetInit / 100));
 			write district_name + " " + world.get_message('MSG_INITIAL_BUDGET') + " : " + budget;
 			do calculate_indicators_t0;
 		}
-		ask Coastal_Defense {	do init_coastal_def;	}
+		ask Coastal_Defense { do init_coastal_def; }
 
 	}
 	//------------------------------ End of init -------------------------------//
@@ -553,7 +553,7 @@ species Network_Game_Manager skills: [network]{
 						write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + id_dist;
 					}
 					else if(int(data[0]) = REFRESH_ALL){ // a player asks to refresh his GUI
-						write " Update ALL ! " + id_dist + " " + world.table_correspondance_insee_com_nom_rac at (id_dist);
+						write " Update ALL ! " + id_dist + " " + world.dist_code_sname_correspondance_table at (id_dist);
 						do send_data_to_district(first(District where(each.dist_id = id_dist)));
 					}
 					else{
@@ -1142,7 +1142,7 @@ species Coastal_Defense {
 				if soil_height >= 0 {	soil_height <- max([0, soil_height - myself.height]);	}
 			}
 			write "rupture " + type + " n°" + coast_def_id + "(" + ", status " + status + ", height " + height + ", alt " + alt + ")";
-			write "rupture " + type + " n°" + coast_def_id + "(" + world.table_correspondance_insee_com_nom_rac at (district_code)+ ", status " + status + ", height " + height + ", alt " + alt + ")";
+			write "rupture " + type + " n°" + coast_def_id + "(" + world.dist_code_sname_correspondance_table at (district_code)+ ", status " + status + ", height " + height + ", alt " + alt + ")";
 		}
 	}
 	

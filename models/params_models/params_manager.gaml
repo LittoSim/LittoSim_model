@@ -28,14 +28,6 @@ global{
 	string SHOW_MAX_WATER_HEIGHT	<- "SHOW_MAX_WATER_HEIGHT";
 	string ONE_STEP					<- "ONE_STEP";
 	
-	// Population density
-	string POP_EMPTY 		  <- "EMPTY";
-	string POP_FEW_DENSITY 	  <- "FEW_DENSITY";
-	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";
-	string POP_DENSE 		  <- "DENSE";
-	int    POP_FEW_NUMBER 	  <- 40;
-	int    POP_MEDIUM_NUMBER  <- 80;
-	
 	// // Building and raising dikes parameters
 	float BUILT_DIKE_HEIGHT <- float(shapes_def["BUILT_DIKE_HEIGHT"]);
 	float RAISE_DIKE_HEIGHT <- float(shapes_def["RAISE_DIKE_HEIGHT"]); // 1#m by default
@@ -89,8 +81,6 @@ global{
 	int ACTION_COST_LAND_COVER_TO_AUs_SUBSIDY 	<- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs_SUBSIDY' at 'cost');
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY 	<- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us_SUBSIDY' at 'cost');
 	
-	map tax_unit_table 		<- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
-	int pctBudgetInit 		<- int(eval_gaml(shapes_def["PCT_BUDGET_TABLE"])); 			// at initialization, each district has a budget equal to an annual tax + %
 	float coastBorderBuffer <- float(eval_gaml(shapes_def["COAST_BORDER_BUFFER"])); 	// width of littoral area from the coast line (<400m)	
 	bool log_user_action 	<- bool(configuration_file["LOG_USER_ACTION"]); 			// logging user actions
 	bool save_shp 			<- bool(configuration_file["SAVE_SHP"]); 					// saving results as shapefile. If true, at each round, water height and level are saved for all cells

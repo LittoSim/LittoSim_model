@@ -75,8 +75,8 @@ PLR_CHECK_BOX_VALIDATE;Cocher la case pour accepter le panier et valider;Check t
 MSG_COST_APPLIED_PARCEL;Coût si applique a une parcelle;Cost if applied to a parcel
 MSG_COST_ACTION;Coût de l'action;Cost of the action
 MSG_COST_EXPROPRIATION;coût d'expropriation;expropriation cost
-LEGEND_UNAM;Aménagement, PLU et habitat;Planning, PLU and habitation
-LEGEND_DYKE;Defense des cotes;Coasts defense
+LEGEND_PLU;Aménagement, PLU et habitat;Planning, PLU and habitation
+LEGEND_DYKE;Defense des côtes;Coast defenses
 LEGEND_NAME_ACTIONS;€ Actions envisagées;$ Projected actions
 MSG_INITIAL_BUDGET;Budget initial;Initial budget
 MSG_REMAINING_BUDGET;Budget restant;Remaining budget

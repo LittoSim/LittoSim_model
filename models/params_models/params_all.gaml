@@ -67,6 +67,14 @@ global{
 	string STATUS_MEDIUM	<- "Medium";
 	string STATUS_BAD 		<- "Bad";
 	
+	// Population density
+	string POP_EMPTY 		  <- "EMPTY";
+	string POP_FEW_DENSITY 	  <- "FEW_DENSITY";
+	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";
+	string POP_DENSE 		  <- "DENSE";
+	int    POP_FEW_NUMBER 	  <- 40;
+	int    POP_MEDIUM_NUMBER  <- 80;
+	
 	// Building dikes parameters
 	string BUILT_DIKE_TYPE 		<- "New Dike";
 	string BUILT_DIKE_STATUS 	<- shapes_def["BUILT_DIKE_STATUS"];
@@ -84,8 +92,12 @@ global{
 	file contour_neg_100m_shape <- file(shapes_def["CONTOUR_ILE_INF_100M"]);
 	int nb_cols 				<- int(shapes_def["DEM_NB_COLS"]);
 	int nb_rows 				<- int(shapes_def["DEM_NB_ROWS"]);
-	map table_correspondance_insee_com_nom 		<- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM"]);
-	map table_correspondance_insee_com_nom_rac 	<- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM_RAC"]);
+	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM"]);
+	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM_RAC"]);
+	
+	// Taxes
+	map tax_unit_table 		<- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
+	int pctBudgetInit 		<- int(eval_gaml(shapes_def["PCT_BUDGET_TABLE"])); 			// at initialization, each district has a budget equal to an annual tax + %
 	
 	// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,

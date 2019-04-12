@@ -12,7 +12,7 @@ global{
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
 	int DISPLAY_FONT_SIZE <- 16;
 	
-	map table_correspondance_nom_rac_insee_com <- reverse(table_correspondance_insee_com_nom_rac);
+	map dist_sname_code_correspondance_table <- reverse(dist_code_sname_correspondance_table);
 		
 	// Player actions
 	int ACTION_DISPLAY_PROTECTED_AREA <- int(data_action at 'ACTION_DISPLAY_PROTECTED_AREA' at 'action code');
@@ -20,7 +20,9 @@ global{
 	int ACTION_INSPECT_DIKE  <- int(data_action at 'ACTION_INSPECT_DIKE' at 'action code');
 	int ACTION_INSPECT_LAND_USE  <- int(data_action at 'ACTION_INSPECT_LAND_USE' at 'action code');
 	
-	// Leviers from leader
+	string PLAYER_MSG 	<- "PLAYER_MSG";
+	
+	// Levers from leader
 	int SUBVENTIONNER_GANIVELLE <- 1101;
 	int SUBVENTIONNER_HABITAT_ADAPTE <- 1102;
 	int SANCTION_ELECTORALE <- 1103;
@@ -29,10 +31,10 @@ global{
 	int HAUSSE_RENOVATION_DIGUE <- 1106;
 	int HAUSSE_COUT_BATI <- 1107;
 	
-	string ACTION_ID <- "action_id";
-	string DATA <- "data";
-	string PLAYER_MSG <-"player_msg";
-	string UNAM_DISPLAY <- "UnAm";
+	// Displays
+	string PLU_DISPLAY 	<- "PLU";
+	string DIKE_DISPLAY <- "DIKE";
+	string BOTH_DISPLAY <- "BOTH";
 
 	// User messages
 	string INFORMATION_MESSAGE <- "INFORMATION_MESSAGE";
@@ -45,11 +47,10 @@ global{
 	
 	point INFORMATION_BOX_SIZE <- {200,80};
 	
-	string DIKE_DISPLAY <- "sloap";
-	string BOTH_DISPLAY <- "both";
-	
-	string LEGEND_UNAM;
-	string LEGEND_DYKE;
+
+	// Multi-langs
+	string LEGEND_PLU_NAME;
+	string LEGEND_DYKE_NAME;
 	string MSG_WARNING;
 	string MSG_POSSIBLE_REGLEMENTATION_DELAY;
 	string MSG_SIM_NOT_STARTED;
