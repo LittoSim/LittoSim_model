@@ -142,3 +142,6 @@ LEV_EXPROPRIATION_HELPER2;du coût d'expropriation;of the expropriation cost
 LEV_DENSIFICATION_HELPER2;du coût de densification;of the densification cost
 LEV_DENSIFICATION_HELPER3;sur la dernière densification hors ZL&ZI;on the last densification out of LA&FA
 LEV_DURING_MSG;Durant;During
+LEV_NO_DIKE_CREATION_HELP;tours consécutifs, le joueur ne contruit pas de digue;concecutive rounds, the player cannot build dikes
+LEV_NO_DIKE_RAISE_HELP;tours consécutifs, le joueur ne réhausse pas de digue;concecutive rounds, the player cannot raise dikes
+LEV_NO_DIKE_REPAIR_HELP;tours consécutifs, le joueur ne rénove pas de digue;concecutive rounds, the player cannot repair dikes

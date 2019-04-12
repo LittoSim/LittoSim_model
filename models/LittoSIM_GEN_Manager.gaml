@@ -154,7 +154,7 @@ global {
 	}
 
 	action new_round {
-		if save_shp {	do save_cells_as_shp_file;	}
+		if save_shp  {	do save_cells_as_shp_file;	}
 		write get_message('MSG_NEW_ROUND') + " " + (game_round +1);
 		if game_round != 0 {
 			ask Coastal_Defense where (each.type = DIKE) {  do degrade_dike_status;  }
@@ -851,7 +851,7 @@ species Network_Listener_To_Leader skills:[network]{
 					if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
 						create Activated_Lever{
 							do init_from_map (m_contents);
-							ply_action	<- Player_Action first_with (each.id 			= my_map["act_done_id"]);
+							ply_action	<- Player_Action first_with (each.id 			= my_map["p_action_id"]);
 							District d 	<- District 	 first_with (each.district_code = my_map["district_code"]);
 							d.budget 	<- d.budget  -  int(my_map["added_cost"]); 
 							add self to: ply_action.activated_levers;

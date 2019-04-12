@@ -134,10 +134,6 @@ global{
 	action send_message_from_leader (map<string,unknown> msg){
 		ask Network_Leader { do send to: LISTENER_TO_LEADER contents:msg; }		
 	}
-	
-	action send_message_lever (Activated_Lever lev){
-		ask Network_Leader{ do send to: ACTIVATED_LEVER contents: lev.build_map_from_attributes(); }
-	}
     
     user_command "Cancel the application of all activated levers" action: cancel_all_activated_levers;
     
@@ -173,7 +169,7 @@ species Player_Action schedules:[]{
 	string tracked_profile 	<- "";
 	geometry element_shape;
 	float lever_activation_time;
-	int length_def_cote;
+	int length_coast_def;
 	list<Activated_Lever> activated_levers 	<-[];
 	bool should_wait_lever_to_activate 		<- false;
 	bool a_lever_has_been_applied			<- false;
@@ -229,7 +225,7 @@ species Player_Action schedules:[]{
 		self.command_round 				<- int(a at "command_round");
 		self.tracked_profile 			<- track_profile ();
 		self.element_shape 				<- geometry(a at "element_shape");
-		self.length_def_cote 			<- int(a at "length_def_cote");
+		self.length_coast_def 			<- int(a at "length_coast_def");
 		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");		
 	}
 	
@@ -249,7 +245,7 @@ species Player_Action schedules:[]{
 			"inCoastBorderArea"::inCoastBorderArea,
 			"inRiskArea"::inRiskArea,
 			"isInlandDike"::isInlandDike,
-			"command_round"::command_round]	;	
+			"command_round"::command_round];	
 		return res;
 	}
 }
@@ -307,30 +303,30 @@ species District{
 		switch (act.command){
 			match ACTION_CREATE_DIKE {
 				if(act.isInlandDike){
-					length_inland_dikes <- length_inland_dikes + act.length_def_cote;
+					length_inland_dikes <- length_inland_dikes + act.length_coast_def;
 					ask Inland_Dike_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 				}else{
-					length_created_dikes <- length_created_dikes + act.length_def_cote;
+					length_created_dikes <- length_created_dikes + act.length_coast_def;
 					ask Create_Dike_Lever 		where(each.my_district = self) { do register_and_check_activation(act);	}
 					ask No_Dike_Creation_Lever 	where(each.my_district = self) { do register(act);						}
 				}
 			}
 			match ACTION_RAISE_DIKE {
-				length_raised_dikes <- length_raised_dikes + act.length_def_cote;
+				length_raised_dikes <- length_raised_dikes + act.length_coast_def;
 				ask Raise_Dike_Lever 	where(each.my_district = self) { do register_and_check_activation(act); }
 				ask No_Dike_Raise_Lever where(each.my_district = self) { do register(act);						}
 			}
 			match ACTION_REPAIR_DIKE {
-				length_repaired_dikes <- length_repaired_dikes + act.length_def_cote;
+				length_repaired_dikes <- length_repaired_dikes + act.length_coast_def;
 				ask Repair_Dike_Lever 	 where(each.my_district = self) { do register_and_check_activation(act);}
 				ask No_Dike_Repair_Lever where(each.my_district = self) { do register(act);						}
 			}
 			match ACTION_DESTROY_DIKE{
-				length_destroyed_dikes <- length_destroyed_dikes + act.length_def_cote;
+				length_destroyed_dikes <- length_destroyed_dikes + act.length_coast_def;
 				ask Destroy_Dike_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 			}
 			match ACTION_INSTALL_GANIVELLE {
-				length_created_ganivelles <- length_created_ganivelles + act.length_def_cote;
+				length_created_ganivelles <- length_created_ganivelles + act.length_coast_def;
 				ask Ganivelle_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 			}
 			match ACTION_MODIFY_LAND_COVER_Us {
@@ -518,7 +514,7 @@ species Lever {
 			district_code 	<- myself.my_district.district_code;
 			self.p_action 	<- a_p_action;
 			p_action_id 	<- a_p_action.id;
-			activation_time <-  machine_time + myself.timer_duration ;
+			activation_time <- machine_time + myself.timer_duration ;
 			round_creation 	<- game_round;
 			add self to: myself.activation_queue;
 		}
@@ -553,28 +549,24 @@ species Lever {
 		}	
 	}
 	
-	float activation_time{
-		return activation_queue[0].activation_time;
-	}
-	
-	reflex check_timer when: timer_activated{
-		if machine_time > activation_time(){
+	reflex check_timer when: timer_activated {
+		if machine_time > activation_queue[0].activation_time {
 			Activated_Lever act_lever <- activation_queue[0];
 			remove index: 0 from: activation_queue ;
-			add act_lever to: activated_levers;
-			do apply_lever(act_lever);
+			add act_lever   to: activated_levers;
+			do apply_lever (act_lever);
 		}
 	}
 	
 	int remaining_seconds {
-		return (int((activation_time() - machine_time) / 1000));
+		return (int((activation_queue[0].activation_time - machine_time) / 1000));
 	}
 	
 	action cancel_next_activated_action {		
 		if !empty(activation_queue){
 			do cancel_lever(activation_queue[0]);
 			ask world {
-				do record_leader_activity("Lever " + myself.lever_name + " canceled at", myself.my_district.district_name, "Cancel of " +myself.activation_queue[0].p_action);
+				do record_leader_activity("Lever " + myself.lever_name + " canceled at", myself.my_district.district_name, "Cancel of " + myself.activation_queue[0].p_action);
 			}
 			remove index: 0 from: activation_queue ;	
 		}
@@ -603,6 +595,12 @@ species Lever {
 		put my_district.district_code 			 	key: DISTRICT_CODE  						in: msg;
 		put p_action.id 						 	key: PLAYER_ACTION_ID 						in: msg;
 		put p_action.should_wait_lever_to_activate  key: ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE 	in: msg;
+		ask world { do send_message_from_leader(msg); }
+	}
+	
+	action send_lever_message (Activated_Lever lev) {
+		map<string, unknown> msg <- lev.build_map_from_attributes();
+		put NEW_ACTIVATED_LEVER 	key: LEADER_COMMAND in: msg;
 		ask world { do send_message_from_leader(msg); }
 	}
 	
@@ -643,7 +641,7 @@ species Cost_Lever parent: Lever {
 	}
 	
 	string info_of_next_activated_lever {
-		return "" + activation_queue[0].p_action.length_def_cote + " m. (" + int(activation_queue[0].p_action.cost * added_cost) + ' By.)';
+		return "" + activation_queue[0].p_action.length_coast_def + " m. (" + int(activation_queue[0].p_action.cost * added_cost) + ' By.)';
 	}
 	
 	action apply_lever(Activated_Lever lev){
@@ -651,8 +649,7 @@ species Cost_Lever parent: Lever {
 		lev.round_application <- game_round;
 		lev.lever_explanation <- player_msg;
 		lev.added_cost 		  <- int(lev.p_action.cost * added_cost);
-		
-		ask world { do send_message_lever(lev) ; }
+		do send_lever_message(lev);
 		
 		last_lever_cost 	<- lev.added_cost;
 		activation_label_L1 <- "Last "   + (last_lever_cost >= 0 ? "levy"  : "payment") + " : " + abs(last_lever_cost) + ' By';
@@ -702,8 +699,7 @@ species Delay_Lever parent: Lever{
 		lev.applied <- true;
 		lev.lever_explanation <- player_msg;
 		lev.nb_rounds_delay <- added_delay;
-		
-		ask world { do send_message_lever(lev); }
+		do send_lever_message;
 		
 		activation_label_L1 <- (total_lever_delay() < 0 ? "Total Advance: " : "Total Delay: ") + abs(total_lever_delay()) + ' rounds';
 		lev.p_action.should_wait_lever_to_activate <- false;
@@ -839,8 +835,7 @@ species Us_out_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 		lev.lever_explanation 	<- player_msg;
 		lev.added_cost 			<- int(lev.p_action.cost * added_cost);
 		lev.nb_rounds_delay 	<- 0;
-		
-		ask world { do send_message_lever(lev); }
+		do send_lever_message (lev);
 		
 		last_lever_cost 	<- lev.added_cost;
 		activation_label_L1 <- "Last payment : " + (-1 * last_lever_cost) + ' By';
@@ -905,17 +900,18 @@ species Inland_Dike_Lever parent: Delay_Lever {
 	}
 		
 	string info_of_next_activated_lever {
-		return "Retrodike (" + int(activation_queue[0].p_action.length_def_cote) + " m.): -" + abs(added_delay) + " rounds";
+		return "Retrodike (" + int(activation_queue[0].p_action.length_coast_def) + " m.): -" + abs(added_delay) + " rounds";
 	}
 }
 //------------------------------ End of Inland_Dike_Lever -------------------------------//
 
 species No_Action_On_Dike_Lever parent: Cost_Lever {
-	string progression_bar -> { "" + int(threshold - nb_rounds_before_activation) + " rounds / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + int(threshold - nb_rounds_before_activation) + " rounds / " + int(threshold) + " max" };
+	int nb_activations 		<-0;
+	string box_title 		-> { lever_name + ' (' + nb_activations +')' };
+	
+	bool should_be_activated-> { (nb_rounds_before_activation  <0) and !empty(list_of_impacted_actions)};
 	int nb_rounds_before_activation;
-	int nb_activations <-0;
-	string box_title -> {lever_name + ' (' + nb_activations +')' };
-	bool should_be_activated -> { (nb_rounds_before_activation  <0) and !empty(list_of_impacted_actions)};
 	list<Player_Action> list_of_impacted_actions -> {my_district.actions_install_ganivelle()};
 	
 	init{
@@ -945,15 +941,14 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 		lev.applied <- true;
 		lev.lever_explanation <- player_msg;
 		lev.added_cost <- int(lev.p_action.cost * added_cost);
+		do send_lever_message(lev);
 		
-		ask world {do send_message_lever(lev) ;}
-		
-		last_lever_cost <-lev.added_cost;
-		activation_label_L1 <- "Last "+(last_lever_cost>=0?"prélevement":"versement")+" : "+abs(last_lever_cost)+ ' By.';
-		activation_label_L2 <- "Total "+(last_lever_cost>=0?"prélevé":"versé")+" : "+string(abs(total_lever_cost()))+' By';
+		last_lever_cost 	<-lev.added_cost;
+		activation_label_L1 <- "Last "  + (last_lever_cost >= 0 ? "levy" : "payment") + " : " + abs(last_lever_cost)   + ' By.';
+		activation_label_L2 <- "Total " + (last_lever_cost >= 0 ? "taken": "given"  ) + " : " + abs(total_lever_cost())+ ' By';
 		
 		nb_rounds_before_activation <- int(threshold);
-		nb_activations <- nb_activations +1;
+		nb_activations 				<- nb_activations +1;
 		
 		ask world {
 			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + (lev.added_cost) + "By" + "(" + lev.p_action + ")");
@@ -966,7 +961,7 @@ species No_Dike_Creation_Lever parent: No_Action_On_Dike_Lever{
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_NO_DIKE_CREATION');
 		lever_type		<- world.get_lever_type('LEVER_NO_DIKE_CREATION');
-		help_lever_msg 	<- world.get_lever_type('LEV_DURING_MSG') + " " + threshold + " tours consécutifs le joueur ne contruit pas de digue.\n" + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
+		help_lever_msg 	<- world.get_lever_type('LEV_DURING_MSG') + " " + threshold + " " + world.get_lever_type('LEV_NO_DIKE_CREATION_HELP') + ".\n" + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
 	}	
 }
 //------------------------------ end of No_Dike_Creation_Lever -------------------------------//
@@ -975,7 +970,7 @@ species No_Dike_Raise_Lever parent: No_Action_On_Dike_Lever{
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_NO_DIKE_RAISE');
 		lever_type		<- world.get_lever_type('LEVER_NO_DIKE_RAISE');
-		help_lever_msg 	<- world.get_lever_type('LEV_DURING_MSG') + " " + threshold + " tours consécutifs le joueur ne réhausse pas de digue.\n" + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
+		help_lever_msg 	<- world.get_lever_type('LEV_DURING_MSG') + " " + threshold + " " + world.get_lever_type('LEV_NO_DIKE_RAISE_HELP') + ".\n" + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
 	}
 }
 //------------------------------ end of No_Dike_Raise_Lever -------------------------------//
@@ -984,7 +979,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 	init{
 		lever_name		<- world.get_lever_name('LEVER_NO_DIKE_REPAIR');
 		lever_type		<- world.get_lever_type('LEVER_NO_DIKE_REPAIR');
-		help_lever_msg 	<- world.get_lever_type('LEV_DURING_MSG') + " " + threshold + " tours consécutifs le joueur ne rénove pas de digue.\n" + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
+		help_lever_msg 	<- world.get_lever_type('LEV_DURING_MSG') + " " + threshold + " " + world.get_lever_type('LEV_NO_DIKE_REPAIR_HELP') + ".\n" + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
 	}
 }
 //------------------------------ end of No_Dike_Repair_Lever -------------------------------//
