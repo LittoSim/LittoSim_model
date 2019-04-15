@@ -143,8 +143,8 @@ global {
 			}
 		}
 		switch rslt {
-			match COAST_DEF   {return ENTITY_TYPE_CODE_COAST_DEF; }
-			match LU 		  {return ENTITY_TYPE_CODE_LU;		  }
+			match ACTION_TYPE_COAST_DEF   {return ENTITY_TYPE_CODE_COAST_DEF; }
+			match ACTION_TYPE_LU 		  {return ENTITY_TYPE_CODE_LU;		  }
 			default 		  {return 0;						  }
 		}
 	} 
@@ -157,8 +157,8 @@ global {
 		if save_shp  {	do save_cells_as_shp_file;	}
 		write get_message('MSG_NEW_ROUND') + " " + (game_round +1);
 		if game_round != 0 {
-			ask Coastal_Defense where (each.type = DIKE) {  do degrade_dike_status;  }
-		   	ask Coastal_Defense where (each.type = DUNE) {  do evolve_dune_status;	  }
+			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status;  }
+		   	ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;	  }
 			new_comers_still_to_dispatch <- new_comers_to_dispatch() ;
 			ask shuffle(Land_Use) 			 { pop_updated <- false; do evolve_AU_to_U;  }
 			ask shuffle(Land_Use) 			 { do evolve_U_densification; 				 }
@@ -329,7 +329,7 @@ global {
 	}
 	
 	action load_rugosity{
-		file rug_data <- text_file(RUGOSITE_PAR_DEFAUT) ;
+		file rug_data <- text_file(RUGOSITY_DEFAULT) ;
 		loop r from: 6 to: length(rug_data) -1 {
 			string l <- rug_data[r];
 			list<string> res <- l split_with " ";
@@ -581,12 +581,12 @@ species Network_Game_Manager skills: [network]{
 									else{
 										if is_expropriation 	{	write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.id;	}
 										switch self.action_type {
-											match LU {
+											match ACTION_TYPE_LU {
 												Land_Use tmp  	<- Land_Use first_with(each.id = self.element_id);
 												element_shape 	<- tmp.shape;
 												location 		<- tmp.location;
 											}
-											match COAST_DEF {
+											match ACTION_TYPE_COAST_DEF {
 												element_shape 	 <- (Coastal_Defense first_with(each.coast_def_id = self.element_id)).shape;
 												length_coast_def <- int(element_shape.perimeter);
 											}
@@ -724,28 +724,28 @@ species Network_Game_Manager skills: [network]{
 			do inform_budget_update();
 		}
 		loop tmp over: Coastal_Defense where(each.district_code = d.district_code){
-			write msg + " " + d.network_name + "_retreive " + tmp.build_map_from_attributes();
-			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
+			write msg + " " + d.network_name + "_retrieve " + tmp.build_map_from_attributes();
+			do send to: d.network_name +"_retrieve" contents: tmp.build_map_from_attributes();
 		}
 		loop tmp over: d.LUs{
-			write msg + " " + d.network_name + "_retreive " + tmp.build_map_from_attributes();
-			do send to: d.network_name +"_retreive" contents: tmp.build_map_from_attributes();
+			write msg + " " + d.network_name + "_retrieve " + tmp.build_map_from_attributes();
+			do send to: d.network_name +"_retrieve" contents: tmp.build_map_from_attributes();
 		}
 		loop tmp over: Player_Action where(each.district_code = d.district_code){
-			write msg + " " + d.network_name+ "_retreive " + tmp.build_map_from_attributes();
-			do send to: d.network_name+"_retreive" contents: tmp.build_map_from_attributes();
+			write msg + " " + d.network_name+ "_retrieve " + tmp.build_map_from_attributes();
+			do send to: d.network_name+"_retrieve" contents: tmp.build_map_from_attributes();
 		}
 		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
-			write msg + " " + d.network_name + "_retreive " + tmp.my_map;
-			do send to: d.network_name+"_retreive" contents: tmp.my_map;
+			write msg + " " + d.network_name + "_retrieve " + tmp.my_map;
+			do send to: d.network_name+"_retrieve" contents: tmp.my_map;
 		}
 	}
 	
 	action lock_window (District d, bool is_allowed){ // lock or unlock the player GUI
 		string val <- is_allowed = true? "UNLOCKED":"LOCKED";
-		map<string,string> me <- ["OBJECT_TYPE"  ::WINDOW_LOCKER,
+		map<string,string> me <- ["OBJECT_TYPE"  ::OBJECT_TYPE_WINDOW_LOCKER,
 								  "WINDOW_STATUS"::val];
-		do send to: d.network_name+"_retreive" contents: me;
+		do send to: d.network_name+"_retrieve" contents: me;
 	}
 }
 //------------------------------ End of Network_Game_Manager -------------------------------//
@@ -808,7 +808,7 @@ species Activated_Lever {
 	
 	action init_from_map (map<string, string> m ){
 		my_map <- m;
-		//put ACTIVATED_LEVER at: "OBJECT_TYPE" in: my_map;
+		put OBJECT_TYPE_ACTIVATED_LEVER at: "OBJECT_TYPE" in: my_map;
 	}
 }
 //------------------------------ End of Activated_lever -------------------------------//
@@ -912,7 +912,7 @@ species Player_Action schedules:[]{
 	bool is_sent_to_leader 	<- false;
 	bool is_applied 		<- false;
 	bool should_be_applied	-> {game_round >= actual_application_round} ;
-	string action_type 		<- COAST_DEF;		 				// can be "COAST_DEF" or "LU"
+	string action_type 		<- ACTION_TYPE_COAST_DEF;		 				// can be "COAST_DEF" or "LU"
 	string previous_lu_name <-"";  								// for LU action
 	bool is_expropriation 				<- false; 				// for LU action
 	bool is_in_protected_area 			<- false; 				// for dike action
@@ -925,7 +925,7 @@ species Player_Action schedules:[]{
 	list<Activated_Lever> activated_levers <-[];
 
 	map<string,string> build_map_from_attributes{
-		map<string,string> res <- ["OBJECT_TYPE"::PLAYER_ACTION,
+		map<string,string> res <- ["OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
 			"id"::id,
 			"element_id"::string(element_id),
 			"command"::string(command),
@@ -959,9 +959,9 @@ species Player_Action schedules:[]{
 	}
 	
 	Coastal_Defense create_dike (Player_Action act){
-		int next_dike_id <- max(Coastal_Defense collect(each.coast_def_id)) +1 ;
+		int next_coast_def_id <- max(Coastal_Defense collect(each.coast_def_id)) +1 ;
 		create Coastal_Defense returns: tmp_dike{
-			coast_def_id 	<- next_dike_id;
+			coast_def_id 	<- next_coast_def_id;
 			district_code 	<- act.district_code;
 			shape 			<- act.element_shape;
 			location 		<- act.location;
@@ -1007,8 +1007,8 @@ species Coastal_Defense {
 	list<Cell> cells;
 	
 	map<string,unknown> build_map_from_attributes{
-		map<string,unknown> res <- ["OBJECT_TYPE"::COASTAL_DEFENSE,
-			"dike_id"::string(coast_def_id),
+		map<string,unknown> res <- ["OBJECT_TYPE"::OBJECT_TYPE_COASTAL_DEFENSE,
+			"coast_def_id"::string(coast_def_id),
 			"type"::type, "status"::status,
 			"height"::string(height),
 			"alt"::string(alt),
@@ -1032,9 +1032,9 @@ species Coastal_Defense {
 		if status = ""  { status <- STATUS_GOOD; 			 } 
 		if type = '' 	{ type 	<- "Unknown";				 }
 		if height = 0.0 { height <- 1.5;					 } // if no height, 1.5 m by default
-		counter_status 	<- type = DUNE ? rnd (STEPS_DEGRAD_STATUS_DUNE - 1) : rnd (STEPS_DEGRAD_STATUS_DIKE - 1);
+		counter_status 	<- type = COAST_DEF_TYPE_DUNE ? rnd (STEPS_DEGRAD_STATUS_DUNE - 1) : rnd (STEPS_DEGRAD_STATUS_DIKE - 1);
 		cells 			<- Cell overlapping self;
-		if type = DUNE  { height_before_ganivelle <- height; }
+		if type = COAST_DEF_TYPE_DUNE  { height_before_ganivelle <- height; }
 	}
 	
 	action build_dike {
@@ -1125,12 +1125,16 @@ species Coastal_Defense {
 		
 	action calculate_rupture {
 		int p <- 0;
-		if type = DIKE and status = STATUS_BAD 		{ p <- PROBA_RUPTURE_DIKE_STATUS_BAD;	 }
-		if type = DIKE and status = STATUS_MEDIUM  	{ p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM; }
-		if type = DIKE and status = STATUS_GOOD		{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
-		if type = DUNE and status = STATUS_BAD 		{ p <- PROBA_RUPTURE_DUNE_STATUS_BAD;	 }
-		if type = DUNE and status = STATUS_MEDIUM 	{ p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM; }
-		if type = DUNE and status = STATUS_GOOD 	{ p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }
+		if type = COAST_DEF_TYPE_DIKE {
+			if 		 status = STATUS_BAD	{ p <- PROBA_RUPTURE_DIKE_STATUS_BAD;	 }
+			else if  status = STATUS_MEDIUM	{ p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM; }
+			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }	
+		}
+		else if type = COAST_DEF_TYPE_DUNE {
+			if      status = STATUS_BAD 	{ p <- PROBA_RUPTURE_DUNE_STATUS_BAD;	 }
+			else if status = STATUS_MEDIUM 	{ p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM; }
+			else 						 	{ p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }	
+		}
 		if rnd (100) <= p {
 			rupture <- 1;
 			// the rupture is applied in the middle
@@ -1160,7 +1164,7 @@ species Coastal_Defense {
 	}
 	
 	aspect base {  	
-		if type = DUNE {
+		if type = COAST_DEF_TYPE_DUNE {
 			switch status {
 				match STATUS_GOOD	{	color <-  rgb (222, 134, 14,255);	}
 				match STATUS_MEDIUM {	color <-  rgb (231, 189, 24,255);	} 
@@ -1241,7 +1245,7 @@ species Land_Use {
 	
 	map<string,unknown> build_map_from_attributes {
 		map<string,string> res <- [
-			"OBJECT_TYPE"::LAND_USE,
+			"OBJECT_TYPE"::OBJECT_TYPE_LAND_USE,
 			"id"::string(id),
 			"lu_name"::lu_name,
 			"lu_code"::string(lu_code),
@@ -1381,7 +1385,7 @@ species District {
 	
 	action inform_new_round {// inform about a new round (when a district reconnects)
 		ask Network_Game_Manager{
-			map<string,string> msg <- ["TOPIC"::"INFORM_NEW_ROUND"];
+			map<string,string> msg <- ["TOPIC"::INFORM_NEW_ROUND];
 			put myself.district_code at: DISTRICT_CODE in: msg;
 			do send to: myself.district_code + "_map_msg" contents: msg;
 		}
@@ -1389,7 +1393,7 @@ species District {
 	
 	action inform_current_round {// inform about the current round (when the player side district reconnects)
 		ask Network_Game_Manager{
-			map<string,string> msg <- ["TOPIC"::"INFORM_CURRENT_ROUND"];
+			map<string,string> msg <- ["TOPIC"::INFORM_CURRENT_ROUND];
 			put myself.district_code  		at: DISTRICT_CODE 	in: msg;
 			put string(game_round) 		  	at: NUM_ROUND		in: msg;
 			do send to: myself.district_code+"_map_msg" contents: msg;
@@ -1398,7 +1402,7 @@ species District {
 
 	action inform_budget_update {// inform about the budget (when the player side district reconnects)
 		ask Network_Game_Manager{
-			map<string,string> msg <- ["TOPIC"::"DISTRICT_BUDGET_UPDATE"];
+			map<string,string> msg <- ["TOPIC"::DISTRICT_BUDGET_UPDATE];
 			put myself.district_code  	at: DISTRICT_CODE 	in: msg;
 			put string(myself.budget) 	at: BUDGET			in: msg;
 			do send to: myself.district_code + "_map_msg" contents: msg;
@@ -1413,8 +1417,8 @@ species District {
 	
 	action calculate_indicators_t0 {
 		list<Coastal_Defense> my_coast_def <- Coastal_Defense where (each.district_code = district_code);
-		put string(my_coast_def where (each.type = DIKE) sum_of (each.shape.perimeter)) key: "length_dikes_t0" in: my_indicators_t0;
-		put string(my_coast_def where (each.type = DUNE) sum_of (each.shape.perimeter)) key: "length_dunes_t0" in: my_indicators_t0;
+		put string(my_coast_def where (each.type = COAST_DEF_TYPE_DIKE) sum_of (each.shape.perimeter)) key: "length_dikes_t0" in: my_indicators_t0;
+		put string(my_coast_def where (each.type = COAST_DEF_TYPE_DUNE) sum_of (each.shape.perimeter)) key: "length_dunes_t0" in: my_indicators_t0;
 		put string(length(LUs where (each.isUrbanType))) key: "count_LU_urban_t0" in: my_indicators_t0; // built cells (U , AU, Us and AUs)
 		put string(length(LUs where (each.isUrbanType and not(each.isAdapted) and each intersects first(Coastal_Border_Area)))) key: "count_LU_U_and_AU_is_in_coast_border_area_t0" in: my_indicators_t0; // non adapted built cells in littoral area (<400m)
 		put string(length(LUs where (each.isUrbanType and each intersects all_flood_risk_area))) key: "count_LU_urban_in_flood_risk_area_t0" in: my_indicators_t0; // built cells in flooded area

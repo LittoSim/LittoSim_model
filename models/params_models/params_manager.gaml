@@ -63,7 +63,7 @@ global{
 	float RUGOSITY_A 			<- float(shapes_def["RUGOSITY_A"]);
 	float RUGOSITY_AUs 			<- float(shapes_def["RUGOSITY_AUs"]);
 	float RUGOSITY_Us 			<- float(shapes_def["RUGOSITY_Us"]);
-	string RUGOSITE_PAR_DEFAUT  <- shapes_def["RUGOSITE_PAR_DEFAUT"];
+	string RUGOSITY_DEFAULT  	<- shapes_def["RUGOSITY_FILE"];
 		
 	// Costs of actions
 	int ACTION_COST_LAND_COVER_TO_A 			<- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'cost');

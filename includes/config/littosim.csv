@@ -10,8 +10,8 @@ LOG_USER_ACTION;true;
 SAVE_SHP;false;
 
 [ Files]
-SHAPE_DEF_FILE;../includes/config/study_area_caen.csv;
-ACTION_DEF_FILE;../includes/config/actions.csv;
-FLOODING_DEF_FILE;../includes/config/flooding.csv;
-LANG_DEF_FILE;../includes/config/langs.csv;
-LEVERS_DEF_FILE;../includes/config/levers.csv;
+SHAPES_FILE;../includes/config/study_area_caen.csv;
+ACTIONS_FILE;../includes/config/actions.csv;
+FLOODING_FILE;../includes/config/flooding.csv;
+LANGUAGES_FILE;../includes/config/langs.csv;
+LEVERS_FILE;../includes/config/levers.csv;

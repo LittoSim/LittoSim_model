@@ -185,7 +185,7 @@ species Player_Action schedules:[]{
 	}
 	
 	string track_profile {
-		if(action_type = COAST_DEF){
+		if(action_type = ACTION_TYPE_COAST_DEF){
 			if isInlandDike { return SOFT_DEFENSE; }
 			else{
 				switch command {
@@ -228,7 +228,7 @@ species Player_Action schedules:[]{
 	}
 	
 	map<string,string> build_map_from_attributes{
-		map<string,string> res <- ["OBJECT_TYPE"::PLAYER_ACTION,
+		map<string,string> res <- ["OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
 			"id"::id,
 			"element_id"::string(element_id),
 			"district_name"::district_name,
@@ -414,7 +414,7 @@ species Activated_Lever {
 	}
 	
 	map<string,string> build_map_from_attributes{
-		map<string,string> res <- ["OBJECT_TYPE"::ACTIVATED_LEVER,
+		map<string,string> res <- ["OBJECT_TYPE"::OBJECT_TYPE_ACTIVATED_LEVER,
 			"id"::id,
 			"lever_name"::lever_name,
 			"district_code"::district_code,

@@ -9,11 +9,11 @@ global{
 	// Configuration files
 	string config_file_name 				<- "../includes/config/littosim.csv"; 
 	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
-	map<string,string> shapes_def 			<- read_configuration_file(configuration_file["SHAPE_DEF_FILE"],";"); // Shapefiles data
-	map<string,string> flooding_def 		<- read_configuration_file(configuration_file["FLOODING_DEF_FILE"],";"); // Flooding model
-	matrix<string> actions_def 				<- matrix<string>(csv_file(configuration_file["ACTION_DEF_FILE"],";"));	// Actions, costs and delays
-	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANG_DEF_FILE"],";"); // Languages
-	map<string,map> data_action 			<- store_csv_data_into_map_of_map(configuration_file["ACTION_DEF_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
+	map<string,string> shapes_def 			<- read_configuration_file(configuration_file["SHAPES_FILE"],";"); // Shapefiles data
+	map<string,string> flooding_def 		<- read_configuration_file(configuration_file["FLOODING_FILE"],";"); // Flooding model
+	matrix<string> actions_def 				<- matrix<string>(csv_file(configuration_file["ACTIONS_FILE"],";"));	// Actions, costs and delays
+	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANGUAGES_FILE"],";"); // Languages
+	map<string,map> data_action 			<- store_csv_data_into_map_of_map(configuration_file["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
 		
 	// Network 
 	string SERVER 					<- configuration_file["SERVER_ADDRESS"]; 
@@ -23,11 +23,11 @@ global{
 	string LISTENER_TO_LEADER	 	<- "LISTENER_TO_LEADER";
 	
 	// Object types sent over network : OBJECT_TYPE
-	string ACTIVATED_LEVER 	<- "ACTIVATED_LEVER";
-	string PLAYER_ACTION	<- "PLAYER_ACTION";
-	string COASTAL_DEFENSE	<- "COASTAL_DEFENSE";
-	string LAND_USE			<- "LAND_USE";
-	string WINDOW_LOCKER	<- "WINDOW_LOCKER";
+	string OBJECT_TYPE_ACTIVATED_LEVER 	<- "ACTIVATED_LEVER";
+	string OBJECT_TYPE_PLAYER_ACTION	<- "PLAYER_ACTION";
+	string OBJECT_TYPE_COASTAL_DEFENSE	<- "COASTAL_DEFENSE";
+	string OBJECT_TYPE_LAND_USE			<- "LAND_USE";
+	string OBJECT_TYPE_WINDOW_LOCKER	<- "WINDOW_LOCKER";
 
 	// Main-Leader network communication
 	string LEADER_COMMAND   		<- "LEADER_COMMAND";
@@ -53,19 +53,23 @@ global{
 	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
 	
 	// Manager-Player network communication
-	string PLAYER_ACTION_IS_APPLIED <- "PLAYER_ACTION_IS_APPLIED";
+	string PLAYER_ACTION_IS_APPLIED <- 'PLAYER_ACTION_IS_APPLIED';
+	string DISTRICT_BUDGET_UPDATE 	<- 'DISTRICT_BUDGET_UPDATE';
+	string INFORM_NEW_ROUND 		<- 'INFORM_NEW_ROUND';
+	string INFORM_CURRENT_ROUND		<- 'INFORM_CURRENT_ROUND';
+	
 	
 	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
 	
 	// Constant vars
-	string LU				<- "LU";
-	string COAST_DEF		<- "COAST_DEF";
-	string DIKE 			<- "Dike";
-	string DUNE 			<- "Dune";
-	string STATUS_GOOD 		<- "Good";
-	string STATUS_MEDIUM	<- "Medium";
-	string STATUS_BAD 		<- "Bad";
+	string ACTION_TYPE_LU				<- "ACTION_TYPE_LU";
+	string ACTION_TYPE_COAST_DEF		<- "ACTION_TYPE_COAST_DEF";
+	string COAST_DEF_TYPE_DIKE 			<- "Dike";
+	string COAST_DEF_TYPE_DUNE 			<- "Dune";
+	string STATUS_GOOD 					<- "Good";
+	string STATUS_MEDIUM				<- "Medium";
+	string STATUS_BAD 					<- "Bad";
 	
 	// Population density
 	string POP_EMPTY 		  <- "EMPTY";
@@ -80,20 +84,20 @@ global{
 	string BUILT_DIKE_STATUS 	<- shapes_def["BUILT_DIKE_STATUS"];
 	
 	// Loading GIS data
-	file districts_shape 		<- file(shapes_def["COMMUNE_SHAPE"]);
-	file roads_shape 			<- file(shapes_def["ROAD_SHAPE"]);
-	file protected_areas_shape 	<- file(shapes_def["ZONES_PROTEGEES_SHAPE"]);
-	file rpp_area_shape 		<- file(shapes_def["ZONES_PPR_SHAPE"]);
+	file districts_shape 		<- file(shapes_def["DISTRICTS_SHAPE"]);
+	file roads_shape 			<- file(shapes_def["ROADS_SHAPE"]);
+	file protected_areas_shape 	<- file(shapes_def["SPA_SHAPE"]);
+	file rpp_area_shape 		<- file(shapes_def["RPP_SHAPE"]);
 	file coastline_shape 		<- file(shapes_def["COASTLINES_SHAPE"]);
-	file coastal_defenses_shape <- file(shapes_def["DEFENSES_COTES_SHAPE"]);
-	file land_use_shape 		<- file(shapes_def["UNAM_SHAPE"]);	
+	file coastal_defenses_shape <- file(shapes_def["COASTAL_DEFENSES_SHAPE"]);
+	file land_use_shape 		<- file(shapes_def["LAND_USE_SHAPE"]);	
 	file emprise_shape 			<- file(shapes_def["EMPRISE_SHAPE"]); 
 	file dem_file 				<- file(shapes_def["DEM_FILE"]) ;
 	file contour_neg_100m_shape <- file(shapes_def["CONTOUR_ILE_INF_100M"]);
 	int nb_cols 				<- int(shapes_def["DEM_NB_COLS"]);
 	int nb_rows 				<- int(shapes_def["DEM_NB_ROWS"]);
-	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM"]);
-	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["CORRESPONDANCE_INSEE_COM_NOM_RAC"]);
+	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
+	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
 	
 	// Taxes
 	map tax_unit_table 		<- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
@@ -106,11 +110,10 @@ global{
 	
 	int ACTION_ACTION_LIST 						<- 211;
 	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
-	int ACTION_LAND_COVER_UPDATE   				<-9;
-	int ACTION_DIKE_UPDATE		   				<-10;
-	int INFORM_ROUND 			   				<-34;
-	int ENTITY_TYPE_CODE_COAST_DEF 				<-36;
-	int ENTITY_TYPE_CODE_LU		   				<-37;
+	int ACTION_LAND_COVER_UPDATE   				<- 9;
+	int ACTION_DIKE_UPDATE		   				<- 10;
+	int ENTITY_TYPE_CODE_COAST_DEF 				<- 36;
+	int ENTITY_TYPE_CODE_LU		   				<- 37;
 	
 	// List of actions with their parameters
 	int ACTION_REPAIR_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action code');
@@ -141,7 +144,7 @@ global{
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){
 		map<string, string> res <- map<string, string>([]);
-		string line <-"";
+		string line <- "";
 		loop line over:text_file(fileName){
 			if(line contains(separator)){
 				list<string> data <- line split_with(separator);

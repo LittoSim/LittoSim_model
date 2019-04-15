@@ -9,7 +9,7 @@ import "params_all.gaml"
 
 global{
 	
-	map<string,map> levers_def <- store_csv_data_into_map_of_map(configuration_file["LEVERS_DEF_FILE"], ";");		// levers configuration file
+	map<string,map> levers_def <- store_csv_data_into_map_of_map(configuration_file["LEVERS_FILE"], ";");	// levers configuration file
 
 	int game_round <- 0;
 	point MOUSE_LOC;

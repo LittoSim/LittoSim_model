@@ -2,21 +2,21 @@
 APPLICATION_NAME;Oleron
 
 [ Shapes]
-COMMUNE_SHAPE;../includes/config/oleron/districts.shp;
-CONTOUR_ILE_INF_100M;../includes/config/oleron/contour_neg_100m.shp;
-DEFENSES_COTES_SHAPE;../includes/config/oleron/coastal_defenses.shp;
+DISTRICTS_SHAPE;../includes/config/oleron/districts.shp;
+CONTOUR_SHAPE;../includes/config/oleron/contour_neg_100m.shp;
+COASTAL_DEFENSES_SHAPE;../includes/config/oleron/coastal_defenses.shp;
 EMPRISE_SHAPE;../includes/config/oleron/emprise.shp;
 DEM_FILE;../includes/config/oleron/dem.asc;
-RUGOSITE_PAR_DEFAUT;../includes/config/oleron/rugosity.asc;
-ZONES_PPR_SHAPE;../includes/config/oleron/rpp.shp;
-ROAD_SHAPE;../includes/config/oleron/roads.shp;
+RUGOSITY_FILE;../includes/config/oleron/rugosity.asc;
+RPP_SHAPE;../includes/config/oleron/rpp.shp;
+ROADS_SHAPE;../includes/config/oleron/roads.shp;
 COASTLINES_SHAPE;../includes/config/oleron/coastline.shp;
-UNAM_SHAPE;../includes/config/oleron/land_use.shp;
-ZONES_PROTEGEES_SHAPE;../includes/config/oleron/spa.shp;
+LAND_USE_SHAPE;../includes/config/oleron/land_use.shp;
+SPA_SHAPE;../includes/config/oleron/spa.shp;
 DEM_NB_COLS;631;
 DEM_NB_ROWS;906;
-CORRESPONDANCE_INSEE_COM_NOM;["17093"::"Le-Chateau-d'Oleron","17140"::"Dolus-d'Oleron","17411"::"Saint-Trojan-Les-Bains","17385"::"Saint-Pierre-d'Oleron"];
-CORRESPONDANCE_INSEE_COM_NOM_RAC;["17093"::"lechateau","17140"::"dolus","17411"::"sttrojan","17385"::"stpierre"];
+MAP_DIST_CODE_LONG_NAME;["17093"::"Le-Chateau-d'Oleron","17140"::"Dolus-d'Oleron","17411"::"Saint-Trojan-Les-Bains","17385"::"Saint-Pierre-d'Oleron"];
+MAP_DIST_CODE_SHORT_NAME;["17093"::"lechateau","17140"::"dolus","17411"::"sttrojan","17385"::"stpierre"];
 COAST_BORDER_BUFFER;400.0;
 
 [ Rugosity]
