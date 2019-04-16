@@ -16,9 +16,9 @@ ACTION_MODIFY_LAND_COVER_Ui;Inciter a la densification;Incite to densification
 ACTION_EXPROPRIATION;Cliquez sur la cellule a modifier;Click on the cell to modify
 ACTION_MODIFY_LAND_COVER_AUs_SUBSIDY;Changer en zone à urbaniser adaptée avec subvention;Change to an authorized urbanization zone with subsidy
 ACTION_MODIFY_LAND_COVER_Us_SUBSIDY;Changer en zone urbanisée adaptée avec subvention;Change to an adapted urbanized zone with subsidy
-ACTION_INSPECT_LAND_USE;Inspecter une unite d’aménagement;Inspect a planning unit
-ACTION_INSPECT_DIKE;Inspecter un ouvrage de defense;Inspect a dike
-ACTION_DISPLAY_PROTECTED_AREA;Afficher les zones protegees;Display protected areas
+ACTION_INSPECT_LAND_USE;Inspecter une unité d’aménagement;Inspect a planning unit
+ACTION_INSPECT_DIKE;Inspecter un ouvrage de défense;Inspect a coastal defense
+ACTION_DISPLAY_PROTECTED_AREA;Afficher les zones protegées;Display protected areas
 ACTION_DISPLAY_FLOODED_AREA;Afficher les zones inondées;Display flooded areas
 MSG_NEW_ROUND;Nouveau tour de jeu;New round
 MSG_GAME_DONE;Termine;Done
@@ -72,7 +72,7 @@ PLR_EMPTY_BASKET;Votre panier est vide;Your basket is empty
 PLR_INSUFFICIENT_BUDGET;Vous ne disposez pas du budget suffisant pour réaliser toutes ces actions;You don't have sufficient budget to accomplish all those actions
 PLR_VALIDATE_BASKET;Vous êtes sur le point de valider votre panier;You are about to validate your basket
 PLR_CHECK_BOX_VALIDATE;Cocher la case pour accepter le panier et valider;Check the box to accept and validate the basket
-MSG_COST_APPLIED_PARCEL;Coût si applique a une parcelle;Cost if applied to a parcel
+MSG_COST_APPLIED_PARCEL;Coût si appliqué à une parcelle;Cost if applied to a parcel
 MSG_COST_ACTION;Coût de l'action;Cost of the action
 MSG_COST_EXPROPRIATION;coût d'expropriation;expropriation cost
 LEGEND_PLU;Aménagement, PLU et habitat;Planning, PLU and habitation

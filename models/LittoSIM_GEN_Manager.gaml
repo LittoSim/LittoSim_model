@@ -52,9 +52,6 @@ global {
 	list<list<int>> districts_budgets <- [[],[],[],[]];						// budget tables to draw evolution graphs
 	int new_comers_still_to_dispatch <- 0;									// population dynamics
 	
-	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
-    list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
-	
 	// other variables 
 	bool show_max_water_height	<- false ;						// defines if the water_height displayed on the map should be the max one or the current one
 	string stateSimPhase 		<- SIM_NOT_STARTED; 			// state variable of current simulation state 
@@ -72,7 +69,7 @@ global {
 		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
 		
 		create Coastal_Defense from: coastal_defenses_shape with: [
-									coast_def_id::int(read("object_id")), type::string(read("type")), status::string(read("status")),
+									coast_def_id::int(read("object_id")),type::string(read("type")), status::string(read("status")),
 									alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))];
 		
 		create Protected_Area from: protected_areas_shape with: [name::string(read("site_code"))];
@@ -123,31 +120,7 @@ global {
 	int getMessageID{
  		messageID <- messageID +1;
  		return messageID;
- 	} 	
-	 	
-	int delayOfAction (int action_code){
-		int rslt <- 9999;
-		loop i from:0 to: (length(actions_def) /3) - 1 {
-			if ((int(actions_def at {1,i})) = action_code){
-				rslt <- int(actions_def at {2,i});
-			}
-		}
-		return rslt;
-	}
-	 
-	int entityTypeCodeOfAction (int action_code){
-		string rslt <- "";
-		loop i from:0 to: (length(actions_def) /3) - 1 {
-			if ((int(actions_def at {1,i})) = action_code){
-				rslt <- actions_def at {4,i};
-			}
-		}
-		switch rslt {
-			match ACTION_TYPE_COAST_DEF   {return ENTITY_TYPE_CODE_COAST_DEF; }
-			match ACTION_TYPE_LU 		  {return ENTITY_TYPE_CODE_LU;		  }
-			default 		  {return 0;						  }
-		}
-	} 
+ 	} 
 	
 	int new_comers_to_dispatch 	 {
 		return round(sum(District where (each.dist_id > 0) accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE);
@@ -210,7 +183,7 @@ global {
 	
 	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD	{	do read_lisflood;	} // reading flooding files
 	
-	action replay_flood_event{
+	action replay_flood_event {
 		string txt <- "";
 		int i <- 1;
 		loop aK over: list_flooding_events.keys{
@@ -426,69 +399,74 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			write get_message('MSG_FLOODED_AREA_DISTRICT');
 			ask ((District where (each.dist_id > 0)) sort_by (each.dist_id)){
 				flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1 ;
-					add flooded_area to: data_flooded_area; 
-					write ""+ district_name + " : " + flooded_area +" ha";
+				add flooded_area to: data_flooded_area; 
+				write ""+ district_name + " : " + flooded_area +" ha";
 
-					totU <- (U_0_5c + U_1c + U_maxc) with_precision 1 ;
-					totUs <- (Us_0_5c + Us_1c + Us_maxc ) with_precision 1 ;
-					totUdense <- (Udense_0_5c + Udense_1c + Udense_maxc) with_precision 1 ;
-					totAU <- (AU_0_5c + AU_1c + AU_maxc) with_precision 1 ;
-					totN <- (N_0_5c + N_1c + N_maxc) with_precision 1 ;
-					totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1 ;	
-					add totU to: data_totU;
-					add totUs to: data_totUs;
-					add totUdense to: data_totUdense;
-					add totAU to: data_totAU;
-					add totN to: data_totN;
-					add totA to: data_totA;	
+				totU <- (U_0_5c + U_1c + U_maxc) with_precision 1 ;
+				totUs <- (Us_0_5c + Us_1c + Us_maxc ) with_precision 1 ;
+				totUdense <- (Udense_0_5c + Udense_1c + Udense_maxc) with_precision 1 ;
+				totAU <- (AU_0_5c + AU_1c + AU_maxc) with_precision 1 ;
+				totN <- (N_0_5c + N_1c + N_maxc) with_precision 1 ;
+				totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1 ;	
+				add totU to: data_totU;
+				add totUs to: data_totUs;
+				add totUdense to: data_totUdense;
+				add totAU to: data_totAU;
+				add totN to: data_totN;
+				add totA to: data_totA;	
 			}
 	}
 	
 	// creating buttons
  	action init_buttons{
 		create Buttons{
-			nb_button 	<- 0;					command  <- ONE_STEP;
-			shape 		<- square(button_size);	location <- { 1000,1000 };
+			nb_button 	<- 0;
+			command  	<- ONE_STEP;
+			location 	<- { 1000, 1000 };
 			my_icon 	<- image_file("../images/icons/one_step.png");
 		}
 		create Buttons{
-			nb_button 	<- 3; 				command	 <- HIGH_FLOODING;
-			shape 		<- square(button_size);	location <- { 5000,1000 };
+			nb_button 	<- 3;
+			command	 	<- HIGH_FLOODING;
+			location 	<- { 5000, 1000 };
 			my_icon 	<- image_file("../images/icons/launch_lisflood.png");
 		}
 		create Buttons{
-			nb_button 	<- 5;					command	 <- LOW_FLOODING;
-			shape 		<- square(button_size);	location <- { 7000,1000 };
+			nb_button 	<- 5;
+			command	 	<- LOW_FLOODING;
+			location 	<- { 7000, 1000 };
 			my_icon 	<- image_file("../images/icons/launch_lisflood_small.png");
 		}
 		create Buttons{
-			nb_button 	<- 6;					command  <- REPLAY_FLOODING;
-			shape 		<- square(button_size);	location <- { 9000,1000 };
+			nb_button 	<- 6;
+			command  	<- REPLAY_FLOODING;
+			location 	<- { 9000, 1000 };
 			my_icon 	<- image_file("../images/icons/replay_flooding.png");
 		}
 		create Buttons{
-			nb_button 	<- 4;					command  <- SHOW_LU_GRID;
-			shape 		<- square(850);			location <- { 800,14000 };
+			nb_button 	<- 4;
+			command  	<- SHOW_LU_GRID;
+			shape 		<- square(850);
+			location 	<- { 800, 14000 };
 			my_icon 	<- image_file("../images/icons/sans_quadrillage.png");
 			is_selected <- false;
 		}
 		create Buttons{
-			nb_button 	<- 7;					command	 <- SHOW_MAX_WATER_HEIGHT;
-			shape 		<- square(850);			location <- { 1800,14000 };
+			nb_button 	<- 7;
+			command	 	<- SHOW_MAX_WATER_HEIGHT;
+			shape 		<- square(850);
+			location 	<- { 1800, 14000 };
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
 			is_selected <- false;
 		}
 	}
-	
-	//clearing buttons selection
-    action clear_selected_button{	ask Buttons{	self.is_selected <- false;	}	}
 	
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
 		list<Buttons> buttonsMaster <- ( Buttons where (each distance_to loc < MOUSE_BUFFER));
 		if(length(buttonsMaster) > 0){
-			do clear_selected_button;
+			ask Buttons{ self.is_selected <- false;	}
 			ask(buttonsMaster){
 				is_selected <- true;
 				switch nb_button 	{
@@ -509,7 +487,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		Buttons a_button <- first((Buttons where (each distance_to loc < MOUSE_BUFFER)));
 		if a_button != nil{
 			ask a_button{
-				is_selected <- not(is_selected);
+				is_selected <- !is_selected;
 				if(a_button.nb_button = 4){
 					my_icon		<-  is_selected ? image_file("../images/icons/avec_quadrillage.png") : image_file("../images/icons/sans_quadrillage.png");
 				}else if(a_button.nb_button = 7){
@@ -581,12 +559,12 @@ species Network_Game_Manager skills: [network]{
 									else{
 										if is_expropriation 	{	write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.id;	}
 										switch self.action_type {
-											match ACTION_TYPE_LU {
+											match PLAYER_ACTION_TYPE_LU {
 												Land_Use tmp  	<- Land_Use first_with(each.id = self.element_id);
 												element_shape 	<- tmp.shape;
 												location 		<- tmp.location;
 											}
-											match ACTION_TYPE_COAST_DEF {
+											match PLAYER_ACTION_TYPE_COAST_DEF {
 												element_shape 	 <- (Coastal_Defense first_with(each.coast_def_id = self.element_id)).shape;
 												length_coast_def <- int(element_shape.perimeter);
 											}
@@ -683,8 +661,12 @@ species Network_Game_Manager skills: [network]{
 		list<string> update_messages <-[];
 		list<Land_Use> updated_LU <- [];
 		ask Land_Use where(each.not_updated) {
-			string msg <- "" + ACTION_LAND_COVER_UPDATE + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + id + COMMAND_SEPARATOR +
-							self.lu_code + COMMAND_SEPARATOR + self.population + COMMAND_SEPARATOR + self.isInDensification;
+			string msg <- "" + ACTION_LAND_COVER_UPDATE + COMMAND_SEPARATOR +
+							   world.getMessageID()     + COMMAND_SEPARATOR +
+							   id 						+ COMMAND_SEPARATOR +
+							   self.lu_code 			+ COMMAND_SEPARATOR +
+							   self.population 			+ COMMAND_SEPARATOR +
+							   self.isInDensification;
 			update_messages <- update_messages + msg;	
 			updated_LU 		<- updated_LU + self;
 			not_updated 	<- false;
@@ -912,20 +894,21 @@ species Player_Action schedules:[]{
 	bool is_sent_to_leader 	<- false;
 	bool is_applied 		<- false;
 	bool should_be_applied	-> {game_round >= actual_application_round} ;
-	string action_type 		<- ACTION_TYPE_COAST_DEF;		 				// can be "COAST_DEF" or "LU"
+	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF;	// can be "COAST_DEF" or "LU"
 	string previous_lu_name <-"";  								// for LU action
 	bool is_expropriation 				<- false; 				// for LU action
-	bool is_in_protected_area 			<- false; 				// for dike action
+	bool is_in_protected_area 			<- false; 				// for COAST_DEF action
 	bool is_in_coast_border_area	 	<- false; 				// for LU action  // 400m to coast line
 	bool is_in_risk_area 				<- false; 				// for LU action  // risk read = rpp.shp
-	bool is_inland_dike					<- false; 				// for dike action // retro dikes
+	bool is_inland_dike					<- false; 				// for COAST_DEF action // retro dikes
 	bool is_alive 						<- true;
 	bool should_wait_lever_to_activate  <- false;
 	bool a_lever_has_been_applied		<- false;
 	list<Activated_Lever> activated_levers <-[];
 
 	map<string,string> build_map_from_attributes{
-		map<string,string> res <- ["OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
+		map<string,string> res <- [
+			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
 			"id"::id,
 			"element_id"::string(element_id),
 			"command"::string(command),
@@ -1007,7 +990,8 @@ species Coastal_Defense {
 	list<Cell> cells;
 	
 	map<string,unknown> build_map_from_attributes{
-		map<string,unknown> res <- ["OBJECT_TYPE"::OBJECT_TYPE_COASTAL_DEFENSE,
+		map<string,unknown> res <- [
+			"OBJECT_TYPE"::OBJECT_TYPE_COASTAL_DEFENSE,
 			"coast_def_id"::string(coast_def_id),
 			"type"::type, "status"::status,
 			"height"::string(height),
@@ -1434,10 +1418,10 @@ species District {
 	
 // generic buttons
 species Buttons{
-	int nb_button <- 0;
-	string command <- "";
+	int nb_button 	 <- 0;
+	string command 	 <- "";
 	bool is_selected <- false;
-	geometry shape <- square(500#m);
+	geometry shape 	 <- square(button_size);
 	image_file my_icon;
 	
 	aspect buttons_master {

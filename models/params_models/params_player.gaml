@@ -13,10 +13,10 @@ global{
 	int DISPLAY_FONT_SIZE 	 <- 16;
 	
 	// Player actions
-	int ACTION_DISPLAY_PROTECTED_AREA 	<- int(data_action at 'ACTION_DISPLAY_PROTECTED_AREA' 	at 'action code');
-	int ACTION_DISPLAY_FLOODED_AREA 	<- int(data_action at 'ACTION_DISPLAY_FLOODED_AREA' 	at 'action code');
-	int ACTION_INSPECT_DIKE  			<- int(data_action at 'ACTION_INSPECT_DIKE' 			at 'action code');
-	int ACTION_INSPECT_LAND_USE  		<- int(data_action at 'ACTION_INSPECT_LAND_USE' 		at 'action code');
+	int ACTION_DISPLAY_PROTECTED_AREA 	<- int(data_action at 'ACTION_DISPLAY_PROTECTED_AREA' 	at 'action_code');
+	int ACTION_DISPLAY_FLOODED_AREA 	<- int(data_action at 'ACTION_DISPLAY_FLOODED_AREA' 	at 'action_code');
+	int ACTION_INSPECT_DIKE  			<- int(data_action at 'ACTION_INSPECT_DIKE' 			at 'action_code');
+	int ACTION_INSPECT_LAND_USE  		<- int(data_action at 'ACTION_INSPECT_LAND_USE' 		at 'action_code');
 	
 	string PLAYER_MSG 	<- "PLAYER_MSG";
 	
@@ -29,10 +29,15 @@ global{
 	int HAUSSE_RENOVATION_DIGUE 		<- 1106;
 	int HAUSSE_COUT_BATI 				<- 1107;
 	
-	// Displays
-	string PLU_DISPLAY 	<- "PLU";
-	string DIKE_DISPLAY <- "DIKE";
-	string BOTH_DISPLAY <- "BOTH";
+	// map tab displays
+	string LU_DISPLAY 		 <- "LU_DISPLAY";
+	string COAST_DEF_DISPLAY <- "COAST_DEF_DISPLAY";
+	string BOTH_DISPLAYS 	 <- "BOTH_DISPLAYS";
+	// gama displays
+	string GAMA_BASKET_DISPLAY 	<- "Basket";
+	string GAMA_MAP_DISPLAY		<- "Map";
+	string GAMA_DOSSIERS_DISPLAY<- "Dossiers";
+	string GAMA_MESSAGES_DISPLAY<- "Messages";
 
 	// Received user messages type
 	string INFORMATION_MESSAGE 	<- "INFORMATION_MESSAGE";
@@ -44,8 +49,8 @@ global{
 	point INFORMATION_BOX_SIZE 	<- {200,80};	
 
 	// Multi-langs
-	string LEGEND_PLU_NAME;
-	string LEGEND_DYKE_NAME;
+	string LEGEND_LU_NAME;
+	string LEGEND_COAST_DEF_NAME;
 	string MSG_WARNING;
 	string MSG_POSSIBLE_REGLEMENTATION_DELAY;
 	string MSG_SIM_NOT_STARTED;

@@ -1,4 +1,4 @@
-action name;action code;delay;cost;entity;BUTTON_help_message;BUTTON_icon_file;def_cote_index;UA_index
+action_name;action_code;delay;cost;entity;button_help_message;button_icon_file;coast_def_index;lu_index
 ACTION_REPAIR_DIKE;5;1;1;COAST_DEF;HELP_MSG_REPAIR_DIKE;../images/ihm/I_reparation_digue.png;1;-1
 ACTION_CREATE_DIKE;6;3;10;COAST_DEF;HELP_MSG_CREATE_DIKE;../images/ihm/i_creation_digue.png;2;-1
 ACTION_DESTROY_DIKE;7;1;2;COAST_DEF;HELP_MSG_DESTROY_DIKE;../images/ihm/I_suppression_digue.png;3;-1

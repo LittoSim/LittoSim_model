@@ -63,8 +63,8 @@ global{
 	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
 	
 	// Constant vars
-	string ACTION_TYPE_LU				<- "ACTION_TYPE_LU";
-	string ACTION_TYPE_COAST_DEF		<- "ACTION_TYPE_COAST_DEF";
+	string PLAYER_ACTION_TYPE_LU		<- "PLAYER_ACTION_TYPE_LU";
+	string PLAYER_ACTION_TYPE_COAST_DEF	<- "PLAYER_ACTION_TYPE_COAST_DEF";
 	string COAST_DEF_TYPE_DIKE 			<- "Dike";
 	string COAST_DEF_TYPE_DUNE 			<- "Dune";
 	string STATUS_GOOD 					<- "Good";
@@ -112,23 +112,21 @@ global{
 	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
 	int ACTION_LAND_COVER_UPDATE   				<- 9;
 	int ACTION_DIKE_UPDATE		   				<- 10;
-	int ENTITY_TYPE_CODE_COAST_DEF 				<- 36;
-	int ENTITY_TYPE_CODE_LU		   				<- 37;
 	
 	// List of actions with their parameters
-	int ACTION_REPAIR_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action code');
-	int ACTION_CREATE_DIKE 			 <- int(data_action at 'ACTION_CREATE_DIKE' at 'action code');
-	int ACTION_DESTROY_DIKE 		 <- int(data_action at 'ACTION_DESTROY_DIKE' at 'action code');
-	int ACTION_RAISE_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action code');
-	int ACTION_INSTALL_GANIVELLE 	 <- int(data_action at 'ACTION_INSTALL_GANIVELLE' at 'action code');
-	int ACTION_MODIFY_LAND_COVER_AU  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AU' at 'action code');
-	int ACTION_MODIFY_LAND_COVER_A 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'action code');
-	int ACTION_MODIFY_LAND_COVER_U 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_U' at 'action code');
-	int ACTION_MODIFY_LAND_COVER_N 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_N' at 'action code');
-	int ACTION_MODIFY_LAND_COVER_AUs <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs' at 'action code');	
-	int ACTION_MODIFY_LAND_COVER_Us	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' at 'action code');
-	int ACTION_MODIFY_LAND_COVER_Ui  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' at 'action code');
-	int ACTION_EXPROPRIATION 		 <- int(data_action at 'ACTION_EXPROPRIATION' at 'action code');
+	int ACTION_REPAIR_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action_code');
+	int ACTION_CREATE_DIKE 			 <- int(data_action at 'ACTION_CREATE_DIKE' at 'action_code');
+	int ACTION_DESTROY_DIKE 		 <- int(data_action at 'ACTION_DESTROY_DIKE' at 'action_code');
+	int ACTION_RAISE_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' at 'action_code');
+	int ACTION_INSTALL_GANIVELLE 	 <- int(data_action at 'ACTION_INSTALL_GANIVELLE' at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_AU  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AU' at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_A 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_U 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_U' at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_N 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_N' at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_AUs <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs' at 'action_code');	
+	int ACTION_MODIFY_LAND_COVER_Us	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_Ui  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' at 'action_code');
+	int ACTION_EXPROPRIATION 		 <- int(data_action at 'ACTION_EXPROPRIATION' at 'action_code');
 	
 	// Actions to acknowledge client requests
 	int ACTION_DIKE_CREATED 	<- 16;
@@ -156,9 +154,9 @@ global{
 	
 	map<string, map> store_csv_data_into_map_of_map(string fileName,string separator){
 		map<string, map> res ;
-		string line <-"";
+		string line <- "";
 		list<string> col_labels <- [];
-		loop line over:text_file(fileName){
+		loop line over: text_file(fileName){
 			if(line contains(separator)){
 				list<string> data <- line split_with(separator);
 				if empty(col_labels) {
@@ -176,16 +174,32 @@ global{
 		return res;
 	}
 	
-	string label_of_action (int action_code){
+	string label_of_action (int act_code){
 		string rslt <- "";
-		loop i from:0 to: (length(actions_def) /3) - 1 {
-			if ((int(actions_def at {1,i})) = action_code){
-				rslt <- actions_def at {0,i}; // action name
-				rslt <- get_message(rslt); // action label
+		loop act_name over: data_action.keys{
+			if int(data_action at act_name at 'action_code') = act_code{
+				rslt <- get_message(act_name);    // action label
 			}
 		}
 		return rslt;
 	}
+	
+	int delay_of_action (int action_code){
+		int rst <- 0;
+		loop act_name over: data_action.keys{
+			if int(data_action at act_name at 'action_code') = action_code{
+				rst <- int(data_action at act_name at 'delay');
+			}			
+		}
+		return rst;
+	}
+	
+	float cost_of_action (string act_name){
+		return float(data_action at act_name at 'cost');
+	}
+	
+	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
+    list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
 	
 	string LU_name_of_command (int command) {
 		switch command {

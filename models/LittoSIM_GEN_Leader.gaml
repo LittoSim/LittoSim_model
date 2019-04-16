@@ -185,7 +185,7 @@ species Player_Action schedules:[]{
 	}
 	
 	string track_profile {
-		if(action_type = ACTION_TYPE_COAST_DEF){
+		if(action_type = PLAYER_ACTION_TYPE_COAST_DEF){
 			if isInlandDike { return SOFT_DEFENSE; }
 			else{
 				switch command {

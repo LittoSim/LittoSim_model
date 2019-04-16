@@ -9,7 +9,7 @@ model Player
 import "params_models/params_player.gaml"
 
 global{
-	string DISTRICT_AT_TOP 		<- "criel";
+	string DISTRICT_AT_TOP 		<- "criel"; // TODO
 	string active_district_name <- "";
 	string active_district_code <- dist_code_sname_correspondance_table index_of active_district_name;
 	District active_district	<- nil;
@@ -25,7 +25,7 @@ global{
 	// GUI
 	list<float> basket_location <- [];
 	bool is_active_gui 			<- true;
-	string active_display 		<- PLU_DISPLAY;
+	string active_display 		<- LU_DISPLAY;
 	Player_Action current_action 	<- nil;
 	point previous_clicked_point<- nil;
 	float button_size 			<- 500#m;
@@ -38,26 +38,26 @@ global{
 	int received_tax	<- 0;
 	float tax_unit  	<- 0.0;
 	
-	bool subvention_habitat_adapte <- false;
+	bool subvention_habitat_adapte  <- false;
 	bool subvention_ganivelle 		<- false;
 	int previous_population;
-	int current_population -> {UA sum_of (each.population)};
+	int current_population -> { Land_Use sum_of (each.population) };
 	list<Player_Action> my_basket <-[];
 	
-	UA explored_cell 			<- nil;
-	Coastal_Defense explored_dike 		<- nil;
-	Land_Use_Action explored_land_use_action<- nil;
-	buttons explored_buttons 	<- nil;
+	Land_Use explored_cell 		<- nil;
+	Button explored_buttons 	<- nil;
 	geometry population_area 	<- nil;
-	Network_Player game_manager <-nil;
+	Network_Player network_player <-nil;
 	geometry dike_shape_space 	<- nil;
 	geometry unam_shape_space 	<- nil;
+	Coastal_Defense explored_dike			<- nil;
+	Land_Use_Action explored_land_use_action<- nil;
 	
-	list<Player_Action> ordered_action <- nil;
-	list<Player_Action> my_history	 <- [] update: ordered_action where(each.is_sent);
+	list<Player_Action> ordered_action 	<- nil;
+	list<Player_Action> my_history	 	<- [] update: ordered_action where(each.is_sent);
 	
-	basket game_basket <-nil;
-	console game_console <-nil;
+	basket game_basket 		<-nil;
+	console game_console 	<-nil;
 	work_in_progress_list game_history <- nil; 
 
 	Player_Action highlight_action;
@@ -65,16 +65,16 @@ global{
 	init{		
 		create District from: districts_shape with:[district_code::string(read("dist_code")), district_name::string(read("dist_sname"))];
 		active_district <- District first_with (each.district_code = active_district_code);
-		local_shape <- envelope(active_district);
-		tax_unit  	<- float(tax_unit_table at active_district_name); 
+		local_shape 	<- envelope(active_district);
+		tax_unit  		<- float(tax_unit_table at active_district_name); 
 		
 		create work_in_progress_left_icon {
 			point p <- {0.075,0.5};
-			do lock_agent_at ui_location:p display_name: "Dossiers" ui_width: 0.15 ui_height:1.0 ; // OU 0.1
+			do lock_agent_at ui_location:p display_name: GAMA_DOSSIERS_DISPLAY ui_width: 0.15 ui_height:1.0 ; // OU 0.1
 		}
 		create console_left_icon {
 			point p <- {0.075,0.5};
-			do lock_agent_at ui_location:p display_name: "Messages" ui_width: 0.15 ui_height:1.0 ;
+			do lock_agent_at ui_location:p display_name: GAMA_MESSAGES_DISPLAY ui_width: 0.15 ui_height:1.0 ;
 		}
 		
 		create basket  				{ game_basket  <- self; }
@@ -84,7 +84,7 @@ global{
 		create Network_Data_Retriever;
 		create network_activated_lever;
 		do create_tabs;
-		create Network_Player { game_manager <- self; }
+		create Network_Player { network_player <- self; }
 		create network_player_new;
 		create Network_Listener_To_Leader;
 		
@@ -101,311 +101,259 @@ global{
 		create Road from:roads_shape;
 		create Flood_Risk_Area from: rpp_area_shape;
 		
-		create UA from: land_use_shape with: [id::int(read("unit_id")), ua_code::int(read("unit_code")), population:: int(get("unit_pop"))]{
+		create Land_Use from: land_use_shape with: [id::int(read("unit_id")), lu_code::int(read("unit_code")), population:: int(get("unit_pop"))]{
 			if (self overlaps active_district){
-				lu_name <- nameOfUAcode(ua_code);
+				lu_name <- lu_type_names [lu_code];
 				if lu_name = "U" and population = 0 { population <- 10; }
 				my_color <- cell_color();
 			} else { do die; }
 		}
 
-		population_area <- union(UA where(each.lu_name = "U" or each.lu_name = "AU"));
+		population_area <- union(Land_Use where(each.lu_name = "U" or each.lu_name = "AU"));
 		previous_population <- current_population();
 		
-		list<geometry> tmp <- buttons collect(each.shape) accumulate active_district.shape;
+		list<geometry> tmp <- Button collect(each.shape) accumulate active_district.shape;
 		dike_shape_space <- envelope(tmp);
 		
 		MSG_WARNING 						<- get_message('MSG_WARNING');
 		MSG_POSSIBLE_REGLEMENTATION_DELAY 	<- get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY');
-		LEGEND_PLU_NAME 					<- get_message('LEGEND_PLU');
-		LEGEND_DYKE_NAME 					<- get_message('LEGEND_DYKE');
+		LEGEND_LU_NAME 						<- get_message('LEGEND_PLU');
+		LEGEND_COAST_DEF_NAME 				<- get_message('LEGEND_DYKE');
 		MSG_SIM_NOT_STARTED 				<- get_message('MSG_SIM_NOT_STARTED');
 	}
 	//------------------------------ End of init -------------------------------//
 	
 	user_command "Refresh all the map"{
 		write "Refresh all";
-		ask UA + Coastal_Defense + Player_Action { do die; }
+		ask Land_Use + Coastal_Defense + Player_Action { do die; }
 		
-		string msg <- "" + REFRESH_ALL + COMMAND_SEPARATOR + world.get_action_id() + COMMAND_SEPARATOR+active_district_code;
-		ask game_manager {
-			map<string,string> data <- ["stringContents"::msg];
-			do send to:GAME_MANAGER contents:data;
-		}
+		string msg <- "" + REFRESH_ALL + COMMAND_SEPARATOR + world.get_action_id() + COMMAND_SEPARATOR + active_district_code;
+		ask network_player { do send to: GAME_MANAGER contents: ["stringContents"::msg]; }
 	}
 	
-	int read_action_cost (string action_name){ return float(data_action at action_name at 'cost'); }
-	
-	point button_box_location(point my_button, int box_width){
-		if(world.shape.width*0.6>my_button.x){
-			return {min([my_button.x+box_width,world.shape.width-10#px]),my_button.y};
+	point button_box_location (point my_button, int box_width){
+		if(world.shape.width * 0.6 > my_button.x){
+			return { min([my_button.x + box_width, world.shape.width - 10#px]), my_button.y };
 		}
 		return my_button;
 	}
 	
 	int id_number_of_action_id (string act_id){
-		return act_id = "" ? 0 : int((act_id split_with "_")[1]);
+		return act_id = "" ? 0 : int ((act_id split_with "_")[1]);
 	}
 	
 	string get_action_id {
-		list<int> x1 <- Coastal_Defense_Action collect(id_number_of_action_id(each.id));
-		list<int> x2 <- Land_Use_Action collect(id_number_of_action_id(each.id));
-		return active_district_code + "_" + (max(x1 + x2) + 1);
-	}
-	
-	int delayOfAction (int action_code){
-		int rst <- 0;
-		loop i over: data_action.keys{
-			if int(data_action[i] at 'action code') = action_code{
-				rst <- int(data_action[i] at 'delay');
-			}			
-		}
-		return rst;
+		list<int> ids1 <- Coastal_Defense_Action collect(id_number_of_action_id (each.id));
+		list<int> ids2 <- Land_Use_Action 		 collect(id_number_of_action_id (each.id));
+		return active_district_code + "_" + (max(ids1 + ids2) + 1);
 	}
 	
 	int current_population{
-		return sum(UA accumulate (each.population));
+		return sum (Land_Use accumulate (each.population));
 	}
 		
-	image_file chooseActionIcone(int cmd){
+	image_file get_action_icon (int cmd){
 		switch(cmd){
-			match ACTION_MODIFY_LAND_COVER_A { return image_file("../images/ihm/S_agricole.png");}
-			match ACTION_MODIFY_LAND_COVER_AU { return image_file("../images/ihm/S_urbanise.png");}
-			match ACTION_MODIFY_LAND_COVER_AUs { return image_file("../images/ihm/S_urbanise_adapte.png");}
-			match ACTION_MODIFY_LAND_COVER_Us { return image_file("../images/ihm/S_urbanise_adapte.png");}
-			match ACTION_MODIFY_LAND_COVER_Ui { return image_file("../images/ihm/S_urbanise_intensifie.png");}
-			match ACTION_MODIFY_LAND_COVER_N { return image_file("../images/ihm/S_naturel.png");}
-			match ACTION_CREATE_DIKE { return image_file("../images/ihm/S_creation_digue.png");}
-			match ACTION_REPAIR_DIKE { return image_file("../images/ihm/S_reparation_digue.png");}
-			match ACTION_RAISE_DIKE { return image_file("../images/ihm/S_elevation_digue.png");}
-			match ACTION_DESTROY_DIKE { return image_file("../images/ihm/S_suppression_digue.png");}
-			match ACTION_INSTALL_GANIVELLE { return image_file("../images/ihm/S_ganivelle.png");}
+			match ACTION_MODIFY_LAND_COVER_A 	{ return image_file("../images/ihm/S_agricole.png");}
+			match ACTION_MODIFY_LAND_COVER_AU 	{ return image_file("../images/ihm/S_urbanise.png");}
+			match ACTION_MODIFY_LAND_COVER_AUs 	{ return image_file("../images/ihm/S_urbanise_adapte.png");}
+			match ACTION_MODIFY_LAND_COVER_Us 	{ return image_file("../images/ihm/S_urbanise_adapte.png");}
+			match ACTION_MODIFY_LAND_COVER_Ui 	{ return image_file("../images/ihm/S_urbanise_intensifie.png");}
+			match ACTION_MODIFY_LAND_COVER_N 	{ return image_file("../images/ihm/S_naturel.png");}
+			match ACTION_CREATE_DIKE 			{ return image_file("../images/ihm/S_creation_digue.png");}
+			match ACTION_REPAIR_DIKE 			{ return image_file("../images/ihm/S_reparation_digue.png");}
+			match ACTION_RAISE_DIKE 			{ return image_file("../images/ihm/S_elevation_digue.png");}
+			match ACTION_DESTROY_DIKE			{ return image_file("../images/ihm/S_suppression_digue.png");}
+			match ACTION_INSTALL_GANIVELLE 		{ return image_file("../images/ihm/S_ganivelle.png");}
 		}
 		return nil;
 	}
 	
-	image_file au_icone(UA mc){
-		string val<-"";
+	image_file au_icone(Land_Use mc){
 		if(mc.is_in_densification){
 			return image_file("../images/icons/urban_intensifie.png");
 		}
-		
-		switch(mc.ua_code){
-			match 1 {return image_file("../images/icons/tree_nature.png");}
-			match 2 {return image_file("../images/icons/urban.png");}
-			match 4 {return image_file("../images/icons/urban.png");}
-			match 5 {return image_file("../images/icons/agriculture.png");}
-			match 6 {return image_file("../images/icons/urban_adapte2.png");}
-			match 7 {return image_file("../images/icons/urban_adapte2.png");}
+		switch(mc.lu_code){
+			match 1 { return image_file("../images/icons/tree_nature.png");   }
+			match 2 { return image_file("../images/icons/urban.png");		  }
+			match 4 { return image_file("../images/icons/urban.png"); 		  }
+			match 5 { return image_file("../images/icons/agriculture.png");	  }
+			match 6 { return image_file("../images/icons/urban_adapte2.png"); }
+			match 7 { return image_file("../images/icons/urban_adapte2.png"); }
 		}
 		return nil;
 	}
 	
 	action create_tabs {
-		float increment <- DISTRICT_AT_TOP = active_district_name ? 0.8:0.0;
+		float increment <- active_district_name = DISTRICT_AT_TOP ? 0.8 : 0.0;
 		
 		create Tab {
-			point p 		<- {0.25,increment+0.03};
-			legend_name 	<- LEGEND_DYKE_NAME;
-			display_name 	<- DIKE_DISPLAY;
-			do lock_agent_at ui_location: p display_name: "Map" ui_width: 0.5 ui_height: 0.06;
+			point p 		<- {0.25, increment + 0.03};
+			legend_name 	<- LEGEND_COAST_DEF_NAME;
+			display_name 	<- COAST_DEF_DISPLAY;
+			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 0.5 ui_height: 0.06;
 		}
 		
 		create Tab {
-			point p 		<- {0.75,increment+0.03};
-			legend_name 	<- LEGEND_PLU_NAME;
-			display_name 	<- PLU_DISPLAY;
-			do lock_agent_at ui_location: p display_name: "Map" ui_width: 0.5 ui_height: 0.06;
+			point p 		<- {0.75,increment + 0.03};
+			legend_name 	<- LEGEND_LU_NAME;
+			display_name 	<- LU_DISPLAY;
+			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 0.5 ui_height: 0.06;
 		}	
 		
 		create Tab_Background {
 			point p <- {0.0, 0};
-			do lock_agent_at ui_location: p display_name: "Map" ui_width: 1.0 ui_height: 1.0;
+			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 1.0 ui_height: 1.0;
 		}
 	}
 	
-	action create_buttons{
-		float interleave <- world.local_shape.height / 20;
-		float button_s <- world.local_shape.height / 10;
-		float increment <- DISTRICT_AT_TOP = active_district_name ? 0.8:0.0;
-
-		create buttons number: 1{
-			action_name <- 'ACTION_MODIFY_LAND_COVER_A';
-			display_name <- PLU_DISPLAY;
-			point p <- {0.40,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			shape <- square(button_size);
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave};
-		}
-
-		create buttons number: 1{
-			action_name <- 'ACTION_MODIFY_LAND_COVER_AU';
-			shape <- square(button_size);
-			display_name <- PLU_DISPLAY;
-			point p <- {0.05,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + interleave+ button_size };
+	action create_buttons {
+		float interleave 	<- world.local_shape.height / 20;
+		float button_s 		<- world.local_shape.height / 10;
+		float increment 	<- active_district_name = DISTRICT_AT_TOP ? 0.8:0.0;
+		
+		create Button {
+			action_name  <- 'ACTION_MODIFY_LAND_COVER_N'; 
+			display_name <- LU_DISPLAY;
+			p 	 		 <- {0.50,increment+0.13};
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 2 * (interleave + button_size)};
 		}
 		
-		create buttons number: 1{
-			action_name <- 'ACTION_MODIFY_LAND_COVER_AUs';
-			shape <- square(button_size);
-			display_name <- PLU_DISPLAY;
-			point p <- {0.15,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 2*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size };
-		}
-		
-		create buttons number: 1{
-			action_name <- 'ACTION_MODIFY_LAND_COVER_Ui';
-			shape <- square(button_size);
-			display_name <- PLU_DISPLAY;
-			point p <- {0.25,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5 + 4*interleave, world.local_shape.location.y - (world.local_shape.height /2) +2*interleave + button_size };
-		}
-			
-		create buttons number: 1{
-			action_name <- 'ACTION_MODIFY_LAND_COVER_N'; 
-			shape <- square(button_size);
-			display_name <- PLU_DISPLAY;
-			point p <- {0.50,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +2* (interleave+ button_size) };
-		}
-		
-		create buttons number: 1{
-			action_name <- 'ACTION_INSPECT_LAND_USE';
-			shape <- square(button_size);
-			display_name <- PLU_DISPLAY;
-			point p <- {0.70,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
-		}
-		
-		create buttons number: 1{
-			action_name <- 'ACTION_CREATE_DIKE';
-			shape <- square(button_size);
-			display_name <- DIKE_DISPLAY;
-			point p <- {0.05,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave  };
+		create Button {
+			action_name  <- 'ACTION_MODIFY_LAND_COVER_A';
+			display_name <- LU_DISPLAY;
+			p 	 		 <- {0.40, increment + 0.13};
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave };
 		}
 
-		create buttons number: 1{
-			action_name <- 'ACTION_REPAIR_DIKE';
-			shape <- square(button_size);
-			display_name <- DIKE_DISPLAY;
-			point p <- {0.15,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave + 2*(interleave+ button_size) };
+		create Button {
+			action_name  <- 'ACTION_MODIFY_LAND_COVER_AU';
+			display_name <- LU_DISPLAY;
+			p 	 		 <- { 0.05, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + interleave + button_size };
 		}
 		
-		create buttons number: 1{
-			action_name <- 'ACTION_DESTROY_DIKE';
-			shape <- square(button_size);
-			display_name <- DIKE_DISPLAY;
-			point p <- {0.35,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +3* (interleave+ button_size) };
+		create Button {
+			action_name  <- 'ACTION_MODIFY_LAND_COVER_AUs';
+			display_name <- LU_DISPLAY;
+			p 			 <- { 0.15, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5 + 2 * interleave, world.local_shape.location.y - (world.local_shape.height / 2) + 2 * interleave + button_size };
 		}
 		
-		create buttons number: 1{
-			action_name <- 'ACTION_RAISE_DIKE';
-			shape <- square(button_size);
-			display_name <- DIKE_DISPLAY;
-			my_help <- world.get_message('HELP_MSG_RAISE_DIKE');
-			point p <- {0.25,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +1* (interleave+ button_size) };
+		create Button {
+			action_name  <- 'ACTION_MODIFY_LAND_COVER_Ui';
+			display_name <- LU_DISPLAY;
+			p 			 <- { 0.25, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5 + 4*interleave, world.local_shape.location.y - (world.local_shape.height / 2) + 2 * interleave + button_size };
 		}
 		
-		create buttons number: 1{
-			action_name <- 'ACTION_INSTALL_GANIVELLE';
-			shape <- square(button_size);
-			display_name <- DIKE_DISPLAY;
-			point p <- {0.45,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave+4* (interleave+ button_size)};
+		create Button {
+			action_name  <- 'ACTION_INSPECT_LAND_USE';
+			display_name <- LU_DISPLAY;
+			p 			 <- { 0.70, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 3 * (interleave + button_size) };
 		}
 		
-		create buttons number: 1{
-			action_name <- 'ACTION_INSPECT_DIKE';
-			shape <- square(button_size);
-			display_name <- DIKE_DISPLAY;
-			point p <- {0.70,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			location <- { world.local_shape.location.x+ (world.local_shape.width /2) + world.local_shape.width/5, world.local_shape.location.y - (world.local_shape.height /2) +interleave +5* (interleave+ button_size) };			
+		create Button {
+			action_name  <- 'ACTION_CREATE_DIKE';
+			display_name <- COAST_DEF_DISPLAY;
+			p 			 <- { 0.05, increment + 0.13 };
+			location <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave  };
 		}
 
-		create buttons_map number: 1{
-			action_name <- 'ACTION_DISPLAY_PROTECTED_AREA';
-			display_name <-BOTH_DISPLAY;
-			shape <- square(850);
-			location <- { 1000,8000 };
-			point p <- {0.80,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			is_selected <- false;
+		create Button {
+			action_name  <- 'ACTION_REPAIR_DIKE';
+			display_name <- COAST_DEF_DISPLAY;
+			p 			 <- { 0.15, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 2 * (interleave + button_size) };
 		}
 		
-		create buttons_map number: 1{
-			action_name <- 'ACTION_DISPLAY_FLOODED_AREA';
-			display_name <-BOTH_DISPLAY;
-			shape <- square(850);
-			location <- { 1000,9000 };
-			point p <- {0.90,increment+0.13};
-			do lock_agent_at ui_location:p display_name:"Map" ui_width:0.1 ui_height:0.1;
-			is_selected <- false;
+		create Button {
+			action_name  <- 'ACTION_DESTROY_DIKE';
+			display_name <- COAST_DEF_DISPLAY;
+			p 			 <- { 0.35, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 3 * (interleave + button_size) };
 		}
 		
-		ask buttons {do init_att;}
-		ask buttons_map {do init_att;}
-	
+		create Button {
+			action_name  <- 'ACTION_RAISE_DIKE';
+			display_name <- COAST_DEF_DISPLAY;
+			p 			 <- { 0.25, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 1 * (interleave + button_size) };
+		}
+		
+		create Button {
+			action_name  <- 'ACTION_INSTALL_GANIVELLE';
+			display_name <- COAST_DEF_DISPLAY;
+			 p 			 <- { 0.45, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 4 * (interleave + button_size)};
+		}
+		
+		create Button {
+			action_name  <- 'ACTION_INSPECT_DIKE';
+			display_name <- COAST_DEF_DISPLAY;
+			p 			 <- { 0.70, increment + 0.13 };
+			location 	 <- { world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 5 * (interleave + button_size) };			
+		}
+
+		create Button_Map {
+			action_name  <- 'ACTION_DISPLAY_PROTECTED_AREA';
+			display_name <- BOTH_DISPLAYS;
+			location 	 <- { 1000,8000 };
+			p 			 <- { 0.80, increment + 0.13 };
+		}
+		
+		create Button_Map {
+			action_name  <- 'ACTION_DISPLAY_FLOODED_AREA';
+			display_name <- BOTH_DISPLAYS;
+			location 	 <- { 1000,9000 };
+			p 			 <- { 0.90, increment + 0.13 };
+		}
+
+		ask Button + Button_Map	{
+			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 0.1 ui_height: 0.1;
+			do init_button;
+		}
 	}
 	
 
-	bool basket_overflow{
-		if(BASKET_MAX_SIZE = length(my_basket)){
-			string msg2 <- world.get_message('PLR_OVERFLOW_WARNING');
-			map<string,unknown> values2 <- user_input(MSG_WARNING,msg2::true);
+	bool basket_overflow {
+		if(length(my_basket) = BASKET_MAX_SIZE){
+			map vmap <- user_input(MSG_WARNING, world.get_message('PLR_OVERFLOW_WARNING')::true);
 			return true;
 		}
 		return false;
 	}
 	
-	action button_click_general{
+	action button_click_general {
 		point loc <- #user_location;
 		list<Tab> clicked_tab_button <- (Tab overlapping loc);
-		if(length(clicked_tab_button)>0){
+		if(length(clicked_tab_button) > 0){
 			active_display <- first(clicked_tab_button).display_name;
 			do clear_selected_button;
-			explored_buttons <- nil;
-			explored_cell <- nil;
-			explored_dike <- nil;
-			explored_land_use_action<- nil;
-			current_action <- nil;
+			explored_buttons 		 <- nil;
+			explored_cell 	 		 <- nil;
+			explored_dike 	 		 <- nil;
+			explored_land_use_action <- nil;
+			current_action 	 		 <- nil;
 		}
 		if(!show_hide_maps_click()){
-			if(active_display = PLU_DISPLAY){
-				do button_click_UnAM;
-			}
-			else{
-				do button_click_dike;
-			}
+			if(active_display = LU_DISPLAY){ do button_click_lu; 		}
+			else						   { do button_click_coast_def; }
 		}	
 	}
 	
-	bool show_hide_maps_click{
+	bool show_hide_maps_click {
 		point loc <- #user_location;
-		list<buttons> cliked_button <- (buttons where(each.display_name=BOTH_DISPLAY )) overlapping loc   ;
-		if(length(cliked_button)>0){
-			buttons a_map_buton <- first(cliked_button);
+		list<Button> cliked_button <- (Button where (each.display_name = BOTH_DISPLAYS )) overlapping loc;
+		
+		if(length(cliked_button) > 0){
+			Button a_map_button 	<- first(cliked_button);
 			is_shown_protected_area <- false;
-			is_shown_flooded_area <- false;
-	
-			switch a_map_buton.command {
-				match ACTION_DISPLAY_PROTECTED_AREA { is_shown_protected_area <- true;}
-				match ACTION_DISPLAY_FLOODED_AREA { is_shown_flooded_area <- false; }
+			is_shown_flooded_area 	<- false;
+			switch a_map_button.command {
+				match ACTION_DISPLAY_PROTECTED_AREA { is_shown_protected_area <- true;	}
+				match ACTION_DISPLAY_FLOODED_AREA 	{ is_shown_flooded_area   <- false; }
 			}			
 			return true;
 		}
@@ -414,15 +362,15 @@ global{
 
 	action mouse_move_general{
 		switch(active_display){
-			match PLU_DISPLAY { do mouse_move_UnAM; }
-			match DIKE_DISPLAY {do mouse_move_dike;}
+			match LU_DISPLAY  		{ do mouse_move_lu; }
+			match COAST_DEF_DISPLAY { do mouse_move_coast_def;}
 		}
 	}
 	
-	action mouse_move_UnAM {//(point loc, list selected_agents)
-		do mouse_move_buttons_unam();
+	action mouse_move_lu {
+		do mouse_move_buttons_lu();
 		point loc <- #user_location;
-		list<buttons> current_active_button <- buttons where (each.is_selected);
+		list<Button> current_active_button <- Button where (each.is_selected);
 		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_LAND_USE){
 			list<Land_Use_Action> selected_explored_land_use_action <- Land_Use_Action overlapping loc;
 			
@@ -433,7 +381,7 @@ global{
 				explored_land_use_action <-nil;
 			}
 			
-			list<UA> selectedUnams <- UA overlapping loc; // of_species cell_UnAm;
+			list<Land_Use> selectedUnams <- Land_Use overlapping loc; // of_species cell_UnAm;
 			if (length(selectedUnams)> 0) {
 				explored_cell <- first(selectedUnams);
 			}
@@ -446,11 +394,11 @@ global{
 		}
 	}
 
-	action mouse_move_dike {//(point loc, list selected_agents)
-		do mouse_move_buttons_dike();
+	action mouse_move_coast_def {
+		do mouse_move_buttons_coast_def();
 		point loc <- #user_location;
 		
-		list<buttons> current_active_button <- buttons where (each.is_selected);
+		list<Button> current_active_button <- Button where (each.is_selected);
 		if (length (current_active_button) = 1 and first (current_active_button).command = ACTION_INSPECT_DIKE){
 			list<Coastal_Defense> selected_dike <- Coastal_Defense overlapping (loc buffer(100#m)); //selected_agents of_species dike ; // of_species cell_UnAm;
 			if (length(selected_dike)> 0) {
@@ -465,14 +413,14 @@ global{
 		}
 	}
 
-	action mouse_move_buttons_dike{
+	action mouse_move_buttons_coast_def {
 		point loc <- #user_location;
-		explored_buttons <- buttons first_with (each overlaps loc and each.display_name=DIKE_DISPLAY);
+		explored_buttons <- Button first_with (each overlaps loc and each.display_name=COAST_DEF_DISPLAY);
 	}
 	
-	action mouse_move_buttons_unam{
+	action mouse_move_buttons_lu {
 		point loc <- #user_location;
-		explored_buttons <- buttons first_with (each overlaps loc and each.display_name!=DIKE_DISPLAY);
+		explored_buttons <- Button first_with (each overlaps loc and each.display_name!=COAST_DEF_DISPLAY);
 	}
 	
 	action change_dike {// (point loc, list selected_agents)
@@ -481,7 +429,7 @@ global{
 		if(basket_overflow()){
 			return;
 		}
-		buttons selected_button <- buttons first_with(each.is_selected);
+		Button selected_button <- Button first_with(each.is_selected);
 		if(selected_button != nil){
 			switch(selected_button.command){
 				match ACTION_CREATE_DIKE { do create_new_dike(loc,selected_button);}
@@ -493,7 +441,7 @@ global{
 		}
 	}
 	
-	action modify_dike(point mloc, list<Coastal_Defense> agts, buttons but){
+	action modify_dike(point mloc, list<Coastal_Defense> agts, Button but){
 		list<Coastal_Defense> selected_dike <- agts ;
 		if(length(selected_dike)>0){
 			Coastal_Defense dk<- selected_dike closest_to mloc;
@@ -511,7 +459,7 @@ global{
 				self.label <- but.label;
 				element_id <- dk.coast_def_id;
 				self.command <- but.command;
-				self.initial_application_round <- game_round  + (world.delayOfAction(self.command));
+				self.initial_application_round <- game_round  + (world.delay_of_action(self.command));
 				element_shape <- dk.shape;
 				shape <- element_shape+shape_width;//shape_width around element_shape;
 				cost <- but.action_cost*shape.perimeter;
@@ -538,7 +486,7 @@ global{
 		}
 	}
 	
-	action create_new_dike(point loc,buttons but)
+	action create_new_dike(point loc,Button but)
 	{
 		if(previous_clicked_point = nil)
 		{
@@ -552,7 +500,7 @@ global{
 					self.label <- but.label;
 					element_id <- -1;
 					self.command <- ACTION_CREATE_DIKE;
-					self.initial_application_round <- game_round  + (world.delayOfAction(self.command));
+					self.initial_application_round <- game_round  + (world.delay_of_action(self.command));
 					element_shape <- polyline([previous_clicked_point,loc]);
 					shape <-  element_shape+shape_width;//shape_width around element_shape;
 					cost <- but.action_cost*shape.perimeter; 
@@ -588,11 +536,11 @@ global{
 		{
 			return;
 		}
-		buttons selected_button <- buttons first_with(each.is_selected);
+		Button selected_button <- Button first_with(each.is_selected);
 		if(selected_button != nil)
 		{
-			list<UA> selected_UnAm <- UA where (each distance_to loc < MOUSE_BUFFER); //selected_agents of_species cell_UnAm;
-			UA cell_tmp <- selected_UnAm closest_to loc;
+			list<Land_Use> selected_UnAm <- Land_Use where (each distance_to loc < MOUSE_BUFFER); //selected_agents of_species cell_UnAm;
+			Land_Use cell_tmp <- selected_UnAm closest_to loc;
 			ask (cell_tmp)
 			{
 				if(selected_button.command = ACTION_INSPECT_LAND_USE)
@@ -632,7 +580,7 @@ global{
 					return;
 				}
 				if (lu_name in ["A","N"] and selected_button.command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs]){
-					if empty(UA at_distance 100 where (each.isUrbanType)){	
+					if empty(Land_Use at_distance 100 where (each.is_urban_type)){	
 						string chain <- "Impossible de construire en dehors d'une périphérie urbaine";
 						map<string,unknown> values2 <- user_input(MSG_WARNING,chain::"");
 						return;
@@ -664,24 +612,24 @@ global{
 					command <- selected_button.command;
 					element_shape <- myself.shape;
 					shape <- element_shape;
-					initial_application_round <- game_round  + (world.delayOfAction(command));
+					initial_application_round <- game_round  + (world.delay_of_action(command));
 					previous_ua_name <- myself.lu_name;
 					label <- selected_button.label;
 					cost <- selected_button.action_cost;
 					// Overwrites in case action d'expropriation (delai d'execution et Cost)
 					if command = ACTION_MODIFY_LAND_COVER_N and previous_ua_name in ["U","Us"] { 
-							initial_application_round <- game_round + world.delayOfAction(ACTION_EXPROPRIATION);
-							cost <- float(myself.cout_expro);
+							initial_application_round <- game_round + world.delay_of_action(ACTION_EXPROPRIATION);
+							cost <- float(myself.expro_cost);
 							is_expropriation <- true;} 
 					//overwrite Cost in case A to N
 					if(command = ACTION_MODIFY_LAND_COVER_N  and (previous_ua_name = "A")) 
-						{cost <- float(data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' at 'cost');}
+						{cost <- world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N');}
 					//Check overwrites in case transform to AUs
 					if (command = ACTION_MODIFY_LAND_COVER_AUs and (previous_ua_name = "U")) 
 					{// overwrite command, label and cost in case transforming a U to Us
 									command <-ACTION_MODIFY_LAND_COVER_Us;
 									label <- "Changer en zone urbaine adaptée"+(subvention_habitat_adapte?"(Subventionné)":"");
-									cost <- subvention_habitat_adapte?float(data_action at 'ACTION_MODIFY_LAND_COVER_Us_SUBSIDY' at 'cost'):float(data_action at 'ACTION_MODIFY_LAND_COVER_Us' at 'cost');
+									cost <- subvention_habitat_adapte? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');
 					}
 				}
 				current_action<- first(action_list);
@@ -695,27 +643,25 @@ global{
 	}
 	
 
-	action button_click_UnAM 
-	{
+	action button_click_lu {
 		point loc <- #user_location;
-		if(active_display != PLU_DISPLAY){
+		if(active_display != LU_DISPLAY){
 			current_action <- nil;
-			active_display <- PLU_DISPLAY;
+			active_display <- LU_DISPLAY;
 			do clear_selected_button;
-			//return;
 		}
-		list<buttons> cliked_UnAm_button <- (buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
 		
-		if(length(cliked_UnAm_button)>0){
-			list<buttons> current_active_button <- buttons where (each.is_selected);
+		list<Button> cliked_lu_button <- (Button where (each distance_to loc < MOUSE_BUFFER)) where (each.display_name = active_display);
+		if(length(cliked_lu_button) > 0){
+			list<Button> current_active_button <- Button where (each.is_selected);
 			bool clic_deselect <- false;
 			if length (current_active_button) > 1 {write "BUG: Problème -> deux boutons sélectionnés en même temps";}
 			if length (current_active_button) = 1 
-				{if (first (current_active_button)).command = (first(cliked_UnAm_button)).command
+				{if (first (current_active_button)).command = (first(cliked_lu_button)).command
 					{clic_deselect <-true;}}
 			do clear_selected_button;
 			if !clic_deselect 
-				{ask (first(cliked_UnAm_button))
+				{ask (first(cliked_lu_button))
 					{
 					is_selected <- true;
 					}
@@ -723,7 +669,7 @@ global{
 			return;
 		}
 		else{ 	
-			buttons_map a_MAP_button <- first (buttons_map where (each distance_to loc < MOUSE_BUFFER));
+			Button_Map a_MAP_button <- first (Button_Map where (each distance_to loc < MOUSE_BUFFER));
 			if a_MAP_button != nil {
 				ask a_MAP_button {
 					is_selected <- not(is_selected);
@@ -737,19 +683,19 @@ global{
 		}
 	}
 	
-	action button_click_dike {
+	action button_click_coast_def {
 		point loc <- #user_location;
-		if(active_display != DIKE_DISPLAY){
+		if(active_display != COAST_DEF_DISPLAY){
 			current_action <- nil;
-			active_display <- DIKE_DISPLAY;
+			active_display <- COAST_DEF_DISPLAY;
 			do clear_selected_button;
 			//return;
 		}
 		
-		list<buttons> cliked_dike_button <- ( buttons where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
+		list<Button> cliked_dike_button <- ( Button where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name=active_display );
 	
 		if( length(cliked_dike_button) > 0){
-			list<buttons> current_active_button <- buttons where (each.is_selected);
+			list<Button> current_active_button <- Button where (each.is_selected);
 			do clear_selected_button;
 			
 			if (length (current_active_button) = 1 and (first (current_active_button)).command != (first(cliked_dike_button)).command) or length (current_active_button) = 0
@@ -760,7 +706,7 @@ global{
 			}
 		}
 		else{	
-			buttons_map a_MAP_button <- first (buttons_map where (each distance_to loc < MOUSE_BUFFER));
+			Button_Map a_MAP_button <- first (Button_Map where (each distance_to loc < MOUSE_BUFFER));
 			if a_MAP_button != nil {
 				ask a_MAP_button {
 					is_selected <- not(is_selected);
@@ -777,11 +723,9 @@ global{
 
 	}
 	
-	action clear_selected_button{
+	action clear_selected_button {
 		previous_clicked_point <- nil;
-		ask buttons{
-			self.is_selected <- false;
-		}
+		ask Button { self.is_selected <- false; }
 	}
 	
 	string separateur_milliers (int a_value){
@@ -801,9 +745,7 @@ global{
 		}
 	}
 	
-	/**
-	 * Nouvelle action de l'interface V2
-	 */
+
 	bool basket_event <- false update:false;
 	action move_down_event{
 		if(basket_event){
@@ -846,7 +788,7 @@ species displayed_list skills:[UI_location] schedules:[]{
 	list<displayed_list_element> elements <- [];
 	system_list_element up_item <- nil;
 	system_list_element down_item <- nil;
-	string display_name <-"Basket";
+	string display_name <- GAMA_BASKET_DISPLAY;
 	bool show_header <- true;
 	
 	action move_down_event{
@@ -997,7 +939,7 @@ species displayed_list skills:[UI_location] schedules:[]{
 		geometry rec3 <- polygon([{x,y}, {x,y+gem_height}, {x+gem_width*0.2,y+gem_height}, {x+gem_width*0.25,y+gem_height*1.2},{x+gem_width*0.3,y+gem_height},{x+gem_width,y+gem_height},{x+gem_width,y},{x,y}]);
 		draw rec3 color:rgb(59,124,58);
 		font var0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
-		draw legend_name at:{location.x + gem_width /2 - (length(legend_name)*6#px/2), location.y + gem_height/2 + 4#px} color:#white font:var0;
+		draw legend_name at:{location.x + gem_width /2 - (length(legend_name)*6#px/ 2), location.y + gem_height/2 + 4#px} color:#white font:var0;
 	}
 	
 	action draw_list{
@@ -1037,7 +979,7 @@ species basket parent:displayed_list {
 		show_header <- true;
 		legend_name <- world.get_message('LEGEND_NAME_ACTIONS');
 		point p <- {0.0,0.0};
-		display_name <- "Basket";
+		display_name <- GAMA_BASKET_DISPLAY;
 		do lock_agent_at ui_location:p display_name:display_name ui_width:1.0 ui_height:1.0 ;
 		do navigation_item;
 	}
@@ -1046,7 +988,7 @@ species basket parent:displayed_list {
 	  	create basket_element number:1 returns:ele{
 			label <- act.label;
 			
-			icone <- world.chooseActionIcone(act.command);
+			icone <- world.get_action_icon(act.command);
 			current_action <- act;
 		}
 		do add_item(first(ele));
@@ -1058,9 +1000,9 @@ species basket parent:displayed_list {
 		float gem_width <- ui_width;
 		int mfont_size <- DISPLAY_FONT_SIZE - 2;
 		font font0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE-4, #plain ); 
-		draw msg1 font:font0 color:rgb(101,101,101)  at:{location.x + ui_width - 150#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		draw msg1 font:font0 color:rgb(101,101,101)  at:{location.x + ui_width - 150#px,location.y+ui_height*0.15+(mfont_size/ 2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 		font font1 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
-		draw "" + world.separateur_milliers(budget) font:font1 color:rgb(101,101,101) at:{location.x + ui_width - 70#px,location.y+ui_height*0.15+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		draw "" + world.separateur_milliers(budget) font:font1 color:rgb(101,101,101) at:{location.x + ui_width - 70#px,location.y+ui_height*0.15+(mfont_size/ 2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 	}
 	
 	action draw_foot{
@@ -1070,9 +1012,9 @@ species basket parent:displayed_list {
 		draw rec1 at:loc1 color:rgb(219,219,219);
 		int mfont_size <- my_font_size - 2;
 		font font0 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE-4, #plain ); 
-		draw msg1 font:font0 color:rgb(101,101,101) at:{location.x + ui_width - 170#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		draw msg1 font:font0 color:rgb(101,101,101) at:{location.x + ui_width - 170#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/ 2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 		font font1 <- font ('Helvetica Neue',DISPLAY_FONT_SIZE, #bold ); 
-		draw ""+world.separateur_milliers(int(final_budget)) font:font1 color:#black at:{location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
+		draw ""+world.separateur_milliers(int(final_budget)) font:font1 color:#black at:{location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4+(mfont_size/ 2)#px};//at; {location.x + ui_width*0.5,location.y+ui_height*0.15};
 	}
 	
 	point validation_button_location{
@@ -1093,8 +1035,8 @@ species basket parent:displayed_list {
 		int mfont2 <- DISPLAY_FONT_SIZE - 4;
 		font font1 <- font ('Helvetica Neue',mfont, #plain ); 
 		font font2 <- font ('Helvetica Neue',mfont2, #plain ); 
-		draw "Valider" at:{location.x + ui_width - 140#px,pt.y+(mfont2/2)#px} size:{sz*0.8,sz*0.8} font:font2 color:#black;
-		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 90#px,pt.y+(mfont/2)#px} size:{sz*0.8,sz*0.8} font:font1 color:#black;
+		draw "Valider" at:{location.x + ui_width - 140#px,pt.y+(mfont2/ 2)#px} size:{sz*0.8,sz*0.8} font:font2 color:#black;
+		draw " "+world.separateur_milliers( int(budget - final_budget)) at:{location.x + ui_width - 90#px,pt.y+(mfont/ 2)#px} size:{sz*0.8,sz*0.8} font:font1 color:#black;
 	}
 	
 	action validation_panier{
@@ -1107,7 +1049,7 @@ species basket parent:displayed_list {
 				map<string,unknown> res <- user_input(MSG_WARNING, msg::"" );
 				return;
 			}
-			if(   minimal_budget >(budget - round(sum(my_basket collect(each.cost))))){
+			if(minimal_budget >(budget - round(sum(my_basket collect(each.cost))))){
 				string budget_display <- world.get_message('PLR_INSUFFICIENT_BUDGET');
 				ask world {do user_msg (budget_display,INFORMATION_MESSAGE);}
 				map<string,unknown> res <- user_input(MSG_WARNING, budget_display::"" );//[budget_display:: false]);
@@ -1117,7 +1059,7 @@ species basket parent:displayed_list {
 								+ string(world.get_message('PLR_CHECK_BOX_VALIDATE'));
 			map<string,bool> res <- map<string,bool>(user_input(MSG_WARNING, ask_display::false));
 			if(res at ask_display ){
-				ask game_manager{
+				ask network_player{
 					do send_basket;
 				}
 			}
@@ -1160,26 +1102,22 @@ species system_list_element parent:displayed_list_element{
 		return true;
 	}
 	
-	/*action draw_element{
-		
-	}*/
-	
 	aspect dossier{
-		if(is_displayed = true and my_parent.display_name = "Dossiers"){
+		if(is_displayed = true and my_parent.display_name = GAMA_DOSSIERS_DISPLAY){
 			do draw_item;
 			do draw_element;
 		}
 	}
 	
 	aspect basket{
-		if(is_displayed = true and my_parent.display_name = "Basket"){
+		if(is_displayed = true and my_parent.display_name = GAMA_BASKET_DISPLAY){
 			do draw_item;
 			do draw_element;
 		}
 	}
 	
 	aspect console{
-		if(is_displayed = true and my_parent.display_name = "Messages"){
+		if(is_displayed = true and my_parent.display_name = GAMA_MESSAGES_DISPLAY){
 			do draw_item;
 			do draw_element;
 		}
@@ -1209,7 +1147,7 @@ species displayed_list_element skills:[UI_location] schedules:[]
 		location <- pt;
 		draw rec  at:{location.x,location.y} color:rgb(233,233,233);
 		draw rec2  at:{location.x,location.y+ui_height/2} color:#black;
-		draw label at:{location.x - ui_width/2+ 2*ui_height , location.y + (mfont/2)#px} font:var0 color:#black;
+		draw label at:{location.x - ui_width/2+ 2*ui_height , location.y + (mfont/ 2)#px} font:var0 color:#black;
 		if( icone !=nil){
 			draw icone at:{location.x-ui_width/2+ui_height,location.y} size:{ui_height*0.8,ui_height*0.8};
 		}
@@ -1239,7 +1177,7 @@ species work_in_progress_list parent:displayed_list schedules:[]{
 	init{
 		max_size <- 10;
 		show_header <- false;
-		display_name <- "Dossiers";
+		display_name <- GAMA_DOSSIERS_DISPLAY;
 		point p <- {0.15,0.0};
 		do lock_agent_at ui_location:p display_name:display_name ui_width:0.85 ui_height:1.0 ;//0U 0.9
 		do navigation_item;
@@ -1249,7 +1187,7 @@ species work_in_progress_list parent:displayed_list schedules:[]{
 	action add_action_in_history(Player_Action act){
 	  	create work_in_progress_element number:1 returns:ele{
 			label <- act.label;
-			icone <- world.chooseActionIcone(act.command);
+			icone <- world.get_action_icon(act.command);
 			current_action <- act;
 		}
 		do add_item(first(ele));
@@ -1263,7 +1201,7 @@ species console parent:displayed_list schedules:[]{
 		font_size <- 11;
 		max_size <- 10;
 		show_header <- false;
-		display_name <- "Messages";
+		display_name <- GAMA_MESSAGES_DISPLAY;
 		point p <- {0.15,0.0};
 		do lock_agent_at ui_location:p display_name:display_name ui_width:0.85 ui_height:1.0 ;
 		do navigation_item;
@@ -1319,8 +1257,8 @@ species work_in_progress_element parent:displayed_list_element schedules:[]{
 	
 	point bullet_size -> {{ui_height*0.6,ui_height*0.6}};
 	
-	point delay_location -> {{location.x+2*ui_width/5,location.y}};
-	point round_apply_location -> {{location.x+1.3*ui_width/5,location.y}};
+	point delay_location -> {{location.x+2*ui_width / 5,location.y}};
+	point round_apply_location -> {{location.x+1.3*ui_width / 5,location.y}};
 	point price_location -> {{location.x+ui_width/2-40#px,location.y}};
 	Player_Action current_action;
 	
@@ -1340,10 +1278,10 @@ species work_in_progress_element parent:displayed_list_element schedules:[]{
 		
 		if(!current_action.is_applied){
 			if(delay != 0){
-				draw circle(bullet_size.x/2) at:delay_location color:rgb(235,33,46);
+				draw circle(bullet_size.x/ 2) at:delay_location color:rgb(235,33,46);
 				draw ""+delay at:{delay_location.x -(mfont/6)#px ,delay_location.y +(mfont/3)#px } color:#white font:font1;
 			}
-			draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
+			draw circle(bullet_size.x/ 2) at:round_apply_location color:rgb(87,87,87);
 			draw ""+rounds_before_application at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
 		}
 		else{
@@ -1372,7 +1310,7 @@ species basket_element parent:displayed_list_element {
 	Player_Action current_action <- nil;
 	image_file close_button <- file("../images/ihm/I_close.png");
 	point bullet_size -> {{ui_height*0.6,ui_height*0.6}};
-	point round_apply_location -> {{location.x+1.3*ui_width/5,location.y}};
+	point round_apply_location -> {{location.x+1.3*ui_width / 5,location.y}};
 	
 	action remove_action{
 		ask my_parent{ do remove_element(myself); }
@@ -1412,10 +1350,10 @@ species basket_element parent:displayed_list_element {
 		int mfont <- font_size;
 		font font1 <- font ('Helvetica Neue',mfont, #bold ); 
 		
-		draw ""+world.separateur_milliers(int(current_action.cost))  at:{button_location.x - 50#px, button_location.y+(mfont/2)#px}  color:#black font:font1;
+		draw ""+world.separateur_milliers(int(current_action.cost))  at:{button_location.x - 50#px, button_location.y+(mfont/ 2)#px}  color:#black font:font1;
 		
-		draw circle(bullet_size.x/2) at:round_apply_location color:rgb(87,87,87);
-		draw ""+(world.delayOfAction(current_action.command)) at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
+		draw circle(bullet_size.x / 2) at:round_apply_location color:rgb(87,87,87);
+		draw ""+(world.delay_of_action(current_action.command)) at:{round_apply_location.x -(mfont/6)#px ,round_apply_location.y +(mfont/3)#px } color:#white font:font1;
 	
 		if(highlight_action = current_action)
 		{
@@ -1598,14 +1536,14 @@ species Network_Data_Retriever skills:[network]{
 				match OBJECT_TYPE_WINDOW_LOCKER { world.is_active_gui <- mc["WINDOW_STATUS"] = "UNLOCKED"; }
 				
 				match OBJECT_TYPE_PLAYER_ACTION {
-					if(mc["action_type"] = ACTION_TYPE_COAST_DEF){
+					if(mc["action_type"] = PLAYER_ACTION_TYPE_COAST_DEF){
 						Coastal_Defense_Action tmp <- Coastal_Defense_Action first_with(each.id = mc["id"]);
 						if(tmp = nil){
 							create Coastal_Defense_Action { do init_from_map(mc); }
 							ask (game_history) 	   		  { do add_action_in_history(tmp); } 
 						} else { ask tmp { do init_from_map(mc); } }	
 					}
-					else if mc["action_type"] = ACTION_TYPE_LU {
+					else if mc["action_type"] = PLAYER_ACTION_TYPE_LU {
 						Land_Use_Action tmp <- Land_Use_Action first_with (each.id = mc["id"]);
 						if(tmp = nil){
 							create Land_Use_Action { do init_from_map(mc);			}	
@@ -1622,9 +1560,9 @@ species Network_Data_Retriever skills:[network]{
 				}
 				
 				match OBJECT_TYPE_LAND_USE {
-					UA tmp <- UA first_with(each.id = int(mc["id"]));
+					Land_Use tmp <- Land_Use first_with(each.id = int(mc["id"]));
 					if(tmp = nil){
-						create UA { do init_from_map(mc); }
+						create Land_Use { do init_from_map(mc); }
 					} else { ask tmp { do init_from_map(mc); } }	
 				}
 				
@@ -1687,9 +1625,9 @@ species Network_Player skills:[network]{
 				}
 				match ACTION_LAND_COVER_UPDATE {
 					int UA_id <- int(data[2]);	
-					ask UA where(each.id = UA_id){
-						ua_code <-int(data[3]);
-						lu_name <- nameOfUAcode(ua_code);
+					ask Land_Use where(each.id = UA_id){
+						lu_code <-int(data[3]);
+						lu_name <- lu_type_names[lu_code];
 						population <-int(data[4]);
 						is_in_densification <-bool(data[5]);
 					}
@@ -1820,7 +1758,7 @@ species Player_Action{
 	bool is_applied <- false;
 	bool is_highlighted <- false;
 	
-	string action_type 		<- ACTION_TYPE_COAST_DEF ;
+	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF ;
 	string previous_ua_name <-"nil";
 	bool is_expropriation 	<- false;
 	bool inProtectedArea 	<- false;
@@ -1905,10 +1843,7 @@ species Player_Action{
 	int nb_rounds_before_activation_and_waitingLeaderToActivate{
 		int aV <- actual_application_round - world.game_round ;
 		if aV <= 0{
-		 	if should_wait_lever_to_activate {
-		 		// En attente du leader pour l'activation
-		 			return 0;
-		 	}
+		 	if should_wait_lever_to_activate { return 0; }
 		 	else {
 		 		write "délai d'activation pas normal";
 		 	}
@@ -1916,29 +1851,27 @@ species Player_Action{
 		return aV;
 	}
 	
-	string serialize_command{
-		string result <-"";
-		result <- ""+
-		command+COMMAND_SEPARATOR+  //0
-		id+COMMAND_SEPARATOR+
-		initial_application_round+COMMAND_SEPARATOR+
-		element_id+COMMAND_SEPARATOR+			//3
-		action_type +COMMAND_SEPARATOR+
-		inProtectedArea+COMMAND_SEPARATOR+		//5
-		previous_ua_name+COMMAND_SEPARATOR+
-		is_expropriation+COMMAND_SEPARATOR+					//7
-		int(cost)	;					//8
+	string serialize_command {
+		string result <- "" + command + COMMAND_SEPARATOR +
+								id    + COMMAND_SEPARATOR +
+			initial_application_round + COMMAND_SEPARATOR +
+				           element_id + COMMAND_SEPARATOR +
+				          action_type + COMMAND_SEPARATOR +
+				      inProtectedArea + COMMAND_SEPARATOR +
+				     previous_ua_name + COMMAND_SEPARATOR +
+				     is_expropriation + COMMAND_SEPARATOR +
+				     int(cost);
 		
 		if command = ACTION_CREATE_DIKE  {
-				point end <- last(element_shape.points);
+				point end <- last (element_shape.points);
 				point origin <- first(element_shape.points);
 				result <- result+
-					COMMAND_SEPARATOR+( origin.x)+	//9
-					COMMAND_SEPARATOR+(origin.y) +
-					COMMAND_SEPARATOR+(end.x)+		//11
-					COMMAND_SEPARATOR+(end.y)+
-					COMMAND_SEPARATOR+location.x+	//13
-					COMMAND_SEPARATOR+location.y;					
+					COMMAND_SEPARATOR + (origin.x) +
+					COMMAND_SEPARATOR + (origin.y) +
+					COMMAND_SEPARATOR + (end.x)    +
+					COMMAND_SEPARATOR + (end.y)    +
+					COMMAND_SEPARATOR + location.x +
+					COMMAND_SEPARATOR + location.y;					
 		}
 		return result;
 	}	
@@ -1946,9 +1879,9 @@ species Player_Action{
 //------------------------------ End of Player_Action -------------------------------//
 
 species Coastal_Defense_Action parent: Player_Action{
-	string action_type <- COAST_DEF_TYPE_DIKE;
-	string coast_def_type -> { command = ACTION_INSTALL_GANIVELLE? COAST_DEF_TYPE_DUNE : COAST_DEF_TYPE_DIKE };
-	float shape_width 	 -> { coast_def_type = COAST_DEF_TYPE_DIKE ? 35#m : 65#m };
+	string action_type 		<- COAST_DEF_TYPE_DIKE;
+	string coast_def_type 	-> { command = ACTION_INSTALL_GANIVELLE ? COAST_DEF_TYPE_DUNE : COAST_DEF_TYPE_DIKE };
+	float shape_width 	 	-> { coast_def_type = COAST_DEF_TYPE_DIKE ? 35#m : 65#m };
 		
 	rgb define_color {
 		switch(command){
@@ -1962,10 +1895,8 @@ species Coastal_Defense_Action parent: Player_Action{
 	}
 	
 	aspect map {
-		if(active_display = DIKE_DISPLAY){
-			if !is_applied {
-				draw shape color: self = highlight_action ? #red : (is_sent ? define_color() : #black);
-			}
+		if active_display = COAST_DEF_DISPLAY and !is_applied {
+			draw shape color: self = highlight_action ? #red : (is_sent ? define_color() : #black);
 		}
 	}
 }
@@ -1973,226 +1904,166 @@ species Coastal_Defense_Action parent: Player_Action{
 
 species Land_Use_Action parent: Player_Action{
 	int choosen_cell;
-	string action_type <- "PLU";
+	string action_type <- PLAYER_ACTION_TYPE_LU;
 	
 	rgb define_color{
 		switch(command){
-			 match ACTION_MODIFY_LAND_COVER_A { return rgb(245,147,49);}
-			 match_one [ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui] {return rgb(0,129,161);}
-			 match ACTION_MODIFY_LAND_COVER_N {return rgb(11,103,59);}
+			 match ACTION_MODIFY_LAND_COVER_A { return rgb(245,147,49); }
+			 match ACTION_MODIFY_LAND_COVER_N { return rgb(11,103,59);  }
+			 match_one [ACTION_MODIFY_LAND_COVER_AU,
+			 			ACTION_MODIFY_LAND_COVER_AUs,
+			 			ACTION_MODIFY_LAND_COVER_Us,
+			 			ACTION_MODIFY_LAND_COVER_Ui]
+			 								  { return rgb(0,129,161); }
 		} 
 		return #grey;
 	}
-
-	action draw_display{
-		if ( !is_applied) {
-			bool highlighted <- self = highlight_action;
-			geometry triangle <- polygon([shape.points[3],shape.points[1],shape.points[0],shape.points[3] ]);
+	
+	aspect map {
+		if active_display = LU_DISPLAY and !is_applied {
+			bool highlighted 	<- self = highlight_action;
+			geometry triangle 	<- polygon([shape.points[3],shape.points[1],shape.points[0],shape.points[3] ]);
+			
 			draw triangle  color:(define_color()) border:define_color() ;
 			draw shape at:location empty:true border:highlighted?#red:((is_sent)?define_color():#black) ;
 			
-			if(ACTION_MODIFY_LAND_COVER_Ui = command){
+			if(command = ACTION_MODIFY_LAND_COVER_Ui){
 				draw file("../images/icons/crowd.png") size:self.shape.width;
 			}
-			if [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us] contains command{
+			else if command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us]{
 				draw file("../images/icons/wave.png") size:self.shape.width;
 			}
-		}
-	}
-	
-	aspect map {
-		if (active_display = PLU_DISPLAY ) {
-			do draw_display;
 		}
 	}
 }
 //------------------------------ End of Land_Use_Action -------------------------------//
 
-species buttons skills:[UI_location]{
+species Button skills:[UI_location] {
 	string action_name;
-	int command <- int(data_action at action_name at 'action code');//-1; 
-	string display_name <- "no name";
-	string label <- "no name";
-	float action_cost<-0.0;
-	bool is_selected <- false;
-	geometry shape <- square(500#m);
-	image_file my_icon ; //;
-	string my_help;
+	int command;
+	string display_name;
+	string label;
+	float action_cost;
+	bool is_selected  	<- false;
+	geometry shape 		<- square(button_size);
+	point p;
+	image_file my_icon;
+	string help_msg;
 		
-	action init_att {
-		command <- int(data_action at action_name at 'action code');
-		label <- world.label_of_action(command);
-		action_cost <- float(data_action at action_name at 'cost');
-		//  on récupère d'abord le nom du message d'aide, puis on le recherche dans le fichier langues
-		my_help <- world.get_message((data_action at action_name at 'BUTTON_help_message'));
-		my_icon <-  image_file(data_action at action_name at 'BUTTON_icon_file') ;
+	action init_button {
+		command 	<- int (data_action at action_name at 'action_code');
+		label 		<- world.label_of_action(command);
+		action_cost <- world.cost_of_action(action_name);
+		help_msg 	<- world.get_message((data_action at action_name at 'button_help_message'));
+		my_icon 	<-  image_file(data_action at action_name at 'button_icon_file') ;
 	}
 	
-	string help{
-		return my_help;
-	}
-	string name{
-		return label;
-	}
-	
-	string cost{
-		return ""+action_cost;
-	}
-	
-	aspect UnAm{
-		if( display_name = PLU_DISPLAY){
-			draw shape color:#white border: is_selected ? # red : # white;
-			draw my_icon size:button_size-50#m ;
-		}
-	}
-	aspect dike{
-		if( display_name = DIKE_DISPLAY){
-			draw shape color:#white border: is_selected ? # red : # white;
-			draw my_icon size:button_size-50#m ;
-		}
-	}
-	aspect carte{
+	aspect map{
 		float select_size <- min([ui_width,ui_height]);
 		shape <- rectangle(select_size, select_size);
-		if(display_name = active_display or display_name = BOTH_DISPLAY){
-			draw my_icon size:{select_size, select_size};
-			if(is_selected = true){
-				draw shape empty:true border: # red ;
+		if(display_name = active_display or display_name = BOTH_DISPLAYS){
+			draw my_icon size: { select_size, select_size };
+			if(is_selected){
+				draw shape empty: true border: # red ;
 			}
 		}
 	}
 }
+//------------------------------ End of Button -------------------------------//
 
-species buttons_map parent:buttons{
+species Button_Map parent: Button{
+	geometry shape <- square(850#m);
+	
 	aspect base{
-		draw shape color:#white border: is_selected ? # red : # white;
-		draw my_icon size:800#m ;
+		draw shape color: #white border: is_selected ? # red : # white;
+		draw my_icon size: 800#m ;
 	}
 }
+//------------------------------ End of Button_Map -------------------------------//
 
 species District {
 	string district_name <- "";
 	string district_code <- "";
 	aspect base{
-		draw shape color: self = active_district? rgb (202,170,145) : #lightgray;
+		draw shape color: self = active_district ? rgb (202,170,145) : #lightgray;
 	}
 }
+//------------------------------ End of District -------------------------------//
 
-
-species UA{
-	string lu_name <- "";
+species Land_Use {
 	int id;
-	int ua_code <- 0;
-	rgb my_color <- cell_color() update: cell_color();
-	int population ;
-	string density_class -> {population = 0? POP_EMPTY :(population < POP_FEW_NUMBER ? POP_FEW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
-	int cout_expro -> {round( population * 400* population ^ (-0.5))};
-	bool isUrbanType -> {["U","Us","AU","AUs"] contains lu_name};
-	bool is_adapted -> {["Us","AUs"] contains lu_name};
+	string lu_name 	<- "";
+	int lu_code 	<- 0;
+	rgb my_color 	<- cell_color() update: cell_color();
+	int population;
+	string density_class -> { population = 0 ? POP_EMPTY : (population < POP_FEW_NUMBER ? POP_FEW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	int expro_cost 		 -> { round (population * 400* population ^ (-0.5)) };
+	bool is_urban_type 	 -> { lu_name in ["U","Us","AU","AUs"] };
+	bool is_adapted_type -> { lu_name in ["Us","AUs"] };
 	bool is_in_densification <- false;
 
 	action init_from_map(map<string, unknown> a ){
-		self.id <- int(a at "id");
-		self.ua_code <- int(a at "ua_code");
-		self.lu_name <- string(a at "lu_name");
-		self.population <- int(a at "population");
-		self.is_in_densification <- bool(a at "is_in_densification");
-		point pp<-{float(a at "locationx"), float(a at "locationy")};
+		self.id 				 <- int   (a at "id");
+		self.lu_code 			 <- int   (a at "lu_code");
+		self.lu_name 			 <- string(a at "lu_name");
+		self.population 		 <- int   (a at "population");
+		self.is_in_densification <- bool  (a at "is_in_densification");
+		point pp  				 <- {float(a at "locationx"), float(a at "locationy")};
 		point mpp <- pp;
-		int i <- 0;
+		int i 	  <- 0;
 		list<point> all_points <- [];
-		loop while: (pp!=nil){
-			string xd <- a at ("locationx"+i);
+		
+		loop while: (pp != nil){
+			string xd <- a at ("locationx" + i);
 			if(xd != nil){
-				pp <- {float(xd), float(a at ("locationy"+i))  };
+				pp <- { float(xd), float(a at ("locationy" + i)) };
 				all_points <- all_points + pp;
 			}
-			else{
-				pp<-nil;
-			}
-			i<- i + 1;
+			else{ pp<-nil; }
+			i <- i + 1;
 		}
-		shape <- polygon(all_points);
-		location <-mpp;
+		shape  	 <- polygon(all_points);
+		location <- mpp;
 	}
 	
-	string nameOfUAcode (int a_ua_code) {
-		string val <- "" ;
-		switch (a_ua_code){
-			match 1 {val <- "N";}
-			match 2 {val <- "U";}
-			match 4 {val <- "AU";}
-			match 5 {val <- "A";}
-			match 6 {val <- "Us";}
-			match 7 {val <- "AUs";}
-		}
-		return val;
-	}
-		
-	int codeOfUAname (string a_ua_name) {
-		int val <- 0 ;
-		switch (a_ua_name){
-			match "N" {val <- 1;}
-			match "U" {val <- 2;}
-			match "AU" {val <- 4;}
-			match "A" {val <- 5;}
-			match "Us" {val <- 6;}
-			match "AUs" {val <- 7;}
-		}
-	return val;
-	}
-	
-	string fullNameOfUAname{
-		string result <- "";
+	string full_name_of_LU {
 		switch (lu_name){
-			match "N" {result <- "Naturel";}
-			match "U" {result <- "Urbanisé";}
-			match "AU" {result <- "A urbaniser";}
-			match "A" {result <- "Agricole";}
-			match "Us" {result <- "Urbanisé adapté";}
-			match "AUs" {result <- "A urbaniser adapté";}
+			match "N" 	{ return "Natural"; 						}
+			match "U" 	{ return "Urbanized";						}
+			match "AU"  { return "Authorized Urbanization"; 		}
+			match "A" 	{ return "Agricultural";					}
+			match "Us"  { return "Adapted Urbanization";			}
+			match "AUs" { return "Authorized Adapted Urbanization"; }
 		}
-		return result;
+		return "";
 	}
 	
 	rgb cell_color{
-		rgb res <- nil;
 		switch (lu_name){
-			match	  	"N" 				 { res <- rgb(11,103,59);		} // natural
-			match	  	"A" 				 { res <- rgb (245,147,49);		} // agricultural
-			match_one ["AU","AUs"]  		 { res <- #yellow;		 		} // to urbanize
+			match	  	"N" 				 { return rgb(11,103,59);		} // natural
+			match	  	"A" 				 { return rgb (245,147,49);		} // agricultural
+			match_one ["AU","AUs"]  		 { return #yellow;		 		} // to urbanize
 			match_one ["U","Us"] { 								 	    	  // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 { res <- #red;					} // Problem ?
-					match POP_FEW_DENSITY	 { res <- rgb(0, 171, 214);		}
-					match POP_MEDIUM_DENSITY { res <- rgb(0, 129, 161);		}
-					match POP_DENSE 		 { res <- rgb( 0,77,97);		}
+					match POP_EMPTY 		 { return #red;					} // Problem ?
+					match POP_FEW_DENSITY	 { return rgb(0, 171, 214);		}
+					match POP_MEDIUM_DENSITY { return rgb(0, 129, 161);		}
+					match POP_DENSE 		 { return rgb( 0,77,97);		}
 				}
 			}			
 		}
-		return res;
+		return #black;
 	}
-	
-	action draw_display{
+
+	aspect map {
+		if(active_display = LU_DISPLAY){
 			draw shape color: my_color;
-			if(is_adapted){
-				draw file("../images/icons/wave.png") size:self.shape.width;
-			}
-			if(is_in_densification){
-				draw file("../images/icons/crowd.png") size:self.shape.width;
-			}	
-	}
-	
-	aspect carte{
-		if(active_display = PLU_DISPLAY ){
-			do draw_display;	
+			if(is_adapted_type)		{ draw file("../images/icons/wave.png") size:self.shape.width; }
+			if(is_in_densification)	{ draw file("../images/icons/crowd.png") size:self.shape.width; }
 		}			
 	}
-	
-	aspect base{
-		do draw_display;
-	}	
 }
+//------------------------------ End of Land_Use -------------------------------//
 
 species Coastal_Defense {
 	int coast_def_id;
@@ -2238,7 +2109,7 @@ species Coastal_Defense {
 	}
 	
 	aspect map {
-		if(active_display = DIKE_DISPLAY) {
+		if(active_display = COAST_DEF_DISPLAY) {
 			switch status {
 				match STATUS_GOOD   {color <- # green;				  }
 				match STATUS_MEDIUM {color <- rgb (231, 189, 24,255); } 
@@ -2297,7 +2168,7 @@ species Road { aspect base { draw shape color:#gray; } }
 
 species Protected_Area {
 	aspect base {
-		if (buttons_map first_with(each.command = ACTION_DISPLAY_PROTECTED_AREA)).is_selected {
+		if (Button_Map first_with (each.command = ACTION_DISPLAY_PROTECTED_AREA)).is_selected {
 			draw shape color: rgb (185, 255, 185,120) border:#black;
 		}
 	}
@@ -2305,7 +2176,7 @@ species Protected_Area {
 
 species Flood_Risk_Area{
 	aspect base {
-		if (buttons_map first_with(each.command = ACTION_DISPLAY_FLOODED_AREA)).is_selected {
+		if (Button_Map first_with(each.command = ACTION_DISPLAY_FLOODED_AREA)).is_selected {
 			draw shape color: rgb (20, 200, 255,120) border:#black;
 		}
 	}
@@ -2313,9 +2184,8 @@ species Flood_Risk_Area{
 //---------------------------- Experiment definiton -----------------------------//
 
 experiment LittoSIM_GEN_Player type: gui{
-	font regular <- font("Helvetica", 14, # bold);
-	geometry zone <- circle(1000#m);
-	list<string> districts <- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.csv").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
+	font regular 			<- font("Helvetica", 14, # bold);
+	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.csv").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
 
 	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
 	
@@ -2332,7 +2202,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			graphics population{
 				draw population_area color:rgb(120,120,120) ;				
 			}
-			species UA 						aspect: carte;
+			species Land_Use 				aspect: map;
 			species Land_Use_Action 		aspect: map;
 			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: map;
@@ -2341,8 +2211,8 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Flood_Risk_Area 		aspect: base;
 			species Tab_Background 			aspect: base;
 			species Tab 					aspect: base;
-			species buttons 				aspect: carte;
-			species buttons_map				aspect: carte;
+			species Button 					aspect: map;
+			species Button_Map				aspect: map;
 			
 
 			graphics "Full target dike" transparency:0.3{
@@ -2352,13 +2222,13 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Information about "+ explored_dike.type at: target + { 5#px, 15#px } font: regular color: #white;
 					int xpx <-0;
-					draw "Length "+ string(explored_dike.length_coast_def)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "Length "+ string(explored_dike.length_coast_def) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 					xpx <- xpx+20;
 					if explored_dike.type = COAST_DEF_TYPE_DIKE {
-						draw "Height "+string(round(100*explored_dike.height)/100.0)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+						draw "Height "+string(round(100*explored_dike.height)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 						xpx <- xpx+20;
 					}
-					draw "Altitude "+string(round(100*explored_dike.alt)/100.0)+"m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "Altitude "+string(round(100*explored_dike.alt)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 					draw "State " + explored_dike.status at: target + { 30#px, xpx#px +55#px} font: regular color: # white;
 				}
 			}
@@ -2376,95 +2246,100 @@ experiment LittoSIM_GEN_Player type: gui{
 				}
 			}
 			
-			graphics "Dike Button information" transparency:0.5{
-				if (active_display = DIKE_DISPLAY and explored_buttons != nil  and explored_cell= nil and explored_dike = nil and explored_land_use_action = nil){
-					float increment <- DISTRICT_AT_TOP = active_district_name ? (-2*INFORMATION_BOX_SIZE.y#px):0.0;
-					point loc <- world.button_box_location(explored_buttons.location,int(2*(INFORMATION_BOX_SIZE.x#px)));
-					point target <-loc;
-					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y+increment};
-					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)+increment};
-					point target4 <- {target3.x,target2.y - 15#px+increment };
-					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
-					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: #white;
-					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
-					if explored_buttons.command != ACTION_INSPECT_DIKE {draw "Coût de l'action : "+explored_buttons.action_cost +"/mètre" at: target2 + { 30#px, 55#px} font: regular color: # white;}
-				}
-			}
-			
-			// LEGEND AMENAGEMENT
-			graphics "Full target UNAM" transparency:0.5{
-				if (explored_cell != nil and explored_land_use_action = nil){
-					point target <- {explored_cell.location.x  ,explored_cell.location.y };
-					point target2 <- {explored_cell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),explored_cell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
-					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
-					draw "Zonage PLU" at: target + { 0#px, 15#px } font: regular color: # white;
-					draw explored_cell.fullNameOfUAname() at: target + { 30#px, 35#px } font: regular color: # white;
-					if explored_cell.lu_name in ["U","Us"]{
-						draw "population : "+string(explored_cell.population) at: target + { 30#px, 55#px} font: regular color: # white;
-						draw "expropriation : "+string(explored_cell.cout_expro) at: target + { 30#px, 75#px} font: regular color: # white;
+			graphics "Coast Def Button Info" transparency: 0.5 {
+				if (active_display = COAST_DEF_DISPLAY and explored_buttons != nil  and explored_cell= nil and explored_dike = nil and explored_land_use_action = nil){
+					float increment <- active_district_name = DISTRICT_AT_TOP ? (-2 * INFORMATION_BOX_SIZE.y #px): 0.0;
+					point target 	<- world.button_box_location(explored_buttons.location, int(2 * (INFORMATION_BOX_SIZE.x#px)));
+					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x#px), target.y + increment };
+					point target3 	<- {target.x , target.y + 2 * (INFORMATION_BOX_SIZE.y#px) + increment };
+					point target4 	<- {target3.x, target2.y - 15#px + increment };
+					
+					draw rectangle(target2,target3) empty: false border: false color: #black ;
+					draw explored_buttons.label 	at: target2 + { 5#px, 15#px }  font: regular color: #white;
+					draw explored_buttons.help_msg  at: target2 + { 30#px, 35#px } font: regular color: #white;
+					if explored_buttons.command != ACTION_INSPECT_DIKE {
+						draw world.get_message('MSG_COST_ACTION') + " : " + explored_buttons.action_cost + "/m" at: target2 + { 30#px, 55#px} font: regular color: # white;
 					}
 				}
 			}
 			
-			graphics "Action Full target UNAM" transparency:0.3{
-				if(explored_land_use_action !=nil and explored_land_use_action.is_applied=false){
+			// Inspect LU info
+			graphics "LU Info" transparency: 0.5 {
+				if (explored_cell != nil and explored_land_use_action = nil){
+					point target  <- { explored_cell.location.x, explored_cell.location.y };
+					point target2 <- { explored_cell.location.x + 1 * (INFORMATION_BOX_SIZE.x#px), explored_cell.location.y + 1 * (INFORMATION_BOX_SIZE.y #px)};
 					
-					UA mcell <- UA first_with(each.id = explored_land_use_action.element_id);
+					draw rectangle(target,target2) empty: false border: false color: #black ;
+					draw "LU Info" 						 at: target + { 0#px, 15#px }  font: regular color: # white;
+					draw explored_cell.full_name_of_LU() at: target + { 30#px, 35#px } font: regular color: # white;
+					if explored_cell.lu_name in ["U","Us"]{
+						draw "Population : "    + explored_cell.population at: target + { 30#px, 55#px} font: regular color: # white;
+						draw "Expropriation : " + explored_cell.expro_cost at: target + { 30#px, 75#px} font: regular color: # white;
+					}
+				}
+			}
+			
+			graphics "Action Full target UNAM" transparency: 0.3 {
+				if(explored_land_use_action !=nil and explored_land_use_action.is_applied=false){
+					Land_Use mcell <- Land_Use first_with(each.id = explored_land_use_action.element_id);
 					point target <- {mcell.location.x  ,mcell.location.y };
 					point target2 <- {mcell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),mcell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+					
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Changement d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
 					draw file("../images/icons/fleche.png") at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px}  size:50#px;
 					draw ""+ (explored_land_use_action.actual_application_round)   at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size:20#px; 
-					draw world.chooseActionIcone(explored_land_use_action.command) at:  { target2.x - 50#px, target.y +50#px} size:50#px;
+					draw world.get_action_icon(explored_land_use_action.command) at:  { target2.x - 50#px, target.y +50#px} size:50#px;
 					draw world.au_icone(mcell) at:  { target.x +50#px,target.y + 50#px} size:50#px;
 				}
 			}
 			
-			graphics "Button information UNAM" transparency:0.5{
-				if (active_display = PLU_DISPLAY and explored_buttons != nil and explored_cell= nil and explored_dike = nil and explored_land_use_action = nil){
-					float increment <- DISTRICT_AT_TOP = active_district_name ? (-2*INFORMATION_BOX_SIZE.y#px):0.0;
+			graphics "LU Button Info" transparency: 0.5{
+				if (active_display = LU_DISPLAY and explored_buttons != nil and explored_cell = nil and explored_dike = nil and explored_land_use_action = nil){
+					float increment <- active_district_name = DISTRICT_AT_TOP ? (-2 * INFORMATION_BOX_SIZE.y #px) : 0.0;
+					point target 	<- world.button_box_location(explored_buttons.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));
+					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x #px), target.y + increment};
+					point target3 	<- {target.x , target.y + 2 * (INFORMATION_BOX_SIZE.y #px) + increment};
 					
-					point loc <- world.button_box_location(explored_buttons.location,int(2*(INFORMATION_BOX_SIZE.x#px)));
-					point target <-loc;
-					point target2 <- {loc.x - 2*(INFORMATION_BOX_SIZE.x#px),loc.y+increment};
-					point target3 <- {loc.x ,  loc.y + 2*(INFORMATION_BOX_SIZE.y#px)+increment};
-					draw rectangle(target2,target3)   empty: false border: false color: #black ; //transparency:0.5;
-					draw explored_buttons.name() at: target2 + { 5#px, 15#px } font: regular color: # white;
-					draw explored_buttons.help() at: target2 + { 30#px, 35#px } font: regular color: # white;
+					draw rectangle(target2,target3) empty: false border: false color: #black ;
+					draw explored_buttons.label    at: target2 + { 5#px, 15#px } font: regular color: # white;
+					draw explored_buttons.help_msg at: target2 + { 30#px, 35#px} font: regular color: # white;
+					
 					if explored_buttons.command != ACTION_INSPECT_LAND_USE{
-						switch explored_buttons.command{
-							string msg <- world.get_message('MSG_COST_ACTION');
-							string msgmsg <- world.get_message('MSG_COST_APPLIED_PARCEL');
-							default {draw msg + " : "+explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;}
-							match ACTION_MODIFY_LAND_COVER_N{
-								msg <- world.get_message('MSG_COST_EXPROPRIATION');
-								draw msgmsg + " A : "+ float(data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' at 'cost') at:   target2 + { 30#px, 55#px} font: regular color: # white; 
-								draw msgmsg + " AU : "+ float(data_action at 'ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N' at 'cost') at: target2 + { 30#px, 75#px} font: regular color: # white; 
-								draw msgmsg + " U : " + msg at: target2 + { 30#px, 95#px} font: regular color: # white;
+						string msg <- world.get_message('MSG_COST_APPLIED_PARCEL');
+						
+						switch explored_buttons.command {	
+							match ACTION_MODIFY_LAND_COVER_N {
+								draw msg + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + { 30#px, 55#px} font: regular color: # white; 
+								draw msg + " AU : " + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N') at: target2 + { 30#px, 75#px} font: regular color: # white; 
+								draw msg + " U : "  + world.get_message('MSG_COST_EXPROPRIATION') at: target2 + { 30#px, 95#px} font: regular color: # white;
 							}
 							match ACTION_MODIFY_LAND_COVER_AUs{
-								draw msgmsg + " AU : "+explored_buttons.action_cost  at: target2 + { 30#px, 55#px} font: regular color: # white;
-								draw msgmsg + " U : "+(subvention_habitat_adapte?float(data_action at 'ACTION_MODIFY_LAND_COVER_Us_SUBSIDY' at 'cost'):float(data_action at 'ACTION_MODIFY_LAND_COVER_Us' at 'cost')) at: target2 + { 30#px, 75#px} font: regular color: # white; 
+								draw msg + " AU : " + explored_buttons.action_cost  at: target2 + { 30#px, 55#px} font: regular color: # white;
+								draw msg + " U : "  + (subvention_habitat_adapte ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us')) at: target2 + { 30#px, 75#px} font: regular color: # white; 
+							}
+							default {
+								draw world.get_message('MSG_COST_ACTION') + " : " + explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;
 							}
 						}
 					}
 				}
 			}
 			
-			graphics "Hide everything" transparency:0.3{
+			graphics "Hide All" transparency: 0.3{
 				if(!is_active_gui){
-					point loc <- {world.shape.width/2,world.shape.height/2};
-					geometry rec <- rectangle(world.shape.width,world.shape.height);
-					draw rec at:loc color:#black;
-					float msize <- min([world.shape.width/2,world.shape.height/2]);
-					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
+					point loc 	 <- { world.shape.width / 2, world.shape.height / 2 };
+					geometry rec <- rectangle(world.shape.width, world.shape.height);
+					draw rec at: loc color:#black;
+					float msize  <- min([world.shape.width / 2, world.shape.height / 2]);
+					draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
 				}
 			}			
-			event [mouse_down] action: button_click_general;
-			event mouse_move action: mouse_move_general;
+			event mouse_down 	action: button_click_general;
+			event mouse_move 	action: mouse_move_general;
 		}
-
+		// end of "Map" display
+		
 		display "Basket" background:#black{
 			species basket aspect:base;
 			species basket_element aspect:base;
@@ -2478,7 +2353,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
 				}
 			}		
-			event mouse_down action:move_down_event;
+			event mouse_down action: move_down_event;
 		}
 		
 		display "Dossiers" background:#black{
@@ -2495,7 +2370,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
 				}
 			}
-			event mouse_down action:move_down_event_dossier;
+			event mouse_down action: move_down_event_dossier;
 		}
 		
 		display "Messages" background:#black{
@@ -2513,7 +2388,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
 				}
 			}
-			event mouse_down action:move_down_event_console;
+			event mouse_down action: move_down_event_console;
 		}
  	}
 }
