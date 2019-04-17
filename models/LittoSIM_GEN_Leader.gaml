@@ -228,7 +228,8 @@ species Player_Action schedules:[]{
 	}
 	
 	map<string,string> build_map_from_attributes{
-		map<string,string> res <- ["OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
+		map<string,string> res <- [
+			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
 			"id"::id,
 			"element_id"::string(element_id),
 			"district_name"::district_name,
@@ -414,7 +415,8 @@ species Activated_Lever {
 	}
 	
 	map<string,string> build_map_from_attributes{
-		map<string,string> res <- ["OBJECT_TYPE"::OBJECT_TYPE_ACTIVATED_LEVER,
+		map<string,string> res <- [
+			"OBJECT_TYPE"::OBJECT_TYPE_ACTIVATED_LEVER,
 			"id"::id,
 			"lever_name"::lever_name,
 			"district_code"::district_code,
@@ -1246,7 +1248,11 @@ species District_Name {
 //------------------------------ end of District_Name -------------------------------//
 
 experiment LittoSIM_GEN_Leader {
+	string default_language <- first(text_file("../includes/config/littosim.csv").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
+	
 	init { minimum_cycle_duration <- 0.5; }
+	
+	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	
 	output{
 		display levers{

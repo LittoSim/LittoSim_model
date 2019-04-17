@@ -17,6 +17,7 @@ DEM_NB_COLS;667;
 DEM_NB_ROWS;504;
 MAP_DIST_CODE_LONG_NAME;["76414"::"Martin-Eglise","76217"::"Dieppe","76192"::"Criel-sur-Mer","76545"::"Rouxmesnil-Bouteilles"];
 MAP_DIST_CODE_SHORT_NAME;["76414"::"mareglise","76217"::"dieppe","76192"::"criel","76545"::"rouxmesnil"];
+DISTRICT_AT_TOP;criel;
 COAST_BORDER_BUFFER;400.0;
 
 [ Rugosity]

@@ -243,9 +243,9 @@ global {
 		do save_rugosity_grid;
 		do save_lf_launch_files;
 		do add_element_in_list_flooding_events("Submersion Tour "+ game_round ,results_lisflood_rep);
-		save "directory created by littoSIM Gama model" to: lisfloodRelativePath + results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
-		ask Network_Listener_To_Leader {
-			do execute command:"cmd /c start " + lisfloodPath + lisflood_bat_file;
+		save "directory created by LittoSIM Gama model" to: lisfloodRelativePath + results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
+		ask Network_Game_Manager {
+			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
 		}
  	}
  		
@@ -632,7 +632,7 @@ species Network_Game_Manager skills: [network]{
 				match_one [ ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
 							ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs ] {
 					ask Land_Use first_with(each.id = element_id){
-			 			do modify_LU (world.LU_name_of_command(myself.command));
+			 			do modify_LU (world.lu_name_of_command(myself.command));
 			 		  	not_updated <- true;
 			 		  	acknowledge <- true;
 			 		}
@@ -1452,8 +1452,11 @@ species Inland_Dike_Area{		aspect base {	draw shape color: rgb (100, 100, 205,12
 //---------------------------- Experiment definiton -----------------------------//
 
 experiment LittoSIM_GEN_Manager type: gui{
+	
+	string default_language <- first(text_file("../includes/config/littosim.csv").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	init { minimum_cycle_duration <- 0.5; }
 	
+	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	parameter "Log User Actions" 	var:log_user_action <- true;
 	parameter "Connect to ActiveMQ" var:activemq_connect<- true;
 	

@@ -8,7 +8,7 @@ model paramsleader
 import "params_all.gaml"
 
 global{
-	
+	string my_language;
 	map<string,map> levers_def <- store_csv_data_into_map_of_map(configuration_file["LEVERS_FILE"], ";");	// levers configuration file
 
 	int game_round <- 0;
@@ -22,8 +22,8 @@ global{
 	//actions to acknwoledge client requests.
 	string MSG_TO_PLAYER 			<- "MSG_TO_PLAYER";
 
-	string SUBSIDIZE_GANIVELLE 			<- "SUBSIDIZE_GANIVELLE";
-	string SUBSIDIZE_ADAPTED_HABITAT 	<- "SUBSIDIZE_ADAPTED_HABITAT";
+	//string SUBSIDIZE_GANIVELLE 			<- "SUBSIDIZE_GANIVELLE";
+	//string SUBSIDIZE_ADAPTED_HABITAT 	<- "SUBSIDIZE_ADAPTED_HABITAT";
 	
 	// messages to display in multi-langs
 	string MSG_CHOOSE_MSG_TO_SEND;	
@@ -36,8 +36,13 @@ global{
 	string get_lever_name(string lever_id){
 		return levers_def at lever_id at configuration_file["LANGUAGE"];
 	}
+	
 	string get_lever_type(string lever_id){
 		return levers_def at lever_id at 'type';
-	}	
+	}
+	
+	string get_message(string code_msg){
+		return langs_def at code_msg at my_language;
+	}
 }
 

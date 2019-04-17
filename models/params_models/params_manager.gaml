@@ -8,6 +8,7 @@ model paramsmanager
 import "params_all.gaml"
 
 global{
+	string my_language;
 	// Simulation states
 	string SIM_NOT_STARTED 				<- 'NOT_STARTED';
 	string SIM_GAME 					<- 'GAME';
@@ -89,4 +90,8 @@ global{
 	float button_size 		<- float(configuration_file["BUTTON_SIZE"]); 				// 2000#m;
 	int font_size 			<- int(shape.height/30); 	
 	int font_interleave 	<- int(shape.width/60);
+	
+	string get_message(string code_msg){
+		return langs_def at code_msg at my_language;
+	}
 }

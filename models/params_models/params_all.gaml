@@ -5,7 +5,7 @@
 model paramsall
 
 global{
-	
+	list<string> languages_list <- ['fr', 'en'];
 	// Configuration files
 	string config_file_name 				<- "../includes/config/littosim.csv"; 
 	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
@@ -104,9 +104,9 @@ global{
 	int pctBudgetInit 		<- int(eval_gaml(shapes_def["PCT_BUDGET_TABLE"])); 			// at initialization, each district has a budget equal to an annual tax + %
 	
 	// List of all possible actions to send over network
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE,REFRESH_ALL,ACTION_REPAIR_DIKE,ACTION_CREATE_DIKE,ACTION_DESTROY_DIKE,ACTION_RAISE_DIKE,
-							ACTION_INSTALL_GANIVELLE,ACTION_MODIFY_LAND_COVER_AU,ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_A,
-							ACTION_MODIFY_LAND_COVER_U,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui,ACTION_MODIFY_LAND_COVER_N];
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE,
+							ACTION_INSTALL_GANIVELLE, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,
+							ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
 	
 	int ACTION_ACTION_LIST 						<- 211;
 	int ACTION_DONE_APPLICATION_ACKNOWLEDGEMENT <- 51;
@@ -201,7 +201,7 @@ global{
 	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
     list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
 	
-	string LU_name_of_command (int command) {
+	string lu_name_of_command (int command) {
 		switch command {
 			match ACTION_MODIFY_LAND_COVER_AU 	{	return "AU" ;	}
 			match ACTION_MODIFY_LAND_COVER_A 	{	return "A"  ;	}

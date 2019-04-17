@@ -4,16 +4,16 @@ ACTION_CREATE_DIKE;Construire une digue;Create a dike
 ACTION_DESTROY_DIKE;Démanteler une digue;Destroy a dike
 ACTION_RAISE_DIKE;Rehausser une digue;Raise a dike
 ACTION_INSTALL_GANIVELLE;Installer des ganivelles;Install ganivelles
-ACTION_MODIFY_LAND_COVER_AU;Changer en zone a urbaniser;Change to authorized urbanization
+ACTION_MODIFY_LAND_COVER_AU;Changer en zone à urbaniser;Change to authorized urbanization
 ACTION_MODIFY_LAND_COVER_A;Changer en zone agricole;Change to agricultural
-ACTION_MODIFY_LAND_COVER_U;Cliquez sur la cellule a modifier;Click on the cell to modify
+ACTION_MODIFY_LAND_COVER_U;Cliquez sur la cellule à modifier;Click on the cell to modify
 ACTION_MODIFY_LAND_COVER_N;Changer en zone naturelle;Change to natural
-ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N;Changer une zone a urbaniser en zone naturelle;Change an urban zone to natural
+ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N;Changer une zone à urbaniser en zone naturelle;Change an urban zone to natural
 ACTON_MODIFY_LAND_COVER_FROM_A_TO_N;Changer une zone agricole en zone naturelle;Change an agricultural zone to natural
-ACTION_MODIFY_LAND_COVER_AUs;Changer en zone a urbaniser adaptée;Change to an adapted urbanized zone
+ACTION_MODIFY_LAND_COVER_AUs;Changer en zone à urbaniser adaptée;Change to an adapted urbanized zone
 ACTION_MODIFY_LAND_COVER_Us;Transformer en Us;Change to Us
-ACTION_MODIFY_LAND_COVER_Ui;Inciter a la densification;Incite to densification
-ACTION_EXPROPRIATION;Cliquez sur la cellule a modifier;Click on the cell to modify
+ACTION_MODIFY_LAND_COVER_Ui;Inciter à la densification;Incite to densification
+ACTION_EXPROPRIATION;Cliquez sur la cellule à modifier;Click on the cell to modify
 ACTION_MODIFY_LAND_COVER_AUs_SUBSIDY;Changer en zone à urbaniser adaptée avec subvention;Change to an authorized urbanization zone with subsidy
 ACTION_MODIFY_LAND_COVER_Us_SUBSIDY;Changer en zone urbanisée adaptée avec subvention;Change to an adapted urbanized zone with subsidy
 ACTION_INSPECT_LAND_USE;Inspecter une unité d’aménagement;Inspect a planning unit
@@ -32,7 +32,7 @@ HELP_MSG_DESTROY_DIKE;Cliquez sur la digue à démanteler;Click on the dike to d
 HELP_MSG_RAISE_DIKE;Cliquer sur la digue à rehausser;Click on the dike to raise
 HELP_MSG_INSTALL_GANIVELLE;Cliquez sur la dune pour installer une ganivelle;Click on the dune to install a ganivelle
 HELP_MSG_MODIFY_LAND_COVER;Cliquez sur la cellule à modifier;Click on the cell to edit
-HELP_MSG_INSPECT_LAND_USE;Glissez le pointeur sur les cellules a inspecter;Drag the pointer on the cells to inspect
+HELP_MSG_INSPECT_LAND_USE;Glissez le pointeur sur les cellules à inspecter;Drag the pointer on the cells to inspect
 HELP_MSG_INSPECT_DIKE;Glissez le pointeur sur les digues et dunes;Drag the pointer on the dikes to inspect
 LDR_MSG_SEND_MONEY;Envoyer de l'argent;Send money
 LDR_MSG_WITHDRAW_MONEY;Prélever de l'argent;Take money
@@ -59,7 +59,7 @@ BTN_SEND_MSG_MSG0;Indiquer le message envoyé a;Indicate the message sent to
 BTN_SEND_MSG_MSG1;Un renforcement de la loi littorale retarde vos mesures de gestion du risque;Not translated yet
 BTN_SEND_MSG_MSG2;L'agence du risque désapprouvé votre gestion du risque : vos dossiers sont retardes;Not translated yet
 BTN_SEND_MSG_MSG3;L'agence du risque facilite vos pratiques alternatives de gestion des risques et active vos dossiers;Not translated yet
-BTN_SEND_MSG_MSG4;Un changement législatif est opéré en faveur de vos pratiques de gestion des risques : vous êtes encourages a poursuivre votre stratégie;Not translated yet
+BTN_SEND_MSG_MSG4;Un changement législatif est opéré en faveur de vos pratiques de gestion des risques : vous êtes encouragés à poursuivre votre stratégie;Not translated yet
 BTN_EMPTY_MSG_TO_CANCEL;message vide pour annuler;empty message to cancel
 BTN_GET_REVENUE_MSG1;Vous allez prélever une recette en provenance de;You will take a tax from
 BTN_GET_REVENUE_MSG2;Mettre un montant de 0 pour annuler;Put an amount of 0 to cancel
@@ -76,12 +76,12 @@ MSG_COST_APPLIED_PARCEL;Coût si appliqué à une parcelle;Cost if applied to a 
 MSG_COST_ACTION;Coût de l'action;Cost of the action
 MSG_COST_EXPROPRIATION;coût d'expropriation;expropriation cost
 LEGEND_PLU;Aménagement, PLU et habitat;Planning, PLU and habitation
-LEGEND_DYKE;Defense des côtes;Coast defenses
-LEGEND_NAME_ACTIONS;€ Actions envisagées;$ Projected actions
+LEGEND_DYKE;Défense des côtes;Coast defenses
+LEGEND_NAME_ACTIONS;Actions envisagées;Projected actions
 MSG_INITIAL_BUDGET;Budget initial;Initial budget
 MSG_REMAINING_BUDGET;Budget restant;Remaining budget
 MSG_SIM_STARTED_ROUND1;La simulation démarre. C'est le tour 1;Simulation starts. It's round 1
-MSG_POSSIBLE_REGLEMENTATION_DELAY;La zone de travaux est soumise a des contraintes réglementaires.\nLe dossier est susceptible d’être retardé.\nSouhaitez vous poursuivre ?;Not translated yet
+MSG_POSSIBLE_REGLEMENTATION_DELAY;La zone de travaux est soumise à des contraintes réglementaires. Le dossier est susceptible d’être retardé. Souhaitez vous poursuivre ?;Not translated yet
 MSG_ITS_ROUND;C'est le tour;It's round
 MSG_THE_ROUND;Le tour;The round
 MSG_HAS_STARTED;a commencé;has started
@@ -90,7 +90,7 @@ MSG_DISTRICT_RECEIVE;Votre commune accueille;Your district receives
 MSG_NEW_COMERS;nouveaux arrivants;new comers
 MSG_DISTRICT_POPULATION;La population de votre commune est de;The population of your district is
 MSG_INHABITANTS;habitants;inhabitants
-MSG_EXPROPRIATION_PROCEDURE;Vous allez entamer une procédure d'expropriation.\nSouhaitez-vous continuer ?;You will start a procedure of expropriation.\nDo you want to proceed ?
+MSG_EXPROPRIATION_PROCEDURE;Vous allez entamer une procédure d'expropriation. Souhaitez-vous continuer ?;You will start a procedure of expropriation. Do you want to proceed ?
 MSG_IMPOSSIBLE_DELETE_ADAPTED;Impossible de supprimer un habitat adapté;Impossible to delete an adapted habitation
 MSG_ROUND;Tour;Round
 MSG_IMPOSSIBLE_NORMALLY;impossible normalement;normally impossible
@@ -145,3 +145,8 @@ LEV_DURING_MSG;Durant;During
 LEV_NO_DIKE_CREATION_HELP;tours consécutifs, le joueur ne contruit pas de digue;concecutive rounds, the player cannot build dikes
 LEV_NO_DIKE_RAISE_HELP;tours consécutifs, le joueur ne réhausse pas de digue;concecutive rounds, the player cannot raise dikes
 LEV_NO_DIKE_REPAIR_HELP;tours consécutifs, le joueur ne rénove pas de digue;concecutive rounds, the player cannot repair dikes
+PLY_MSG_WARNING_U_N;Transformer une zone urbaine en zone agricole n'est pas autorisé. Vous pouvez la transformer en zone naturelle;Changing an urban zone to agricultural is not permitted. You can change it to natural
+PLY_MSG_WARNING_OUTSIDE_U;Impossible de construire en dehors d'une périphérie urbaine;Impossibe to build outside a urban area
+PLY_MSG_WARNING_PROTECTED_U;Construire en zone protégée n'est pas autorisé par la législation;Building in protected areas is prohibited by the law
+PLY_MSG_WARNING_N_TO_URBANIZED;Transformer une zone naturelle en zone à urbaniser est soumis à des contraintes réglementaires. Le dossier est susceptible d’être retardé. Souhaitez vous poursuivre ?;Changing a natural zone to urbanized zone is subject of regulatory constraints. The action may be delayed. \nWould you like to continue?
+PLY_MSG_WARNING_DENSE;Cette unité urbaine est déjà à son niveau de densification maximum;This urban unit is already in its maximum densification level

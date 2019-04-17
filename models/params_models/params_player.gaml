@@ -8,7 +8,8 @@ model paramsmain
 import "params_all.gaml"
 
 global{
-		
+	string my_language;
+	string DISTRICT_AT_TOP 	 <- string(shapes_def["DISTRICT_AT_TOP"]);
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
 	int DISPLAY_FONT_SIZE 	 <- 16;
 	
@@ -49,11 +50,11 @@ global{
 	point INFORMATION_BOX_SIZE 	<- {200,80};	
 
 	// Multi-langs
-	string LEGEND_LU_NAME;
-	string LEGEND_COAST_DEF_NAME;
 	string MSG_WARNING;
-	string MSG_POSSIBLE_REGLEMENTATION_DELAY;
-	string MSG_SIM_NOT_STARTED;
+	
+	string get_message(string code_msg){
+		return langs_def at code_msg at my_language;
+	}
 	
 }
 
