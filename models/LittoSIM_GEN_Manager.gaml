@@ -103,7 +103,7 @@ global {
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, "results");
 		
-		do load_rugosity;
+		do load_dem_and_rugosity;
 		ask Land_Use {	cells <- Cell overlapping self;	}
 		ask districts_in_game{
 			LUs 	<- Land_Use overlapping self;
@@ -149,13 +149,10 @@ global {
 		write get_message('MSG_GAME_DONE') + " !";
 	} 	
 	
-	int district_id (string xx){
-		District d <- District first_with (each.network_name = xx);
-		if(d = nil){
-			d <- (District first_with (xx contains each.district_code));
-			d.network_name <- xx;
-		}
-		return d.dist_id;
+	int district_id (string dist_code){
+		District d <- first(District first_with (each.district_code = dist_code));
+		if d != nil { return d.dist_id; }
+		else 		{ return 0; 		}
 	}
 
 	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
@@ -209,7 +206,7 @@ global {
 		
 	action launchFlood_event{
 		if game_round = 0 {
-			map values <- user_input([(get_message('MSG_SIM_NOT_STARTED')) :: ""]);
+			map values <- user_input([(get_message('MSG_SIM_NOT_STARTED'))::true]);
 	     	write stateSimPhase;
 		}
 		else{											// excuting Lisflood
@@ -301,12 +298,20 @@ global {
      		else{	stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase; }	}
 	}
 	
-	action load_rugosity{
-		file rug_data <- text_file(RUGOSITY_DEFAULT) ;
-		loop r from: 6 to: length(rug_data) -1 {
-			string l <- rug_data[r];
-			list<string> res <- l split_with " ";
-			loop c from: 0 to: length(res) - 1 { Cell[c,r-6].rugosity <- float(res[c]);} }	
+	action load_dem_and_rugosity {
+		list<string> dem_data <- [];
+		list<string> rug_data <- [];
+		file dem_grid <- text_file(dem_file);
+		file rug_grid <- text_file(RUGOSITY_DEFAULT) ;
+		loop rw from: 6 to: nb_rows - 1 {
+			dem_data <- dem_grid [rw] split_with "	";
+			rug_data <- rug_grid [rw] split_with " ";
+			loop cl from: 0 to: min([length(dem_data), length(rug_data)]) - 1 { //  nb_cols - 1 { TODO temporal, fix the rugosity file cols number !
+				Cell[cl, rw-6].soil_height 	<- float(dem_data[cl]);
+				Cell[cl, rw-6].rugosity 	<- float(rug_data[cl]);
+			}
+		}
+		ask Cell { do init_cell_color; }
 	}
 	
 	action calculate_districts_results{
@@ -536,7 +541,7 @@ species Network_Game_Manager skills: [network]{
 					}
 					else{
 						if(game_round > 0) {
-							write world.get_message('MSG_READ_ACTION') + " " + m_contents["stringContents"];
+							write world.get_message('MSG_READ_ACTION') + " : " + m_contents["stringContents"];
 							if(int(data[0]) in ACTION_LIST) {
 								create Player_Action {
 									self.command 					<- int(data[0]);
@@ -568,7 +573,7 @@ species Network_Game_Manager skills: [network]{
 												element_shape 	 <- (Coastal_Defense first_with(each.coast_def_id = self.element_id)).shape;
 												length_coast_def <- int(element_shape.perimeter);
 											}
-											default {	write world.get_message('MSG_ERROR_PLAYER_ACTION');	}
+											default { write world.get_message('MSG_ERROR_PLAYER_ACTION');	}
 										}
 									}
 									if  self.element_shape intersects all_flood_risk_area 		 {	is_in_risk_area 		<- true;	}
@@ -673,7 +678,7 @@ species Network_Game_Manager skills: [network]{
 		}
 		loop i from: 0 to: length(update_messages) - 1{
 			loop d over: District overlapping (updated_LU[i]) {
-				do send to: d.network_name contents:  update_messages[i];
+				do send to: d.district_code contents:  update_messages[i];
 			}
 		}
 	}
@@ -692,34 +697,34 @@ species Network_Game_Manager skills: [network]{
 			update_coast_def <- update_coast_def + self;
 			not_updated 	 <- false;
 		}
-		loop i from: 0 to: length(update_messages) - 1{
+		loop i from: 0 to: length(update_messages) - 1 {
 			loop d over: District overlapping (update_coast_def[i]){
-				do send to: d.network_name contents: update_messages[i];
+				do send to: d.district_code contents: update_messages[i];
 			}
 		}
 	}
 	
 	action send_data_to_district (District d){
-		write world.get_message('MSG_SEND_DATA_TO') + " " + d.network_name;
+		write world.get_message('MSG_SEND_DATA_TO') + " " + d.district_code;
 		string msg <- world.get_message('MSG_SEND_TO');
 		ask d {
 			do inform_budget_update();
 		}
 		loop tmp over: Coastal_Defense where(each.district_code = d.district_code){
-			write msg + " " + d.network_name + "_retrieve " + tmp.build_map_from_attributes();
-			do send to: d.network_name +"_retrieve" contents: tmp.build_map_from_attributes();
+			write msg + " " + d.district_code + "_retrieve " + tmp.build_map_from_attributes();
+			do send to: d.district_code + "_retrieve" contents: tmp.build_map_from_attributes();
 		}
 		loop tmp over: d.LUs{
-			write msg + " " + d.network_name + "_retrieve " + tmp.build_map_from_attributes();
-			do send to: d.network_name +"_retrieve" contents: tmp.build_map_from_attributes();
+			write msg + " " + d.district_code + "_retrieve " + tmp.build_map_from_attributes();
+			do send to: d.district_code + "_retrieve" contents: tmp.build_map_from_attributes();
 		}
 		loop tmp over: Player_Action where(each.district_code = d.district_code){
-			write msg + " " + d.network_name+ "_retrieve " + tmp.build_map_from_attributes();
-			do send to: d.network_name+"_retrieve" contents: tmp.build_map_from_attributes();
+			write msg + " " + d.district_code+ "_retrieve " + tmp.build_map_from_attributes();
+			do send to: d.district_code + "_retrieve" contents: tmp.build_map_from_attributes();
 		}
 		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
-			write msg + " " + d.network_name + "_retrieve " + tmp.my_map;
-			do send to: d.network_name+"_retrieve" contents: tmp.my_map;
+			write msg + " " + d.district_code + "_retrieve " + tmp.my_map;
+			do send to: d.district_code + "_retrieve" contents: tmp.my_map;
 		}
 	}
 	
@@ -727,7 +732,7 @@ species Network_Game_Manager skills: [network]{
 		string val <- is_allowed = true? "UNLOCKED":"LOCKED";
 		map<string,string> me <- ["OBJECT_TYPE"  ::OBJECT_TYPE_WINDOW_LOCKER,
 								  "WINDOW_STATUS"::val];
-		do send to: d.network_name+"_retrieve" contents: me;
+		do send to: d.district_code+"_retrieve" contents: me;
 	}
 }
 //------------------------------ End of Network_Game_Manager -------------------------------//
@@ -965,7 +970,7 @@ species Player_Action schedules:[]{
 							new_dike.type + COMMAND_SEPARATOR + new_dike.status + COMMAND_SEPARATOR + new_dike.min_dike_elevation +
 							COMMAND_SEPARATOR + myself.id + COMMAND_SEPARATOR+new_dike.location.x + COMMAND_SEPARATOR + new_dike.location.y;
 			loop d over: District overlapping new_dike {
-				do send to: d.network_name contents: msg;
+				do send to: d.district_code contents: msg;
 			}	
 		}
 		return new_dike;
@@ -1028,7 +1033,7 @@ species Coastal_Defense {
 		ask cells  {
 			soil_height <- h + myself.height;
 			soil_height_before_broken <- soil_height ;
-			do init_soil_color();
+			do init_soil_sea_color();
 		}
 	}
 	
@@ -1044,7 +1049,7 @@ species Coastal_Defense {
 		ask cells {
 			soil_height <- soil_height + RAISE_DIKE_HEIGHT;
 			soil_height_before_broken <- soil_height ;
-			do init_soil_color();
+			do init_soil_sea_color();
 		}
 	}
 	
@@ -1052,13 +1057,13 @@ species Coastal_Defense {
 		ask Network_Game_Manager{
 			string msg <- "" + ACTION_DIKE_DROPPED + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + myself.coast_def_id;
 			loop dist over: District overlapping myself {
-				do send to: dist.network_name contents: msg;
+				do send to: dist.district_code contents: msg;
 			}	
 		}
 		ask cells {
 			soil_height <- soil_height - myself.height ;
 			soil_height_before_broken <- soil_height ;
-			do init_soil_color();
+			do init_soil_sea_color();
 		}
 		do die;
 	}
@@ -1087,7 +1092,7 @@ species Coastal_Defense {
 				ask cells {
 					soil_height 			  <- soil_height + H_DELTA_GANIVELLE;
 					soil_height_before_broken <- soil_height ;
-					do init_soil_color();
+					do init_soil_sea_color();
 				}
 			} else { ganivelle <- false;	} // if the dune covers all the ganivelle we reset the ganivelle
 			not_updated<- true;
@@ -1175,33 +1180,49 @@ species Coastal_Defense {
 }
 //------------------------------ End of Coastal defense -------------------------------//
 
-grid Cell file: dem_file schedules:[] neighbors: 8 {	
+grid Cell width: nb_cols height: nb_rows schedules:[] neighbors: 8 {	
 	int cell_type 					<- 0 ; // 0 = land
 	float water_height  			<- 0.0;
 	float max_water_height  		<- 0.0;
-	float soil_height 				<- grid_value;
+	float soil_height 				<- 0.0;
+	float rugosity					<- 0.0;
 	float soil_height_before_broken <- soil_height;
-	float rugosity;
-	rgb soil_color ;
+	rgb soil_color <- rgb(255,255,255);
 
-	init {
+	action init_cell_color {
 		if soil_height <= 0 {	cell_type 	<- 1;		}  //  1 = sea
 		if soil_height = 0 	{	soil_height <- -5.0;	}
-		do init_soil_color();
+		do init_soil_sea_color();
 	}
 	
-	action init_soil_color {
+	action get_land_elevation_color{
+		if 		soil_height  / 10 >= 11 { soil_color <- rgb(233,228,214); }
+		else if soil_height  / 10 >= 8 { soil_color <- rgb(241,232,205); }
+		else if soil_height   / 10>= 7 { soil_color <- rgb(236,228,198); }
+		else if soil_height  / 10 >= 6 { soil_color <- rgb(226,221,192); }
+		else if soil_height  / 10 >= 5 { soil_color <- rgb(213,210,178); }
+		else if soil_height  / 10 >= 4 { soil_color <- rgb(208,224,190); }
+		else if soil_height  / 10 >= 3 { soil_color <- rgb(190,230,189); }
+		else if soil_height  / 10 >= 2 { soil_color <- rgb(200,237,202); }
+		else if soil_height  / 10 >= 1 { soil_color <- rgb(230,244,228); }
+		else if soil_height  / 10 >= 0.5 { soil_color <- rgb(236,241,230); }
+		else if soil_height  / 10 >= 0 { soil_color <- rgb(242,242,236); }
+		else  { soil_color <- rgb(255,255,255); }
+	}
+	
+	action init_soil_sea_color {
 		if cell_type = 1 {
 			float tmp  <- ((soil_height  / 10) with_precision 1) * -170;
-			soil_color <- rgb( 80, 80 , int(255 - tmp)) ;
+			soil_color <- rgb(80, 80 , int(255 - tmp)) ;
 		}else{
-			float tmp  <- ((soil_height  / 10) with_precision 1) * 255;
-			soil_color <- rgb( int(255 - tmp), int(180 - tmp) , 0) ;
+			do get_land_elevation_color;
+			//float tmp  <- ((soil_height  / 10) with_precision 1) * 255;
+			//soil_color <- rgb(int(255 - tmp), int(180 - tmp) , 0) ;
 		}
 	}
 	
 	aspect water_or_max_water_elevation {
-		if cell_type = 1 or (show_max_water_height? (max_water_height = 0) : (water_height = 0)){ // if sea and water level = 0
+		if cell_type = 1 or (show_max_water_height? max_water_height = 0 : water_height = 0){ // if sea and water level = 0
 			color <- soil_color ;
 		}else{ // if land
 			if show_max_water_height {	color <- world.color_of_water_height(max_water_height);	}
@@ -1337,7 +1358,6 @@ species District {
 	int dist_id <-0;
 	string district_code; 
 	string district_name;
-	string network_name;
 	int budget;
 	int received_tax <-0;
 	list<Land_Use> LUs ;

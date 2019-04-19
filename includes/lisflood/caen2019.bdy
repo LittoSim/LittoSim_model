@@ -1,6 +1,7 @@
+Lisflood Caen
 North_Caen1
-30 second
-4.326	0
+36 second
+0	0
 4.326	1800
 6.991	3600
 6.991	5400
@@ -37,7 +38,7 @@ North_Caen1
 8.897	61200
 8.897	63000
 North_Caen2
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600
@@ -75,7 +76,7 @@ North_Caen2
 8.897	61200
 8.897	63000
 North_Caen3
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600
@@ -113,7 +114,7 @@ North_Caen3
 8.897	61200
 8.897	63000
 North_Caen4
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600
@@ -151,7 +152,7 @@ North_Caen4
 8.897	61200
 8.897	63000
 North_Caen5
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600
@@ -189,7 +190,7 @@ North_Caen5
 8.897	61200
 8.897	63000
 West_Caen1
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600
@@ -227,7 +228,7 @@ West_Caen1
 8.897	61200
 8.897	63000
 West_Caen2
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600
@@ -265,7 +266,7 @@ West_Caen2
 8.897	61200
 8.897	63000
 West_Caen3
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600
@@ -303,7 +304,7 @@ West_Caen3
 8.897	61200
 8.897	63000
 West_Caen4
-30 second
+36 second
 4.326	0
 4.326	1800
 6.991	3600

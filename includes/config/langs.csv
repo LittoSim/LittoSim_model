@@ -85,7 +85,7 @@ MSG_POSSIBLE_REGLEMENTATION_DELAY;La zone de travaux est soumise à des contrain
 MSG_ITS_ROUND;C'est le tour;It's round
 MSG_THE_ROUND;Le tour;The round
 MSG_HAS_STARTED;a commencé;has started
-MSG_TAXES_RECEIVED_FROM;Vous avez perçu des impôts de;You received taxes from
+MSG_TAXES_RECEIVED_FROM;Vous avez perçu des impôts de;You received taxes of
 MSG_DISTRICT_RECEIVE;Votre commune accueille;Your district receives
 MSG_NEW_COMERS;nouveaux arrivants;new comers
 MSG_DISTRICT_POPULATION;La population de votre commune est de;The population of your district is

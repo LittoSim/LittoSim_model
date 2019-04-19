@@ -37,7 +37,7 @@ global{
 	// gama displays
 	string GAMA_BASKET_DISPLAY 	<- "Basket";
 	string GAMA_MAP_DISPLAY		<- "Map";
-	string GAMA_DOSSIERS_DISPLAY<- "Dossiers";
+	string GAMA_DOSSIERS_DISPLAY<- "History";
 	string GAMA_MESSAGES_DISPLAY<- "Messages";
 
 	// Received user messages type

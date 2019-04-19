@@ -1,26 +1,14 @@
-DEMfile         oleron_dem2016.asc
+DEMfile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron_dem2016.asc
 resroot         res
 dirroot         results
 sim_time        52200
 initial_tstep   10.0
 massint         100.0
 saveint         3600.0
-#checkpoint     0.00001
-#overpass       100000.0
-#fpfric         0.06
-#infiltration   0.000001
-#overpassfile   buscot.opts
-manningfile     oleron.n2016.ascii
-#riverfile      buscot.river
-bcifile         oleron2016.bci
-bdyfile         oleron2016.bdy
-#weirfile       buscot.weir
-startfile      oleron.start
+manningfile     C:/littosim/workspace/LittoDev/includes/lisflood/oleron.n2016.ascii
+bcifile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron2016.bci
+bdyfile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron2016_Xynthia.bdy
+startfile       C:/littosim/workspace/LittoDev/includes/lisflood/oleron.start
 startelev
-#stagefile      buscot.stage
 elevoff
-#depthoff
-#adaptoff
-#qoutput
-#chainageoff
 SGC_enable

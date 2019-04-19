@@ -93,5 +93,5 @@ global{
 	
 	string get_message(string code_msg){
 		return langs_def at code_msg at my_language;
-	}
+	}	
 }

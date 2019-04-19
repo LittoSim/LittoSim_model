@@ -1,12 +1,15 @@
-DEMfile         caen_dem2019.asc
+DEMfile         C:/littosim/workspace/LittoDev/includes/config/caen/dem.asc
 resroot         res
 dirroot         results
 sim_time        52200
 initial_tstep   10.0
 massint         100.0
 saveint         3600.0
-manningfile     caen_rug2019.ascii
-bcifile         caen2019.bci
-bdyfile         caen2019.bdy
-
+manningfile     C:/littosim/workspace/LittoDev/includes/lisflood/inputs/LittoSIM_GEN_Caen_n_R2_t1.555667670594E12.asc
+bcifile         C:/littosim/workspace/LittoDev/includes/lisflood/caen2019.bci
+bdyfile         C:/littosim/workspace/LittoDev/includes/lisflood/caen2019.bdy
+startfile       C:/littosim/workspace/LittoDev/includes/lisflood/oleron.start
+startelev
+elevoff
+SGC_enable
 
