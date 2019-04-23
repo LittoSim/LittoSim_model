@@ -494,7 +494,7 @@ global{
 		}
 	}
 	
-	action create_new_dike(point loc, Button but){
+	action create_new_dike (point loc, Button but){
 		if(previous_clicked_point = nil){ previous_clicked_point <- loc; }
 		else{
 			create Coastal_Defense_Action returns: action_list{
@@ -1696,10 +1696,10 @@ species Coastal_Defense_Action parent: Player_Action {
 }
 //------------------------------ End of Coastal_Defense_Action -------------------------------//
 
-species Land_Use_Action parent: Player_Action{
+species Land_Use_Action parent: Player_Action {
 	string action_type <- PLAYER_ACTION_TYPE_LU;
 	
-	rgb define_color{
+	rgb define_color {
 		switch(command){
 			 match ACTION_MODIFY_LAND_COVER_A { return rgb(245,147,49); }
 			 match ACTION_MODIFY_LAND_COVER_N { return rgb(11,103,59);  }
@@ -1716,7 +1716,7 @@ species Land_Use_Action parent: Player_Action{
 		if active_display = LU_DISPLAY and !is_applied {
 			bool highlighted 	<- self = highlight_action;
 			geometry triangle 	<- polygon([shape.points[3], shape.points[1], shape.points[0], shape.points[3]]);
-			
+			write length(shape.points);
 			draw triangle  color: define_color() border: define_color() ;
 			draw shape at: location empty: true border: highlighted ? #red: (is_sent ? define_color() : #black) ;
 			
@@ -1838,10 +1838,10 @@ species Land_Use {
 			match_one ["AU","AUs"]  		 { return #yellow;		 		} // to urbanize
 			match_one ["U","Us"] { 								 	    	  // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 { return #red;					} // Problem ?
+					match POP_EMPTY 		 { return #red;					}
 					match POP_FEW_DENSITY	 { return rgb(0, 171, 214);		}
 					match POP_MEDIUM_DENSITY { return rgb(0, 129, 161);		}
-					match POP_DENSE 		 { return rgb( 0,77,97);		}
+					match POP_DENSE 		 { return rgb(0, 77, 97);		}
 				}
 			}			
 		}
@@ -2083,23 +2083,23 @@ experiment LittoSIM_GEN_Player type: gui{
 					}
 				}
 			}
-			
+			// Inspect LU info when the action is not applied yet
 			graphics "Action Full target UNAM" transparency: 0.3 {
-				if(explored_land_use_action !=nil and explored_land_use_action.is_applied=false){
-					Land_Use mcell <- Land_Use first_with(each.id = explored_land_use_action.element_id);
-					point target <- {mcell.location.x  ,mcell.location.y };
-					point target2 <- {mcell.location.x + 1*(INFORMATION_BOX_SIZE.x#px),mcell.location.y + 1*(INFORMATION_BOX_SIZE.y#px)};
+				if(explored_land_use_action !=nil and !explored_land_use_action.is_applied){
+					Land_Use mcell 	<- Land_Use first_with(each.id = explored_land_use_action.element_id);
+					point target 	<- {mcell.location.x ,mcell.location.y};
+					point target2 	<- {mcell.location.x + 1 * (INFORMATION_BOX_SIZE.x#px), mcell.location.y + 1 * (INFORMATION_BOX_SIZE.y#px)};
 					
-					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
-					draw "Changement d'occupation" at: target + { 0#px, 15#px } font: regular color: # white;
-					draw file("../images/icons/fleche.png") at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px}  size:50#px;
-					draw ""+ (explored_land_use_action.effective_application_round)   at: {mcell.location.x + 0.5*(INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size:20#px; 
-					draw world.get_action_icon(explored_land_use_action.command) at:  { target2.x - 50#px, target.y +50#px} size:50#px;
-					draw world.au_icone(mcell) at:  { target.x +50#px,target.y + 50#px} size:50#px;
+					draw rectangle(target, target2) empty: false border: false color: #black;
+					draw "State change" at: target + {0#px, 15#px} font: regular color: #white;
+					draw file("../images/icons/fleche.png") at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x #px), target.y + 50#px} size:50#px;
+					draw "" + (explored_land_use_action.effective_application_round) at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size: 20#px;
+					draw world.get_action_icon(explored_land_use_action.command) at: {target2.x - 50#px, target.y +50#px} size: 50#px;
+					draw world.au_icone(mcell) at: {target.x + 50#px, target.y + 50#px} size: 50#px;
 				}
 			}
 			
-			graphics "LU Button Info" transparency: 0.5{
+			graphics "LU Button Info" transparency: 0.5 {
 				if (active_display = LU_DISPLAY and explored_buttons != nil and explored_cell = nil and explored_dike = nil and explored_land_use_action = nil){
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-2 * INFORMATION_BOX_SIZE.y #px) : 0.0;
 					point target 	<- world.button_box_location(explored_buttons.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));

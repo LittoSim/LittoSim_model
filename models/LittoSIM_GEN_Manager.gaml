@@ -58,6 +58,9 @@ global {
 	int game_round 				<- 0;
 	list<rgb> listC 			<- brewer_colors("YlOrRd", 8);
 	list<District> districts_in_game;
+	float land_min_height;
+	float land_range_height;
+	float cells_max_depth;
 	
 	init{
 		// Create GIS agents
@@ -103,8 +106,7 @@ global {
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, "results");
 		
-		do load_dem_and_rugosity;
-		ask Land_Use {	cells <- Cell overlapping self;	}
+		ask Land_Use { cells <- Cell overlapping self;	}
 		ask districts_in_game{
 			LUs 	<- Land_Use overlapping self;
 			cells 	<- Cell overlapping self;
@@ -113,7 +115,7 @@ global {
 			do calculate_indicators_t0;
 		}
 		ask Coastal_Defense { do init_coastal_def; }
-
+		do load_dem_and_rugosity;
 	}
 	//------------------------------ End of init -------------------------------//
 	 	
@@ -304,13 +306,23 @@ global {
 		file dem_grid <- text_file(dem_file);
 		file rug_grid <- text_file(RUGOSITY_DEFAULT) ;
 		loop rw from: 6 to: nb_rows - 1 {
-			dem_data <- dem_grid [rw] split_with "	";
-			rug_data <- rug_grid [rw] split_with " ";
-			loop cl from: 0 to: min([length(dem_data), length(rug_data)]) - 1 { //  nb_cols - 1 { TODO temporal, fix the rugosity file cols number !
-				Cell[cl, rw-6].soil_height 	<- float(dem_data[cl]);
-				Cell[cl, rw-6].rugosity 	<- float(rug_data[cl]);
+			dem_data <- dem_grid [rw] split_with " ";
+			//rug_data <- rug_grid [rw] split_with " ";
+			loop cl from: 0 to: /*length(dem_data) - 1 { */  nb_cols - 1 { //TODO temporal, fix the rugosity file cols number ! one loop
+				Cell[cl, rw-6].soil_height <- float(dem_data[cl]);
+			//}
+			//loop cl from: 0 to: length(rug_data) - 1 {
+				Cell[cl, rw-6].rugosity <- 0.0;//float(rug_data[cl]); // TODO load rugosity
 			}
 		}
+		ask Cell {
+			if soil_height > 0 		{ cell_type <-1; 	   }  //  1 -> land
+			else if soil_height = 0 { soil_height <- -5.0; }
+		}
+		float no_data_value <- float((dem_grid [5] split_with " ")[1]);
+		land_min_height <- min(Cell where (each.cell_type = 1 and each.soil_height != no_data_value) collect each.soil_height);
+		land_range_height <- max(Cell where (each.cell_type = 1) collect each.soil_height) - land_min_height;
+		cells_max_depth <- abs(min(Cell where (each.cell_type = 0 and each.soil_height != no_data_value) collect each.soil_height));
 		ask Cell { do init_cell_color; }
 	}
 	
@@ -1033,7 +1045,7 @@ species Coastal_Defense {
 		ask cells  {
 			soil_height <- h + myself.height;
 			soil_height_before_broken <- soil_height ;
-			do init_soil_sea_color();
+			do init_cell_color();
 		}
 	}
 	
@@ -1049,7 +1061,7 @@ species Coastal_Defense {
 		ask cells {
 			soil_height <- soil_height + RAISE_DIKE_HEIGHT;
 			soil_height_before_broken <- soil_height ;
-			do init_soil_sea_color();
+			do init_cell_color();
 		}
 	}
 	
@@ -1063,7 +1075,7 @@ species Coastal_Defense {
 		ask cells {
 			soil_height <- soil_height - myself.height ;
 			soil_height_before_broken <- soil_height ;
-			do init_soil_sea_color();
+			do init_cell_color();
 		}
 		do die;
 	}
@@ -1092,7 +1104,7 @@ species Coastal_Defense {
 				ask cells {
 					soil_height 			  <- soil_height + H_DELTA_GANIVELLE;
 					soil_height_before_broken <- soil_height ;
-					do init_soil_sea_color();
+					do init_cell_color();
 				}
 			} else { ganivelle <- false;	} // if the dune covers all the ganivelle we reset the ganivelle
 			not_updated<- true;
@@ -1181,50 +1193,28 @@ species Coastal_Defense {
 //------------------------------ End of Coastal defense -------------------------------//
 
 grid Cell width: nb_cols height: nb_rows schedules:[] neighbors: 8 {	
-	int cell_type 					<- 0 ; // 0 = land
+	int cell_type 					<- 0 ; // 0 = sea
 	float water_height  			<- 0.0;
 	float max_water_height  		<- 0.0;
 	float soil_height 				<- 0.0;
 	float rugosity					<- 0.0;
 	float soil_height_before_broken <- soil_height;
 	rgb soil_color <- rgb(255,255,255);
-
-	action init_cell_color {
-		if soil_height <= 0 {	cell_type 	<- 1;		}  //  1 = sea
-		if soil_height = 0 	{	soil_height <- -5.0;	}
-		do init_soil_sea_color();
-	}
 	
-	action get_land_elevation_color{
-		if 		soil_height  / 10 >= 11 { soil_color <- rgb(233,228,214); }
-		else if soil_height  / 10 >= 8 { soil_color <- rgb(241,232,205); }
-		else if soil_height   / 10>= 7 { soil_color <- rgb(236,228,198); }
-		else if soil_height  / 10 >= 6 { soil_color <- rgb(226,221,192); }
-		else if soil_height  / 10 >= 5 { soil_color <- rgb(213,210,178); }
-		else if soil_height  / 10 >= 4 { soil_color <- rgb(208,224,190); }
-		else if soil_height  / 10 >= 3 { soil_color <- rgb(190,230,189); }
-		else if soil_height  / 10 >= 2 { soil_color <- rgb(200,237,202); }
-		else if soil_height  / 10 >= 1 { soil_color <- rgb(230,244,228); }
-		else if soil_height  / 10 >= 0.5 { soil_color <- rgb(236,241,230); }
-		else if soil_height  / 10 >= 0 { soil_color <- rgb(242,242,236); }
-		else  { soil_color <- rgb(255,255,255); }
-	}
-	
-	action init_soil_sea_color {
-		if cell_type = 1 {
-			float tmp  <- ((soil_height  / 10) with_precision 1) * -170;
+	action init_cell_color {		
+		if cell_type = 0 { // sea
+			float tmp  <- ((soil_height  / cells_max_depth) with_precision 1) * - 170;
 			soil_color <- rgb(80, 80 , int(255 - tmp)) ;
-		}else{
-			do get_land_elevation_color;
-			//float tmp  <- ((soil_height  / 10) with_precision 1) * 255;
-			//soil_color <- rgb(int(255 - tmp), int(180 - tmp) , 0) ;
+		}else{ // land
+			float tmp  <- (((soil_height - land_min_height)  / land_range_height) with_precision 1) * 255;
+			soil_color <- rgb(int(255 - tmp), int(180 - tmp) , 0) ;
 		}
 	}
 	
 	aspect water_or_max_water_elevation {
-		if cell_type = 1 or (show_max_water_height? max_water_height = 0 : water_height = 0){ // if sea and water level = 0
+		if cell_type = 0 or (show_max_water_height? max_water_height = 0 : water_height = 0){ // if sea and water level = 0
 			color <- soil_color ;
-		}else{ // if land
+		}else{ // if land 
 			if show_max_water_height {	color <- world.color_of_water_height(max_water_height);	}
 			else					 {	color <- world.color_of_water_height(water_height);		}
 		}
