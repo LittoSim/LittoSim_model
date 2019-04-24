@@ -76,7 +76,7 @@ MSG_COST_APPLIED_PARCEL;Coût si appliqué à une parcelle;Cost if applied to a 
 MSG_COST_ACTION;Coût de l'action;Cost of the action
 MSG_COST_EXPROPRIATION;coût d'expropriation;expropriation cost
 LEGEND_PLU;Aménagement, PLU et habitat;Planning, PLU and habitation
-LEGEND_DYKE;Défense des côtes;Coast defenses
+LEGEND_DYKE;Défenses côtières;Coastal defenses
 LEGEND_NAME_ACTIONS;Actions envisagées;Projected actions
 MSG_INITIAL_BUDGET;Budget initial;Initial budget
 MSG_REMAINING_BUDGET;Budget restant;Remaining budget
@@ -150,3 +150,4 @@ PLY_MSG_WARNING_OUTSIDE_U;Impossible de construire en dehors d'une périphérie 
 PLY_MSG_WARNING_PROTECTED_U;Construire en zone protégée n'est pas autorisé par la législation;Building in protected areas is prohibited by the law
 PLY_MSG_WARNING_N_TO_URBANIZED;Transformer une zone naturelle en zone à urbaniser est soumis à des contraintes réglementaires. Le dossier est susceptible d’être retardé. Souhaitez vous poursuivre ?;Changing a natural zone to urbanized zone is subject of regulatory constraints. The action may be delayed. \nWould you like to continue?
 PLY_MSG_WARNING_DENSE;Cette unité urbaine est déjà à son niveau de densification maximum;This urban unit is already in its maximum densification level
+PLY_MSG_VALIDATE;Valider;Validate

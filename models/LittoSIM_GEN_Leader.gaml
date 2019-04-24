@@ -154,7 +154,7 @@ species Player_Action schedules:[]{
 	int initial_application_round 	<- -1;
 	int command_round 				<- -1;	
 	bool is_applied -> { game_round >= initial_application_round };
-	int round_delay	-> { activated_levers sum_of (each.nb_rounds_delay) } ; // number rounds of delay
+	int round_delay	-> { activated_levers sum_of (each.added_delay) } ; // number rounds of delay
 	bool is_delayed -> { round_delay > 0 };
 	
 	string action_type 		<- ""; 					// COAST_DEF or LU
@@ -397,7 +397,7 @@ species Activated_Lever {
 	string lever_name;
 	string lever_explanation <- "";
 	string p_action_id 		 <- "";
-	int nb_rounds_delay 	 <- 0;
+	int added_delay 	 <- 0;
 	int added_cost 			 <- 0;
 	int round_creation;
 	int round_application;
@@ -408,7 +408,7 @@ species Activated_Lever {
 		district_code 		<- m["district_code"];
 		p_action_id 		<- m["p_action_id"];
 		added_cost 			<- int(m["added_cost"]);
-		nb_rounds_delay 	<- int(m["nb_rounds_delay"]);
+		added_delay 	<- int(m["added_delay"]);
 		lever_explanation 	<- m["lever_explanation"];
 		round_creation 		<- int(m["round_creation"]);
 		round_application	<- int(m["round_application"]);
@@ -422,7 +422,7 @@ species Activated_Lever {
 			"district_code"::district_code,
 			"p_action_id"::p_action_id,
 			"added_cost"::string(added_cost),
-			"nb_rounds_delay"::nb_rounds_delay,
+			"added_delay"::added_delay,
 			"lever_explanation"::lever_explanation,
 			"round_creation"::round_creation,
 			"round_application"::round_application]	;
@@ -698,7 +698,7 @@ species Delay_Lever parent: Lever{
 	action apply_lever (Activated_Lever lev){
 		lev.applied <- true;
 		lev.lever_explanation <- player_msg;
-		lev.nb_rounds_delay <- added_delay;
+		lev.added_delay <- added_delay;
 		do send_lever_message;
 		
 		activation_label_L1 <- (total_lever_delay() < 0 ? "Total Advance: " : "Total Delay: ") + abs(total_lever_delay()) + ' rounds';
@@ -706,12 +706,12 @@ species Delay_Lever parent: Lever{
 		do inform_network_should_wait_lever_to_activate(lev.p_action);
 		
 		ask world {
-			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.nb_rounds_delay + " rounds" + "(" + lev.p_action + ")");
+			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_delay + " rounds" + "(" + lev.p_action + ")");
 		}
 	}
 	
 	int total_lever_delay {
-		return activated_levers sum_of (each.nb_rounds_delay);
+		return activated_levers sum_of (each.added_delay);
 	}
 }
 //------------------------------ End of Delay_Lever -------------------------------//
@@ -834,7 +834,7 @@ species Us_out_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 		lev.applied <- true;
 		lev.lever_explanation 	<- player_msg;
 		lev.added_cost 			<- int(lev.p_action.cost * added_cost);
-		lev.nb_rounds_delay 	<- 0;
+		lev.added_delay 	<- 0;
 		do send_lever_message (lev);
 		
 		last_lever_cost 	<- lev.added_cost;
@@ -842,7 +842,7 @@ species Us_out_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 		activation_label_L2 <- 'Total paid : '  + (-1 * total_lever_cost()) + ' By';
 		
 		ask world {
-			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_cost + "By : " + lev.nb_rounds_delay + " rounds" + "(" + lev.p_action + ")");
+			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_cost + "By : " + lev.added_delay + " rounds" + "(" + lev.p_action + ")");
 		}
 	}
 }

@@ -21,15 +21,6 @@ global{
 	
 	string PLAYER_MSG 	<- "PLAYER_MSG";
 	
-	// Levers from leader
-	int SUBVENTIONNER_GANIVELLE 		<- 1101;
-	int SUBVENTIONNER_HABITAT_ADAPTE 	<- 1102;
-	int SANCTION_ELECTORALE 			<- 1103;
-	int HAUSSE_COUT_DIGUE 				<- 1104;
-	int HAUSSE_REHAUSSEMENT_DIGUE 		<- 1105;
-	int HAUSSE_RENOVATION_DIGUE 		<- 1106;
-	int HAUSSE_COUT_BATI 				<- 1107;
-	
 	// map tab displays
 	string LU_DISPLAY 		 <- "LU_DISPLAY";
 	string COAST_DEF_DISPLAY <- "COAST_DEF_DISPLAY";
@@ -37,7 +28,7 @@ global{
 	// gama displays
 	string GAMA_BASKET_DISPLAY 	<- "Basket";
 	string GAMA_MAP_DISPLAY		<- "Map";
-	string GAMA_DOSSIERS_DISPLAY<- "History";
+	string GAMA_HISTORY_DISPLAY <- "History";
 	string GAMA_MESSAGES_DISPLAY<- "Messages";
 
 	// Received user messages type

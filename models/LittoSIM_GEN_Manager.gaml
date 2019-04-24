@@ -547,11 +547,11 @@ species Network_Game_Manager skills: [network]{
 						}
 						write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + id_dist;
 					}
-					else if(int(data[0]) = REFRESH_ALL){ // a player asks to refresh his GUI
+					else if(int(data[0]) = REFRESH_ALL){  // a player asks to refresh his GUI
 						write " Update ALL ! " + id_dist + " " + world.dist_code_sname_correspondance_table at (id_dist);
 						do send_data_to_district(first(District where(each.dist_id = id_dist)));
 					}
-					else{
+					else{  // another player action
 						if(game_round > 0) {
 							write world.get_message('MSG_READ_ACTION') + " : " + m_contents["stringContents"];
 							if(int(data[0]) in ACTION_LIST) {
@@ -574,7 +574,9 @@ species Network_Game_Manager skills: [network]{
 										location 		 <- {float(data[13]),float(data[14])}; 
 									}
 									else{
-										if is_expropriation 	{	write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.id;	}
+										if is_expropriation {
+											write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.id;
+										}
 										switch self.action_type {
 											match PLAYER_ACTION_TYPE_LU {
 												Land_Use tmp  	<- Land_Use first_with(each.id = self.element_id);
@@ -627,9 +629,9 @@ species Network_Game_Manager skills: [network]{
 				}
 			 	match ACTION_DESTROY_DIKE {
 			 		ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
-						do destroy_dike;
 						not_updated <- true;
 						acknowledge <- true;
+						do destroy_dike;
 					}		
 				}
 			 	match ACTION_RAISE_DIKE {
@@ -641,7 +643,7 @@ species Network_Game_Manager skills: [network]{
 				}
 				match ACTION_INSTALL_GANIVELLE {
 				 	ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
-						do install_ganivelle ;
+						do install_ganivelle;
 						not_updated <- true;
 						acknowledge <- true;
 					}
@@ -900,7 +902,7 @@ species Player_Action schedules:[]{
 	int command_round		<- 	-1;
 	string label 			<- "";
 	int initial_application_round <- -1;
-	int round_delay 			  -> {activated_levers sum_of int (each.my_map["nb_rounds_delay"])} ;
+	int round_delay 			  -> {activated_levers sum_of int (each.my_map["added_delay"])} ;
 	int actual_application_round  -> {initial_application_round + round_delay};
 	bool is_delayed 			  -> { round_delay >0 } ;
 	float cost 			<- 0.0;
@@ -1066,9 +1068,9 @@ species Coastal_Defense {
 	}
 	
 	action destroy_dike {
-		ask Network_Game_Manager{
+		ask Network_Game_Manager {
 			string msg <- "" + ACTION_DIKE_DROPPED + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + myself.coast_def_id;
-			loop dist over: District overlapping myself {
+			loop dist over: District where (each.district_code = myself.district_code) {
 				do send to: dist.district_code contents: msg;
 			}	
 		}
@@ -1377,7 +1379,7 @@ species District {
 	
 	int current_population {  return sum(LUs accumulate (each.population));	}
 	
-	action inform_new_round {// inform about a new round (when a district reconnects)
+	action inform_new_round {// inform about a new round
 		ask Network_Game_Manager{
 			map<string,string> msg <- ["TOPIC"::INFORM_NEW_ROUND];
 			put myself.district_code at: DISTRICT_CODE in: msg;
