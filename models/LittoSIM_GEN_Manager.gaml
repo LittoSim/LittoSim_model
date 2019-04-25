@@ -66,9 +66,8 @@ global {
 		// Create GIS agents
 		create District from: districts_shape with: [district_code::string(read("dist_code")),
 													 district_name::string(read("dist_sname")),
-													 dist_id::int(read("player_id"))]{
-			write world.get_message('MSG_COMMUNE') + " " + district_name + "(" + district_code + ")" + " " + dist_id;
-		}
+													 dist_id::int(read("player_id"))];
+													 
 		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
 		
 		create Coastal_Defense from: coastal_defenses_shape with: [
@@ -87,12 +86,28 @@ global {
 		create Inland_Dike_Area from: contour_neg_100m_shape;
 		
 		create Land_Use from: land_use_shape with: [id::int(read("unit_id")), lu_code::int(read("unit_code")),
-													population::int(get("unit_pop")), exp_cost:: int(get("exp_cost"))]{
+													dist_code::string(read("dist_code")), population::int(get("unit_pop"))]{
 			lu_name 	<- lu_type_names[lu_code];
 			my_color 	<- cell_color();
 			if lu_name = "U"  and population = 0 { population <- MIN_POP_AREA;	}
 			if lu_name = "AU" {	AU_to_U_counter <- flip(0.5)?1:0;	not_updated <- true;	}
 		}
+		
+		ask Land_Use { cells <- Cell overlapping self;	}
+		ask districts_in_game{
+			LUs 	<- Land_Use where (each.dist_code = self.district_code);
+			cells 	<- LUs accumulate (each.cells);
+			budget 	<- int(self.current_population() * tax_unit * (1 +  pctBudgetInit / 100));
+			write world.get_message('MSG_COMMUNE') + " " + district_name + "(" + district_code + ")" + " " + dist_id + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
+			do calculate_indicators_t0;
+		}
+		ask Coastal_Defense { do init_coastal_def; }
+		do load_dem_and_rugosity;
+		
+		loop i from: 0 to: (length(listC)-1) {	listC[i] <- blend (listC[i], #red , 0.9);	}
+		do init_buttons;
+		stateSimPhase <- SIM_NOT_STARTED;
+		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, "results");
 		
 		// Create Network agents
 		if activemq_connect {
@@ -100,22 +115,6 @@ global {
 			create Network_Listener_To_Leader;
 			create Network_Game_Manager;
 		}
-		
-		loop i from: 0 to: (length(listC)-1) {	listC[i] <- blend (listC[i], #red , 0.9);	}
-		do init_buttons;
-		stateSimPhase <- SIM_NOT_STARTED;
-		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, "results");
-		
-		ask Land_Use { cells <- Cell overlapping self;	}
-		ask districts_in_game{
-			LUs 	<- Land_Use overlapping self;
-			cells 	<- Cell overlapping self;
-			budget 	<- int(self.current_population() * tax_unit * (1 +  pctBudgetInit / 100));
-			write district_name + " " + world.get_message('MSG_INITIAL_BUDGET') + " : " + budget;
-			do calculate_indicators_t0;
-		}
-		ask Coastal_Defense { do init_coastal_def; }
-		do load_dem_and_rugosity;
 	}
 	//------------------------------ End of init -------------------------------//
 	 	
@@ -464,7 +463,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			nb_button 	<- 4;
 			command  	<- SHOW_LU_GRID;
 			shape 		<- square(850);
-			location 	<- { 800, 14000 };
+			location 	<- { 800, 8500 };
 			my_icon 	<- image_file("../images/icons/sans_quadrillage.png");
 			is_selected <- false;
 		}
@@ -472,7 +471,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
 			shape 		<- square(850);
-			location 	<- { 1800, 14000 };
+			location 	<- { 1800, 8500 };
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
 			is_selected <- false;
 		}
@@ -503,10 +502,10 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		point loc <- #user_location;
 		Buttons a_button <- first((Buttons where (each distance_to loc < MOUSE_BUFFER)));
 		if a_button != nil{
-			ask a_button{
+			ask a_button {
 				is_selected <- !is_selected;
 				if(a_button.nb_button = 4){
-					my_icon		<-  is_selected ? image_file("../images/icons/avec_quadrillage.png") : image_file("../images/icons/sans_quadrillage.png");
+					my_icon	<-  is_selected ? image_file("../images/icons/avec_quadrillage.png") : image_file("../images/icons/sans_quadrillage.png");
 				}else if(a_button.nb_button = 7){
 					show_max_water_height <- is_selected;
 				}
@@ -677,44 +676,38 @@ species Network_Game_Manager skills: [network]{
 	}
 	
 	reflex update_LU when: length (Land_Use where(each.not_updated)) > 0 {
-		list<string> update_messages <-[];
-		list<Land_Use> updated_LU <- [];
+		string msg <- "";
 		ask Land_Use where(each.not_updated) {
-			string msg <- "" + ACTION_LAND_COVER_UPDATE + COMMAND_SEPARATOR +
+			msg <- "" + ACTION_LAND_COVER_UPDATE + COMMAND_SEPARATOR +
 							   world.getMessageID()     + COMMAND_SEPARATOR +
 							   id 						+ COMMAND_SEPARATOR +
 							   self.lu_code 			+ COMMAND_SEPARATOR +
 							   self.population 			+ COMMAND_SEPARATOR +
 							   self.isInDensification;
-			update_messages <- update_messages + msg;	
-			updated_LU 		<- updated_LU + self;
-			not_updated 	<- false;
-		}
-		loop i from: 0 to: length(update_messages) - 1{
-			loop d over: District overlapping (updated_LU[i]) {
-				do send to: d.district_code contents:  update_messages[i];
-			}
+			not_updated <- false;
+			ask myself { do send to: myself.dist_code contents: msg; }
 		}
 	}
 	
 	reflex update_coast_def when: length (Coastal_Defense where(each.not_updated)) > 0 {
-		list<string> update_messages <-[]; 
-		list<Coastal_Defense> update_coast_def <- [];
+		string msg 	<- "";
+		point p1	<- nil;
+		point p2	<- nil;
 		ask Coastal_Defense where(each.not_updated){
-			point p1 <- first(self.shape.points);
-			point p2 <- last(self.shape.points);
-			string msg <- "" + ACTION_DIKE_UPDATE + COMMAND_SEPARATOR + world.getMessageID() + COMMAND_SEPARATOR + self.coast_def_id +
-						COMMAND_SEPARATOR + p1.x + COMMAND_SEPARATOR + p1.y + COMMAND_SEPARATOR + p2.x + COMMAND_SEPARATOR + p2.y +
-						COMMAND_SEPARATOR + self.height + COMMAND_SEPARATOR + self.type + COMMAND_SEPARATOR + self.status +
-						COMMAND_SEPARATOR + self.ganivelle + COMMAND_SEPARATOR + self.min_dike_elevation;
-			update_messages  <- update_messages + msg;
-			update_coast_def <- update_coast_def + self;
-			not_updated 	 <- false;
-		}
-		loop i from: 0 to: length(update_messages) - 1 {
-			loop d over: District overlapping (update_coast_def[i]){
-				do send to: d.district_code contents: update_messages[i];
-			}
+			p1 	<- first(self.shape.points);
+			p2 	<- last(self.shape.points);
+			msg <- "" + ACTION_DIKE_UPDATE + COMMAND_SEPARATOR +
+							 world.getMessageID() + COMMAND_SEPARATOR +
+							 self.coast_def_id 	  + COMMAND_SEPARATOR +
+							 p1.x + COMMAND_SEPARATOR + p1.y + COMMAND_SEPARATOR +
+							 p2.x + COMMAND_SEPARATOR + p2.y + COMMAND_SEPARATOR +
+							 self.height + COMMAND_SEPARATOR +
+							 self.type 	 + COMMAND_SEPARATOR +
+							 self.status + COMMAND_SEPARATOR +
+							 self.ganivelle + COMMAND_SEPARATOR +
+							 self.min_dike_elevation;
+			not_updated <- false;
+			ask myself { do send to: myself.district_code contents: msg; }
 		}
 	}
 	
@@ -983,9 +976,7 @@ species Player_Action schedules:[]{
 							p2.x + COMMAND_SEPARATOR + p2.y + COMMAND_SEPARATOR + new_dike.height + COMMAND_SEPARATOR +
 							new_dike.type + COMMAND_SEPARATOR + new_dike.status + COMMAND_SEPARATOR + new_dike.min_dike_elevation +
 							COMMAND_SEPARATOR + myself.id + COMMAND_SEPARATOR+new_dike.location.x + COMMAND_SEPARATOR + new_dike.location.y;
-			loop d over: District overlapping new_dike {
-				do send to: d.district_code contents: msg;
-			}	
+			do send to: new_dike.district_code contents: msg;	
 		}
 		return new_dike;
 	}
@@ -1122,7 +1113,7 @@ species Coastal_Defense {
 		}
 	}
 	
-	float min_dike_elevation{
+	float min_dike_elevation {
 		return min(Cell overlapping self collect(each.soil_height));
 	}
 		
@@ -1228,6 +1219,7 @@ species Land_Use {
 	int id;
 	string lu_name;
 	int lu_code;
+	string dist_code;
 	rgb my_color 			<- cell_color() update: cell_color();
 	int AU_to_U_counter 	<- 0;
 	string density_class 	-> {population = 0? POP_EMPTY :(population < POP_FEW_NUMBER ? POP_FEW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
@@ -1444,7 +1436,7 @@ species Buttons{
 	}
 	
 	aspect buttons_map {
-		if( nb_button in [4,7]){
+		if(nb_button in [4,7]){
 			draw shape   color: #white border: is_selected ? # red : # white;
 			draw my_icon size:  800#m ;
 		}

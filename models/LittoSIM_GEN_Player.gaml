@@ -99,10 +99,10 @@ global{
 		create Road from:roads_shape;
 		create Flood_Risk_Area from: rpp_area_shape;
 		
-		create Land_Use from: land_use_shape with: [id::int(read("unit_id")), lu_code::int(read("unit_code")), population:: int(get("unit_pop"))]{
-			if (self overlaps active_district){
+		create Land_Use from: land_use_shape with: [id::int(read("unit_id")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
+			if (self.dist_code = active_district_code){
 				lu_name <- lu_type_names [lu_code];
-				if lu_name = "U" and population = 0 { population <- 10; }
+				if lu_name = "U" and population = 0 { population <- MIN_POP_AREA; }
 				my_color <- cell_color();
 			} else { do die; }
 		}
@@ -146,17 +146,17 @@ global{
 		
 	image_file get_action_icon (int cmd){
 		switch(cmd){
-			match ACTION_MODIFY_LAND_COVER_A 	{ return image_file("../images/ihm/S_agricole.png");}
-			match ACTION_MODIFY_LAND_COVER_AU 	{ return image_file("../images/ihm/S_urbanise.png");}
-			match ACTION_MODIFY_LAND_COVER_AUs 	{ return image_file("../images/ihm/S_urbanise_adapte.png");}
-			match ACTION_MODIFY_LAND_COVER_Us 	{ return image_file("../images/ihm/S_urbanise_adapte.png");}
-			match ACTION_MODIFY_LAND_COVER_Ui 	{ return image_file("../images/ihm/S_urbanise_intensifie.png");}
-			match ACTION_MODIFY_LAND_COVER_N 	{ return image_file("../images/ihm/S_naturel.png");}
-			match ACTION_CREATE_DIKE 			{ return image_file("../images/ihm/S_creation_digue.png");}
-			match ACTION_REPAIR_DIKE 			{ return image_file("../images/ihm/S_reparation_digue.png");}
-			match ACTION_RAISE_DIKE 			{ return image_file("../images/ihm/S_elevation_digue.png");}
-			match ACTION_DESTROY_DIKE			{ return image_file("../images/ihm/S_suppression_digue.png");}
-			match ACTION_INSTALL_GANIVELLE 		{ return image_file("../images/ihm/S_ganivelle.png");}
+			match ACTION_MODIFY_LAND_COVER_A 	{ return image_file("../images/ihm/S_agricole.png"); 			}
+			match ACTION_MODIFY_LAND_COVER_AU 	{ return image_file("../images/ihm/S_urbanise.png");			}
+			match ACTION_MODIFY_LAND_COVER_AUs 	{ return image_file("../images/ihm/S_urbanise_adapte.png");		}
+			match ACTION_MODIFY_LAND_COVER_Us 	{ return image_file("../images/ihm/S_urbanise_adapte.png");		}
+			match ACTION_MODIFY_LAND_COVER_Ui 	{ return image_file("../images/ihm/S_urbanise_intensifie.png");	}
+			match ACTION_MODIFY_LAND_COVER_N 	{ return image_file("../images/ihm/S_naturel.png");				}
+			match ACTION_CREATE_DIKE 			{ return image_file("../images/ihm/S_creation_digue.png");		}
+			match ACTION_REPAIR_DIKE 			{ return image_file("../images/ihm/S_reparation_digue.png");	}
+			match ACTION_RAISE_DIKE 			{ return image_file("../images/ihm/S_elevation_digue.png");		}
+			match ACTION_DESTROY_DIKE			{ return image_file("../images/ihm/S_suppression_digue.png");	}
+			match ACTION_INSTALL_GANIVELLE 		{ return image_file("../images/ihm/S_ganivelle.png");			}
 		}
 		return nil;
 	}
@@ -309,7 +309,7 @@ global{
 			explored_land_use_action <- nil;
 			current_action 	 		 <- nil;
 		}
-		if(!show_hide_maps_click()){
+		else if(!show_hide_maps_click()){
 			if(active_display = LU_DISPLAY){ do button_click_lu; 		}
 			else						   { do button_click_coast_def; }
 		}	
@@ -322,25 +322,23 @@ global{
 			active_display <- LU_DISPLAY;
 			do clear_selected_button;
 		}
-		
 		list<Button> clicked_lu_button <- (Button where (each distance_to loc < MOUSE_BUFFER)) where (each.display_name = active_display);
 		if(length(clicked_lu_button) > 0){
 			list<Button> current_active_button <- Button where (each.is_selected);
 			do clear_selected_button;
-			
-			if (length (current_active_button) = 1 and first(current_active_button).command != (first(clicked_lu_button)).command) or length (current_active_button) = 0 {
+			if ((length (current_active_button) = 1 and first(current_active_button).command != (first(clicked_lu_button)).command)) or length (current_active_button) = 0 {
 				ask (first(clicked_lu_button)){
 					is_selected <- true;
 				}
 			}
-		}else{ 	
+		} else{ 	
 			Button_Map a_MAP_button <- first (Button_Map where (each distance_to loc < MOUSE_BUFFER));
 			if a_MAP_button != nil {
 				ask a_MAP_button {
 					is_selected <- !is_selected;
 					switch command {
-						match ACTION_DISPLAY_PROTECTED_AREA { my_icon <-  !is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png"); }
-						match ACTION_DISPLAY_FLOODED_AREA   { my_icon <-  !is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") 			 :  image_file("../images/ihm/I_afficher_PPR.png"); }
+						match ACTION_DISPLAY_PROTECTED_AREA { my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png"); }
+						match ACTION_DISPLAY_FLOODED_AREA   { my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") 			 :  image_file("../images/ihm/I_afficher_PPR.png"); }
 					}		
 				}
 			}
@@ -445,20 +443,25 @@ global{
 	}
 	
 	action change_dike {
-		point loc <- #user_location;
-		list<Coastal_Defense> selected_dikes <- Coastal_Defense where (each distance_to loc < MOUSE_BUFFER);
 		if(basket_overflow()) { return; }
-		
+		point loc <- #user_location;
+		Coastal_Defense selected_dike <- Coastal_Defense where (each distance_to loc < MOUSE_BUFFER) closest_to loc;
 		Button selected_button <- Button first_with(each.is_selected);
 		if(selected_button != nil){
-			if selected_button.command = ACTION_CREATE_DIKE { do create_new_dike(loc,selected_button); }
-			else { do modify_dike(loc, selected_dikes,selected_button); }
+			if selected_button.command = ACTION_CREATE_DIKE {
+				do create_new_dike(loc, selected_button);
+			}
+			else {
+				do modify_dike(selected_dike, selected_button);
+			}
 		}
 	}
 	
-	action modify_dike (point mloc, list<Coastal_Defense> selected_dikes, Button but){
-		if(length(selected_dikes) > 0){
-			Coastal_Defense dk <- selected_dikes closest_to mloc;
+	action modify_dike (Coastal_Defense dk, Button but){
+		if dk != nil{
+			ask my_basket {  // an action on the same dike is already in the basket
+				if element_id = dk.coast_def_id { return; }
+			}
 			if dk.type = COAST_DEF_TYPE_DUNE and but.command != ACTION_INSTALL_GANIVELLE { return; } // nothing to do
 			if dk.type = COAST_DEF_TYPE_DIKE and but.command = ACTION_INSTALL_GANIVELLE  { return; } // nothing to do
 			
@@ -500,8 +503,8 @@ global{
 				self.command<- ACTION_CREATE_DIKE;
 				self.initial_application_round <- game_round  + (world.delay_of_action(self.command));
 				element_shape<- polyline([previous_clicked_point,loc]);
-				shape 		 <-  element_shape + shape_width;
-				cost 		 <- but.action_cost*shape.perimeter; 
+				shape 		 <- element_shape + shape_width;
+				cost 		 <- but.action_cost * shape.perimeter; 
 			}
 			previous_clicked_point <- nil;
 			current_action<- first(action_list);
@@ -521,7 +524,6 @@ global{
 		}
 	}
 
-
 	action change_plu {
 		if(basket_overflow()) {
 			return;
@@ -531,6 +533,9 @@ global{
 		if(selected_button != nil){
 			Land_Use cell_tmp <- Land_Use where (each distance_to loc < MOUSE_BUFFER) closest_to loc;
 			ask (cell_tmp){
+				ask my_basket {  // an action is already triggered on the same cell
+					if element_id = myself.id { return; }
+				}
 				if selected_button.command = ACTION_INSPECT_LAND_USE 				   { return; }	// inspect : do nothing
 				if length((Player_Action collect(each.location)) inside cell_tmp) > 0  { return; }
 				if(		(lu_name = "N" 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_N)
@@ -1671,7 +1676,7 @@ species Button skills:[UI_location] {
 }
 //------------------------------ End of Button -------------------------------//
 
-species Button_Map parent: Button{
+species Button_Map parent: Button {
 	geometry shape <- square(850#m);
 	
 	aspect base{
@@ -1694,6 +1699,7 @@ species Land_Use {
 	int id;
 	string lu_name 	<- "";
 	int lu_code 	<- 0;
+	string dist_code<- "";
 	rgb my_color 	<- cell_color() update: cell_color();
 	int population;
 	string density_class -> { population = 0 ? POP_EMPTY : (population < POP_FEW_NUMBER ? POP_FEW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
@@ -1911,9 +1917,7 @@ experiment LittoSIM_GEN_Player type: gui{
 		
 		display "Map" background:rgb(0,188,196)  focus: active_district{
 			species District aspect: base;
-			graphics population{
-				draw population_area color:rgb(120,120,120) ;				
-			}
+			graphics "Population"{ draw population_area color: rgb(120,120,120) ; }
 			species Land_Use 				aspect: map;
 			species Land_Use_Action 		aspect: map;
 			species Coastal_Defense_Action 	aspect: map;
@@ -1926,6 +1930,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Button 					aspect: map;
 			species Button_Map				aspect: map;
 			
+						
 
 			graphics "Full target dike" transparency:0.3{
 				if (explored_dike != nil){

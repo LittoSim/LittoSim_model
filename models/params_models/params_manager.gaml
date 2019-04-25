@@ -55,7 +55,6 @@ global{
 	int POP_FOR_U_DENSIFICATION <- int(shapes_def["POP_FOR_U_DENSIFICATION"]) ; 			// new population for densified cells
 	int POP_FOR_U_STANDARD 		<- int(shapes_def["POP_FOR_U_STANDARD"]) ; 					// new population for other cells types
 	float ANNUAL_POP_GROWTH_RATE<- float(eval_gaml(shapes_def["ANNUAL_POP_GROWTH_RATE"]));
-	int MIN_POP_AREA 			<- int  (eval_gaml(shapes_def["MIN_POPU_AREA"]));
 	
 	// Rugosity parameters
 	float RUGOSITY_N 			<- float(shapes_def["RUGOSITY_N"]); 	
