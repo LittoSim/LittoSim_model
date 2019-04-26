@@ -64,6 +64,16 @@ global{
 	float RUGOSITY_AUs 			<- float(shapes_def["RUGOSITY_AUs"]);
 	float RUGOSITY_Us 			<- float(shapes_def["RUGOSITY_Us"]);
 	string RUGOSITY_DEFAULT  	<- shapes_def["RUGOSITY_FILE"];
+	
+	// DEM and cells parameters
+	int DEM_NB_COLS <- int(shapes_def["DEM_NB_COLS"]);
+	int DEM_NB_ROWS <- int(shapes_def["DEM_NB_ROWS"]);
+	int DEM_CELL_SIZE;
+	float DEM_XLLCORNER;
+	float DEM_YLLCORNER;
+	float land_min_height;
+	float land_range_height;
+	float cells_max_depth;
 		
 	// Costs of actions
 	int ACTION_COST_LAND_COVER_TO_A 			<- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'cost');

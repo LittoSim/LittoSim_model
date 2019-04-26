@@ -18,17 +18,18 @@ global {
 	// Lisflood configuration for the study area
 	string application_name 	<- shapes_def["APPLICATION_NAME"]; 											// used to name exported files
 	// sea heights file sent to Lisflood
-	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING?flooding_def["LISFLOOD_BDY_HIGH_FILENAME"] // "oleron2016_Xynthia.bdy" 
-								:(floodEventType  = LOW_FLOODING?flooding_def ["LISFLOOD_BDY_LOW_FILENAME" ] // "oleron2016_Xynthia-50.bdy" : Xynthia - 50 cm 
+	string lisflood_bci_file	<- shapes_def["LISFLOOD_BCI_FILE"];
+	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING? shapes_def ["LISFLOOD_BDY_HIGH_FILENAME"] // scenario1 : HIGH 
+								:(floodEventType  = LOW_FLOODING ? shapes_def ["LISFLOOD_BDY_LOW_FILENAME" ] // scenario2 : LOW
 		  						:get_message('MSG_FLOODING_TYPE_PROBLEM'))};
 	// paths to Lisflood
-	string lisfloodPath 				<- flooding_def["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
-	string lisfloodRelativePath 		<- flooding_def["LISFLOOD_RELATIVE_PATH"]; 								// Lisflood folder relatife path 
-	string results_lisflood_rep 		<- flooding_def["RESULTS_LISFLOOD_REP"]; 								// Lisflood results folder
-	string lisflood_par_file 			-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_config_" + floodEventType + timestamp + ".par"};   // parameter file
-	string lisflood_DEM_file 			-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_DEM"     + timestamp + ".asc"}; 					  // DEM file 
-	string lisflood_rugosityGrid_file 	-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_n"       + timestamp + ".asc"}; 					  // rugosity file
-	string lisflood_bat_file 			<- flooding_def["LISFLOOD_BAT_FILE"] ; 														       		  // Lisflood executable
+	string lisfloodPath 			<- flooding_def["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
+	string lisfloodRelativePath 	<- flooding_def["LISFLOOD_RELATIVE_PATH"]; 								// Lisflood folder relatife path 
+	string results_lisflood_rep 	<- flooding_def["RESULTS_LISFLOOD_REP"]; 								// Lisflood results folder
+	string lisflood_par_file 		-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_config_" + floodEventType + timestamp + ".par"};   // parameter file
+	string lisflood_DEM_file 		-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_DEM"     + timestamp + ".asc"}; 					  // DEM file 
+	string lisflood_rugosity_file 	-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_n"       + timestamp + ".asc"}; 					  // rugosity file
+	string lisflood_bat_file 		<- flooding_def["LISFLOOD_BAT_FILE"];												       		  // Lisflood executable
 	
 	// variables for Lisflood calculs 
 	map<string,string> list_flooding_events ;  			// list of submersions of a round
@@ -58,9 +59,6 @@ global {
 	int game_round 				<- 0;
 	list<rgb> listC 			<- brewer_colors("YlOrRd", 8);
 	list<District> districts_in_game;
-	float land_min_height;
-	float land_range_height;
-	float cells_max_depth;
 	
 	init{
 		// Create GIS agents
@@ -159,11 +157,11 @@ global {
 	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
 		write flood_results;
 		save flood_results to: lisfloodRelativePath + results_rep + "/flood_results-" + machine_time + "-Tour" + game_round + ".txt" type: "text";
-		
-		loop r from: 0 to: nb_rows -1 {	loop c from:0 to: nb_cols -1 {Cell[c,r].water_height <- 0.0;} }		// reset water heights				
-		ask Coastal_Defense { if rupture = 1 { do remove_rupture; } }										// calculate dike ruptures
-		
-		if game_round = 0{																					// restarting the game
+		ask Cell { water_height <- 0.0; } // reset water heights						
+		ask Coastal_Defense {
+			if rupture = 1 { do remove_rupture; }
+		}
+		if game_round = 0{		// restarting the game
 			stateSimPhase <- SIM_NOT_STARTED;
 			write stateSimPhase;
 		}
@@ -193,11 +191,8 @@ global {
 		if i > 0 and i <= length(list_flooding_events.keys){
 			string replayed_flooding_event  <- (list_flooding_events.keys)[i-1] ;
 			write replayed_flooding_event;
-			loop r from: 0 to: nb_rows -1  {
-				loop c from:0 to: nb_cols -1 {
-					Cell[c,r].max_water_height <- 0.0;	// reset of max_water_height
-				}
-			}
+			ask Cell { max_water_height <- 0.0;	} // reset of max_water_height
+
 			set lisfloodReadingStep <- 0;
 			results_lisflood_rep <- list_flooding_events at replayed_flooding_event;
 			stateSimPhase <- SIM_SHOWING_LISFLOOD;
@@ -212,11 +207,7 @@ global {
 		}
 		else{											// excuting Lisflood
 			do new_round;
-			loop r from: 0 to: nb_rows -1  {
-				loop c from:0 to: nb_cols -1 {
-					Cell[c,r].max_water_height <- 0.0;  // reset of max_water_height
-				}
-			}
+			ask Cell { max_water_height <- 0.0;	} // reset of max_water_height
 			ask Coastal_Defense {	do calculate_rupture;		}
 			stateSimPhase <- SIM_EXEC_LISFLOOD;
 			write stateSimPhase;
@@ -235,59 +226,82 @@ global {
 	}
 		
 	action execute_lisflood{
-		timestamp <- "_R"+ game_round + "_t"+machine_time ;
-		results_lisflood_rep <- "results"+timestamp;
-		do save_dem;  
-		do save_rugosity_grid;
+		timestamp <- "_R" + game_round + "_t" + machine_time ;
+		results_lisflood_rep <- "results" + timestamp;
+		do save_dem_and_rugosity;
 		do save_lf_launch_files;
-		do add_element_in_list_flooding_events("Submersion Tour "+ game_round ,results_lisflood_rep);
-		save "directory created by LittoSIM Gama model" to: lisfloodRelativePath + results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
+		do add_element_in_list_flooding_events("Submersion round " + game_round , results_lisflood_rep);
+		save "Directory created by LittoSIM GAMA model" to: lisfloodRelativePath + results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
 		ask Network_Game_Manager {
 			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
 		}
  	}
  		
 	action save_lf_launch_files {
-		save ("DEMfile         " + lisfloodPath + lisflood_DEM_file + "\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\n#checkpoint     0.00001\n#overpass       100000.0\n#fpfric         0.06\n#infiltration   0.000001\n#overpassfile   buscot.opts\nmanningfile     "+lisfloodPath+lisflood_rugosityGrid_file+"\n#riverfile      buscot.river\nbcifile         "+lisfloodPath+"oleron2016.bci\nbdyfile         "+lisfloodPath+lisflood_bdy_file+"\n#weirfile       buscot.weir\nstartfile       "+lisfloodPath+"oleron.start\nstartelev\n#stagefile      buscot.stage\nelevoff\n#depthoff\n#adaptoff\n#qoutput\n#chainageoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath+lisflood_par_file type: "text"  ;
-		save (lisfloodPath + "lisflood.exe -dir " + lisfloodPath+results_lisflood_rep +" "+(lisfloodPath+lisflood_par_file)) rewrite: true  to: lisfloodRelativePath+lisflood_bat_file type: "text" ;
+		save ("DEMfile         " + lisfloodPath + lisflood_DEM_file + 
+				"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\nmanningfile     " +
+				lisfloodPath+lisflood_rugosity_file + "\nbcifile         " + lisfloodPath + lisflood_bci_file + "\nbdyfile         " + lisfloodPath + lisflood_bdy_file + 
+				"\nstartfile       " + lisfloodPath + "oleron.start\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath + lisflood_par_file type: "text";
+		
+		save (lisfloodPath + "lisflood.exe -dir " + lisfloodPath + results_lisflood_rep + " " + (lisfloodPath + lisflood_par_file)) rewrite: true to: lisfloodRelativePath + lisflood_bat_file type: "text";
 	}       
 
-	action save_dem {	save Cell to: lisfloodRelativePath + lisflood_DEM_file type: "asc";	}
-	action save_cells_as_shp_file {	save Cell type:"shp" to: shape_export_filePath with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];	}
-	action save_budget_data{
+	action save_dem_and_rugosity {
+		string dem_filename <- lisfloodRelativePath + lisflood_DEM_file;
+		string rug_filename <- lisfloodRelativePath + lisflood_rugosity_file;
+		
+		string h_txt <- 'ncols         ' + DEM_NB_COLS + '\nnrows         ' + DEM_NB_ROWS + '\nxllcorner     ' + DEM_XLLCORNER +
+						'\nyllcorner     ' + DEM_YLLCORNER + '\ncellsize      ' + DEM_CELL_SIZE + '\nNODATA_value  -9999';
+		
+		save h_txt rewrite: true to: dem_filename type: "text";
+		save h_txt rewrite: true to: rug_filename type: "text";
+		string dem_data;
+		string rug_data;
+		loop i from: 0 to: DEM_NB_ROWS - 1 {
+			dem_data <- "";
+			rug_data <- "";
+			loop j from: 0 to: DEM_NB_COLS - 1 {
+				dem_data <- dem_data + " " + Cell[j,i].soil_height;
+				rug_data <- rug_data + " " + Cell[j,i].rugosity;
+			}
+			save dem_data to: dem_filename rewrite: false;
+			save rug_data to: rug_filename rewrite: false ;
+		}
+	}
+	
+	action save_cells_as_shp_file {
+		save Cell type:"shp" to: shape_export_filePath with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
+	}
+	
+	action save_budget_data {
 		loop ix from: 1 to: 4 {
 			add (District first_with(each.dist_id = ix)).budget to: districts_budgets[ix-1];
 		}
 	}	
-
-	action save_rugosity_grid {
-		string filename <- lisfloodRelativePath+lisflood_rugosityGrid_file;
-		save 'ncols         631\nnrows         906\nxllcorner     364927.14666668\nyllcorner     6531972.5655556\ncellsize      20\nNODATA_value  -9999' rewrite: true to: filename type:"text";
-		loop j from: 0 to: nb_rows- 1 {
-			string text <- "";
-			loop i from: 0 to: nb_cols - 1 {	text <- text + " "+ Cell[i,j].rugosity;	}
-			save text to: filename rewrite: false ;
-		}
-	}
 	   
-	action read_lisflood{  
+	action read_lisflood {  
 	 	string nb <- string(lisfloodReadingStep);
-		loop i from: 0 to: 3-length(nb) { nb <- "0"+nb; }
-		string fileName <- lisfloodRelativePath+results_lisflood_rep+"/res-"+ nb +".wd";
+		loop i from: 0 to: 3 - length(nb) {
+			nb <- "0" + nb;
+		}
+		string fileName <- lisfloodRelativePath+results_lisflood_rep + "/res-" + nb + ".wd";
 		write "lisfloodRelativePath " + lisfloodRelativePath;
 		write "results_lisflood_rep " + results_lisflood_rep;
 		write "nb  " + nb;
 		if file_exists (fileName){
 			write fileName;
 			file lfdata <- text_file(fileName) ;
-			loop r from: 6 to: length(lfdata) -1 {
-				string l <- lfdata[r];
-				list<string> res <- l split_with "\t";
-				loop c from: 0 to: length(res) - 1{
+			loop r from: 0 to: length(lfdata) - 1 {
+				list<string> res <- lfdata[r+6] split_with "\t";
+				loop c from: 0 to: length(res) - 1 {
 					float w <- float(res[c]);
-					if w > Cell[c,r-6].max_water_height {Cell[c,r-6].max_water_height <-w;}
-					Cell[c,r-6].water_height <- w;}}	
-	        lisfloodReadingStep <- lisfloodReadingStep +1;
+					if Cell[c, r].max_water_height < w {
+						Cell[c, r].max_water_height <- w;
+					}
+					Cell[c, r].water_height <- w;
+				}
+			}	
+	        lisfloodReadingStep <- lisfloodReadingStep + 1;
 	     }
 	     else{ // end of flooding
      		lisfloodReadingStep <-  9999999;
@@ -296,7 +310,10 @@ global {
      			stateSimPhase <- SIM_GAME;
      			write stateSimPhase + " - "+ get_message('MSG_ROUND') +" "+ game_round;
      		}
-     		else{	stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase; }	}
+     		else {
+     			stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase;
+     		}
+     	}
 	}
 	
 	action load_dem_and_rugosity {
@@ -304,28 +321,32 @@ global {
 		list<string> rug_data <- [];
 		file dem_grid <- text_file(dem_file);
 		file rug_grid <- text_file(RUGOSITY_DEFAULT) ;
-		loop rw from: 6 to: nb_rows - 1 {
-			dem_data <- dem_grid [rw] split_with " ";
-			//rug_data <- rug_grid [rw] split_with " ";
-			loop cl from: 0 to: /*length(dem_data) - 1 { */  nb_cols - 1 { //TODO temporal, fix the rugosity file cols number ! one loop
-				Cell[cl, rw-6].soil_height <- float(dem_data[cl]);
-			//}
-			//loop cl from: 0 to: length(rug_data) - 1 {
-				Cell[cl, rw-6].rugosity <- 0.0;//float(rug_data[cl]); // TODO load rugosity
+		
+		DEM_XLLCORNER <- float((dem_grid [2] split_with " ")[1]);
+		DEM_YLLCORNER <- float((dem_grid [3] split_with " ")[1]);
+		DEM_CELL_SIZE <- int((dem_grid [4] split_with " ")[1]);
+		float no_data_value <- float((dem_grid [5] split_with " ")[1]);
+		
+		loop rw from: 0 to: DEM_NB_ROWS - 1 {
+			dem_data <- dem_grid [rw+6] split_with " ";
+			rug_data <- rug_grid [rw+6] split_with " ";
+			loop cl from: 0 to: DEM_NB_COLS - 1 {
+				Cell[cl, rw].soil_height <- float(dem_data[cl]);
+				Cell[cl, rw].rugosity <- float(rug_data[cl]);
 			}
 		}
 		ask Cell {
 			if soil_height > 0 		{ cell_type <-1; 	   }  //  1 -> land
 			else if soil_height = 0 { soil_height <- -5.0; }
 		}
-		float no_data_value <- float((dem_grid [5] split_with " ")[1]);
+		
 		land_min_height <- min(Cell where (each.cell_type = 1 and each.soil_height != no_data_value) collect each.soil_height);
 		land_range_height <- max(Cell where (each.cell_type = 1) collect each.soil_height) - land_min_height;
 		cells_max_depth <- abs(min(Cell where (each.cell_type = 0 and each.soil_height != no_data_value) collect each.soil_height));
 		ask Cell { do init_cell_color; }
 	}
 	
-	action calculate_districts_results{
+	action calculate_districts_results {
 		string text <- "";
 			ask ((District where (each.dist_id > 0)) sort_by (each.dist_id)){
 				int tot <- length(cells) ;
@@ -463,15 +484,15 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			nb_button 	<- 4;
 			command  	<- SHOW_LU_GRID;
 			shape 		<- square(850);
-			location 	<- { 800, 8500 };
-			my_icon 	<- image_file("../images/icons/sans_quadrillage.png");
+			location 	<- { 800, 800 };
+			my_icon 	<- image_file("../images/icons/avec_quadrillage.png");
 			is_selected <- false;
 		}
 		create Buttons{
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
 			shape 		<- square(850);
-			location 	<- { 1800, 8500 };
+			location 	<- { 1800, 800 };
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
 			is_selected <- false;
 		}
@@ -505,7 +526,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			ask a_button {
 				is_selected <- !is_selected;
 				if(a_button.nb_button = 4){
-					my_icon	<-  is_selected ? image_file("../images/icons/avec_quadrillage.png") : image_file("../images/icons/sans_quadrillage.png");
+					my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
 				}else if(a_button.nb_button = 7){
 					show_max_water_height <- is_selected;
 				}
@@ -1185,7 +1206,7 @@ species Coastal_Defense {
 }
 //------------------------------ End of Coastal defense -------------------------------//
 
-grid Cell width: nb_cols height: nb_rows schedules:[] neighbors: 8 {	
+grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {	
 	int cell_type 					<- 0 ; // 0 = sea
 	float water_height  			<- 0.0;
 	float max_water_height  		<- 0.0;

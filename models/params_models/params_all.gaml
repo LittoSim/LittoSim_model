@@ -95,8 +95,6 @@ global{
 	file emprise_shape 			<- file(shapes_def["EMPRISE_SHAPE"]); 
 	file dem_file 				<- file(shapes_def["DEM_FILE"]) ;
 	file contour_neg_100m_shape <- file(shapes_def["CONTOUR_ILE_INF_100M"]);
-	int nb_cols 				<- int(shapes_def["DEM_NB_COLS"]);
-	int nb_rows 				<- int(shapes_def["DEM_NB_ROWS"]);
 	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
 	
