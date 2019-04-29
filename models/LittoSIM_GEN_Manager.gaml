@@ -113,6 +113,8 @@ global {
 			create Network_Listener_To_Leader;
 			create Network_Game_Manager;
 		}
+		create Legend_Planning;
+		create Legend_Population;
 	}
 	//------------------------------ End of init -------------------------------//
 	 	
@@ -284,16 +286,16 @@ global {
 		loop i from: 0 to: 3 - length(nb) {
 			nb <- "0" + nb;
 		}
-		string fileName <- lisfloodRelativePath+results_lisflood_rep + "/res-" + nb + ".wd";
+		string fileName <- lisfloodRelativePath + results_lisflood_rep + "/res-" + nb + ".wd";
 		write "lisfloodRelativePath " + lisfloodRelativePath;
 		write "results_lisflood_rep " + results_lisflood_rep;
-		write "nb  " + nb;
+		write "nb " + nb;
 		if file_exists (fileName){
 			write fileName;
-			file lfdata <- text_file(fileName) ;
-			loop r from: 0 to: length(lfdata) - 1 {
+			file lfdata <- text_file(fileName);
+			loop r from: 0 to: DEM_NB_ROWS - 1 {
 				list<string> res <- lfdata[r+6] split_with "\t";
-				loop c from: 0 to: length(res) - 1 {
+				loop c from: 0 to: DEM_NB_COLS - 1 {
 					float w <- float(res[c]);
 					if Cell[c, r].max_water_height < w {
 						Cell[c, r].max_water_height <- w;
@@ -311,7 +313,8 @@ global {
      			write stateSimPhase + " - "+ get_message('MSG_ROUND') +" "+ game_round;
      		}
      		else {
-     			stateSimPhase <- SIM_CALCULATING_FLOOD_STATS; write stateSimPhase;
+     			stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
+     			write stateSimPhase;
      		}
      	}
 	}
@@ -501,7 +504,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		list<Buttons> buttonsMaster <- ( Buttons where (each distance_to loc < MOUSE_BUFFER));
+		list<Buttons> buttonsMaster <- (Buttons where (each.nb_button in [0,3,5,6] and each distance_to loc < MOUSE_BUFFER));
 		if(length(buttonsMaster) > 0){
 			ask Buttons{ self.is_selected <- false;	}
 			ask(buttonsMaster){
@@ -521,7 +524,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 	// the two buttons of the first map display
 	action button_click_map {
 		point loc <- #user_location;
-		Buttons a_button <- first((Buttons where (each distance_to loc < MOUSE_BUFFER)));
+		Buttons a_button <- first((Buttons where (each.nb_button in [4,7] and each distance_to loc < MOUSE_BUFFER)));
 		if a_button != nil{
 			ask a_button {
 				is_selected <- !is_selected;
@@ -1243,7 +1246,7 @@ species Land_Use {
 	string dist_code;
 	rgb my_color 			<- cell_color() update: cell_color();
 	int AU_to_U_counter 	<- 0;
-	string density_class 	-> {population = 0? POP_EMPTY :(population < POP_FEW_NUMBER ? POP_FEW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	string density_class 	-> {population = 0? POP_EMPTY :(population < POP_FEW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
 	int exp_cost 			-> {round( population * 400* population ^ (-0.5))};
 	bool isUrbanType 		-> {lu_name in ["U","Us","AU","AUs"]};
 	bool isAdapted 			-> {lu_name in ["Us","AUs"]};
@@ -1327,7 +1330,7 @@ species Land_Use {
 		rgb acolor <- nil;
 		switch density_class {
 			match POP_EMPTY 		{acolor <- # white; }
-			match POP_FEW_DENSITY 	{acolor <- listC[2];} 
+			match POP_LOW_DENSITY 	{acolor <- listC[2];} 
 			match POP_MEDIUM_DENSITY{acolor <- listC[5];}
 			match POP_DENSE 		{acolor <- listC[7];}
 			default 				{acolor <- # yellow;}
@@ -1348,9 +1351,9 @@ species Land_Use {
 			match_one ["U","Us"] { 								 	    	  // urbanised
 				switch density_class 		 {
 					match POP_EMPTY 		 {res <- #red; 					} // Problem ?
-					match POP_FEW_DENSITY	 {res <-  rgb( 150, 150, 150 ); }
-					match POP_MEDIUM_DENSITY {res <- rgb( 120, 120, 120 ) ; }
-					match POP_DENSE 		 {res <- rgb( 80,80,80 ) ;		}
+					match POP_LOW_DENSITY	 {res <-  rgb(150, 150, 150); 	}
+					match POP_MEDIUM_DENSITY {res <- rgb(120, 120, 120) ; 	}
+					match POP_DENSE 		 {res <- rgb(80, 80, 80);	  	}
 				}
 			}			
 		}
@@ -1464,6 +1467,32 @@ species Buttons{
 	}
 }
 
+species Legend_Planning{
+	list<rgb> colors <- [];
+	list<string> texts <- [];
+	point start_location <- {700, 750};
+	point rect_size <- {300, 400};
+	
+	init{
+		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
+		colors<- [#palegreen,rgb(225,165,0),#yellow,#red,rgb(150,150,150),rgb(120,120,120),rgb(80,80,80)];
+	}
+	
+	aspect {
+		loop i from: 0 to: length(texts){
+			draw rectangle(rect_size) at: start_location + {0, i * rect_size.y} color: colors[i] border: #black;
+			draw texts[i] at: start_location + {rect_size.x, i * rect_size.y} color: #black size: rect_size.y;
+		}
+	}
+}
+
+species Legend_Population parent: Legend_Planning{
+	init{
+		texts <- ["Empty","Low density","Medium density","High density"];
+		colors<- [#white,listC[2],listC[5],listC[7]];
+	}
+}
+
 species Road{					aspect base {	draw shape color: rgb (125,113,53);						}	}
 
 species Protected_Area{			aspect base {	draw shape color: rgb (185, 255, 185,120) border:#black;}	}
@@ -1494,18 +1523,20 @@ experiment LittoSIM_GEN_Manager type: gui{
 			species Coastal_Defense aspect: base;
 			species Land_Use 		aspect: conditional_outline;
 			species Buttons 		aspect: buttons_map;
-			event [mouse_down] 		action: button_click_map;
+			event mouse_down 		action: button_click_map;
 		}
 		display "Planning"{
 			species District 		aspect: base;
 			species Land_Use 		aspect: base;
 			species Road 	 		aspect: base;
 			species Coastal_Defense aspect: base;
+			species Legend_Planning;
 		}
 		display "Population density"{	
 			species Land_Use aspect: population_density;
 			species Road 	 aspect: base;
-			species District aspect: outline;			
+			species District aspect: outline;
+			species Legend_Population;		
 		}
 		display "Game master control"{
 			species Buttons  aspect: buttons_master;

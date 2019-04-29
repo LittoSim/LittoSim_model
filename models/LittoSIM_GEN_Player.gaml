@@ -1702,7 +1702,7 @@ species Land_Use {
 	string dist_code<- "";
 	rgb my_color 	<- cell_color() update: cell_color();
 	int population;
-	string density_class -> { population = 0 ? POP_EMPTY : (population < POP_FEW_NUMBER ? POP_FEW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	string density_class -> { population = 0 ? POP_EMPTY : (population < POP_FEW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
 	int expro_cost 		 -> { round (population * 400* population ^ (-0.5)) };
 	bool is_urban_type 	 -> { lu_name in ["U","Us","AU","AUs"] };
 	bool is_adapted_type -> { lu_name in ["Us","AUs"] };
@@ -1752,7 +1752,7 @@ species Land_Use {
 			match_one ["U","Us"] { 								 	    	  // urbanised
 				switch density_class 		 {
 					match POP_EMPTY 		 { return #red;					}
-					match POP_FEW_DENSITY	 { return rgb(0, 171, 214);		}
+					match POP_LOW_DENSITY	 { return rgb(0, 171, 214);		}
 					match POP_MEDIUM_DENSITY { return rgb(0, 129, 161);		}
 					match POP_DENSE 		 { return rgb(0, 77, 97);		}
 				}
@@ -1864,7 +1864,7 @@ species Tab skills: [UI_location]{
 					{x + gem_width * 0.25, y + gem_height}, {x + gem_width, y + gem_height}, {x + gem_width, y}, {x, y}]);
 			draw rec2 color: rgb(59,124,58);
 		}
-		font font0 <- font (DISPLAY_FONT_NAME, DISPLAY_FONT_SIZE, #bold + #italic); 
+		font font0 <- font(DISPLAY_FONT_NAME, DISPLAY_FONT_SIZE, #bold + #italic); 
 		draw legend_name at: {location.x - (length(legend_name) * (DISPLAY_FONT_SIZE / 2) #px / 2), location.y + DISPLAY_FONT_SIZE / 3 #px} color: #white font: font0;
 	}
 }

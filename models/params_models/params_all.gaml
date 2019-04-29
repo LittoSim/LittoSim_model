@@ -73,7 +73,7 @@ global{
 	
 	// Population density
 	string POP_EMPTY 		  <- "EMPTY";
-	string POP_FEW_DENSITY 	  <- "FEW_DENSITY";
+	string POP_LOW_DENSITY 	  <- "LOW_DENSITY";
 	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";
 	string POP_DENSE 		  <- "DENSE";
 	int    POP_FEW_NUMBER 	  <- 40;
