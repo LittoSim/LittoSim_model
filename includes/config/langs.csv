@@ -148,6 +148,6 @@ LEV_NO_DIKE_REPAIR_HELP;tours consécutifs, le joueur ne rénove pas de digue;co
 PLY_MSG_WARNING_U_N;Transformer une zone urbaine en zone agricole n'est pas autorisé. Vous pouvez la transformer en zone naturelle;Changing an urban zone to agricultural is not permitted. You can change it to natural
 PLY_MSG_WARNING_OUTSIDE_U;Impossible de construire en dehors d'une périphérie urbaine;Impossibe to build outside a urban area
 PLY_MSG_WARNING_PROTECTED_U;Construire en zone protégée n'est pas autorisé par la législation;Building in protected areas is prohibited by the law
-PLY_MSG_WARNING_N_TO_URBANIZED;Transformer une zone naturelle en zone à urbaniser est soumis à des contraintes réglementaires. Le dossier est susceptible d’être retardé. Souhaitez vous poursuivre ?;Changing a natural zone to urbanized zone is subject of regulatory constraints. The action may be delayed. \nWould you like to continue?
+PLY_MSG_WARNING_N_TO_URBANIZED;Transformer une zone naturelle en zone à urbaniser est soumis à des contraintes réglementaires. Le dossier est susceptible d’être retardé. Souhaitez vous poursuivre ?;Changing a natural zone to urbanized zone is subject of regulatory constraints. The action may be delayed. Would you like to continue?
 PLY_MSG_WARNING_DENSE;Cette unité urbaine est déjà à son niveau de densification maximum;This urban unit is already in its maximum densification level
 PLY_MSG_VALIDATE;Valider;Validate

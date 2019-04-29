@@ -502,7 +502,7 @@ global{
 				element_id 	<- -1;
 				self.command<- ACTION_CREATE_DIKE;
 				self.initial_application_round <- game_round  + (world.delay_of_action(self.command));
-				element_shape<- polyline([previous_clicked_point,loc]);
+				element_shape<- polyline([previous_clicked_point, loc]);
 				shape 		 <- element_shape + shape_width;
 				cost 		 <- but.action_cost * shape.perimeter; 
 			}
@@ -1175,15 +1175,15 @@ species Network_Listener_To_Leader skills: [network] {
 					match GIVE_MONEY_TO {
 						int amount 	<- int(m_contents[AMOUNT]);
 						budget 		<- budget + amount;
-						ask world { do user_msg(string(m_contents[PLAYER_MSG]) + amount + ' By', BUDGET_MESSAGE); }
+						ask world { do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE); }
 					}
 					match TAKE_MONEY_FROM {
 						int amount 	<- int(m_contents[AMOUNT]);
 						budget 		<- budget - amount;
-						ask world { do user_msg(string(m_contents[PLAYER_MSG]) + amount + ' By', BUDGET_MESSAGE); }
+						ask world { do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE); }
 					}
 					match SEND_MESSAGE_TO {
-						ask world { do user_msg(string(m_contents[PLAYER_MSG]), INFORMATION_MESSAGE); }
+						ask world { do user_msg(string(m_contents[MSG_TO_PLAYER]), INFORMATION_MESSAGE); }
 					}
 					match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
 						bool shouldWait <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
@@ -1820,7 +1820,7 @@ species Coastal_Defense {
 				match STATUS_GOOD   {color <- # green;				  }
 				match STATUS_MEDIUM {color <- rgb (231, 189, 24,255); } 
 				match STATUS_BAD 	{color <- # red;				  } 
-				default 			{ write "Dike status problem !";  }
+				default 			{ write world.get_message('MSG_DIKE_STATUS_PROBLEM'); }
 			}
 			if type = COAST_DEF_TYPE_DIKE {
 				draw 20#m around shape color: color size: 300#m;

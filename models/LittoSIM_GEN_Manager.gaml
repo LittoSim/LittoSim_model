@@ -486,7 +486,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		create Buttons{
 			nb_button 	<- 4;
 			command  	<- SHOW_LU_GRID;
-			shape 		<- square(850);
+			shape 		<- square(800);
 			location 	<- { 800, 800 };
 			my_icon 	<- image_file("../images/icons/avec_quadrillage.png");
 			is_selected <- false;
@@ -494,7 +494,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		create Buttons{
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
-			shape 		<- square(850);
+			shape 		<- square(800);
 			location 	<- { 1800, 800 };
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
 			is_selected <- false;
@@ -1363,7 +1363,7 @@ species Land_Use {
 //------------------------------ End of Land_Use -------------------------------//
 
 species District {	
-	int dist_id <-0;
+	int dist_id <- 0;
 	string district_code; 
 	string district_name;
 	int budget;

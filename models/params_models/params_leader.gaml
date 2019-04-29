@@ -19,12 +19,6 @@ global{
 	string SOFT_DEFENSE <- "SOFT_DEFENSE";
 	string WITHDRAWAL 	<- "WITHDRAWAL";
 	
-	//actions to acknwoledge client requests.
-	string MSG_TO_PLAYER 			<- "MSG_TO_PLAYER";
-
-	//string SUBSIDIZE_GANIVELLE 			<- "SUBSIDIZE_GANIVELLE";
-	//string SUBSIDIZE_ADAPTED_HABITAT 	<- "SUBSIDIZE_ADAPTED_HABITAT";
-	
 	// messages to display in multi-langs
 	string MSG_CHOOSE_MSG_TO_SEND;	
 	string MSG_TYPE_CUSTOMIZED_MSG;

@@ -19,8 +19,6 @@ global{
 	int ACTION_INSPECT_DIKE  			<- int(data_action at 'ACTION_INSPECT_DIKE' 			at 'action_code');
 	int ACTION_INSPECT_LAND_USE  		<- int(data_action at 'ACTION_INSPECT_LAND_USE' 		at 'action_code');
 	
-	string PLAYER_MSG 	<- "PLAYER_MSG";
-	
 	// map tab displays
 	string LU_DISPLAY 		 <- "LU_DISPLAY";
 	string COAST_DEF_DISPLAY <- "COAST_DEF_DISPLAY";
