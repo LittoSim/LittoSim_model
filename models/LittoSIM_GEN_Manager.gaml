@@ -18,6 +18,7 @@ global {
 	// Lisflood configuration for the study area
 	string application_name 	<- shapes_def["APPLICATION_NAME"]; 											// used to name exported files
 	// sea heights file sent to Lisflood
+	string lisflood_start_file	<- shapes_def["LISFLOOD_START_FILE"];
 	string lisflood_bci_file	<- shapes_def["LISFLOOD_BCI_FILE"];
 	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING? shapes_def ["LISFLOOD_BDY_HIGH_FILENAME"] // scenario1 : HIGH 
 								:(floodEventType  = LOW_FLOODING ? shapes_def ["LISFLOOD_BDY_LOW_FILENAME" ] // scenario2 : LOW
@@ -195,7 +196,7 @@ global {
 			write replayed_flooding_event;
 			ask Cell { max_water_height <- 0.0;	} // reset of max_water_height
 
-			set lisfloodReadingStep <- 0;
+			lisfloodReadingStep <- 0;
 			results_lisflood_rep <- list_flooding_events at replayed_flooding_event;
 			stateSimPhase <- SIM_SHOWING_LISFLOOD;
 			write stateSimPhase;
@@ -243,7 +244,7 @@ global {
 		save ("DEMfile         " + lisfloodPath + lisflood_DEM_file + 
 				"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\nmanningfile     " +
 				lisfloodPath+lisflood_rugosity_file + "\nbcifile         " + lisfloodPath + lisflood_bci_file + "\nbdyfile         " + lisfloodPath + lisflood_bdy_file + 
-				"\nstartfile       " + lisfloodPath + "oleron.start\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath + lisflood_par_file type: "text";
+				"\nstartfile       " + lisfloodPath + lisflood_start_file +"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath + lisflood_par_file type: "text";
 		
 		save (lisfloodPath + "lisflood.exe -dir " + lisfloodPath + results_lisflood_rep + " " + (lisfloodPath + lisflood_par_file)) rewrite: true to: lisfloodRelativePath + lisflood_bat_file type: "text";
 	}       
