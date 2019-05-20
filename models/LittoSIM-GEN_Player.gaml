@@ -1703,7 +1703,7 @@ species Land_Use {
 	string dist_code<- "";
 	rgb my_color 	<- cell_color() update: cell_color();
 	int population;
-	string density_class -> { population = 0 ? POP_EMPTY : (population < POP_FEW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	string density_class -> { population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
 	int expro_cost 		 -> { round (population * 400* population ^ (-0.5)) };
 	bool is_urban_type 	 -> { lu_name in ["U","Us","AU","AUs"] };
 	bool is_adapted_type -> { lu_name in ["Us","AUs"] };
