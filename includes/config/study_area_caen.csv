@@ -3,9 +3,9 @@ APPLICATION_NAME;Caen
 
 [ Shapes]
 DISTRICTS_SHAPE;../includes/config/caen/districts.shp;
-CONTOUR_SHAPE;../includes/config/caen/contour_neg_100m.shp;
+BUFFER_IN100M_SHAPE;../includes/config/caen/buffer_in_100m.shp;
 COASTAL_DEFENSES_SHAPE;../includes/config/caen/coastal_defenses.shp;
-EMPRISE_SHAPE;../includes/config/caen/emprise.shp;
+CONVEX_HULL_SHAPE;../includes/config/caen/convex_hull.shp;
 DEM_FILE;../includes/config/caen/dem.asc;
 RUGOSITY_FILE;../includes/config/caen/rugosity.asc;
 RPP_SHAPE;../includes/config/caen/rpp.shp;

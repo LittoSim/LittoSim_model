@@ -93,9 +93,9 @@ global{
 	file coastline_shape 		<- file(shapes_def["COASTLINES_SHAPE"]);
 	file coastal_defenses_shape <- file(shapes_def["COASTAL_DEFENSES_SHAPE"]);
 	file land_use_shape 		<- file(shapes_def["LAND_USE_SHAPE"]);	
-	file emprise_shape 			<- file(shapes_def["EMPRISE_SHAPE"]); 
+	file convex_hull_shape 		<- file(shapes_def["CONVEX_HULL_SHAPE"]); 
 	file dem_file 				<- file(shapes_def["DEM_FILE"]) ;
-	file contour_neg_100m_shape <- file(shapes_def["CONTOUR_ILE_INF_100M"]);
+	file buffer_in_100m_shape 	<- file(shapes_def["BUFFER_IN100M_SHAPE"]);
 	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
 	
