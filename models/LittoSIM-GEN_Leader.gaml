@@ -1256,7 +1256,7 @@ species District_Name {
 //------------------------------ end of District_Name -------------------------------//
 
 experiment LittoSIM_GEN_Leader {
-	string default_language <- first(text_file("../includes/config/littosim.csv").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
+	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	
 	init { minimum_cycle_duration <- 0.5; }
 	

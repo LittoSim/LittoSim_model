@@ -505,7 +505,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		list<Buttons> buttonsMaster <- (Buttons where (each.nb_button in [0,3,5,6] and each distance_to loc < MOUSE_BUFFER));
+		list<Buttons> buttonsMaster <- (Buttons where (each.nb_button in [0,3,5,6] and each overlaps loc));
 		if(length(buttonsMaster) > 0){
 			ask Buttons{ self.is_selected <- false;	}
 			ask(buttonsMaster){
@@ -525,7 +525,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 	// the two buttons of the first map display
 	action button_click_map {
 		point loc <- #user_location;
-		Buttons a_button <- first((Buttons where (each.nb_button in [4,7] and each distance_to loc < MOUSE_BUFFER)));
+		Buttons a_button <- first((Buttons where (each.nb_button in [4,7] and each overlaps loc)));
 		if a_button != nil{
 			ask a_button {
 				is_selected <- !is_selected;
@@ -1249,8 +1249,8 @@ species Land_Use {
 	string dist_code;
 	rgb my_color 			<- cell_color() update: cell_color();
 	int AU_to_U_counter 	<- 0;
-	string density_class 	-> {population = 0? POP_EMPTY :(population < POP_FEW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
-	int exp_cost 			-> {round( population * 400* population ^ (-0.5))};
+	string density_class 	-> {population = 0? POP_EMPTY :(population < POP_LOW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	int exp_cost 			-> {round (population * 400* population ^ (-0.5))};
 	bool isUrbanType 		-> {lu_name in ["U","Us","AU","AUs"]};
 	bool isAdapted 			-> {lu_name in ["Us","AUs"]};
 	bool isInDensification 	<- false;
@@ -1314,7 +1314,11 @@ species Land_Use {
 		}
 	}
 		
-	action evolve_U_standard { if !pop_updated and (lu_name in ["U","Us"]){	do assign_population (POP_FOR_U_STANDARD);	} }
+	action evolve_U_standard {
+		if !pop_updated and (lu_name in ["U","Us"]){
+			do assign_population (POP_FOR_U_STANDARD);
+		}
+	}
 	
 	action assign_population (int nbPop) {
 		if new_comers_still_to_dispatch > 0 {
@@ -1351,13 +1355,13 @@ species Land_Use {
 		rgb res <- nil;
 		switch (lu_name){
 			match	  	"N" 				 {res <- #palegreen;			} // natural
-			match	  	"A" 				 {res <- rgb (225, 165,0);		} // agricultural
+			match	  	"A" 				 {res <- rgb (225, 165, 0);		} // agricultural
 			match_one ["AU","AUs"]  		 {res <- #yellow;		 		} // to urbanize
 			match_one ["U","Us"] { 								 	    	  // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 {res <- #red; 					} // Problem ?
-					match POP_LOW_DENSITY	 {res <-  rgb(150, 150, 150); 	}
-					match POP_MEDIUM_DENSITY {res <- rgb(120, 120, 120) ; 	}
+					match POP_EMPTY 		 {res <- #red; 					}
+					match POP_LOW_DENSITY	 {res <- rgb(150, 150, 150); 	}
+					match POP_MEDIUM_DENSITY {res <- rgb(120, 120, 120); 	}
 					match POP_DENSE 		 {res <- rgb(80, 80, 80);	  	}
 				}
 			}			
@@ -1512,7 +1516,7 @@ species Inland_Dike_Area{		aspect base {	draw shape color: rgb (100, 100, 205,12
 
 experiment LittoSIM_GEN_Manager type: gui{
 	
-	string default_language <- first(text_file("../includes/config/littosim.csv").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
+	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	init { minimum_cycle_duration <- 0.5; }
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;

@@ -47,8 +47,6 @@ global{
 	Button explored_buttons 	<- nil;
 	geometry population_area 	<- nil;
 	Network_Player network_player <-nil;
-	geometry dike_shape_space 	<- nil;
-	geometry unam_shape_space 	<- nil;
 	Coastal_Defense explored_dike			<- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	
@@ -109,8 +107,6 @@ global{
 
 		population_area 	<- union(Land_Use where(each.lu_name = "U" or each.lu_name = "AU"));
 		previous_population <- current_population();
-		list<geometry> tmp 	<- Button collect(each.shape) accumulate active_district.shape;
-		dike_shape_space 	<- envelope(tmp);
 		MSG_WARNING 		<- get_message('MSG_WARNING');
 	}
 	//------------------------------ End of init -------------------------------//
@@ -322,7 +318,7 @@ global{
 			active_display <- LU_DISPLAY;
 			do clear_selected_button;
 		}
-		list<Button> clicked_lu_button <- (Button where (each distance_to loc < MOUSE_BUFFER)) where (each.display_name = active_display);
+		list<Button> clicked_lu_button <- (Button where (each overlaps loc)) where (each.display_name = active_display);
 		if(length(clicked_lu_button) > 0){
 			list<Button> current_active_button <- Button where (each.is_selected);
 			do clear_selected_button;
@@ -332,7 +328,7 @@ global{
 				}
 			}
 		} else{ 	
-			Button_Map a_MAP_button <- first (Button_Map where (each distance_to loc < MOUSE_BUFFER));
+			Button_Map a_MAP_button <- first (Button_Map where (each overlaps loc));
 			if a_MAP_button != nil {
 				ask a_MAP_button {
 					is_selected <- !is_selected;
@@ -354,7 +350,7 @@ global{
 			do clear_selected_button;
 		}
 		
-		list<Button> clicked_coast_def_button <- ( Button where (each distance_to loc < MOUSE_BUFFER)) where(each.display_name = active_display);
+		list<Button> clicked_coast_def_button <- ( Button where (each overlaps loc)) where(each.display_name = active_display);
 		if length(clicked_coast_def_button) > 0 {
 			list<Button> current_active_button <- Button where (each.is_selected);
 			do clear_selected_button;
@@ -366,7 +362,7 @@ global{
 			}
 		}
 		else{	
-			Button_Map a_MAP_button <- first (Button_Map where (each distance_to loc < MOUSE_BUFFER));
+			Button_Map a_MAP_button <- first (Button_Map where (each overlaps loc));
 			if a_MAP_button != nil {
 				ask a_MAP_button {
 					is_selected <- ! is_selected;
@@ -1695,7 +1691,7 @@ species District {
 	string district_name <- "";
 	string district_code <- "";
 	aspect base{
-		draw shape color: self = active_district ? rgb (202,170,145) : #lightgray;
+		draw shape color: self = active_district ? rgb (202,170,145) : #lightgray border: #lightgray;
 	}
 }
 //------------------------------ End of District -------------------------------//
@@ -1898,8 +1894,8 @@ species Flood_Risk_Area{
 
 experiment LittoSIM_GEN_Player type: gui{
 	font regular 			<- font("Helvetica", 14, # bold);
-	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.csv").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
-	string default_language <- first(text_file("../includes/config/littosim.csv").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
+	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
+	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 
 	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
@@ -1922,7 +1918,8 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Displayed_List_Element 	aspect: base;
 		}
 		
-		display "Map" background:rgb(0,188,196)  focus: active_district{
+		display "Map" background: #black focus: active_district{
+			graphics "World" { draw shape color: rgb(0,188,196); }
 			species District aspect: base;
 			graphics "Population"{ draw population_area color: rgb(120,120,120) ; }
 			species Land_Use 				aspect: map;

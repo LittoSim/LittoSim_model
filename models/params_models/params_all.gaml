@@ -7,7 +7,7 @@ model paramsall
 global{
 	list<string> languages_list <- ['fr', 'en'];
 	// Configuration files
-	string config_file_name 				<- "../includes/config/littosim.csv"; 
+	string config_file_name 				<- "../includes/config/littosim.conf"; 
 	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
 	map<string,string> shapes_def 			<- read_configuration_file(configuration_file["SHAPES_FILE"],";"); // Shapefiles data
 	map<string,string> flooding_def 		<- read_configuration_file(configuration_file["FLOODING_FILE"],";"); // Flooding model
@@ -59,10 +59,6 @@ global{
 	string INFORM_NEW_ROUND 		<- 'INFORM_NEW_ROUND';
 	string INFORM_CURRENT_ROUND		<- 'INFORM_CURRENT_ROUND';
 	
-	
-	//50#m : surface of considered area when mouse is clicked (to retrieve which button has been clicked) 
-	float MOUSE_BUFFER <-float(configuration_file["MOUSE_BUFFER"]);
-	
 	// Constant vars
 	string PLAYER_ACTION_TYPE_LU		<- "PLAYER_ACTION_TYPE_LU";
 	string PLAYER_ACTION_TYPE_COAST_DEF	<- "PLAYER_ACTION_TYPE_COAST_DEF";
@@ -77,7 +73,7 @@ global{
 	string POP_LOW_DENSITY 	  <- "LOW_DENSITY";
 	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";
 	string POP_DENSE 		  <- "DENSE";
-	int    POP_FEW_NUMBER 	  <- 40;
+	int    POP_LOW_NUMBER 	  <- 40;
 	int    POP_MEDIUM_NUMBER  <- 80;
 	int    MIN_POP_AREA 	  <- int  (eval_gaml(shapes_def["MIN_POPU_AREA"]));
 	
