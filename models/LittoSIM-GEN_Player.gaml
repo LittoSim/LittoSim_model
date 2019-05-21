@@ -662,7 +662,7 @@ global{
 
 species Displayed_List_Element skills: [UI_location] schedules: [] {
 	int font_size 	<- DISPLAY_FONT_SIZE - 4;
-	bool event 		<- false update: false;
+	//bool event 		<- false update: false;
 	string label 	<- "";
 	Displayed_List my_parent;
 	bool is_displayed;
@@ -1524,7 +1524,7 @@ species Player_Action {
 		}
 		else{
 			element_shape <- polygon(all_points);
-			shape 		  <- element_shape;
+			shape <- element_shape;
 		}
 		location <- mpp;
 	}

@@ -72,6 +72,7 @@ global{
 	float DEM_XLLCORNER;
 	float DEM_YLLCORNER;
 	float land_min_height;
+	float land_max_height;
 	float land_range_height;
 	float cells_max_depth;
 		
