@@ -85,6 +85,7 @@ global{
 	file districts_shape 		<- file(shapes_def["DISTRICTS_SHAPE"]);
 	file roads_shape 			<- file(shapes_def["ROADS_SHAPE"]);
 	file protected_areas_shape 	<- file(shapes_def["SPA_SHAPE"]);
+	file water_shape 			<- file(shapes_def["WATER_SHAPE"]);
 	file rpp_area_shape 		<- file(shapes_def["RPP_SHAPE"]);
 	file coastline_shape 		<- file(shapes_def["COASTLINES_SHAPE"]);
 	file coastal_defenses_shape <- file(shapes_def["COASTAL_DEFENSES_SHAPE"]);

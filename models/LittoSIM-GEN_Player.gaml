@@ -94,7 +94,8 @@ global{
 		}
 		
 		create Protected_Area from: protected_areas_shape;
-		create Road from:roads_shape;
+		create Road from: roads_shape;
+		create Water from: water_shape;
 		create Flood_Risk_Area from: rpp_area_shape;
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
@@ -193,6 +194,14 @@ global{
 			point p <- {0.0, 0};
 			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 1.0 ui_height: 1.0;
 		}
+	}
+	
+	action lock_window {
+		point loc 	<- { world.shape.width/2, world.shape.height/2};
+		geometry rec<- rectangle(world.shape.width, world.shape.height);
+		draw rec at: loc color: #black;
+		float msize <- min([world.shape.width/2, world.shape.height/2]);
+		draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
 	}
 	
 	action create_buttons {
@@ -1238,7 +1247,10 @@ species Network_Data_Retriever skills:[network]{
 			
 			switch(mc["OBJECT_TYPE"]){
 				
-				match OBJECT_TYPE_WINDOW_LOCKER { world.is_active_gui <- mc["WINDOW_STATUS"] = "UNLOCKED"; }
+				match OBJECT_TYPE_WINDOW_LOCKER {
+					write "Lock unlock request : " + mc["LOCK_REQUEST"];
+					is_active_gui <- mc["LOCK_REQUEST"] = "UNLOCK";
+				}
 				
 				match OBJECT_TYPE_PLAYER_ACTION {
 					if(mc["action_type"] = PLAYER_ACTION_TYPE_COAST_DEF){
@@ -1875,6 +1887,8 @@ species Tab skills: [UI_location]{
 
 species Road { aspect base { draw shape color:#gray; } }
 
+species Water { aspect base { draw shape color:#blue; } }
+
 species Protected_Area {
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_PROTECTED_AREA)).is_selected {
@@ -1903,14 +1917,6 @@ experiment LittoSIM_GEN_Player type: gui{
 	
 	init { minimum_cycle_duration <- 0.5; }
 	
-	action lock_window {
-		point loc <- {world.shape.width/2,world.shape.height/2};
-		geometry rec <- rectangle(world.shape.width,world.shape.height);
-		draw rec at:loc color:#black;
-		float msize <- min([world.shape.width/2,world.shape.height/2]);
-		draw image_file("../images/ihm/logo.png") at:loc size:{msize,msize};
-	}
-	
 	output{
 		
 		display "Basket" background:#black{
@@ -1927,6 +1933,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: map;
 			species Road 					aspect:	base;
+			species Water					aspect: base;
 			species Protected_Area 			aspect: base;
 			species Flood_Risk_Area 		aspect: base;
 			species Tab_Background 			aspect: base;
@@ -2048,7 +2055,9 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			graphics "Lock Window" transparency: 0.3 { // lock user interface
-				if(!is_active_gui){ do lock_window; }
+				if(!is_active_gui){
+					ask world{ do lock_window;}
+				}
 			}			
 			event mouse_down 	action: button_click_general;
 			event mouse_move 	action: mouse_move_general;
@@ -2061,7 +2070,9 @@ experiment LittoSIM_GEN_Player type: gui{
 			species List_of_Elements 		aspect: basket;
 					
 			graphics "Lock Window" transparency: 0.3 {
-				if(!is_active_gui){ do lock_window(); }
+				if(!is_active_gui){
+					ask world{ do lock_window;}
+				}
 			}		
 			event mouse_down action: move_down_event_basket;
 		}
@@ -2073,7 +2084,9 @@ experiment LittoSIM_GEN_Player type: gui{
 			species List_of_Elements	 	   aspect: dossier;
 				
 			graphics "Lock Window" transparency: 0.3 {
-				if(!is_active_gui){ do lock_window(); }
+				if(!is_active_gui){
+					ask world{ do lock_window;}
+				}
 			}
 			event mouse_down action: move_down_event_dossier;
 		}
@@ -2085,7 +2098,9 @@ experiment LittoSIM_GEN_Player type: gui{
 			species List_of_Elements 		aspect: message;
 			
 			graphics "Lock Window" transparency: 0.3 {
-				if(!is_active_gui){ do lock_window(); }
+				if(!is_active_gui){
+					ask world{ do lock_window;}
+				}
 			}
 			event mouse_down action: move_down_event_console;
 		}

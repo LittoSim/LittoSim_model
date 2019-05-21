@@ -58,6 +58,7 @@ global {
 	bool show_max_water_height	<- false;						// defines if the water_height displayed on the map should be the max one or the current one
 	string stateSimPhase 		<- SIM_NOT_STARTED; 			// state variable of current simulation state 
 	int game_round 				<- 0;
+	bool game_paused			<- false;
 	list<rgb> listC 			<- brewer_colors("YlOrRd", 8);
 	list<District> districts_in_game;
 	District dieppe;
@@ -81,6 +82,7 @@ global {
 		all_protected_area <- union(Protected_Area);
 		
 		create Road from: roads_shape;
+		create Water from: water_shape;
 		
 		create Flood_Risk_Area from: rpp_area_shape;
 		all_flood_risk_area <- union(Flood_Risk_Area);
@@ -471,25 +473,72 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			command  	<- ONE_STEP;
 			location 	<- { 1000, 1000 };
 			my_icon 	<- image_file("../images/icons/one_step.png");
+			display_text <- world.get_message('MSG_NEW_ROUND');
+		}
+		create Buttons{
+			nb_button 	<- 1;
+			command  	<- LOCK_USERS;
+			location 	<- { 1000, 3000 };
+			my_icon 	<- image_file("../images/icons/pause.png");
+			display_text <- "Pause game";
+		}
+		create Buttons{
+			nb_button 	<- 2;
+			command  	<- UNLOCK_USERS;
+			location 	<- { 1000, 5000 };
+			my_icon 	<- image_file("../images/icons/play.png");
+			display_text <- "Resume game";
 		}
 		create Buttons{
 			nb_button 	<- 3;
 			command	 	<- HIGH_FLOODING;
 			location 	<- { 5000, 1000 };
 			my_icon 	<- image_file("../images/icons/launch_lisflood.png");
+			display_text <- "High flooding";
 		}
 		create Buttons{
 			nb_button 	<- 5;
 			command	 	<- LOW_FLOODING;
 			location 	<- { 7000, 1000 };
 			my_icon 	<- image_file("../images/icons/launch_lisflood_small.png");
+			display_text <- "Low flooding";
 		}
 		create Buttons{
 			nb_button 	<- 6;
-			command  	<- REPLAY_FLOODING;
-			location 	<- { 9000, 1000 };
-			my_icon 	<- image_file("../images/icons/replay_flooding.png");
+			command  	<- "0";
+			location 	<- { 11000, 1000 };
+			my_icon 	<- image_file("../images/icons/0.png");
+			display_text <- "Replay initial submersion";
 		}
+		create Buttons{
+			nb_button 	<- 6;
+			command  	<- "1";
+			location 	<- { 11000, 3000 };
+			my_icon 	<- image_file("../images/icons/1.png");
+			display_text <- "Replay submersion 1";
+		}
+		create Buttons{
+			nb_button 	<- 6;
+			command  	<- "2";
+			location 	<- { 11000, 5000 };
+			my_icon 	<- image_file("../images/icons/2.png");
+			display_text <- "Replay submersion 2";
+		}
+		create Buttons{
+			nb_button 	<- 6;
+			command  	<- "3";
+			location 	<- { 11000, 7000 };
+			my_icon 	<- image_file("../images/icons/3.png");
+			display_text <- "Replay submersion 3";
+		}
+		create Buttons{
+			nb_button 	<- 6;
+			command  	<- "4";
+			location 	<- { 11000, 9000 };
+			my_icon 	<- image_file("../images/icons/4.png");
+			display_text <- "Replay submersion 4";
+		}
+		
 		create Buttons{
 			nb_button 	<- 4;
 			command  	<- SHOW_LU_GRID;
@@ -511,18 +560,41 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		list<Buttons> buttonsMaster <- (Buttons where (each.nb_button in [0,3,5,6] and each overlaps loc));
+		list<Buttons> buttonsMaster <- (Buttons where (each.nb_button in [0,1,2,3,5,6] and each overlaps loc));
 		if(length(buttonsMaster) > 0){
 			ask Buttons{ self.is_selected <- false;	}
 			ask(buttonsMaster){
 				is_selected <- true;
 				switch nb_button 	{
-					match 0   		{ ask world {	do new_round; } }
+					match 0   		{
+						is_selected <- true;
+						ask world {	do new_round; }
+					}
+					match 1			{
+						if !game_paused {
+							ask Network_Round_Manager{ do lock_user_window(true);  }
+							write "Locking users request sent!";
+							game_paused <- true;
+							is_selected <- true;
+						}
+					}
+					match 2	{
+						if game_paused {	
+							ask Network_Round_Manager{ do lock_user_window(false);  }
+							write "Unlocking users request sent!";
+							game_paused <- false;
+							is_selected <- true;
+						}
+					}
 					match_one [3, 5]{
+						is_selected <- true;
 						floodEventType <- command;
 						ask world   { do launchFlood_event; }
 					}
-					match 6			{ ask world { do replay_flood_event();} }
+					match 6			{
+						is_selected <- true;
+						ask world { do replay_flood_event();}
+					}
 				}
 			}
 		}
@@ -766,10 +838,10 @@ species Network_Game_Manager skills: [network]{
 		}
 	}
 	
-	action lock_window (District d, bool is_allowed){ // lock or unlock the player GUI
-		string val <- is_allowed = true? "UNLOCKED":"LOCKED";
+	action lock_user (District d, bool lock){ // lock or unlock the player GUI
+		string val <- lock = true? "LOCK":"UNLOCK";
 		map<string,string> me <- ["OBJECT_TYPE"  ::OBJECT_TYPE_WINDOW_LOCKER,
-								  "WINDOW_STATUS"::val];
+								  "LOCK_REQUEST"::val];
 		do send to: d.district_code+"_retrieve" contents: me;
 	}
 }
@@ -803,8 +875,8 @@ species Network_Round_Manager skills:[remoteGUI]{
 		write "network_round_manager " + selected_action;
 		switch(selected_action){
 			match NEW_ROUND 	{ ask world { do new_round;}	}
-			match LOCK_USERS 	{ do lock_unlock_window(true);  }
-			match UNLOCK_USERS 	{ do lock_unlock_window(false); }
+			match LOCK_USERS 	{ do lock_user_window(true);  }
+			match UNLOCK_USERS 	{ do lock_user_window(false); }
 			match_one [HIGH_FLOODING, LOW_FLOODING] {
 				floodEventType <- selected_action;
 				ask world {	do launchFlood_event;	}
@@ -819,9 +891,9 @@ species Network_Round_Manager skills:[remoteGUI]{
 		chosen_simu_temp 	<-nil;
 	}
 	
-	action lock_unlock_window (bool value){
+	action lock_user_window (bool value){
 		ask District{
-			ask first(Network_Game_Manager) { do lock_window (myself, value); }
+			ask Network_Game_Manager { do lock_user (myself, value); }
 		}
 	}
 }
@@ -1408,9 +1480,9 @@ species District {
 
 	aspect base	  {	draw shape  color:#whitesmoke;					}
 	aspect outline{	draw shape  color: rgb (0,0,0,0) border:#black;	}
+	aspect pop_den{	draw shape  color: #lightgray border:#black;	}
 	aspect dieppe {
 		draw dieppe color: rgb (0,0,0,0) border:#black;
-		focus_on dieppe;
 	}
 	aspect criel  { draw criel  color: rgb (0,0,0,0) border:#black; }
 	
@@ -1469,20 +1541,33 @@ species District {
 species Buttons{
 	int nb_button 	 <- 0;
 	string command 	 <- "";
+	string display_text;
 	bool is_selected <- false;
 	geometry shape 	 <- square(button_size);
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if(nb_button in [0,3,5,6]){
-			draw shape   color:  #white border: is_selected ? # red : # white;
-			draw my_icon size:	 button_size-50#m;
-		}
+		if(nb_button in [0,1,2,3,5]){
+			if(nb_button in [0,3,5]){
+				draw shape color: #white border: is_selected ? #red : #white;
+			}else if(nb_button = 1) {
+				draw shape color: #white border: game_paused ? #white : #blue;
+			}else if (nb_button = 2){
+				draw shape color: #white border: game_paused ? #blue : #white;	
+			}
+			draw display_text color: #black at: {location.x - (shape.width*0.33), location.y + (shape.height*0.66)};
+			draw my_icon size: button_size-50#m;
+		} else if(nb_button = 6){
+			if (int(command) < length(list_flooding_events)){
+				draw display_text color: #black at: {location.x - (shape.width*0.33), location.y + (shape.height*0.66)};
+				draw my_icon size: button_size-50#m;
+			}
+		}	
 	}
 	
 	aspect buttons_map {
 		if(nb_button in [4,7]){
-			draw shape   color: #white border: is_selected ? # red : # white;
+			draw shape color: #white border: is_selected? # red : # white;
 			draw my_icon size:  800#m;
 		}
 	}
@@ -1493,7 +1578,7 @@ species Legend_Planning{
 	list<string> texts <- [];
 	point start_location <- {700, 750};
 	point rect_size <- {300, 400};
-	rgb text_color <- #black;
+	rgb text_color  <- #black;
 	
 	init{
 		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
@@ -1532,15 +1617,17 @@ species Legend_Map parent: Legend_Planning{
 	}
 }
 
-species Road{					aspect base {	draw shape color: rgb (125,113,53);						}	}
+species Road {	aspect base { draw shape color: rgb (125,113,53); } }
 
-species Protected_Area{			aspect base {	draw shape color: rgb (185, 255, 185,120) border:#black;}	}
+species Water { aspect base { draw shape color: #blue; } }
 
-species Flood_Risk_Area{		aspect base {	draw shape color: rgb (20, 200, 255,120) border:#black;	}	}
+species Protected_Area { aspect base { draw shape color: rgb (185, 255, 185,120) border:#black;} }
+
+species Flood_Risk_Area { aspect base { draw shape color: rgb (20, 200, 255,120) border:#black; } }
 // 400 m littoral area
-species Coastal_Border_Area{	aspect base {	draw shape color: rgb (20, 100, 205,120) border:#black;	}	}
+species Coastal_Border_Area { aspect base { draw shape color: rgb (20, 100, 205,120) border:#black; } }
 //100 m coastline inland area to identify retro dikes
-species Inland_Dike_Area{		aspect base {	draw shape color: rgb (100, 100, 205,120) border:#black;}	}
+species Inland_Dike_Area { aspect base { draw shape color: rgb (100, 100, 205,120) border:#black;} }
 
 //---------------------------- Experiment definiton -----------------------------//
 
@@ -1554,11 +1641,12 @@ experiment LittoSIM_GEN_Manager type: gui{
 	parameter "Connect to ActiveMQ" var: activemq_connect<- true;
 	
 	output {
-		display "Map" /*keystone:[{0,0},{1,0},{0,0.5},{1,0.5}]*/{
+		display "Map" background: #black{
 			grid Cell;
 			species Cell 			aspect: water_or_max_water_elevation;
 			species District 		aspect: outline;
 			species Road 			aspect: base;
+			species Water			aspect: base;
 			species Coastal_Defense aspect: base;
 			species Land_Use 		aspect: conditional_outline;
 			species Buttons 		aspect: buttons_map;
@@ -1580,20 +1668,24 @@ experiment LittoSIM_GEN_Manager type: gui{
 			species Coastal_Defense aspect: base;
 		}*/
 		
-		display "Planning"{
+		display "Planning" background: #black{
+			graphics "World" { draw shape color: rgb(230,251,255); }
 			species District 		aspect: base;
 			species Land_Use 		aspect: base;
 			species Road 	 		aspect: base;
+			species Water			aspect: base;
 			species Coastal_Defense aspect: base;
 			species Legend_Planning;
 		}
-		display "Population density"{	
+		display "Population density" background: #black{
+			graphics "World" { draw shape color: rgb(230,251,255); }
+			species District aspect: pop_den;
 			species Land_Use aspect: population_density;
 			species Road 	 aspect: base;
-			species District aspect: outline;
+			species Water	 aspect: base;
 			species Legend_Population;		
 		}
-		display "Game master control"{
+		display "Game control"{
 			species Buttons  aspect: buttons_master;
 			event mouse_down action: button_click_master_control;
 		}			
