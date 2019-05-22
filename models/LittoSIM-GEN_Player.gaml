@@ -114,8 +114,11 @@ global{
 	
 	user_command "Refresh all the map" {
 		write "Refresh all";
+		do refresh_all;
+	}
+	
+	action refresh_all{
 		ask Land_Use + Coastal_Defense + Player_Action { do die; }
-		
 		string msg <- "" + REFRESH_ALL + COMMAND_SEPARATOR + world.get_action_id() + COMMAND_SEPARATOR + active_district_code;
 		ask network_player { do send to: GAME_MANAGER contents: ["stringContents"::msg]; }
 	}
@@ -359,18 +362,18 @@ global{
 			do clear_selected_button;
 		}
 		
-		list<Button> clicked_coast_def_button <- ( Button where (each overlaps loc)) where(each.display_name = active_display);
-		if length(clicked_coast_def_button) > 0 {
-			list<Button> current_active_button <- Button where (each.is_selected);
+		Button clicked_coast_def_button <- first(Button where (each overlaps loc and each.display_name = active_display));
+		if clicked_coast_def_button != nil {
+			Button current_active_button <- first(Button where (each.is_selected));
 			do clear_selected_button;
 			
-			if (length (current_active_button) = 1 and (first (current_active_button)).command != (first(clicked_coast_def_button)).command) or length (current_active_button) = 0 {
-				ask (first(clicked_coast_def_button)){
+			if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
+				ask (clicked_coast_def_button){
 					is_selected <- true;
 				}
 			}
 		}
-		else{	
+		else{
 			Button_Map a_MAP_button <- first (Button_Map where (each overlaps loc));
 			if a_MAP_button != nil {
 				ask a_MAP_button {
@@ -417,32 +420,25 @@ global{
 	action mouse_move_lu {
 		point loc 		<- #user_location;
 		explored_buttons<- Button first_with (each overlaps loc and each.display_name != COAST_DEF_DISPLAY);
-		list<Button> current_active_button <- Button where (each.is_selected);
+		Button current_active_button <- first(Button where (each.is_selected));
 		
-		if length(current_active_button) = 1 and first(current_active_button).command = ACTION_INSPECT_LAND_USE {
-			list<Land_Use_Action> selected_explored_lu_actions <- Land_Use_Action overlapping loc;
-			
-			if length(selected_explored_lu_actions) > 0{
-				explored_land_use_action <- first(selected_explored_lu_actions);
-			}
-			else{ explored_land_use_action <-nil; }
-			
-			list<Land_Use> selected_lu <- Land_Use overlapping loc;
-			if length(selected_lu) > 0 { explored_cell <- first (selected_lu); }
-			else{ explored_cell <- nil; }
+		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_LAND_USE {
+			explored_land_use_action <- first(Land_Use_Action overlapping loc);
+			explored_cell <- first(Land_Use overlapping loc);
 		}
-		else{ explored_cell <- nil; }
+		else{
+			explored_land_use_action <- nil;
+			explored_cell <- nil;
+		}
 	}
 
 	action mouse_move_coast_def {
 		point loc <- #user_location;
-		explored_buttons <- Button first_with (each overlaps loc and each.display_name=COAST_DEF_DISPLAY);
-		list<Button> current_active_button <- Button where (each.is_selected);
+		explored_buttons <- Button first_with (each overlaps loc and each.display_name= COAST_DEF_DISPLAY);
+		Button current_active_button <- first(Button where (each.is_selected));
 		
-		if length(current_active_button) = 1 and first(current_active_button).command = ACTION_INSPECT_DIKE {
-			list<Coastal_Defense> selected_dikes <- Coastal_Defense overlapping (loc buffer(100#m));
-			if length(selected_dikes)> 0 { explored_dike <- first(selected_dikes); }
-			else{ explored_dike <- nil; }
+		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_DIKE {
+			explored_dike <- first(Coastal_Defense where ((10#m around each.shape) overlaps loc));
 		}
 		else{ explored_dike <- nil; }
 	}
@@ -452,11 +448,12 @@ global{
 		Coastal_Defense selected_dike <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
 		Button selected_button <- Button first_with(each.is_selected);
 		if(selected_button != nil){
-			if selected_button.command = ACTION_CREATE_DIKE {
+			if selected_button.command = ACTION_INSPECT_DIKE {
+				return;
+			}else if selected_button.command = ACTION_CREATE_DIKE {
 				if basket_overflow() { return; }
 				do create_new_dike(loc, selected_button);
-			}
-			else {
+			}else {
 				if selected_dike = nil { return; }
 				if basket_overflow() { return; }
 				do modify_dike(selected_dike, selected_button);
@@ -578,17 +575,17 @@ global{
 					return;
 				}
 				if(lu_name in ["A","N"] and selected_button.command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs]){
-					if(lu_name = "N"){
-						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_N_TO_URBANIZED')::false);		
-						if(vmap at vmap.keys[0] = false) { return; }
-					}
 					if empty(Land_Use at_distance 100 where (each.is_urban_type)){	
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_OUTSIDE_U')::true);
 						return;
-					}
+					}					
 					if (!empty(Protected_Area where (each intersects (circle(10, shape.centroid))))){	
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_PROTECTED_U')::true);
 						return;
+					}
+					if(lu_name = "N"){
+						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_N_TO_URBANIZED')::false);		
+						if(vmap at vmap.keys[0] = false) { return; }
 					}
 				}
 				
@@ -962,7 +959,7 @@ species Basket parent: Displayed_List {
 		return p;
 	}
 	
-	action draw_valid_button{
+	action draw_valid_button {
 		point pt 		 <- validation_button_location();
 		float sz 		 <- element_height*ui_height;
 		image_file icone <- file("../images/ihm/I_valider.png");
@@ -1256,16 +1253,30 @@ species Network_Data_Retriever skills:[network]{
 					if(mc["action_type"] = PLAYER_ACTION_TYPE_COAST_DEF){
 						Coastal_Defense_Action tmp <- Coastal_Defense_Action first_with(each.id = mc["id"]);
 						if(tmp = nil){
-							create Coastal_Defense_Action { do init_from_map(mc); }
-							ask (game_history) 	   		  { do add_action_to_history(tmp); } 
-						} else { ask tmp { do init_from_map(mc); } }	
+							create Coastal_Defense_Action {
+								do init_from_map(mc);
+								ask (game_history){
+									do add_action_to_history(myself);
+								}
+							}
+							 
+						} else {
+							ask tmp { do init_from_map(mc); }
+						}	
 					}
 					else if mc["action_type"] = PLAYER_ACTION_TYPE_LU {
 						Land_Use_Action tmp <- Land_Use_Action first_with (each.id = mc["id"]);
 						if(tmp = nil){
-							create Land_Use_Action { do init_from_map(mc);			}	
-							ask(game_history) 	   { do add_action_to_history(tmp); } 
-						} else { ask tmp { do init_from_map(mc); } }	
+							create Land_Use_Action {
+								do init_from_map(mc);
+								ask(game_history) {
+									do add_action_to_history(myself);
+								} 
+							}	
+							
+						} else {
+							ask tmp { do init_from_map(mc); }
+						}	
 					}
 				}
 				
@@ -1344,7 +1355,13 @@ species Network_Player_Map skills:[network]{
 					}
 					match INFORM_CURRENT_ROUND {
 						game_round <- int(m_contents[NUM_ROUND]);
-						if game_round != 0 { ask world {do user_msg(world.get_message('MSG_ITS_ROUND') + " " + game_round, INFORMATION_MESSAGE);} }
+						is_active_gui <- ! bool(m_contents["GAME_PAUSED"]);
+						if game_round != 0 {
+							ask world {
+								do refresh_all;
+								do user_msg(world.get_message('MSG_ITS_ROUND') + " " + game_round, INFORMATION_MESSAGE);
+							}
+						}
 					}
 					match DISTRICT_BUDGET_UPDATE {
 						budget <- int(m_contents[BUDGET]);
@@ -1642,14 +1659,17 @@ species Land_Use_Action parent: Player_Action {
 	
 	aspect map {
 		if active_display = LU_DISPLAY and !is_applied {
-			draw shape-25  color: define_color() border: define_color();
+			list<geometry> trs <- to_triangles(shape);
+			draw first(trs where (each.area = max(trs collect (each.area)))) color: define_color() border: define_color();
 			draw shape at: location empty: true border: (self = highlighted_action) ? #red: (is_sent ? define_color() : #black) ;
 			
 			if(command = ACTION_MODIFY_LAND_COVER_Ui){
-				draw file("../images/icons/crowd.png") size: self.shape.width;
+				geometry sq <- first(to_squares(shape, 1, false));
+				draw file("../images/icons/crowd.png") size: sq.width at: sq.location;
 			}
 			else if command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us]{
-				draw file("../images/icons/wave.png") size: self.shape.width;
+				geometry sq <- first(to_squares(shape, 1, false));
+				draw file("../images/icons/wave.png") size: sq.width at: sq.location;
 			}
 		}
 	}
@@ -1842,7 +1862,9 @@ species Coastal_Defense {
 			else{
 				draw 50#m around shape color: color;
 				if ganivelle {
-					loop i over: points_on(shape, 40#m) {draw circle(10,i) color: #black;}
+					loop i over: points_on(shape, 40#m) {
+						draw circle(10,i) color: #black;
+					}
 				} 
 			}
 		}
@@ -1924,7 +1946,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Displayed_List_Element 	aspect: base;
 		}
 		
-		display "Map" background: #black focus: active_district{
+		display "Map" background: #black focus: active_district toolbar:false{
 			graphics "World" { draw shape color: rgb(0,188,196); }
 			species District aspect: base;
 			graphics "Population"{ draw population_area color: rgb(120,120,120) ; }
@@ -1943,21 +1965,23 @@ experiment LittoSIM_GEN_Player type: gui{
 			
 						
 
-			graphics "Full target dike" transparency:0.3{
+			graphics "Coast Def Info" transparency:0.3{
 				if (explored_dike != nil){
 					point target <- {explored_dike.location.x  ,explored_dike.location.y };
-					point target2 <- {explored_dike.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px+20#px)};
+					point target2 <- {explored_dike.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
 					draw "Information about "+ explored_dike.type at: target + { 5#px, 15#px } font: regular color: #white;
 					int xpx <-0;
-					draw "Length "+ string(explored_dike.length_coast_def) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "ID : "+ string(explored_dike.coast_def_id) at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					xpx <- xpx+20;
+					draw "Length : "+ string(explored_dike.length_coast_def) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 					xpx <- xpx+20;
 					if explored_dike.type = COAST_DEF_TYPE_DIKE {
-						draw "Height "+string(round(100*explored_dike.height)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+						draw "Height : "+string(round(100*explored_dike.height)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 						xpx <- xpx+20;
 					}
-					draw "Altitude "+string(round(100*explored_dike.alt)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
-					draw "State " + explored_dike.status at: target + { 30#px, xpx#px +55#px} font: regular color: # white;
+					draw "Altitude : " + string(round(100*explored_dike.alt)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "State : " + explored_dike.status at: target + { 30#px, xpx#px +55#px} font: regular color: # white;
 				}
 			}
 			
@@ -2064,7 +2088,7 @@ experiment LittoSIM_GEN_Player type: gui{
 		}
 		// end of "Map" display
 		
-		display "Basket" background:#black{
+		display "Basket" background:#black toolbar:false{
 			species Basket 					aspect: base;
 			species Basket_Element  		aspect: base;
 			species List_of_Elements 		aspect: basket;
@@ -2077,7 +2101,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			event mouse_down action: move_down_event_basket;
 		}
 		
-		display "History" background:#black{
+		display "History" background:#black toolbar:false{
 			species History_Left_Icon aspect: base;
 			species History 				   aspect: base;
 			species History_Element   		   aspect: base;
@@ -2091,7 +2115,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			event mouse_down action: move_down_event_dossier;
 		}
 		
-		display "Messages" background:#black{
+		display "Messages" background:#black toolbar:false{
 			species Message_Left_Icon 		aspect: base;
 			species Message_Console 		aspect: base;
 			species Message_Element 		aspect: base;

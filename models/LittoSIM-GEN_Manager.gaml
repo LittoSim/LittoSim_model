@@ -116,7 +116,7 @@ global {
 		
 		// Create Network agents
 		if activemq_connect {
-			create Network_Round_Manager;
+			create Network_Control_Manager;
 			create Network_Listener_To_Leader;
 			create Network_Game_Manager;
 		}
@@ -189,25 +189,24 @@ global {
 	
 	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD	{	do read_lisflood;	} // reading flooding files
 	
-	action replay_flood_event {
-		string txt <- "";
+	action replay_flood_event (int fe) {
+		/*string txt <- "";
 		int i <- 1;
 		loop aK over: list_flooding_events.keys{
 			txt <- txt + i + " : " + aK + "\n";
 			i <- i +1;
-		}
-		map values <- user_input((get_message('MSG_SUBMERSION_NUMBER')) + "\n" + txt,[(get_message('MSG_NUMBER'))+ " :" :: "0"]);
-		i <- int(values at values.keys[0]);
-		if i > 0 and i <= length(list_flooding_events.keys){
-			string replayed_flooding_event  <- (list_flooding_events.keys)[i-1];
-			write replayed_flooding_event;
-			ask Cell { max_water_height <- 0.0;	} // reset of max_water_height
-
-			lisfloodReadingStep <- 0;
-			results_lisflood_rep <- list_flooding_events at replayed_flooding_event;
-			stateSimPhase <- SIM_SHOWING_LISFLOOD;
-			write stateSimPhase;
-		}
+		}*/
+		//map values <- user_input((get_message('MSG_SUBMERSION_NUMBER')) + "\n" + txt,[(get_message('MSG_NUMBER'))+ " :" :: "0"]);
+		//i <- int(values at values.keys[0]);
+		//if i > 0 and i <= length(list_flooding_events.keys){
+		string replayed_flooding_event  <- (list_flooding_events.keys)[fe];
+		write replayed_flooding_event;
+		ask Cell { max_water_height <- 0.0;	} // reset of max_water_height
+		lisfloodReadingStep <- 0;
+		results_lisflood_rep <- list_flooding_events at replayed_flooding_event;
+		stateSimPhase <- SIM_SHOWING_LISFLOOD;
+		write stateSimPhase;
+		//}
 	}
 		
 	action launchFlood_event{
@@ -230,7 +229,7 @@ global {
 
 	action add_element_in_list_flooding_events (string sub_name, string sub_rep){
 		put sub_rep key: sub_name in: list_flooding_events;
-		ask Network_Round_Manager{
+		ask Network_Control_Manager{
 			do update_submersion_list;
 		}
 	}
@@ -348,7 +347,7 @@ global {
 		}
 		ask Cell {
 			if soil_height > 0 		{ cell_type <-1; 	   }  //  1 -> land
-			else if soil_height = 0 { soil_height <- -5.0; }
+			//else if soil_height = 0 { soil_height <- -5.0; }
 		}
 		
 		land_min_height <- min(Cell where (each.cell_type = 1 and each.soil_height != no_data_value) collect each.soil_height);
@@ -492,42 +491,42 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		create Buttons{
 			nb_button 	<- 3;
 			command	 	<- HIGH_FLOODING;
-			location 	<- { 5000, 1000 };
+			location 	<- {5000, 1000};
 			my_icon 	<- image_file("../images/icons/launch_lisflood.png");
 			display_text <- "High flooding";
 		}
 		create Buttons{
 			nb_button 	<- 5;
 			command	 	<- LOW_FLOODING;
-			location 	<- { 7000, 1000 };
+			location 	<- {7000, 1000};
 			my_icon 	<- image_file("../images/icons/launch_lisflood_small.png");
 			display_text <- "Low flooding";
 		}
 		create Buttons{
 			nb_button 	<- 6;
 			command  	<- "0";
-			location 	<- { 11000, 1000 };
+			location 	<- {11000, 1000};
 			my_icon 	<- image_file("../images/icons/0.png");
 			display_text <- "Replay initial submersion";
 		}
 		create Buttons{
 			nb_button 	<- 6;
 			command  	<- "1";
-			location 	<- { 11000, 3000 };
+			location 	<- {11000, 3000};
 			my_icon 	<- image_file("../images/icons/1.png");
 			display_text <- "Replay submersion 1";
 		}
 		create Buttons{
 			nb_button 	<- 6;
 			command  	<- "2";
-			location 	<- { 11000, 5000 };
+			location 	<- {11000, 5000};
 			my_icon 	<- image_file("../images/icons/2.png");
 			display_text <- "Replay submersion 2";
 		}
 		create Buttons{
 			nb_button 	<- 6;
 			command  	<- "3";
-			location 	<- { 11000, 7000 };
+			location 	<- {11000, 7000};
 			my_icon 	<- image_file("../images/icons/3.png");
 			display_text <- "Replay submersion 3";
 		}
@@ -572,7 +571,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 					}
 					match 1			{
 						if !game_paused {
-							ask Network_Round_Manager{ do lock_user_window(true);  }
+							ask Network_Control_Manager{ do lock_user_window(true);  }
 							write "Locking users request sent!";
 							game_paused <- true;
 							is_selected <- true;
@@ -580,7 +579,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 					}
 					match 2	{
 						if game_paused {	
-							ask Network_Round_Manager{ do lock_user_window(false);  }
+							ask Network_Control_Manager{ do lock_user_window(false);  }
 							write "Unlocking users request sent!";
 							game_paused <- false;
 							is_selected <- true;
@@ -593,7 +592,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 					}
 					match 6			{
 						is_selected <- true;
-						ask world { do replay_flood_event();}
+						ask world { do replay_flood_event(int(myself.command));}
 					}
 				}
 			}
@@ -847,7 +846,7 @@ species Network_Game_Manager skills: [network]{
 }
 //------------------------------ End of Network_Game_Manager -------------------------------//
 
-species Network_Round_Manager skills:[remoteGUI]{
+species Network_Control_Manager skills:[remoteGUI]{
 	list<string> mtitle 	 <- list_flooding_events.keys;
 	list<string> mfile 		 <- [];
 	string chosen_simu_temp  <- nil;
@@ -897,7 +896,7 @@ species Network_Round_Manager skills:[remoteGUI]{
 		}
 	}
 }
-//------------------------------ End of Network_Round_Manager -------------------------------//
+//------------------------------ End of Network_Control_Manager -------------------------------//
 
 species Activated_Lever {
 	Player_Action ply_action;
@@ -1501,6 +1500,7 @@ species District {
 			map<string,string> msg <- ["TOPIC"::INFORM_CURRENT_ROUND];
 			put myself.district_code  		at: DISTRICT_CODE 	in: msg;
 			put string(game_round) 		  	at: NUM_ROUND		in: msg;
+			put string(game_paused) 		at: "GAME_PAUSED"	in: msg;
 			do send to: myself.district_code+"_map_msg" contents: msg;
 		}
 	}
@@ -1551,14 +1551,15 @@ species Buttons{
 			if(nb_button in [0,3,5]){
 				draw shape color: #white border: is_selected ? #red : #white;
 			}else if(nb_button = 1) {
-				draw shape color: #white border: game_paused ? #white : #blue;
+				draw shape color: #white border: game_paused ? #blue : #white;
 			}else if (nb_button = 2){
-				draw shape color: #white border: game_paused ? #blue : #white;	
+				draw shape color: #white border: game_paused ? #white : #blue;	
 			}
 			draw display_text color: #black at: {location.x - (shape.width*0.33), location.y + (shape.height*0.66)};
 			draw my_icon size: button_size-50#m;
 		} else if(nb_button = 6){
 			if (int(command) < length(list_flooding_events)){
+				draw shape color: #white border: is_selected ? #red : #white;
 				draw display_text color: #black at: {location.x - (shape.width*0.33), location.y + (shape.height*0.66)};
 				draw my_icon size: button_size-50#m;
 			}
@@ -1595,8 +1596,8 @@ species Legend_Planning{
 
 species Legend_Population parent: Legend_Planning{
 	init{
-		texts <- ["Empty","Low density","Medium density","High density"];
-		colors<- [#white,listC[2],listC[5],listC[7]];
+		texts <- ["High density","Medium density","Low density","Empty"];
+		colors<- [listC[7],listC[5],listC[2],#white];
 	}
 }
 
@@ -1686,6 +1687,14 @@ experiment LittoSIM_GEN_Manager type: gui{
 			species Legend_Population;		
 		}
 		display "Game control"{
+			graphics "Control Panel"{
+				point loc 	<- { world.shape.width/2, world.shape.height/2};
+				float msize <- min([world.shape.width/2, world.shape.height/2]);
+				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
+				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #black;
+				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #blue font: font('Helvetica Neue', 20, #bold) at: loc + {-550,msize*0.66};
+			}
+			
 			species Buttons  aspect: buttons_master;
 			event mouse_down action: button_click_master_control;
 		}			
