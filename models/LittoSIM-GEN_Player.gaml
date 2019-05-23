@@ -44,7 +44,7 @@ global{
 	list<Player_Action> my_basket <-[];
 	
 	Land_Use explored_cell 		<- nil;
-	Button explored_buttons 	<- nil;
+	Button explored_button 		<- nil;
 	geometry population_area 	<- nil;
 	Network_Player network_player <-nil;
 	Coastal_Defense explored_dike			<- nil;
@@ -101,7 +101,7 @@ global{
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
 			if (self.dist_code = active_district_code){
 				lu_name <- lu_type_names [lu_code];
-				if lu_name = "U" and population = 0 { population <- MIN_POP_AREA; }
+				//if lu_name = "U" and population = 0 { population <- MIN_POP_AREA; } // TODO
 				my_color <- cell_color();
 			} else { do die; }
 		}
@@ -311,7 +311,7 @@ global{
 		if(length(clicked_tab_button) > 0){							// changing tab
 			active_display <- first(clicked_tab_button).display_name;
 			do clear_selected_button;
-			explored_buttons 		 <- nil;
+			explored_button 		 <- nil;
 			explored_cell 	 		 <- nil;
 			explored_dike 	 		 <- nil;
 			explored_land_use_action <- nil;
@@ -419,7 +419,7 @@ global{
 	
 	action mouse_move_lu {
 		point loc 		<- #user_location;
-		explored_buttons<- Button first_with (each overlaps loc and each.display_name != COAST_DEF_DISPLAY);
+		explored_button <- Button first_with (each overlaps loc and each.display_name = LU_DISPLAY);
 		Button current_active_button <- first(Button where (each.is_selected));
 		
 		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_LAND_USE {
@@ -434,7 +434,7 @@ global{
 
 	action mouse_move_coast_def {
 		point loc <- #user_location;
-		explored_buttons <- Button first_with (each overlaps loc and each.display_name= COAST_DEF_DISPLAY);
+		explored_button <- Button first_with (each overlaps loc and each.display_name = COAST_DEF_DISPLAY);
 		Button current_active_button <- first(Button where (each.is_selected));
 		
 		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_DIKE {
@@ -648,12 +648,17 @@ global{
 		}
 		return false;
 	}
-
+	
 	bool basket_event <- false update: false;
+	
 	action move_down_event_basket{
-		if(basket_event) { return; }
+		if(basket_event) {
+			return;
+		}
 		basket_event <- true;
-		ask Basket { do move_down_event; }
+		ask Basket {
+			do move_down_event;
+		}
 	}
 	
 	action move_down_event_dossier{
@@ -668,7 +673,7 @@ global{
 
 species Displayed_List_Element skills: [UI_location] schedules: [] {
 	int font_size 	<- DISPLAY_FONT_SIZE - 4;
-	//bool event 		<- false update: false;
+	bool event 		<- false update: false;
 	string label 	<- "";
 	Displayed_List my_parent;
 	bool is_displayed;
@@ -881,10 +886,14 @@ species Displayed_List skills: [UI_location] schedules: []{
 			up_item.is_displayed <- false;
 			down_item.is_displayed <-false;
 		}
-		else { do change_start_index (start_index);  }
+		else {
+			do change_start_index (start_index);
+		}
 	}
 	
-	aspect base{ do draw_list; }
+	aspect base{
+		do draw_list;
+	}
 	
 	action draw_list{
 		draw polygon([{0, 0}, {0, ui_height}, {ui_width, ui_height}, {ui_width, 0}, {0, 0}]) at: {location.x + ui_width / 2, location.y + ui_height / 2} color: #white;
@@ -942,7 +951,7 @@ species Basket parent: Displayed_List {
 						at: {location.x + ui_width - 70#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
 	}
 	
-	action draw_foot{
+	action draw_foot {
 		draw polygon([{0,0}, {0,0.1*ui_height}, {ui_width,header_height/2*ui_height}, {ui_width,0}, {0,0}]) 
 				at: {location.x + ui_width / 2, location.y + ui_height- header_height / 4 * ui_height} color: rgb(219,219,219);
 		
@@ -974,7 +983,7 @@ species Basket parent: Displayed_List {
 	
 	action on_mouse_down {
 		if(validation_button_location() distance_to #user_location < validation_button_size.x){
-			if game_round = 0{
+			if game_round = 0 {
 				map<string,unknown> res <- user_input(MSG_WARNING, world.get_message('MSG_SIM_NOT_STARTED')::true);
 				return;
 			}
@@ -985,7 +994,9 @@ species Basket parent: Displayed_List {
 			}
 			if(budget - round(sum(my_basket collect(each.cost))) < minimal_budget){
 				string budget_display <- world.get_message('PLR_INSUFFICIENT_BUDGET');
-				ask world { do user_msg (budget_display,INFORMATION_MESSAGE); }
+				ask world {
+					do user_msg (budget_display,INFORMATION_MESSAGE);
+				}
 				map<string,unknown> res <- user_input(MSG_WARNING, budget_display::true);
 				return;
 			}
@@ -1118,15 +1129,17 @@ species History_Element parent: Displayed_List_Element schedules:[]{
 
 species Basket_Element parent: Displayed_List_Element {
 	int font_size 			<- 12;
-	point button_size 		-> { {ui_height * 0.6, ui_height * 0.6} };
-	point button_location 	-> { {location.x + ui_width / 2 - (button_size.x), location.y} };
+	point button_size 		-> {ui_height * 0.6, ui_height * 0.6};
+	point button_location 	-> {location.x + ui_width / 2 - (button_size.x), location.y};
 	Player_Action current_action <- nil;
 	image_file close_button <- file("../images/ihm/I_close.png");
-	point bullet_size 			-> { {ui_height*0.6,ui_height*0.6} };
-	point round_apply_location  -> { {location.x + 1.3 * ui_width / 5, location.y} };
+	point bullet_size 			-> {ui_height*0.6,ui_height*0.6};
+	point round_apply_location  -> {location.x + 1.3 * ui_width / 5, location.y};
 	
 	action remove_action{
-		ask my_parent{ do remove_element(myself); }
+		ask my_parent{
+			do remove_element(myself);
+		}
 	}
 	
 	action on_mouse_down {
@@ -1134,11 +1147,17 @@ species Basket_Element parent: Displayed_List_Element {
 			remove current_action from: my_basket;
 			remove current_action from: ordered_action;
 			do remove_action;
-			ask current_action { do die; }
+			ask current_action {
+				do die;
+			}
 			do die;
 		} else {
-			if(highlighted_action = current_action) { highlighted_action <- nil; }
-			else { highlighted_action <- current_action;}
+			if(highlighted_action = current_action) {
+				highlighted_action <- nil;
+			}
+			else {
+				highlighted_action <- current_action;
+			}
 		}
 	}
 	
@@ -1723,7 +1742,7 @@ species District {
 	string district_name <- "";
 	string district_code <- "";
 	aspect base{
-		draw shape color: self = active_district ? rgb (202,170,145) : #lightgray border: #lightgray;
+		draw shape color: self = active_district ? rgb (202,170,145) : #whitesmoke border: #gray;
 	}
 }
 //------------------------------ End of District -------------------------------//
@@ -1779,15 +1798,15 @@ species Land_Use {
 	
 	rgb cell_color{
 		switch (lu_name){
-			match	  	"N" 				 { return rgb(11,103,59);		} // natural
-			match	  	"A" 				 { return rgb (245,147,49);		} // agricultural
+			match	  	"N" 				 { return #palegreen;		} // natural
+			match	  	"A" 				 { return rgb (225, 165, 0);		} // agricultural
 			match_one ["AU","AUs"]  		 { return #yellow;		 		} // to urbanize
 			match_one ["U","Us"] { 								 	    	  // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 { return #red;					}
-					match POP_LOW_DENSITY	 { return rgb(0, 171, 214);		}
-					match POP_MEDIUM_DENSITY { return rgb(0, 129, 161);		}
-					match POP_DENSE 		 { return rgb(0, 77, 97);		}
+					match POP_EMPTY 		 { return rgb(220,220,220);	}
+					match POP_LOW_DENSITY	 { return rgb(192,192,192);	}
+					match POP_MEDIUM_DENSITY { return rgb(105,105,105);	}
+					match POP_DENSE 		 { return #black;			}
 				}
 			}			
 		}
@@ -1914,7 +1933,7 @@ species Water { aspect base { draw shape color:#blue; } }
 species Protected_Area {
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_PROTECTED_AREA)).is_selected {
-			draw shape color: rgb (185, 255, 185,120) border:#black;
+			draw shape color: rgb (185, 255, 185, 120) border:#black;
 		}
 	}
 }
@@ -1922,7 +1941,7 @@ species Protected_Area {
 species Flood_Risk_Area{
 	aspect base {
 		if (Button_Map first_with(each.command = ACTION_DISPLAY_FLOODED_AREA)).is_selected {
-			draw shape color: rgb (20, 200, 255,120) border:#black;
+			draw shape color: rgb (160, 32, 240, 120) border:#black;
 		}
 	}
 }
@@ -1949,7 +1968,9 @@ experiment LittoSIM_GEN_Player type: gui{
 		display "Map" background: #black focus: active_district toolbar:false{
 			graphics "World" { draw shape color: rgb(0,188,196); }
 			species District aspect: base;
-			graphics "Population"{ draw population_area color: rgb(120,120,120) ; }
+			graphics "Population" {
+				draw population_area color: rgb(105,105,105) ;
+			}
 			species Land_Use 				aspect: map;
 			species Land_Use_Action 		aspect: map;
 			species Coastal_Defense_Action 	aspect: map;
@@ -1965,11 +1986,12 @@ experiment LittoSIM_GEN_Player type: gui{
 			
 						
 
-			graphics "Coast Def Info" transparency:0.3{
+			graphics "Coast Def Info" transparency: 0.3{
 				if (explored_dike != nil){
 					point target <- {explored_dike.location.x  ,explored_dike.location.y };
 					point target2 <- {explored_dike.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
-					draw rectangle(target,target2)   empty: false border: false color: #black ; //transparency:0.5;
+					draw rectangle(target,target2)   empty: false border: false color: #black ;
+					
 					draw "Information about "+ explored_dike.type at: target + { 5#px, 15#px } font: regular color: #white;
 					int xpx <-0;
 					draw "ID : "+ string(explored_dike.coast_def_id) at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
@@ -1999,18 +2021,17 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			graphics "Coast Def Button Info" transparency: 0.5 {
-				if (active_display = COAST_DEF_DISPLAY and explored_buttons != nil  and explored_cell= nil and explored_dike = nil and explored_land_use_action = nil){
+				if (active_display = COAST_DEF_DISPLAY and explored_button != nil  and explored_cell = nil and explored_dike = nil and explored_land_use_action = nil){
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-2 * INFORMATION_BOX_SIZE.y #px): 0.0;
-					point target 	<- world.button_box_location(explored_buttons.location, int(2 * (INFORMATION_BOX_SIZE.x#px)));
+					point target 	<- world.button_box_location(explored_button.location, int(2 * (INFORMATION_BOX_SIZE.x#px)));
 					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x#px), target.y + increment };
-					point target3 	<- {target.x , target.y + 2 * (INFORMATION_BOX_SIZE.y#px) + increment };
-					point target4 	<- {target3.x, target2.y - 15#px + increment };
+					point target3 	<- {target.x, target.y + INFORMATION_BOX_SIZE.y#px + increment };
 					
 					draw rectangle(target2,target3) empty: false border: false color: #black ;
-					draw explored_buttons.label 	at: target2 + { 5#px, 15#px }  font: regular color: #white;
-					draw explored_buttons.help_msg  at: target2 + { 30#px, 35#px } font: regular color: #white;
-					if explored_buttons.command != ACTION_INSPECT_DIKE {
-						draw world.get_message('MSG_COST_ACTION') + " : " + explored_buttons.action_cost + "/m" at: target2 + { 30#px, 55#px} font: regular color: # white;
+					draw explored_button.label 	at: target2 + { 5#px, 15#px }  font: regular color: #white;
+					draw explored_button.help_msg  at: target2 + { 30#px, 35#px } font: regular color: #white;
+					if explored_button.command != ACTION_INSPECT_DIKE {
+						draw world.get_message('MSG_COST_ACTION') + " : " + explored_button.action_cost + "/m" at: target2 + { 30#px, 55#px} font: regular color: # white;
 					}
 				}
 			}
@@ -2047,31 +2068,31 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			graphics "LU Button Info" transparency: 0.5 {
-				if (active_display = LU_DISPLAY and explored_buttons != nil and explored_cell = nil and explored_dike = nil and explored_land_use_action = nil){
+				if (active_display = LU_DISPLAY and explored_button != nil and explored_cell = nil and explored_dike = nil and explored_land_use_action = nil){
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-2 * INFORMATION_BOX_SIZE.y #px) : 0.0;
-					point target 	<- world.button_box_location(explored_buttons.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));
+					point target 	<- world.button_box_location(explored_button.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));
 					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x #px), target.y + increment};
-					point target3 	<- {target.x , target.y + 2 * (INFORMATION_BOX_SIZE.y #px) + increment};
+					point target3 	<- {target.x , target.y + 1.25 * (INFORMATION_BOX_SIZE.y #px) + increment};
 					
 					draw rectangle(target2,target3) empty: false border: false color: #black ;
-					draw explored_buttons.label    at: target2 + { 5#px, 15#px } font: regular color: # white;
-					draw explored_buttons.help_msg at: target2 + { 30#px, 35#px} font: regular color: # white;
+					draw explored_button.label    at: target2 + { 5#px, 15#px } font: regular color: # white;
+					draw explored_button.help_msg at: target2 + { 30#px, 35#px} font: regular color: # white;
 					
-					if explored_buttons.command != ACTION_INSPECT_LAND_USE{
+					if explored_button.command != ACTION_INSPECT_LAND_USE{
 						string msg <- world.get_message('MSG_COST_APPLIED_PARCEL');
 						
-						switch explored_buttons.command {	
+						switch explored_button.command {	
 							match ACTION_MODIFY_LAND_COVER_N {
 								draw msg + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + { 30#px, 55#px} font: regular color: # white; 
 								draw msg + " AU : " + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N') at: target2 + { 30#px, 75#px} font: regular color: # white; 
 								draw msg + " U : "  + world.get_message('MSG_COST_EXPROPRIATION') at: target2 + { 30#px, 95#px} font: regular color: # white;
 							}
 							match ACTION_MODIFY_LAND_COVER_AUs{
-								draw msg + " AU : " + explored_buttons.action_cost  at: target2 + { 30#px, 55#px} font: regular color: # white;
+								draw msg + " AU : " + explored_button.action_cost  at: target2 + { 30#px, 55#px} font: regular color: # white;
 								draw msg + " U : "  + (subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us')) at: target2 + { 30#px, 75#px} font: regular color: # white; 
 							}
 							default {
-								draw world.get_message('MSG_COST_ACTION') + " : " + explored_buttons.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;
+								draw world.get_message('MSG_COST_ACTION') + " : " + explored_button.action_cost at: target2 + { 30#px, 55#px} font: regular color: # white;
 							}
 						}
 					}

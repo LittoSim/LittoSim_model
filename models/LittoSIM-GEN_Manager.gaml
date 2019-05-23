@@ -87,14 +87,14 @@ global {
 		create Flood_Risk_Area from: rpp_area_shape;
 		all_flood_risk_area <- union(Flood_Risk_Area);
 		
-		create Coastal_Border_Area from: coastline_shape { shape <-  shape + coastBorderBuffer #m; }
+		create Coastal_Border_Area from: coastline_shape { shape <-  shape + coastBorderBuffer#m; }
 		create Inland_Dike_Area from: buffer_in_100m_shape;
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")),
 													dist_code::string(read("dist_code")), population::int(get("unit_pop"))]{
 			lu_name 	<- lu_type_names[lu_code];
 			my_color 	<- cell_color();
-			if lu_name = "U"  and population = 0 { population <- MIN_POP_AREA;	}
+			//if lu_name = "U"  and population = 0 { population <- MIN_POP_AREA;	} // TODO
 			if lu_name = "AU" {	AU_to_U_counter <- flip(0.5)?1:0;	not_updated <- true;	}
 		}
 		
@@ -346,8 +346,9 @@ global {
 			}
 		}
 		ask Cell {
-			if soil_height > 0 		{ cell_type <-1; 	   }  //  1 -> land
-			//else if soil_height = 0 { soil_height <- -5.0; }
+			if soil_height > 0 {
+				cell_type <-1; //  1 -> land
+			}  
 		}
 		
 		land_min_height <- min(Cell where (each.cell_type = 1 and each.soil_height != no_data_value) collect each.soil_height);
@@ -1130,9 +1131,9 @@ species Coastal_Defense {
 	action init_coastal_def {
 		if status = ""  { status <- STATUS_GOOD; 			 } 
 		if type = '' 	{ type 	<- "Unknown";				 }
-		if height = 0.0 { height <- 1.5;					 } // if no height, 1.5 m by default
+		//if height = 0.0 { height <- 1.5;					 } // if no height, 1.5 m by default //TODO ??
 		counter_status 	<- type = COAST_DEF_TYPE_DUNE ? rnd (STEPS_DEGRAD_STATUS_DUNE - 1) : rnd (STEPS_DEGRAD_STATUS_DIKE - 1);
-		cells 			<- Cell overlapping self;
+		cells 			<- Cell overlapping self; // TODO update cells height ???
 		if type = COAST_DEF_TYPE_DUNE  { height_before_ganivelle <- height; }
 	}
 	
@@ -1298,6 +1299,7 @@ grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {
 	float rugosity					<- 0.0;
 	float soil_height_before_broken <- soil_height;
 	rgb soil_color <- rgb(255,255,255);
+	int hillshade <- 0;
 	
 	action init_cell_color {		
 		if cell_type = 0 { // sea
@@ -1437,10 +1439,10 @@ species Land_Use {
 			match_one ["AU","AUs"]  		 {res <- #yellow;		 		} // to urbanize
 			match_one ["U","Us"] { 								 	    	  // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 {res <- #red; 					}
-					match POP_LOW_DENSITY	 {res <- rgb(150, 150, 150); 	}
-					match POP_MEDIUM_DENSITY {res <- rgb(120, 120, 120); 	}
-					match POP_DENSE 		 {res <- rgb(80, 80, 80);	  	}
+					match POP_EMPTY 		 { return rgb(220,220,220);	}
+					match POP_LOW_DENSITY	 { return rgb(192,192,192);	}
+					match POP_MEDIUM_DENSITY { return rgb(105,105,105);	}
+					match POP_DENSE 		 { return #black;			}
 				}
 			}			
 		}
