@@ -8,7 +8,7 @@ saveint         3600.0
 manningfile     C:/littosim/workspace/LittoDev/includes/config/caen/rugosity.asc
 bcifile         C:/littosim/workspace/LittoDev/includes/lisflood/caen2019.bci
 bdyfile         C:/littosim/workspace/LittoDev/includes/lisflood/caen2019.bdy
-#startfile       C:/littosim/workspace/LittoDev/includes/lisflood/oleron.start
+startfile       C:/littosim/workspace/LittoDev/includes/lisflood/caen2019.start
 startelev
 elevoff
 SGC_enable
