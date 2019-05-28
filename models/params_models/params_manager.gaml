@@ -36,7 +36,7 @@ global{
 	// Coastal defenses (dikes and dunes) evolution parameters
 	float H_MAX_GANIVELLE 				<- float(shapes_def["H_MAX_GANIVELLE"]); 				// A dune cannot exceed this height
 	float H_DELTA_GANIVELLE 			<- float(shapes_def["H_DELTA_GANIVELLE"]); 				// The height by which a ganivelle can raise a dune
-	int STEPS_DEGRAD_STATUS_DIKE	 	<- int  (shapes_def["STEPS_DEGRAD_STATUS_OUVRAGE"]);	// Number of years for a dike to change status
+	int STEPS_DEGRAD_STATUS_DIKE	 	<- int  (shapes_def["STEPS_DEGRAD_STATUS_DIKE"]);	    // Number of years for a dike to change status
 	int STEPS_DEGRAD_STATUS_DUNE 		<- int  (shapes_def["STEPS_DEGRAD_STATUS_DUNE"]); 		// Number of years for a dune to change status
 	int STEPS_REGAIN_STATUS_GANIVELLE   <- int  (shapes_def["STEPS_REGAIN_STATUS_GANIVELLE"]); 	// With a ganivelle, a dune regenerates 2 times fatser than it degrades
 	int STEPS_FOR_AU_TO_U 				<- 2;													// 2 years to change from AU to U)

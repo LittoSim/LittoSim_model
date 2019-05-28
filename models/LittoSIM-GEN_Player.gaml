@@ -46,8 +46,7 @@ global{
 	Land_Use explored_cell 		<- nil;
 	Button explored_button 		<- nil;
 	geometry population_area 	<- nil;
-	Network_Player network_player <-nil;
-	Coastal_Defense explored_dike			<- nil;
+	Coastal_Defense explored_coast_def			<- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	
 	list<Player_Action> ordered_action 	<- nil;
@@ -79,20 +78,19 @@ global{
 		create Message_Console 		{ game_console <- self; }
 
 		do create_tabs;
-		create Network_Player { network_player <- self; }
-		create Network_Player_Map;
-		create Network_Data_Retriever;
+		create Network_Player;
 		create Network_Listener_To_Leader;
 		
 		do create_buttons;	
 										
 		create Coastal_Defense from: coastal_defenses_shape with: [coast_def_id::int(read("ID")),type::string(read("type")),
-				status::string(read("status")), alt::float(read("alt")), height::float(get("height")), district_code::string(read("dist_code"))]{
-				if district_code = active_district_code {
-					do init_coastal_def;
-				} else { do die; }
+			status::string(read("status")), alt::float(read("alt")), height::float(get("height")), district_code::string(read("dist_code"))]{
+			if district_code = active_district_code {
+				do init_coastal_def;
+			} else {
+				do die;
+			}
 		}
-		
 		create Protected_Area from: protected_areas_shape;
 		create Road from: roads_shape;
 		create Water from: water_shape;
@@ -101,7 +99,7 @@ global{
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
 			if (self.dist_code = active_district_code){
 				lu_name <- lu_type_names [lu_code];
-				//if lu_name = "U" and population = 0 { population <- MIN_POP_AREA; } // TODO
+				if lu_name = "U" and population = 0 { population <- MIN_POP_AREA; }
 				my_color <- cell_color();
 			} else { do die; }
 		}
@@ -118,9 +116,13 @@ global{
 	}
 	
 	action refresh_all{
-		ask Land_Use + Coastal_Defense + Player_Action { do die; }
-		string msg <- "" + REFRESH_ALL + COMMAND_SEPARATOR + world.get_action_id() + COMMAND_SEPARATOR + active_district_code;
-		ask network_player { do send to: GAME_MANAGER contents: ["stringContents"::msg]; }
+		ask Land_Use + Coastal_Defense + Player_Action {
+			do die;
+		}
+		map<string, string> mp <- ["REQUEST"::string(REFRESH_ALL)];
+		ask Network_Player {
+			do send to: GAME_MANAGER contents: mp;
+		}
 	}
 	
 	point button_box_location (point my_button, int box_width){
@@ -313,7 +315,7 @@ global{
 			do clear_selected_button;
 			explored_button 		 <- nil;
 			explored_cell 	 		 <- nil;
-			explored_dike 	 		 <- nil;
+			explored_coast_def 	 		 <- nil;
 			explored_land_use_action <- nil;
 			current_action 	 		 <- nil;
 		}
@@ -384,13 +386,17 @@ global{
 					}			
 				}
 			}
-			else { do change_dike; }
+			else {
+				do change_dike;
+			}
 		}
 	}
 	
 	action clear_selected_button {
 		previous_clicked_point <- nil;
-		ask Button { self.is_selected <- false; }
+		ask Button {
+			self.is_selected <- false;
+		}
 	}
 	
 	bool show_hide_maps_click {
@@ -419,9 +425,9 @@ global{
 	
 	action mouse_move_lu {
 		point loc 		<- #user_location;
-		explored_button <- Button first_with (each overlaps loc and each.display_name = LU_DISPLAY);
-		Button current_active_button <- first(Button where (each.is_selected));
+		explored_button <- Button first_with (each overlaps loc and each.display_name = LU_DISPLAY); // for inspect
 		
+		Button current_active_button <- first(Button where (each.is_selected));
 		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_LAND_USE {
 			explored_land_use_action <- first(Land_Use_Action overlapping loc);
 			explored_cell <- first(Land_Use overlapping loc);
@@ -434,13 +440,15 @@ global{
 
 	action mouse_move_coast_def {
 		point loc <- #user_location;
-		explored_button <- Button first_with (each overlaps loc and each.display_name = COAST_DEF_DISPLAY);
-		Button current_active_button <- first(Button where (each.is_selected));
+		explored_button <- Button first_with (each overlaps loc and each.display_name = COAST_DEF_DISPLAY); // for inspect
 		
+		Button current_active_button <- first(Button where (each.is_selected));
 		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_DIKE {
-			explored_dike <- first(Coastal_Defense where ((10#m around each.shape) overlaps loc));
+			explored_coast_def <- first(Coastal_Defense overlapping (loc buffer(10#m))); 
 		}
-		else{ explored_dike <- nil; }
+		else{
+			explored_coast_def <- nil;
+		}
 	}
 	
 	action change_dike {
@@ -476,9 +484,10 @@ global{
 				self.label 	<- but.label;
 				element_id 	<- dk.coast_def_id;
 				self.command<- but.command;
+				self.coast_def_type <- dk.type;
 				self.initial_application_round <- game_round  + world.delay_of_action(self.command);
 				element_shape 	<- dk.shape;
-				shape 			<- element_shape + shape_width;
+				shape 			<- element_shape + 20#m;
 				cost 			<- but.action_cost * shape.perimeter;
 			}
 			previous_clicked_point <- nil;
@@ -488,28 +497,35 @@ global{
 					current_action.inProtectedArea <- true;
 					map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
 					if (!(vmap at vmap.keys[0])) {
-						ask current_action { do die; }
+						ask current_action {
+							do die;
+						}
 						return;
 					}
 				}
 			}
 			my_basket <- my_basket + current_action; 
 			ordered_action <- ordered_action + current_action;
-			ask(game_basket) { do add_action_to_basket(current_action); }	
+			ask(game_basket) {
+				do add_action_to_basket(current_action);
+			}	
 		}
 	}
 	
 	action create_new_dike (point loc, Button but){
-		if(previous_clicked_point = nil){ previous_clicked_point <- loc; }
+		if(previous_clicked_point = nil){
+			previous_clicked_point <- loc;
+		}
 		else{
 			create Coastal_Defense_Action returns: action_list{
 				id 			<- world.get_action_id();
 				self.label 	<- but.label;
 				element_id 	<- -1;
 				self.command<- ACTION_CREATE_DIKE;
+				self.coast_def_type <- COAST_DEF_TYPE_DIKE;
 				self.initial_application_round <- game_round  + (world.delay_of_action(self.command));
 				element_shape<- polyline([previous_clicked_point, loc]);
-				shape 		 <- element_shape + shape_width;
+				shape 		 <- element_shape;
 				cost 		 <- but.action_cost * shape.perimeter; 
 			}
 			previous_clicked_point <- nil;
@@ -518,14 +534,18 @@ global{
 				current_action.inProtectedArea <- true;
 				map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
 				if (!(vmap at vmap.keys[0])) {
-					ask current_action { do die; }
+					ask current_action {
+						do die;
+					}
 					do clear_selected_button;
 					return;
 				}
 			}
 			my_basket <- my_basket + current_action; 
 			ordered_action <- ordered_action + current_action;
-			ask(game_basket) { do add_action_to_basket(current_action); }	
+			ask(game_basket) {
+				do add_action_to_basket(current_action);
+			}	
 			do clear_selected_button;
 		}
 	}
@@ -595,23 +615,23 @@ global{
 					command 		<- selected_button.command;
 					element_shape 	<- myself.shape;
 					shape 			<- element_shape;
-					previous_ua_name<- myself.lu_name;
+					previous_lu_name<- myself.lu_name;
 					label 			<- selected_button.label;
 					cost 			<- selected_button.action_cost;
 					initial_application_round <- game_round  + world.delay_of_action(command);
 					
 					// Overwrites
 					if command = ACTION_MODIFY_LAND_COVER_N {
-						if previous_ua_name in ["U","Us"] { 
+						if previous_lu_name in ["U","Us"] { 
 							initial_application_round <- game_round + world.delay_of_action(ACTION_EXPROPRIATION);
 							cost <- float(myself.expro_cost);
 							is_expropriation <- true;
-						} else if previous_ua_name = "A" {
+						} else if previous_lu_name = "A" {
 							cost <- world.cost_of_action ('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N');
 						}
 					} 
 					else if command = ACTION_MODIFY_LAND_COVER_AUs {
-						if previous_ua_name = "U" {
+						if previous_lu_name = "U" {
 							command <- ACTION_MODIFY_LAND_COVER_Us;
 							label 	<- "Change to urban adapted area " + (subsidized_adapted_habitat ? "(Subsidized)":"");
 							cost 	<- subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
@@ -662,18 +682,22 @@ global{
 	}
 	
 	action move_down_event_dossier{
-		ask History { do move_down_event; }
+		ask History {
+			do move_down_event;
+		}
 	}
 	
 	action move_down_event_console{
-		ask Message_Console { do move_down_event; }
+		ask Message_Console {
+			do move_down_event;
+		}
 	}
 }
 //------------------------------ End of global -------------------------------//
 
 species Displayed_List_Element skills: [UI_location] schedules: [] {
 	int font_size 	<- DISPLAY_FONT_SIZE - 4;
-	bool event 		<- false update: false;
+	//bool event 		<- false update: false; // TODO illegal argument exception
 	string label 	<- "";
 	Displayed_List my_parent;
 	bool is_displayed;
@@ -722,8 +746,16 @@ species List_of_Elements parent: Displayed_List_Element {
 		point loc <- #user_location;
 		if ! (self overlaps loc){ return false; }
 		switch (direction){
-			match 2 { ask my_parent { do go_up;   } }
-			match 1 { ask my_parent { do go_down; } }		
+			match 2 {
+				ask my_parent {
+					do go_up;
+				}
+			}
+			match 1 {
+				ask my_parent {
+					do go_down;
+				}
+			}		
 		}
 		return true;
 	}
@@ -864,7 +896,9 @@ species Displayed_List skills: [UI_location] schedules: []{
 	}
 		
 	action remove_all_elements {
-		ask(elements){ do die; }
+		ask(elements){
+			do die;
+		}
 		elements <- [];
 		up_item.is_displayed 	<- false;
 		down_item.is_displayed 	<- false;
@@ -1003,7 +1037,7 @@ species Basket parent: Displayed_List {
 			map<string,bool> vmap <- map<string,bool>(user_input(MSG_WARNING, world.get_message('PLR_VALIDATE_BASKET') +
 									"\n" + world.get_message('PLR_CHECK_BOX_VALIDATE')::false));
 			if(vmap at vmap.keys[0]){
-				ask network_player{
+				ask Network_Player{
 					do send_basket;
 				}
 			}
@@ -1032,6 +1066,9 @@ species History parent: Displayed_List schedules:[]{
 	action add_action_to_history(Player_Action act){
 	  	create History_Element returns: elem {
 			label 			<- act.label;
+			if act.action_type = PLAYER_ACTION_TYPE_COAST_DEF and (act.is_applied or act.command != ACTION_CREATE_DIKE) {
+				label <- label + " (" + act.element_id +")";	
+			}
 			icon 			<- world.get_action_icon(act.command);
 			current_action 	<- act;
 		}
@@ -1091,16 +1128,20 @@ species History_Element parent: Displayed_List_Element schedules:[]{
 	int rounds_before_application -> { current_action.nb_rounds_before_activation_and_waiting_for_lever_to_activate() };
 	float final_price 		-> { current_action.actual_cost };
 	float initialx_price 	-> { current_action.cost };
-	point bullet_size 		-> { {ui_height*0.6, ui_height*0.6} };
+	point bullet_size 		-> { ui_height*0.6, ui_height*0.6 };
 	
-	point delay_location 		-> { {location.x + 2 * ui_width / 5, location.y} };
-	point round_apply_location 	-> { {location.x + 1.3 * ui_width / 5, location.y} };
-	point price_location 		-> { {location.x + ui_width / 2 - 40#px, location.y} };
+	point delay_location 		-> {location.x + 2 * ui_width / 5, location.y};
+	point round_apply_location 	-> {location.x + 1.3 * ui_width / 5, location.y};
+	point price_location 		-> {location.x + ui_width / 2 - 40#px, location.y};
 	Player_Action current_action;
 	
 	action on_mouse_down{
-		if(highlighted_action = current_action ){ highlighted_action <- nil; }
-		else	{ highlighted_action <- current_action; }
+		if(highlighted_action = current_action ){
+			highlighted_action <- nil;
+		}
+		else {
+			highlighted_action <- current_action;
+		}
 	}
 	
 	action draw_element{
@@ -1114,14 +1155,16 @@ species History_Element parent: Displayed_List_Element schedules:[]{
 			draw circle(bullet_size.x / 2) at: round_apply_location color: rgb(87,87,87);
 			draw "" + rounds_before_application at: {round_apply_location.x -(font_size/6)#px , round_apply_location.y + (font_size/3)#px } color: #white font: font1;
 		}
-		else { draw file("../images/ihm/I_valider.png") at: round_apply_location size: bullet_size color: rgb(87,87,87); }
+		else {
+			draw file("../images/ihm/I_valider.png") at: round_apply_location size: bullet_size color: rgb(87,87,87);
+		}
 
 		rgb mc <- (final_price = initialx_price) ? rgb(87,87,87): rgb(235,33,46);
-		draw "" + int(final_price) at: {price_location.x , price_location.y + (font_size / 3)#px } color: mc font: font1;
+		draw "" + int(final_price) at: { price_location.x , price_location.y + (font_size / 3)#px } color: mc font: font1;
 		
 		if(highlighted_action = current_action){
 			geometry rec <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
-			draw rec at: {location.x,location.y}  empty: true border: #red;
+			draw rec at: { location.x, location.y } empty: true border: #red;
 		}
 	}
 } 
@@ -1133,7 +1176,7 @@ species Basket_Element parent: Displayed_List_Element {
 	point button_location 	-> {location.x + ui_width / 2 - (button_size.x), location.y};
 	Player_Action current_action <- nil;
 	image_file close_button <- file("../images/ihm/I_close.png");
-	point bullet_size 			-> {ui_height*0.6,ui_height*0.6};
+	point bullet_size 			-> {ui_height*0.6, ui_height*0.6};
 	point round_apply_location  -> {location.x + 1.3 * ui_width / 5, location.y};
 	
 	action remove_action{
@@ -1143,16 +1186,21 @@ species Basket_Element parent: Displayed_List_Element {
 	}
 	
 	action on_mouse_down {
-		if(button_location distance_to #user_location <= button_size.x) { // Player wants to delete an action from the basket
+		if button_location distance_to #user_location <= button_size.x { // Player wants to delete an action from the basket
 			remove current_action from: my_basket;
 			remove current_action from: ordered_action;
 			do remove_action;
 			ask current_action {
 				do die;
 			}
+			ask my_parent {
+				if length(elements) > max_size {
+					do go_up;	
+				}
+			}
 			do die;
 		} else {
-			if(highlighted_action = current_action) {
+			if highlighted_action = current_action {
 				highlighted_action <- nil;
 			}
 			else {
@@ -1201,15 +1249,21 @@ species Network_Listener_To_Leader skills: [network] {
 					match GIVE_MONEY_TO {
 						int amount 	<- int(m_contents[AMOUNT]);
 						budget 		<- budget + amount;
-						ask world { do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE); }
+						ask world {
+							do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE);
+						}
 					}
 					match TAKE_MONEY_FROM {
 						int amount 	<- int(m_contents[AMOUNT]);
 						budget 		<- budget - amount;
-						ask world { do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE); }
+						ask world {
+							do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE);
+						}
 					}
 					match SEND_MESSAGE_TO {
-						ask world { do user_msg(string(m_contents[MSG_TO_PLAYER]), INFORMATION_MESSAGE); }
+						ask world {
+							do user_msg(string(m_contents[MSG_TO_PLAYER]), INFORMATION_MESSAGE);
+						}
 					}
 					match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
 						bool shouldWait <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
@@ -1251,197 +1305,179 @@ species Network_Listener_To_Leader skills: [network] {
 }
 //------------------------------ End of Network_Listener_To_Leader -------------------------------//
 
-species Network_Data_Retriever skills:[network]{
+species Network_Player skills:[network]{
 	init{
-		do connect to: SERVER with_name: active_district_code + "_retrieve";
-	}
-	
-	reflex get_data {
-		loop while:has_more_message(){
-			message m <- fetch_message();
-			map<string, unknown> mc <- m.contents;
-			
-			switch(mc["OBJECT_TYPE"]){
-				
-				match OBJECT_TYPE_WINDOW_LOCKER {
-					write "Lock unlock request : " + mc["LOCK_REQUEST"];
-					is_active_gui <- mc["LOCK_REQUEST"] = "UNLOCK";
-				}
-				
-				match OBJECT_TYPE_PLAYER_ACTION {
-					if(mc["action_type"] = PLAYER_ACTION_TYPE_COAST_DEF){
-						Coastal_Defense_Action tmp <- Coastal_Defense_Action first_with(each.id = mc["id"]);
-						if(tmp = nil){
-							create Coastal_Defense_Action {
-								do init_from_map(mc);
-								ask (game_history){
-									do add_action_to_history(myself);
-								}
-							}
-							 
-						} else {
-							ask tmp { do init_from_map(mc); }
-						}	
-					}
-					else if mc["action_type"] = PLAYER_ACTION_TYPE_LU {
-						Land_Use_Action tmp <- Land_Use_Action first_with (each.id = mc["id"]);
-						if(tmp = nil){
-							create Land_Use_Action {
-								do init_from_map(mc);
-								ask(game_history) {
-									do add_action_to_history(myself);
-								} 
-							}	
-							
-						} else {
-							ask tmp { do init_from_map(mc); }
-						}	
-					}
-				}
-				
-				match OBJECT_TYPE_COASTAL_DEFENSE{
-					Coastal_Defense tmp <- Coastal_Defense first_with( each.coast_def_id = int(mc["coast_def_id"]) );
-					if(tmp = nil){
-						create Coastal_Defense { do init_from_map(mc); }
-					}else { ask tmp { do init_from_map(mc); } }	
-				}
-				
-				match OBJECT_TYPE_LAND_USE {
-					Land_Use tmp <- Land_Use first_with(each.id = int(mc["id"]));
-					if(tmp = nil){
-						create Land_Use { do init_from_map(mc); }
-					} else { ask tmp { do init_from_map(mc); } }	
-				}
-				
-				match OBJECT_TYPE_ACTIVATED_LEVER{
-					create Activated_Lever {
-						do init_from_map(mc);
-						ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"] );
-						add self to: ply_act.activated_levers;
-					}				
-				}
-			}
-		}
-	}
-}
-//------------------------------ End of Network_Data_Retriever -------------------------------//
-
-species Network_Player_Map skills:[network]{
-	init{
-		do connect to: SERVER with_name: active_district_code + "_map_msg";
+		do connect to: SERVER with_name: active_district_code;
+		map<string,string> mp <- ["REQUEST"::string(CONNECTION_MESSAGE)];
+		do send to: GAME_MANAGER contents: mp;
 	}
 	
 	reflex wait_message{
 		loop while:has_more_message(){
 			message msg <- fetch_message();
 			map<string, string> m_contents <- msg.contents;
-			if m_contents[DISTRICT_CODE] = active_district_code{
-				switch m_contents["TOPIC"]{
-					match PLAYER_ACTION_IS_APPLIED {
-						string act_id <- m_contents["id"];
-						ask (Coastal_Defense_Action + Land_Use_Action) first_with (each.id = act_id){
-							is_applied 						<- true;
-							should_wait_lever_to_activate  	<- false;
-						}
+			switch m_contents["TOPIC"]{
+				match PLAYER_ACTION_IS_APPLIED {
+					string act_id <- m_contents["id"];
+					ask (Coastal_Defense_Action + Land_Use_Action) first_with (each.id = act_id){
+						is_applied 						<- true;
+						should_wait_lever_to_activate  	<- false;
 					}
-					match INFORM_NEW_ROUND {
-						game_round	<- game_round + 1;
-						ask Land_Use_Action + Coastal_Defense_Action where (!(each.is_sent)) {
-							initial_application_round <- initial_application_round + 1;
-						}
-						
-						switch game_round {
-							match 1 { ask world { do user_msg (world.get_message('MSG_SIM_STARTED_ROUND1'), INFORMATION_MESSAGE); } }
-							default {
-								ask world {
-									do user_msg(world.get_message('MSG_THE_ROUND') + " " + game_round + " " + world.get_message('MSG_HAS_STARTED'), INFORMATION_MESSAGE);
-								}
-								int current_pop <- world.current_population();
-								ask world {
-									do user_msg("" + ((previous_population = current_pop) ? "" : (world.get_message('MSG_DISTRICT_RECEIVE') +" " + 
-												(current_pop - previous_population) + " " + world.get_message('MSG_NEW_COMERS') +". ")) +
-												world.get_message('MSG_DISTRICT_POPULATION') + " " + current_pop + " " +
-												world.get_message('MSG_INHABITANTS') + ".", POPULATION_MESSAGE);
-								}	
-								previous_population <- current_pop;
-								received_tax <- int(world.current_population * tax_unit);
-								budget <- budget + received_tax;
-								ask world {
-									do user_msg (world.get_message('MSG_TAXES_RECEIVED_FROM') +" "+ world.thousands_separator(received_tax) +' By', BUDGET_MESSAGE);
-								}
-							}
-						}
+				}
+				match INFORM_NEW_ROUND {
+					game_round	<- game_round + 1;
+					ask Land_Use_Action + Coastal_Defense_Action where (!(each.is_sent)) {
+						initial_application_round <- initial_application_round + 1;
 					}
-					match INFORM_CURRENT_ROUND {
-						game_round <- int(m_contents[NUM_ROUND]);
-						is_active_gui <- ! bool(m_contents["GAME_PAUSED"]);
-						if game_round != 0 {
+					switch game_round {
+						match 1 {
+							ask world { do user_msg (world.get_message('MSG_SIM_STARTED_ROUND1'), INFORMATION_MESSAGE); }
+						}
+						default {
+							ask world { do user_msg(world.get_message('MSG_THE_ROUND') + " " + game_round + " " + world.get_message('MSG_HAS_STARTED'), INFORMATION_MESSAGE); }
+							int current_pop <- world.current_population();
 							ask world {
-								do refresh_all;
-								do user_msg(world.get_message('MSG_ITS_ROUND') + " " + game_round, INFORMATION_MESSAGE);
+								do user_msg("" + ((previous_population = current_pop) ? "" : (world.get_message('MSG_DISTRICT_RECEIVE') +" " + 
+											(current_pop - previous_population) + " " + world.get_message('MSG_NEW_COMERS') +". ")) +
+											world.get_message('MSG_DISTRICT_POPULATION') + " " + current_pop + " " +
+											world.get_message('MSG_INHABITANTS') + ".", POPULATION_MESSAGE);
+							}	
+							previous_population <- current_pop;
+							received_tax <- int(world.current_population * tax_unit);
+							budget <- budget + received_tax;
+							ask world {
+								do user_msg (world.get_message('MSG_TAXES_RECEIVED_FROM') +" "+ world.thousands_separator(received_tax) +' By', BUDGET_MESSAGE);
 							}
 						}
 					}
-					match DISTRICT_BUDGET_UPDATE {
-						budget <- int(m_contents[BUDGET]);
+				}
+				match INFORM_CURRENT_ROUND {
+					game_round <- int(m_contents[NUM_ROUND]);
+					is_active_gui <- ! bool(m_contents["GAME_PAUSED"]);
+					if game_round != 0 {
+						ask world {
+							do refresh_all;
+							do user_msg(world.get_message('MSG_ITS_ROUND') + " " + game_round, INFORMATION_MESSAGE);
+						}
 					}
 				}
-			}
-		}
-	}
-}
-//------------------------------ End of Network_Player_Map -------------------------------//
-
-species Network_Player skills:[network]{
-	init {
-		do connect to: SERVER with_name: active_district_code;
-			
-		string mm <- "" + CONNECTION_MESSAGE + COMMAND_SEPARATOR + active_district_code;
-		map<string,string> data <- ["stringContents" :: mm];
-		do send to: GAME_MANAGER contents: data;
-	}
-	
-	reflex receive_message {
-		loop while: has_more_message(){
-			message msg <- fetch_message();
-			string my_msg <- msg.contents;
-			list<string> data <- my_msg split_with COMMAND_SEPARATOR;
-			int command <- int(data[0]);
-			int msg_id 	<- int(data[1]);
-			int d2 <- int(data[2]);
-			switch(int(data[0])){
-				match UPDATE_BUDGET						{	budget <- d2;			  	}
-				match ACTION_DIKE_LIST					{	do check_dike(data); 			  	}
-				match ACTION_ACTION_LIST 				{ 	do check_player_action_list(data ); }					
-				match ACTION_APPLICATION_ACKNOWLEDGEMENT{
-					((Coastal_Defense_Action + Land_Use_Action) first_with (each.id = d2)).is_applied <- true;
+				match DISTRICT_BUDGET_UPDATE {
+					budget <- int(m_contents[BUDGET]);
+				}	
+				match ACTION_DIKE_CREATED{
+					do dike_create_action(m_contents);
 				}
-				match ACTION_DIKE_CREATED{	do dike_create_action(data); }
 				match ACTION_DIKE_UPDATE {
-					if(length(Coastal_Defense where(each.coast_def_id = d2)) =0){
-						do dike_create_action(data);
+					if length(Coastal_Defense where(each.coast_def_id = int(m_contents["coast_def_id"]))) = 0{
+						do dike_create_action(m_contents);
 					}
-					ask Coastal_Defense where(each.coast_def_id = d2){
-						ganivelle 	<- bool(data[10]);
-						alt			<- float(data[11]);
-						status 		<- data[9];
-						type 		<- data[8];
-						height 		<- float(data[7]);
+					ask Coastal_Defense where(each.coast_def_id = int(m_contents["coast_def_id"])){
+						ganivelle 	<- bool(m_contents["ganivelle"]);
+						alt			<- float(m_contents["alt"]);
+						status 		<- m_contents["status"];
+						type 		<- m_contents["type"];
+						height 		<- float(m_contents["height"]);
 					}
 				}
 				match ACTION_DIKE_DROPPED {
-					ask Coastal_Defense where (each.coast_def_id = d2) { do die; }
+					ask Coastal_Defense where (each.coast_def_id = int(m_contents["coast_def_id"])) {
+						do die;
+					}
 				}
 				match ACTION_LAND_COVER_UPDATE {	
-					ask Land_Use where(each.id = d2){
-						lu_code 	<- int(data[3]);
+					ask Land_Use where(each.id = int(m_contents["id"])){
+						lu_code 	<- int(m_contents["lu_code"]);
 						lu_name 	<- lu_type_names[lu_code];
-						population 	<-int(data[4]);
-						is_in_densification <-bool(data[5]);
+						population 	<-int(m_contents["population"]);
+						is_in_densification <- bool(m_contents["isInDensification"]);
+					}
+				}
+				match DATA_RETRIEVE {
+					switch(m_contents["OBJECT_TYPE"]){
+						match OBJECT_TYPE_WINDOW_LOCKER {
+							write "Lock unlock request : " + m_contents["LOCK_REQUEST"];
+							is_active_gui <- m_contents["LOCK_REQUEST"] = "UNLOCK";
+						}
+						match OBJECT_TYPE_PLAYER_ACTION {
+							if(m_contents["action_type"] = PLAYER_ACTION_TYPE_COAST_DEF){
+								Coastal_Defense_Action tmp <- Coastal_Defense_Action first_with(each.id = m_contents["id"]);
+								if(tmp = nil){
+									create Coastal_Defense_Action {
+										do init_from_map(m_contents);
+										ask (game_history){ do add_action_to_history(myself); }
+									}
+								} else {
+									ask tmp { do init_from_map(m_contents); }
+								}
+							}
+							else if m_contents["action_type"] = PLAYER_ACTION_TYPE_LU {
+								Land_Use_Action tmp <- Land_Use_Action first_with (each.id = m_contents["id"]);
+								if(tmp = nil){
+									create Land_Use_Action {
+										do init_from_map(m_contents);
+										ask(game_history) { do add_action_to_history(myself); } 
+									}
+								} else {
+									ask tmp { do init_from_map(m_contents); }
+								}	
+							}
+						}
+						match OBJECT_TYPE_COASTAL_DEFENSE {
+							Coastal_Defense tmp <- Coastal_Defense first_with(each.coast_def_id = int(m_contents["coast_def_id"]) );
+							if(tmp = nil){
+								create Coastal_Defense { do init_from_map(m_contents); }
+							}else {
+								ask tmp { do init_from_map(m_contents); }
+							}	
+						}
+						match OBJECT_TYPE_LAND_USE {
+							Land_Use tmp <- Land_Use first_with(each.id = int(m_contents["id"]));
+							if(tmp = nil){
+								create Land_Use { do init_from_map(m_contents); }
+							} else {
+								ask tmp { do init_from_map(m_contents); }
+							}	
+						}
+						match OBJECT_TYPE_ACTIVATED_LEVER{
+							create Activated_Lever {
+								do init_from_map(m_contents);
+								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"] );
+								add self to: ply_act.activated_levers;
+							}				
+						}
 					}
 				}
 			}
 		}
+	}
+	
+	action dike_create_action(map<string, string> msg){
+		int d_id <- int(msg at "coast_def_id");
+		float x1 <- float(msg at "p1.x");
+		float y1 <- float(msg at "p1.y");
+		float x2 <- float(msg at "p2.x");
+		float y2 <- float(msg at "p2.y");
+		float hg <- float(msg at "height");
+		string tp <- msg at "type";
+		string st <- msg at "status";
+		float a_alt <- float(msg at "alt");
+		string action_id  <- msg at "action_id";
+		float x3  <- float(msg at "location.x");
+		float y3  <- float(msg at "location.y");
+		geometry pli <- polyline([{x1,y1}, {x2,y2}]);
+		create Coastal_Defense returns: dikes{
+			shape <- pli;
+			location <- {x3,y3};
+			length_coast_def <- int(shape.perimeter);
+			coast_def_id <- d_id;
+			type <- tp;
+			height <- hg;
+			status <- st;
+			alt <- a_alt;
+			ask Coastal_Defense_Action first_with(each.id =action_id) {
+				element_id <- d_id;
+			}
+		}			
 	}
 	
 	action check_dike(list<string> mdata){
@@ -1453,50 +1489,17 @@ species Network_Player skills:[network]{
 		}
 	}
 	
-	action check_player_action_list(list<string> mdata){
-		list<int> idata<- mdata collect (int(each));
-		ask(Player_Action){
-			if(!( idata contains id) ){ do die; }
-		}
-	}
-	
-	action dike_create_action(list<string> msg){
-		int d_id <- int(msg[2]);
-		float x1 <- float(msg[3]);
-		float y1 <- float(msg[4]);
-		float x2 <- float(msg[5]);
-		float y2 <- float(msg[6]);
-		float hg <- float(msg[7]);
-		string tp <- msg[8];
-		string st <- msg[9];
-		float a_alt <- float(msg[10]);
-		string action_id  <- msg[11];
-		float x3  <- float(msg[12]);
-		float y3  <- float(msg[13]);
-		geometry pli <- polyline([{x1,y1},{x2,y2}]);
-		create Coastal_Defense returns: dikes{
-			shape <- pli;
-			location <- {x3,y3};
-			length_coast_def<- int(shape.perimeter);
-
-			coast_def_id <- d_id;
-			type<-tp;
-			height<- hg;
-			status<-st;
-			alt <- a_alt;
-			ask Coastal_Defense_Action first_with(each.id =action_id) {element_id <- d_id;}
-		}			
-	}
-	
 	action send_basket{
 		Player_Action act <-nil;
 		loop bsk_el over: game_basket.elements {
 			act 		<- Basket_Element(bsk_el).current_action;
 			act.is_sent <- true;
-			ask(game_history) { do add_action_to_history (act); }
-			
-			map<string,string> data <- ["stringContents"::act.serialize_command()];
-			do send to: GAME_MANAGER contents: data;
+			ask(game_history) {
+				do add_action_to_history (act);
+			}
+			map<string, string> mp <- act.build_data_map();
+			put PLAYER_ACTION at: "REQUEST" in: mp;
+			do send to: GAME_MANAGER contents: mp;
 			budget <- int(budget - act.cost);
 		}
 		ask game_basket{ do remove_all_elements; }
@@ -1509,7 +1512,6 @@ species Player_Action {
 	string id 		<- "";
 	int element_id	<- 0;
 	geometry element_shape;
-	float shape_width 	<-35#m;
 	int command 		<- -1;
 	string label 		<- "";
 	int initial_application_round <- -1; // round where the action is supposed to be executed
@@ -1526,7 +1528,7 @@ species Player_Action {
 	bool is_highlighted <- false;
 	
 	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF ;
-	string previous_ua_name <- "nil";
+	string previous_lu_name <- "nil";
 	bool is_expropriation 	<- false;
 	bool inProtectedArea 	<- false;
 	bool inCoastBorderArea 	<- false;
@@ -1548,7 +1550,7 @@ species Player_Action {
 		self.inCoastBorderArea 	<- bool(a at "inCoastBorderArea");
 		self.is_expropriation 	<- bool(a at "is_expropriation");
 		self.inProtectedArea 	<- bool(a at "inProtectedArea");
-		self.previous_ua_name 	<- string(a at "previous_ua_name");
+		self.previous_lu_name 	<- string(a at "previous_lu_name");
 		self.action_type 	<- string(a at "action_type");
 		self.is_applied		<- bool(a at "is_applied");
 		self.is_sent		<- bool(a at "is_sent");
@@ -1568,7 +1570,7 @@ species Player_Action {
 		}
 		if(self.action_type = PLAYER_ACTION_TYPE_COAST_DEF){
 			element_shape <- polyline(all_points);
-			shape 		  <-  element_shape + shape_width; //shape_width around element_shape;
+			shape 		  <-  element_shape;// + shape_width; //shape_width around element_shape;
 		}
 		else{
 			element_shape <- polygon(all_points);
@@ -1588,7 +1590,7 @@ species Player_Action {
 			"cost"::string(cost),
 			"initial_application_round"::string(initial_application_round),
 			"action_type"::action_type,
-			"previous_ua_name"::previous_ua_name,
+			"previous_lu_name"::previous_lu_name,
 			"is_expropriation"::string(is_expropriation),
 			"isInlandDike"::string(isInlandDike),
 			"inRiskArea"::string(inRiskArea),
@@ -1604,42 +1606,38 @@ species Player_Action {
 		int nb_rounds <- effective_application_round - world.game_round;
 		if nb_rounds < 0 {
 		 	if should_wait_lever_to_activate { return 0; }
-		 	else { write "Activation delay is anormal !"; }
+		 	else {
+		 		write "Activation delay is anormal !";
+		 	}
 		 }
 		return nb_rounds;
 	}
 	
-	string serialize_command {
-		string result <- "" + command + COMMAND_SEPARATOR +
-								id    + COMMAND_SEPARATOR +
-			initial_application_round + COMMAND_SEPARATOR +
-				           element_id + COMMAND_SEPARATOR +
-				          action_type + COMMAND_SEPARATOR +
-				      inProtectedArea + COMMAND_SEPARATOR +
-				     previous_ua_name + COMMAND_SEPARATOR +
-				     is_expropriation + COMMAND_SEPARATOR +
-				     int(cost);
+	map<string,string> build_data_map {
+		map<string,string> mp <- ["command"::command,"id"::id,
+			"initial_application_round"::initial_application_round,
+			"element_id"::element_id, "action_type"::action_type,
+			"inProtectedArea"::inProtectedArea, "previous_lu_name"::previous_lu_name,
+			"is_expropriation"::is_expropriation, "cost"::int(cost)];
 		
 		if command = ACTION_CREATE_DIKE  {
 				point end <- last (element_shape.points);
 				point origin <- first(element_shape.points);
-				result <- result+
-					COMMAND_SEPARATOR + (origin.x) +
-					COMMAND_SEPARATOR + (origin.y) +
-					COMMAND_SEPARATOR + (end.x)    +
-					COMMAND_SEPARATOR + (end.y)    +
-					COMMAND_SEPARATOR + location.x +
-					COMMAND_SEPARATOR + location.y;					
+				put string(origin.x) at: "origin.x" in: mp;
+				put string(origin.y) at: "origin.y" in: mp;
+				put string(end.x) 	 at: "end.x" in: mp;
+				put string(end.y) 	 at: "end.y" in: mp;
+				put string(location.x) at: "location.x" in: mp;
+				put string(location.y) at: "location.y" in: mp;				
 		}
-		return result;
+		return mp;
 	}	
 }
 //------------------------------ End of Player_Action -------------------------------//
 
 species Coastal_Defense_Action parent: Player_Action {
 	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF;
-	string coast_def_type 	-> { command = ACTION_INSTALL_GANIVELLE ? COAST_DEF_TYPE_DUNE : COAST_DEF_TYPE_DIKE };
-	float shape_width 	 	-> { coast_def_type = COAST_DEF_TYPE_DIKE ? 35#m : 65#m };
+	string coast_def_type;
 		
 	rgb define_color {
 		switch(command){
@@ -1654,7 +1652,7 @@ species Coastal_Defense_Action parent: Player_Action {
 	
 	aspect map {
 		if active_display = COAST_DEF_DISPLAY and !is_applied {
-			draw shape color: self = highlighted_action ? #red : (is_sent ? define_color() : #black);
+			draw 20#m around shape color: self = highlighted_action ? #red : (is_sent ? define_color() : #black);
 		}
 	}
 }
@@ -1798,15 +1796,15 @@ species Land_Use {
 	
 	rgb cell_color{
 		switch (lu_name){
-			match	  	"N" 				 { return #palegreen;		} // natural
-			match	  	"A" 				 { return rgb (225, 165, 0);		} // agricultural
-			match_one ["AU","AUs"]  		 { return #yellow;		 		} // to urbanize
-			match_one ["U","Us"] { 								 	    	  // urbanised
+			match	  	"N" 				 { return #green;		} // natural
+			match	  	"A" 				 { return #orange;		} // agricultural
+			match_one ["AU","AUs"]  		 { return #yellow;		} // to urbanize
+			match_one ["U","Us"] { 									  // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 { return rgb(220,220,220);	}
-					match POP_LOW_DENSITY	 { return rgb(192,192,192);	}
-					match POP_MEDIUM_DENSITY { return rgb(105,105,105);	}
-					match POP_DENSE 		 { return #black;			}
+					match POP_EMPTY 		 { return rgb(245,245,245);	}
+					match POP_LOW_DENSITY	 { return rgb(220,220,220);	}
+					match POP_MEDIUM_DENSITY { return rgb(192,192,192);	}
+					match POP_DENSE 		 { return rgb(169,169,169);	}
 				}
 			}			
 		}
@@ -1827,7 +1825,7 @@ species Coastal_Defense {
 	int coast_def_id;
 	string type;
 	string district_code;
-	rgb color <- # pink;
+	rgb color <- #pink;
 	float height;
 	bool ganivelle <- false;
 	float alt <- 0.0;
@@ -1851,7 +1849,7 @@ species Coastal_Defense {
 				pp <- {float(xd), float(a at ("locationy"+i))  };
 				all_points <- all_points + pp;
 			}
-			else{ pp<-nil; }
+			else{ pp <-nil; }
 			i<- i + 1;
 		}
 		shape <- polyline(all_points);
@@ -1860,26 +1858,30 @@ species Coastal_Defense {
 	}
 	
 	action init_coastal_def {
-		if status = ""  { status <- STATUS_GOOD;} 
-		if type = '' 	{ type 	 <- "Uknown";   }
-		if height = 0.0 { height  <- 1.5; 		}
+		if status = ""  { status <- STATUS_GOOD;	     } 
+		if type = '' 	{ type 	 <- COAST_DEF_TYPE_DIKE; }
+		if height = 0.0 { height <- MIN_HEIGHT_DIKE;     }
 		length_coast_def <- int(shape.perimeter);
 	}
 	
 	aspect map {
 		if(active_display = COAST_DEF_DISPLAY) {
 			switch status {
-				match STATUS_GOOD   {color <- # green;				  }
-				match STATUS_MEDIUM {color <- rgb (231, 189, 24,255); } 
-				match STATUS_BAD 	{color <- # red;				  } 
-				default 			{ write world.get_message('MSG_DIKE_STATUS_PROBLEM'); }
+				match STATUS_GOOD   { color <- #green; }
+				match STATUS_MEDIUM { color <- #orange;} 
+				match STATUS_BAD 	{ color <- #red;   } 
+				default 			{
+					color <- #black;
+					write "Coast Def status problem !";
+				}
 			}
 			if type = COAST_DEF_TYPE_DIKE {
-				draw 20#m around shape color: color size: 300#m;
+				draw 20#m around shape color: color;
 				draw shape color: #black;
 			}
 			else{
 				draw 50#m around shape color: color;
+				draw shape color: #black;
 				if ganivelle {
 					loop i over: points_on(shape, 40#m) {
 						draw circle(10,i) color: #black;
@@ -1926,9 +1928,17 @@ species Tab skills: [UI_location]{
 }
 //------------------------------ End of Tab -------------------------------//
 
-species Road { aspect base { draw shape color:#gray; } }
+species Road {
+	aspect base {
+		draw shape color:#gray;
+	}
+}
 
-species Water { aspect base { draw shape color:#blue; } }
+species Water {
+	aspect base {
+		draw shape color:#blue;
+	}
+}
 
 species Protected_Area {
 	aspect base {
@@ -1987,32 +1997,32 @@ experiment LittoSIM_GEN_Player type: gui{
 						
 
 			graphics "Coast Def Info" transparency: 0.3{
-				if (explored_dike != nil){
-					point target <- {explored_dike.location.x  ,explored_dike.location.y };
-					point target2 <- {explored_dike.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_dike.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
+				if (explored_coast_def != nil){
+					point target <- {explored_coast_def.location.x  ,explored_coast_def.location.y };
+					point target2 <- {explored_coast_def.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_coast_def.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
 					draw rectangle(target,target2)   empty: false border: false color: #black ;
 					
-					draw "Information about "+ explored_dike.type at: target + { 5#px, 15#px } font: regular color: #white;
+					draw "Information about "+ explored_coast_def.type at: target + { 5#px, 15#px } font: regular color: #white;
 					int xpx <-0;
-					draw "ID : "+ string(explored_dike.coast_def_id) at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "ID : "+ string(explored_coast_def.coast_def_id) at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 					xpx <- xpx+20;
-					draw "Length : "+ string(explored_dike.length_coast_def) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "Length : "+ string(explored_coast_def.length_coast_def) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 					xpx <- xpx+20;
-					if explored_dike.type = COAST_DEF_TYPE_DIKE {
-						draw "Height : "+string(round(100*explored_dike.height)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					if explored_coast_def.type = COAST_DEF_TYPE_DIKE {
+						draw "Height : "+string(round(100*explored_coast_def.height)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
 						xpx <- xpx+20;
 					}
-					draw "Altitude : " + string(round(100*explored_dike.alt)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
-					draw "State : " + explored_dike.status at: target + { 30#px, xpx#px +55#px} font: regular color: # white;
+					draw "Altitude : " + string(round(100*explored_coast_def.alt)/100.0) + "m" at: target + { 30#px, xpx#px +35#px } font: regular color: # white;
+					draw "State : " + explored_coast_def.status at: target + { 30#px, xpx#px +55#px} font: regular color: # white;
 				}
 			}
 			
 			graphics "explore_dike_icone" {
-				if (explored_dike != nil ){
-					if explored_dike.status != "bon"{
-						point image_loc <- {explored_dike.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_dike.location.y + 50#px  };
+				if (explored_coast_def != nil ){
+					if explored_coast_def.status != "bon"{
+						point image_loc <- {explored_coast_def.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px , explored_coast_def.location.y + 50#px  };
 						string to_draw <- nil;
-						switch(explored_dike.status){
+						switch(explored_coast_def.status){
 							match STATUS_MEDIUM { draw file("../images/icons/danger.png") at: image_loc size:50#px; }
 							match STATUS_BAD { draw file("../images/icons/rupture.png") at:image_loc size:50#px; }
 						}	
@@ -2021,7 +2031,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			graphics "Coast Def Button Info" transparency: 0.5 {
-				if (active_display = COAST_DEF_DISPLAY and explored_button != nil  and explored_cell = nil and explored_dike = nil and explored_land_use_action = nil){
+				if (active_display = COAST_DEF_DISPLAY and explored_button != nil  and explored_cell = nil and explored_coast_def = nil and explored_land_use_action = nil){
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-2 * INFORMATION_BOX_SIZE.y #px): 0.0;
 					point target 	<- world.button_box_location(explored_button.location, int(2 * (INFORMATION_BOX_SIZE.x#px)));
 					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x#px), target.y + increment };
@@ -2068,7 +2078,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			graphics "LU Button Info" transparency: 0.5 {
-				if (active_display = LU_DISPLAY and explored_button != nil and explored_cell = nil and explored_dike = nil and explored_land_use_action = nil){
+				if (active_display = LU_DISPLAY and explored_button != nil and explored_cell = nil and explored_coast_def = nil and explored_land_use_action = nil){
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-2 * INFORMATION_BOX_SIZE.y #px) : 0.0;
 					point target 	<- world.button_box_location(explored_button.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));
 					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x #px), target.y + increment};
@@ -2116,7 +2126,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					
 			graphics "Lock Window" transparency: 0.3 {
 				if(!is_active_gui){
-					ask world{ do lock_window;}
+					ask world { do lock_window;}
 				}
 			}		
 			event mouse_down action: move_down_event_basket;

@@ -17,7 +17,6 @@ global{
 		
 	// Network 
 	string SERVER 					<- configuration_file["SERVER_ADDRESS"]; 
-	string COMMAND_SEPARATOR 		<- ":";
 	string GAME_MANAGER 			<- "GAME_MANAGER";
 	string GAME_LEADER	     	 	<- "GAME_LEADER";
 	string LISTENER_TO_LEADER	 	<- "LISTENER_TO_LEADER";
@@ -53,11 +52,40 @@ global{
 	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
 	
 	// Manager-Player network communication
+	string PLAYER_ACTION			<- "PLAYER_ACTION";
 	string MSG_TO_PLAYER 			<- "MSG_TO_PLAYER";
 	string PLAYER_ACTION_IS_APPLIED <- 'PLAYER_ACTION_IS_APPLIED';
 	string DISTRICT_BUDGET_UPDATE 	<- 'DISTRICT_BUDGET_UPDATE';
 	string INFORM_NEW_ROUND 		<- 'INFORM_NEW_ROUND';
 	string INFORM_CURRENT_ROUND		<- 'INFORM_CURRENT_ROUND';
+	string DATA_RETRIEVE 			<- 'DATA_RETRIEVE';
+	// Actions to acknowledge client requests
+	string ACTION_DIKE_UPDATE   <- "ACTION_DIKE_UPDATE";
+	string ACTION_DIKE_CREATED 	<- "ACTION_DIKE_CREATED";
+	string ACTION_DIKE_DROPPED 	<- "ACTION_DIKE_DROPPED";
+	string ACTION_LAND_COVER_UPDATE <- "ACTION_LAND_COVER_UPDATE";
+	int REFRESH_ALL 			<- 20;
+	int CONNECTION_MESSAGE 		<- 23;
+	
+		// List of all possible actions to send over network
+	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE,
+							ACTION_INSTALL_GANIVELLE, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,
+							ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
+	
+	// List of actions with their parameters
+	int ACTION_REPAIR_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' 			at 'action_code');
+	int ACTION_CREATE_DIKE 			 <- int(data_action at 'ACTION_CREATE_DIKE' 			at 'action_code');
+	int ACTION_DESTROY_DIKE 		 <- int(data_action at 'ACTION_DESTROY_DIKE' 			at 'action_code');
+	int ACTION_RAISE_DIKE 			 <- int(data_action at 'ACTION_RAISE_DIKE' 				at 'action_code');
+	int ACTION_INSTALL_GANIVELLE 	 <- int(data_action at 'ACTION_INSTALL_GANIVELLE' 		at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_AU  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_A 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' 	at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_U 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_U' 	at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_N 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_N' 	at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_AUs <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs'	at 'action_code');	
+	int ACTION_MODIFY_LAND_COVER_Us	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code');
+	int ACTION_MODIFY_LAND_COVER_Ui  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code');
+	int ACTION_EXPROPRIATION 		 <- int(data_action at 'ACTION_EXPROPRIATION' 			at 'action_code');
 	
 	// Constant vars
 	string PLAYER_ACTION_TYPE_LU		<- "PLAYER_ACTION_TYPE_LU";
@@ -75,11 +103,11 @@ global{
 	string POP_DENSE 		  <- "DENSE";
 	int    POP_LOW_NUMBER 	  <- 40;
 	int    POP_MEDIUM_NUMBER  <- 80;
-	int    MIN_POP_AREA 	  <- int  (eval_gaml(shapes_def["MIN_POPU_AREA"]));
+	int    MIN_POP_AREA 	  <- int (eval_gaml(shapes_def["MIN_POPU_AREA"]));
 	
 	// Building dikes parameters
-	string BUILT_DIKE_TYPE 		<- "New Dike";
 	string BUILT_DIKE_STATUS 	<- shapes_def["BUILT_DIKE_STATUS"];
+	float  MIN_HEIGHT_DIKE 		<- float (eval_gaml(shapes_def["MIN_HEIGHT_DIKE"]));
 	
 	// Loading GIS data
 	file districts_shape 		<- file(shapes_def["DISTRICTS_SHAPE"]);
@@ -99,43 +127,7 @@ global{
 	// Taxes
 	map tax_unit_table 		<- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
 	int pctBudgetInit 		<- int(eval_gaml(shapes_def["PCT_BUDGET_TABLE"])); 			// at initialization, each district has a budget equal to an annual tax + %
-	
-	// List of all possible actions to send over network
-	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE,
-							ACTION_INSTALL_GANIVELLE, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,
-							ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
-	
-	int ACTION_ACTION_LIST 				   <- 211;
-	int ACTION_APPLICATION_ACKNOWLEDGEMENT <- 51;
-	int ACTION_LAND_COVER_UPDATE   		   <- 9;
-	int ACTION_DIKE_UPDATE		   		   <- 10;
-	
-	// List of actions with their parameters
-	int ACTION_REPAIR_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' 			at 'action_code');
-	int ACTION_CREATE_DIKE 			 <- int(data_action at 'ACTION_CREATE_DIKE' 			at 'action_code');
-	int ACTION_DESTROY_DIKE 		 <- int(data_action at 'ACTION_DESTROY_DIKE' 			at 'action_code');
-	int ACTION_RAISE_DIKE 			 <- int(data_action at 'ACTION_RAISE_DIKE' 				at 'action_code');
-	int ACTION_INSTALL_GANIVELLE 	 <- int(data_action at 'ACTION_INSTALL_GANIVELLE' 		at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_AU  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_A 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_U 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_U' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_N 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_N' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_AUs <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs'	at 'action_code');	
-	int ACTION_MODIFY_LAND_COVER_Us	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_Ui  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code');
-	int ACTION_EXPROPRIATION 		 <- int(data_action at 'ACTION_EXPROPRIATION' 			at 'action_code');
-	
-	// Actions to acknowledge client requests
-	int ACTION_DIKE_CREATED 	<- 16;
-	int ACTION_DIKE_DROPPED 	<- 17;
-	int UPDATE_BUDGET 			<- 19;
-	int REFRESH_ALL 			<- 20;
-	int ACTION_DIKE_LIST 		<- 21;
-	int CONNECTION_MESSAGE 		<- 23;
-	int INFORM_TAX_GAIN 		<- 24;
-	int INFORM_GRANT_RECEIVED 	<- 27;
-	int INFORM_FINE_RECEIVED 	<- 28;
-	
+		
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){
 		map<string, string> res <- map<string, string>([]);

@@ -51,7 +51,7 @@ global{
 	action create_district_buttons_names{
 		loop i from: 0 to: 3 {
 			create District_Name {
-				display_name <- District[i].district_name;
+				display_name <- District[i].district_long_name;
 				location	 <- (Grille grid_at {i,0}).location - {1,-1};
 			}
 			create District_Action_Button {
@@ -86,16 +86,6 @@ global{
 					}
 				}
 			}
-		}
-	}
-	
-	string dike_label_of_command (int act) {
-		switch act {
-			match ACTION_REPAIR_DIKE 		{ return "Repair";	 }
-			match ACTION_CREATE_DIKE 		{ return "New Dike"; }
-			match ACTION_DESTROY_DIKE 		{ return "Dstr Dike";}
-			match ACTION_RAISE_DIKE 		{ return "Raise";	 }
-			match ACTION_INSTALL_GANIVELLE 	{ return "Ganivelle";}
 		}
 	}
 	
@@ -147,7 +137,6 @@ species Player_Action schedules:[]{
 	string id;
 	int element_id;
 	string district_code;
-	string district_name 			<- "";
 	int command 		 			<- -1 on_change: { label <- world.label_of_action(command); };
 	string label 		 			<- "no name";
 	int cost 			 			<- 0;
@@ -178,7 +167,7 @@ species Player_Action schedules:[]{
 		ask world {
 			save Player_Action to: "/tmp/player_action2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id", cost::"cost", command_round::"cround",
 					initial_application_round::"around", round_delay::"rdelay", is_delayed::"is_delayed", element_id::"chosenId",
-					district_name::"district_name", command::"command", label::"label", tracked_profile::"tracked_profile", isInlandDike::"isInlandDike",
+					district_code::DISTRICT_CODE, command::"command", label::"label", tracked_profile::"tracked_profile", isInlandDike::"isInlandDike",
 					inRiskArea::"inRiskArea", inCoastBorderArea::"inCoastBorderArea", inProtectedArea::"inProtectedArea", isExpropriation::"isExpropriation",
 					previous_ua_name::"previous_ua_name", action_type::"action_type"];
 		}
@@ -208,23 +197,23 @@ species Player_Action schedules:[]{
 	action init_from_map (map<string, string> a ){
 		self.id 						<- a at "id";
 		self.element_id 				<- int(a at "element_id");
-		self.district_name 				<- a at "district_name";
+		self.district_code 				<- a at DISTRICT_CODE;
 		self.command 					<- int(a at "command");
 		self.label 						<- a at "label";
 		self.cost 						<- int(a at "cost");
 		self.initial_application_round 	<- int(a at "initial_application_round");
 		self.action_type 				<- a at "action_type"; // Pour l'instant ca marche pas. je sais pas pourquoi
-		self.previous_ua_name 			<- a at "previous_ua_name";
-		self.isExpropriation 			<- bool(a at "isExpropriation");
-		self.inProtectedArea 			<- bool(a at "inProtectedArea");
-		self.inCoastBorderArea 			<- bool(a at "inCoastBorderArea");
-		self.inRiskArea 				<- bool(a at "inRiskArea");
-		self.isInlandDike 				<- bool(a at "isInlandDike");
+		self.previous_ua_name 			<- a at "previous_lu_name";
+		self.isExpropriation 			<- bool(a at "is_expropriation");
+		self.inProtectedArea 			<- bool(a at "is_in_protected_area");
+		self.inCoastBorderArea 			<- bool(a at "is_in_coast_border_area");
+		self.inRiskArea 				<- bool(a at "is_in_risk_area");
+		self.isInlandDike 				<- bool(a at "is_inland_dike");
 		self.command_round 				<- int(a at "command_round");
 		self.tracked_profile 			<- track_profile ();
 		self.element_shape 				<- geometry(a at "element_shape");
 		self.length_coast_def 			<- int(a at "length_coast_def");
-		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");		
+		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");			
 	}
 	
 	map<string,string> build_map_from_attributes{
@@ -232,18 +221,18 @@ species Player_Action schedules:[]{
 			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
 			"id"::id,
 			"element_id"::string(element_id),
-			"district_name"::district_name,
+			(DISTRICT_CODE)::district_code,
 			"command"::string(command),
 			"label"::label,
 			"cost"::string(cost),
 			"initial_application_round"::string(initial_application_round),
 			"action_type"::action_type,
-			"previous_ua_name"::previous_ua_name,
-			"isExpropriation"::isExpropriation,
-			"inProtectedArea"::inProtectedArea,
-			"inCoastBorderArea"::inCoastBorderArea,
-			"inRiskArea"::inRiskArea,
-			"isInlandDike"::isInlandDike,
+			"previous_lu_name"::previous_ua_name,
+			"is_expropriation"::isExpropriation,
+			"is_in_protected_area"::inProtectedArea,
+			"is_in_coast_border_area"::inCoastBorderArea,
+			"is_in_risk_area"::inRiskArea,
+			"is_inland_dike"::isInlandDike,
 			"command_round"::command_round];	
 		return res;
 	}
@@ -533,7 +522,7 @@ species Lever {
 	}
 	
 	action write_help_lever_msg {
-		map values <- user_input(world.get_message('LEV_MSG_LEVER_HELP'),[help_lever_msg + "\n" + world.get_message('LEV_THRESHOLD_VALUE') + " : " + threshold:: ""]);
+		map values <- user_input(world.get_message('LEV_MSG_LEVER_HELP'),[help_lever_msg + "\n" + world.get_message('LEV_THRESHOLD_VALUE') + " : " + threshold::true]);
 	}
 	
 	action change_lever_player_msg {
@@ -1084,7 +1073,6 @@ species Network_Leader skills:[network] {
 			message msg 					<- fetch_message();
 			string m_sender 				<- msg.sender;
 			map<string, string> m_contents 	<- msg.contents;
-			
 			switch(m_contents[RESPONSE_TO_LEADER]) {
 				match NUM_ROUND				{
 					game_round <-int (m_contents[NUM_ROUND]);
@@ -1092,11 +1080,13 @@ species Network_Leader skills:[network] {
 					loop lev over: all_levers{
 						ask lev.population { do check_activation_at_new_round(); }	
 					}
-					ask world { do save_leader_records;	}
+					ask world {
+						do save_leader_records;
+					}
 				}
-				
-				match ACTION_STATE { do update_action (m_contents); }
-
+				match ACTION_STATE {
+					do update_action (m_contents);
+				}
 				match INDICATORS_T0 		{
 					ask District where (each.district_code = m_contents[DISTRICT_CODE]) {
 						length_dikes_t0 								<- int (m_contents['length_dikes_t0']);
@@ -1117,8 +1107,8 @@ species Network_Leader skills:[network] {
 	}	
 	
 	action update_action (map<string,string> msg){
-		list<Player_Action> p_act <- Player_Action where(each.id = (msg at "id"));
-		if(p_act = nil or length(p_act) = 0){ 											// new action commanded by a player : indicators are updated and levers triggering tresholds are tested
+		Player_Action p_act <- first(Player_Action where(each.id = (msg at "id")));
+		if(p_act = nil){ 	// new action commanded by a player : indicators are updated and levers triggering tresholds are tested
 			create Player_Action{
 				do init_from_map(msg);
 				ask District first_with (each.district_code = district_code) {
@@ -1127,7 +1117,9 @@ species Network_Leader skills:[network] {
 			}
 		}
 		else{ 																			// an update of an action already commanded
-			ask first(p_act) {	do init_from_map(msg);	}
+			ask first(p_act) {
+				do init_from_map(msg);
+			}
 		}
 	}
 }
