@@ -53,6 +53,7 @@ global{
 	
 	// Manager-Player network communication
 	string PLAYER_ACTION			<- "PLAYER_ACTION";
+	string NEW_DIKE_ALT				<- "NEW_DIKE_ALT";
 	string MSG_TO_PLAYER 			<- "MSG_TO_PLAYER";
 	string PLAYER_ACTION_IS_APPLIED <- 'PLAYER_ACTION_IS_APPLIED';
 	string DISTRICT_BUDGET_UPDATE 	<- 'DISTRICT_BUDGET_UPDATE';
@@ -105,7 +106,9 @@ global{
 	int    POP_MEDIUM_NUMBER  <- 80;
 	int    MIN_POP_AREA 	  <- int (eval_gaml(shapes_def["MIN_POPU_AREA"]));
 	
-	// Building dikes parameters
+	// Building and raising dikes parameters
+	float BUILT_DIKE_HEIGHT <- float(shapes_def["BUILT_DIKE_HEIGHT"]);
+	float RAISE_DIKE_HEIGHT <- float(shapes_def["RAISE_DIKE_HEIGHT"]); // 1#m by default
 	string BUILT_DIKE_STATUS 	<- shapes_def["BUILT_DIKE_STATUS"];
 	float  MIN_HEIGHT_DIKE 		<- float (eval_gaml(shapes_def["MIN_HEIGHT_DIKE"]));
 	

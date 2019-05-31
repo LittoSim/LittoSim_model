@@ -452,7 +452,7 @@ species Lever {
 	list<Activated_Lever> activated_levers;
 	
 	init {
-		shape <- rectangle (24, 4);
+		shape <- rectangle (24.5, 4.25);
 	}
 	
 	aspect default{
@@ -465,12 +465,11 @@ species Lever {
 		draw progression_bar at:location + {-length(progression_bar)/4, 0.5} font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
 		
 		if timer_activated {
-			draw string(remaining_seconds()) + " sec " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "-> " + info_of_next_activated_lever() at: location + {-9,1.5} font: font("Arial", 12 , #plain) color:#black;
+			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "-> " + info_of_next_activated_lever() at: location + {-9,1.5} font: font("Arial", 12 , #plain) color:#black;
 		}
-		
 		if has_activated_levers {
-			draw activation_label_L1 at:location + {0,2.5} font: font("Arial", 12 , #plain) color:#black;
-			draw activation_label_L2 at:location + {0,3}   font: font("Arial", 12 , #plain) color:#black;
+			draw activation_label_L1 at:location + {0,2.2} font: font("Arial", 12 , #plain) color:#black;
+			draw activation_label_L2 at:location + {0,2.6}   font: font("Arial", 12 , #plain) color:#black;
 		}
 		
 		if !status_on{ draw shape+0.1#m color: rgb(200,200,200,160); }
@@ -634,7 +633,7 @@ species Cost_Lever parent: Lever {
 	}
 	
 	string info_of_next_activated_lever {
-		return "" + activation_queue[0].p_action.length_coast_def + " m. (" + int(activation_queue[0].p_action.cost * added_cost) + ' By.)';
+		return "" + activation_queue[0].p_action.length_coast_def + " m (" + int(activation_queue[0].p_action.cost * added_cost) + ' By)';
 	}
 	
 	action apply_lever(Activated_Lever lev){
@@ -694,7 +693,7 @@ species Delay_Lever parent: Lever{
 		lev.added_delay <- added_delay;
 		do send_lever_message;
 		
-		activation_label_L1 <- (total_lever_delay() < 0 ? "Total Advance: " : "Total Delay: ") + abs(total_lever_delay()) + ' rounds';
+		activation_label_L1 <- (total_lever_delay() < 0 ? "Total Advance: " : "Total Delay: ") + abs(total_lever_delay()) + ' ' + world.get_message('LDR_MSG_ROUNDS');
 		lev.p_action.should_wait_lever_to_activate <- false;
 		do inform_network_should_wait_lever_to_activate(lev.p_action);
 		
@@ -711,7 +710,7 @@ species Delay_Lever parent: Lever{
 
 species Create_Dike_Lever parent: Cost_Lever {
 	float indicator 		-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_created_dikes / my_district.length_dikes_t0 };
-	string progression_bar  -> { "" + my_district.length_created_dikes + " m. / " + threshold + " * " + my_district.length_dikes_t0 + " m. at t0"};
+	string progression_bar  -> { "" + my_district.length_created_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
 	
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_CREATE_DIKE');
@@ -724,7 +723,7 @@ species Create_Dike_Lever parent: Cost_Lever {
 
 species Raise_Dike_Lever parent: Cost_Lever {
 	float indicator 		-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_raised_dikes / my_district.length_dikes_t0 };
-	string progression_bar 	-> { "" + my_district.length_raised_dikes + " m. / " + threshold + " * " + my_district.length_dikes_t0 + " m. at t0"};
+	string progression_bar 	-> { "" + my_district.length_raised_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_RAISE_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_RAISE_DIKE');
@@ -737,7 +736,7 @@ species Raise_Dike_Lever parent: Cost_Lever {
 species Repair_Dike_Lever parent: Cost_Lever{
 	float indicator 			-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_repaired_dikes / my_district.length_dikes_t0 };
 	bool should_be_activated 	-> { indicator > threshold and (my_district.length_created_dikes != 0 or my_district.length_raised_dikes != 0)};
-	string progression_bar 		-> { "" + my_district.length_repaired_dikes + " m. / " + threshold + " * " + my_district.length_dikes_t0 + " m. at t0"};
+	string progression_bar 		-> { "" + my_district.length_repaired_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
 	
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_REPAIR_DIKE');
@@ -762,8 +761,8 @@ species AU_or_Ui_in_Coast_Border_Area_Lever parent: Delay_Lever{
 		
 	string info_of_next_activated_lever {
 		switch activation_queue[0].p_action.command {
-			match ACTION_MODIFY_LAND_COVER_AU { return "Construction: "  + added_delay + " rounds"; }
-			match ACTION_MODIFY_LAND_COVER_Ui { return "Densification: " + added_delay + " rounds"; }
+			match ACTION_MODIFY_LAND_COVER_AU { return "Construction: "  + added_delay + " " + world.get_message('LDR_MSG_ROUNDS'); }
+			match ACTION_MODIFY_LAND_COVER_Ui { return "Densification: " + added_delay + " " + world.get_message('LDR_MSG_ROUNDS'); }
 		} 
 	}
 }
@@ -793,7 +792,7 @@ species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 
 species Ganivelle_Lever parent: Cost_Lever {
 		int indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 : int(my_district.length_created_ganivelles / my_district.length_dunes_t0) };
-		string progression_bar 	-> { "" + my_district.length_created_ganivelles + " m. / " + threshold + " * " + my_district.length_dunes_t0 + " m. dunes" };
+		string progression_bar 	-> { "" + my_district.length_created_ganivelles + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m dunes" };
 	
 	init{
 		lever_name	<- world.get_lever_name('LEVER_GANIVELLE');
@@ -881,7 +880,7 @@ species Us_in_Risk_Area_Lever parent: Cost_Lever{
 
 species Inland_Dike_Lever parent: Delay_Lever {
 	float indicator 		-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_inland_dikes / my_district.length_dikes_t0 };
-	string progression_bar 	-> { "" + my_district.length_inland_dikes + " m. / " + threshold + " * " + my_district.length_dikes_t0 + " m. dikes at t0"};
+	string progression_bar 	-> { "" + my_district.length_inland_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m dikes at t0"};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_INLAND_DIKE');
@@ -893,13 +892,13 @@ species Inland_Dike_Lever parent: Delay_Lever {
 	}
 		
 	string info_of_next_activated_lever {
-		return "Retrodike (" + int(activation_queue[0].p_action.length_coast_def) + " m.): -" + abs(added_delay) + " rounds";
+		return world.get_message('LDR_MSG_RETRODIKE') + " (" + int(activation_queue[0].p_action.length_coast_def) + " m): -" + abs(added_delay) + " " + world.get_message('LDR_MSG_ROUNDS');
 	}
 }
 //------------------------------ End of Inland_Dike_Lever -------------------------------//
 
 species No_Action_On_Dike_Lever parent: Cost_Lever {
-	string progression_bar 	-> { "" + int(threshold - nb_rounds_before_activation) + " rounds / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + int(threshold - nb_rounds_before_activation) + " "+ world.get_message('LDR_MSG_ROUNDS') +" / " + int(threshold) + " max" };
 	int nb_activations 		<- 0;
 	string box_title 		-> { lever_name + ' (' + nb_activations +')' };
 	
@@ -1038,7 +1037,7 @@ species Expropriation_Lever parent: Cost_Lever{
 species Destroy_Dike_Lever parent: Cost_Lever{
 	float indicator 		 -> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_destroyed_dikes / my_district.length_dikes_t0 };
 	bool should_be_activated -> { indicator > threshold and !empty(my_district.actions_expropriation()) };
-	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m. / " + threshold + " * " + my_district.length_dikes_t0 + " m. at t0"};
+	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_DESTROY_DIKE');
@@ -1080,9 +1079,7 @@ species Network_Leader skills:[network] {
 					loop lev over: all_levers{
 						ask lev.population { do check_activation_at_new_round(); }	
 					}
-					ask world {
-						do save_leader_records;
-					}
+					ask world { do save_leader_records; }
 				}
 				match ACTION_STATE {
 					do update_action (m_contents);
@@ -1107,8 +1104,9 @@ species Network_Leader skills:[network] {
 	}	
 	
 	action update_action (map<string,string> msg){
+		write msg;
 		Player_Action p_act <- first(Player_Action where(each.id = (msg at "id")));
-		if(p_act = nil){ 	// new action commanded by a player : indicators are updated and levers triggering tresholds are tested
+		if(p_act = nil){ // new action commanded by a player : indicators are updated and levers triggering tresholds are tested
 			create Player_Action{
 				do init_from_map(msg);
 				ask District first_with (each.district_code = district_code) {
@@ -1116,7 +1114,7 @@ species Network_Leader skills:[network] {
 				}
 			}
 		}
-		else{ 																			// an update of an action already commanded
+		else{ // an update of an action already commanded
 			ask first(p_act) {
 				do init_from_map(msg);
 			}

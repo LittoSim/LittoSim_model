@@ -50,7 +50,7 @@ global {
 	int messageID 				<- 0; 										// network communication
 	geometry all_flood_risk_area; 											// geometry agrregating risked area polygons
 	geometry all_protected_area; 											// geometry agrregating protected area polygons	
-	
+	geometry all_coastal_border_area;
 	list<list<int>> districts_budgets <- [[],[],[],[]];						// budget tables to draw evolution graphs
 	int new_comers_still_to_dispatch <- 0;									// population dynamics
 	
@@ -84,12 +84,13 @@ global {
 		
 		create Road from: roads_shape;
 		create Water from: water_shape;
+		create Inland_Dike_Area from: buffer_in_100m_shape;
 		
 		create Flood_Risk_Area from: rpp_area_shape;
 		all_flood_risk_area <- union(Flood_Risk_Area);
 		
 		create Coastal_Border_Area from: coastline_shape { shape <-  shape + coastBorderBuffer#m; }
-		create Inland_Dike_Area from: buffer_in_100m_shape;
+		all_coastal_border_area <- union(Coastal_Border_Area);
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")),
 													dist_code::string(read("dist_code")), population::int(get("unit_pop"))]{
@@ -99,7 +100,7 @@ global {
 				population <- MIN_POP_AREA;
 			}
 			if lu_name = "AU" {
-				AU_to_U_counter <- flip(0.5)?1:0;
+				AU_to_U_counter <- flip(0.5) ? 1 : 0;
 				not_updated <- true;
 			}
 		}
@@ -145,13 +146,14 @@ global {
 	action new_round {
 		if save_shp  {	do save_cells_as_shp_file;	}
 		write get_message('MSG_NEW_ROUND') + " : " + (game_round + 1);
+		
 		if game_round != 0 {
 			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   	ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
 			new_comers_still_to_dispatch <- new_comers_to_dispatch();
 			ask shuffle(Land_Use) 			 { pop_updated <- false; do evolve_AU_to_U;  }
-			ask shuffle(Land_Use) 			 { do evolve_U_densification; 				 }
-			ask shuffle(Land_Use) 			 { do evolve_U_standard; 					 } 
+			ask shuffle(Land_Use) 			 { do evolve_pop_U_densification; 				 }
+			ask shuffle(Land_Use) 			 { do evolve_pop_U_standard; 					 } 
 			ask districts_in_game			 { do calculate_taxes;						 }
 		}
 		else {
@@ -652,6 +654,17 @@ species Network_Game_Manager skills: [network]{
 					}
 					write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + id_dist;
 				}
+				match NEW_DIKE_ALT {
+					geometry new_tmp_dike <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
+															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
+					float altit <- (Cell overlapping new_tmp_dike) min_of(each.soil_height);
+					ask Network_Game_Manager{
+						map<string,string> mpp <- ["TOPIC"::NEW_DIKE_ALT];
+						put string(altit)  		at: "altit" 	in: mpp;
+						put m_contents["act_id"] at: "act_id" in: mpp;
+						do send to: m_sender contents: mpp;
+					}
+				}
 				match PLAYER_ACTION {  // another player action
 				if(game_round > 0) {
 					write world.get_message('MSG_READ_ACTION') + " : " + m_contents;
@@ -691,7 +704,7 @@ species Network_Game_Manager skills: [network]{
 								}
 							}
 							if  self.element_shape intersects all_flood_risk_area 		 {	is_in_risk_area 		<- true;	}
-							if  self.element_shape intersects first(Coastal_Border_Area) {	is_in_coast_border_area <- true;	}
+							if  self.element_shape intersects all_coastal_border_area    {	is_in_coast_border_area <- true;	}
 							if  self.element_shape intersects all_protected_area 		 {	is_in_protected_area 	<- true;	}
 							if command = ACTION_CREATE_DIKE and (self.element_shape.centroid overlaps first(Inland_Dike_Area))	{	is_inland_dike <- true;	}
 							if(log_user_action){
@@ -1066,7 +1079,7 @@ species Player_Action schedules:[]{
 			status 		<- BUILT_DIKE_STATUS;
 			height 		<- BUILT_DIKE_HEIGHT;	
 			cells 		<- Cell overlapping self;
-			alt 		<- min(cells collect(each.soil_height));
+			alt 		<- cells min_of(each.soil_height);
 		}
 		Coastal_Defense new_dike <- first (tmp_dike);
 		act.element_id 		<-  new_dike.coast_def_id;
@@ -1139,10 +1152,10 @@ species Coastal_Defense {
 	
 	action build_dike {
 		// a dike raises soil around the highest cell
-		float h <- cells max_of (each.soil_height);
-		alt 	<- h + height;
+		//float h <- cells max_of (each.soil_height);
+		//alt 	<- cells min_of (each.soil_height);// h + height; TODO
 		ask cells  {
-			soil_height <- h + myself.height;
+			soil_height <- soil_height + myself.height; //h + myself.height; // TODO
 			soil_height_before_broken <- soil_height;
 			do init_cell_color();
 		}
@@ -1156,7 +1169,7 @@ species Coastal_Defense {
 	action raise_dike {
 		do repaire_dike;
 		height 	<- height + RAISE_DIKE_HEIGHT; 
-		alt 	<- alt 	  + RAISE_DIKE_HEIGHT;
+		//alt 	<- alt 	  + RAISE_DIKE_HEIGHT; // TODO
 		ask cells {
 			soil_height <- soil_height + RAISE_DIKE_HEIGHT;
 			soil_height_before_broken <- soil_height;
@@ -1383,7 +1396,7 @@ species Land_Use {
 		}	
 	}
 	
-	action evolve_U_densification {
+	action evolve_pop_U_densification {
 		if !pop_updated and isInDensification and (lu_name in ["U","Us"]){
 			string previous_d_class <- density_class; 
 			do assign_population (POP_FOR_U_DENSIFICATION);
@@ -1391,7 +1404,7 @@ species Land_Use {
 		}
 	}
 		
-	action evolve_U_standard {
+	action evolve_pop_U_standard {
 		if !pop_updated and (lu_name in ["U","Us"]){
 			do assign_population (POP_FOR_U_STANDARD);
 		}
@@ -1524,10 +1537,10 @@ species District {
 		put string(my_coast_def where (each.type = COAST_DEF_TYPE_DIKE) sum_of (each.shape.perimeter)) key: "length_dikes_t0" in: my_indicators_t0;
 		put string(my_coast_def where (each.type = COAST_DEF_TYPE_DUNE) sum_of (each.shape.perimeter)) key: "length_dunes_t0" in: my_indicators_t0;
 		put string(length(LUs where (each.isUrbanType))) key: "count_LU_urban_t0" in: my_indicators_t0; // built cells (U , AU, Us and AUs)
-		put string(length(LUs where (each.isUrbanType and not(each.isAdapted) and each intersects first(Coastal_Border_Area)))) key: "count_LU_U_and_AU_is_in_coast_border_area_t0" in: my_indicators_t0; // non adapted built cells in littoral area (<400m)
+		put string(length(LUs where (each.isUrbanType and not(each.isAdapted) and each intersects all_coastal_border_area))) key: "count_LU_U_and_AU_is_in_coast_border_area_t0" in: my_indicators_t0; // non adapted built cells in littoral area (<400m)
 		put string(length(LUs where (each.isUrbanType and each intersects all_flood_risk_area))) key: "count_LU_urban_in_flood_risk_area_t0" in: my_indicators_t0; // built cells in flooded area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_flood_risk_area))) key: "count_LU_urban_dense_in_flood_risk_area_t0" in: my_indicators_t0; // dense cells in risk area
-		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects union(Coastal_Border_Area)))) key: "count_LU_urban_dense_is_in_coast_border_area_t0" in: my_indicators_t0; //dense cells in littoral area
+		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_coastal_border_area))) key: "count_LU_urban_dense_is_in_coast_border_area_t0" in: my_indicators_t0; //dense cells in littoral area
 		put string(length(LUs where (each.lu_name = 'A'))) 	key: "count_LU_A_t0" 	in: my_indicators_t0; // count cells of type A
 		put string(length(LUs where (each.lu_name = 'N'))) 	key: "count_LU_N_t0" 	in: my_indicators_t0; // count cells of type N
 		put string(length(LUs where (each.lu_name = 'AU'))) key: "count_LU_AU_t0" 	in: my_indicators_t0; // count cells of type AU

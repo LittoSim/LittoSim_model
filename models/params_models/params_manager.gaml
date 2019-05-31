@@ -29,10 +29,6 @@ global{
 	string SHOW_MAX_WATER_HEIGHT	<- "SHOW_MAX_WATER_HEIGHT";
 	string ONE_STEP					<- "ONE_STEP";
 	
-	// // Building and raising dikes parameters
-	float BUILT_DIKE_HEIGHT <- float(shapes_def["BUILT_DIKE_HEIGHT"]);
-	float RAISE_DIKE_HEIGHT <- float(shapes_def["RAISE_DIKE_HEIGHT"]); // 1#m by default
-	
 	// Coastal defenses (dikes and dunes) evolution parameters
 	float H_MAX_GANIVELLE 				<- float(shapes_def["H_MAX_GANIVELLE"]); 				// A dune cannot exceed this height
 	float H_DELTA_GANIVELLE 			<- float(shapes_def["H_DELTA_GANIVELLE"]); 				// The height by which a ganivelle can raise a dune
