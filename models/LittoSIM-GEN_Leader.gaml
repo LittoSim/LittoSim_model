@@ -147,12 +147,12 @@ species Player_Action schedules:[]{
 	bool is_delayed -> { round_delay > 0 };
 	
 	string action_type 		<- ""; 					// COAST_DEF or LU
-	string previous_ua_name <- "";  				// for LU action
-	bool isExpropriation 	<- false; 				// for LU action
-	bool inProtectedArea 	<- false; 				// for COAST_DEF action
-	bool inCoastBorderArea 	<- false; 
-	bool inRiskArea 		<- false; 				// for LU action
-	bool isInlandDike 		<- false; 				// for COAST_DEF (retro dikes)
+	string previous_lu_name <- "";  				// for LU action
+	bool is_expropriation 	<- false; 				// for LU action
+	bool is_in_protected_area 	<- false; 				// for COAST_DEF action
+	bool is_in_coast_border_area 	<- false; 
+	bool is_in_risk_area 	<- false; 				// for LU action
+	bool is_inland_dike 	<- false; 				// for COAST_DEF (retro dikes)
 	string tracked_profile 	<- "";
 	geometry element_shape;
 	float lever_activation_time;
@@ -167,15 +167,15 @@ species Player_Action schedules:[]{
 		ask world {
 			save Player_Action to: "/tmp/player_action2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id", cost::"cost", command_round::"cround",
 					initial_application_round::"around", round_delay::"rdelay", is_delayed::"is_delayed", element_id::"chosenId",
-					district_code::DISTRICT_CODE, command::"command", label::"label", tracked_profile::"tracked_profile", isInlandDike::"isInlandDike",
-					inRiskArea::"inRiskArea", inCoastBorderArea::"inCoastBorderArea", inProtectedArea::"inProtectedArea", isExpropriation::"isExpropriation",
-					previous_ua_name::"previous_ua_name", action_type::"action_type"];
+					district_code::DISTRICT_CODE, command::"command", label::"label", tracked_profile::"tracked_profile", is_inland_dike::"is_inland_dike",
+					is_in_risk_area::"is_in_risk_area", is_in_coast_border_area::"is_in_coast_border_area", is_in_protected_area::"is_in_protected_area", is_expropriation::"is_expropriation",
+					previous_lu_name::"previous_lu_name", action_type::"action_type"];
 		}
 	}
 	
 	string track_profile {
 		if(action_type = PLAYER_ACTION_TYPE_COAST_DEF){
-			if isInlandDike { return SOFT_DEFENSE; }
+			if is_inland_dike { return SOFT_DEFENSE; }
 			else{
 				switch command {
 					match_one  [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE] 	{ return BUILDER; 		}
@@ -184,7 +184,7 @@ species Player_Action schedules:[]{
 				}
 			}
 		}else {
-			if isExpropriation { return WITHDRAWAL; }
+			if is_expropriation { return WITHDRAWAL; }
 			else {
 				switch command {
 					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U]   { return BUILDER; 	 }
@@ -202,13 +202,13 @@ species Player_Action schedules:[]{
 		self.label 						<- a at "label";
 		self.cost 						<- int(a at "cost");
 		self.initial_application_round 	<- int(a at "initial_application_round");
-		self.action_type 				<- a at "action_type"; // Pour l'instant ca marche pas. je sais pas pourquoi
-		self.previous_ua_name 			<- a at "previous_lu_name";
-		self.isExpropriation 			<- bool(a at "is_expropriation");
-		self.inProtectedArea 			<- bool(a at "is_in_protected_area");
-		self.inCoastBorderArea 			<- bool(a at "is_in_coast_border_area");
-		self.inRiskArea 				<- bool(a at "is_in_risk_area");
-		self.isInlandDike 				<- bool(a at "is_inland_dike");
+		self.action_type 				<- a at "action_type";
+		self.previous_lu_name 			<- a at "previous_lu_name";
+		self.is_expropriation 			<- bool(a at "is_expropriation");
+		self.is_in_protected_area 			<- bool(a at "is_in_protected_area");
+		self.is_in_coast_border_area 			<- bool(a at "is_in_coast_border_area");
+		self.is_in_risk_area 				<- bool(a at "is_in_risk_area");
+		self.is_inland_dike 				<- bool(a at "is_inland_dike");
 		self.command_round 				<- int(a at "command_round");
 		self.tracked_profile 			<- track_profile ();
 		self.element_shape 				<- geometry(a at "element_shape");
@@ -227,12 +227,12 @@ species Player_Action schedules:[]{
 			"cost"::string(cost),
 			"initial_application_round"::string(initial_application_round),
 			"action_type"::action_type,
-			"previous_lu_name"::previous_ua_name,
-			"is_expropriation"::isExpropriation,
-			"is_in_protected_area"::inProtectedArea,
-			"is_in_coast_border_area"::inCoastBorderArea,
-			"is_in_risk_area"::inRiskArea,
-			"is_inland_dike"::isInlandDike,
+			"previous_lu_name"::previous_lu_name,
+			"is_expropriation"::is_expropriation,
+			"is_in_protected_area"::is_in_protected_area,
+			"is_in_coast_border_area"::is_in_coast_border_area,
+			"is_in_risk_area"::is_in_risk_area,
+			"is_inland_dike"::is_inland_dike,
 			"command_round"::command_round];	
 		return res;
 	}
@@ -283,14 +283,14 @@ species District{
 		if act.is_applied {
 			write world.get_message('LDR_MSG_ACTION_RECEIVED') + " : " + act.id + " -> " + world.get_message('LDR_MSG_ALREADY_VALIDATED');
 		}
-		if act.isExpropriation {	
+		if act.is_expropriation {	
 			count_expropriation <- count_expropriation + 1;
 			ask Expropriation_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 		}
 		
 		switch (act.command){
 			match ACTION_CREATE_DIKE {
-				if(act.isInlandDike){
+				if(act.is_inland_dike){
 					length_inland_dikes <- length_inland_dikes + act.length_coast_def;
 					ask Inland_Dike_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 				}else{
@@ -319,22 +319,22 @@ species District{
 			}
 			match ACTION_MODIFY_LAND_COVER_Us {
 				count_Us <- count_Us +1;
-				if !act.inRiskArea and !act.inCoastBorderArea {
+				if !act.is_in_risk_area and !act.is_in_coast_border_area {
 					count_Us_out_coast_border_or_risk_area <- count_Us_out_coast_border_or_risk_area +1;
 					ask Us_out_Coast_Border_or_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 				} else{
-					if act.inCoastBorderArea {
+					if act.is_in_coast_border_area {
 					count_Us_in_coast_border_area <- count_Us_in_coast_border_area +1;
 					ask Us_in_Coast_Border_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 					}
-					if act.inRiskArea {
+					if act.is_in_risk_area {
 						count_Us_in_risk_area <- count_Us_in_risk_area +1;
 						ask Us_in_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 					}
 				}
 			}
 			match ACTION_MODIFY_LAND_COVER_N {
-				if act.previous_ua_name = "A" and (act.inCoastBorderArea or act.inRiskArea) {
+				if act.previous_lu_name = "A" and (act.is_in_coast_border_area or act.is_in_risk_area) {
 					count_A_to_N_in_coast_border_or_risk_area <- count_A_to_N_in_coast_border_or_risk_area + 1;
 					ask A_to_N_in_Coast_Border_or_Risk_Area_Lever where(each.my_district = self) {
 						do register (act);
@@ -343,16 +343,16 @@ species District{
 				}
 			}
 			match_one [ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_AU] {
-				if act.command = ACTION_MODIFY_LAND_COVER_Ui and !act.inCoastBorderArea and !act.inRiskArea {	
+				if act.command = ACTION_MODIFY_LAND_COVER_Ui and !act.is_in_coast_border_area and !act.is_in_risk_area {	
 					count_densification_out_coast_border_and_risk_area <- count_densification_out_coast_border_and_risk_area + 1;
 					ask Densification_out_Coast_Border_and_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation (act); }
 				}
 				else{
-					if act.inCoastBorderArea and act.previous_ua_name != "Us"{
+					if act.is_in_coast_border_area and act.previous_lu_name != "Us"{
 						count_AU_or_Ui_in_coast_border_area <- count_AU_or_Ui_in_coast_border_area + 1;
 						ask AU_or_Ui_in_Coast_Border_Area_Lever where(each.my_district = self) {	do register_and_check_activation(act); }
 					}
-					if act.inRiskArea {
+					if act.is_in_risk_area {
 						count_AU_or_Ui_in_risk_area <- count_AU_or_Ui_in_risk_area + 1;
 						ask AU_or_Ui_in_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 					}	
@@ -387,14 +387,14 @@ species Activated_Lever {
 	string lever_explanation <- "";
 	string p_action_id 		 <- "";
 	int added_delay 	 <- 0;
-	int added_cost 			 <- 0;
+	int added_cost 		 <- 0;
 	int round_creation;
 	int round_application;
 	
 	action init_from_map (map<string, string> m ){
 		id 					<- int(m["id"]);
 		lever_name 			<- m["lever_name"];
-		district_code 		<- m["district_code"];
+		district_code 		<- m[DISTRICT_CODE];
 		p_action_id 		<- m["p_action_id"];
 		added_cost 			<- int(m["added_cost"]);
 		added_delay 	<- int(m["added_delay"]);
@@ -408,9 +408,9 @@ species Activated_Lever {
 			"OBJECT_TYPE"::OBJECT_TYPE_ACTIVATED_LEVER,
 			"id"::id,
 			"lever_name"::lever_name,
-			"district_code"::district_code,
+			(DISTRICT_CODE)::district_code,
 			"p_action_id"::p_action_id,
-			"added_cost"::string(added_cost),
+			"added_cost"::added_cost,
 			"added_delay"::added_delay,
 			"lever_explanation"::lever_explanation,
 			"round_creation"::round_creation,
@@ -462,14 +462,14 @@ species Lever {
 		draw shape color: color_profile() border: #black at: location;
 		
 		draw box_title at: location - {length(box_title) / 4, 0.75} font: font("Arial", 12 , #bold) color: #black;
-		draw progression_bar at:location + {-length(progression_bar)/4, 0.5} font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
+		draw progression_bar at: location + {-length(progression_bar)/4, 0.4} font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
 		
 		if timer_activated {
-			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "-> " + info_of_next_activated_lever() at: location + {-9,1.5} font: font("Arial", 12 , #plain) color:#black;
+			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "-> " + info_of_next_activated_lever() at: location + {-9,1.4} font: font("Arial", 12 , #plain) color:#black;
 		}
 		if has_activated_levers {
-			draw activation_label_L1 at:location + {0,2.2} font: font("Arial", 12 , #plain) color:#black;
-			draw activation_label_L2 at:location + {0,2.6}   font: font("Arial", 12 , #plain) color:#black;
+			draw activation_label_L1 at:location + {-10,2} font: font("Arial", 12 , #plain) color:#black;
+			draw activation_label_L2 at:location + {0,2}   font: font("Arial", 12 , #plain) color:#black;
 		}
 		
 		if !status_on{ draw shape+0.1#m color: rgb(200,200,200,160); }
@@ -693,7 +693,7 @@ species Delay_Lever parent: Lever{
 		lev.added_delay <- added_delay;
 		do send_lever_message;
 		
-		activation_label_L1 <- (total_lever_delay() < 0 ? "Total Advance: " : "Total Delay: ") + abs(total_lever_delay()) + ' ' + world.get_message('LDR_MSG_ROUNDS');
+		activation_label_L1 <- (total_lever_delay() < 0 ? world.get_message('LDR_TOTAL_ADVANCE') + ": " : world.get_message('LDR_TOTAL_DELAY') + ": ") + abs(total_lever_delay()) + ' ' + world.get_message('LDR_MSG_ROUNDS');
 		lev.p_action.should_wait_lever_to_activate <- false;
 		do inform_network_should_wait_lever_to_activate(lev.p_action);
 		

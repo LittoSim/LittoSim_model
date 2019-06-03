@@ -499,7 +499,7 @@ global{
 			current_action <- first(action_list);
 			if but.command = ACTION_RAISE_DIKE {
 				if !empty(Protected_Area where (each intersects current_action.shape)){
-					current_action.inProtectedArea <- true;
+					current_action.is_in_protected_area <- true;
 					map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
 					if (!(vmap at vmap.keys[0])) {
 						ask current_action {
@@ -528,20 +528,18 @@ global{
 				element_id 	<- -1;
 				self.command<- ACTION_CREATE_DIKE;
 				self.coast_def_type <- COAST_DEF_TYPE_DIKE;
-				self.initial_application_round <- game_round  + (world.delay_of_action(self.command));
+				self.initial_application_round <- game_round  + world.delay_of_action(self.command);
 				element_shape <- polyline([previous_clicked_point, loc]);
 				shape 		 <- element_shape;
 				cost 		 <- but.action_cost * shape.perimeter;
 				// requesting the altitude of this future dike
-				map<string,string> mp <- ["REQUEST"::string(NEW_DIKE_ALT)];
+				map<string,string> mp <- ["REQUEST"::NEW_DIKE_ALT];
 				point end <- last (element_shape.points);
 				point origin <- first(element_shape.points);
 				put string(origin.x) at: "origin.x" in: mp;
 				put string(origin.y) at: "origin.y" in: mp;
 				put string(end.x) 	 at: "end.x" in: mp;
-				put string(end.y) 	 at: "end.y" in: mp;
-				//put string(location.x) at: "location.x" in: mp;
-				//put string(location.y) at: "location.y" in: mp;	
+				put string(end.y) 	 at: "end.y" in: mp;	
 				put id at: "act_id" in: mp;
 				ask Network_Player{
 					do send to: GAME_MANAGER contents: mp;
@@ -550,7 +548,7 @@ global{
 			previous_clicked_point <- nil;
 			current_action<- first(action_list);
 			if !empty(Protected_Area overlapping (current_action.shape)){
-				current_action.inProtectedArea <- true;
+				current_action.is_in_protected_area <- true;
 				map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
 				if (!(vmap at vmap.keys[0])) {
 					ask current_action {
@@ -716,7 +714,6 @@ global{
 
 species Displayed_List_Element skills: [UI_location] schedules: [] {
 	int font_size 	<- DISPLAY_FONT_SIZE - 4;
-	//bool event 		<- false update: false; // TODO illegal argument exception
 	string label 	<- "";
 	Displayed_List my_parent;
 	bool is_displayed;
@@ -1145,10 +1142,9 @@ species Message_Left_Icon parent: History_Left_Icon {
 species History_Element parent: Displayed_List_Element schedules:[]{
 	int font_size <- 12;
 	int delay -> { current_action.added_delay };
-	int rounds_before_application -> { current_action.nb_rounds_before_activation_and_waiting_for_lever_to_activate() };
-	float final_price 		-> { current_action.actual_cost };
-	float initialx_price 	-> { current_action.cost };
-	point bullet_size 		-> { ui_height*0.6, ui_height*0.6 };
+	float final_price   -> { current_action.actual_cost };
+	float initial_price -> { current_action.cost };
+	point bullet_size   -> { ui_height*0.6, ui_height*0.6 };
 	
 	point delay_location 		-> {location.x + 2 * ui_width / 5, location.y};
 	point round_apply_location 	-> {location.x + 1.3 * ui_width / 5, location.y};
@@ -1171,13 +1167,13 @@ species History_Element parent: Displayed_List_Element schedules:[]{
 				draw "" + delay at: {delay_location.x - (font_size / 6)#px , delay_location.y + (font_size / 3)#px} color: #white font: font1;
 			}
 			draw circle(bullet_size.x / 2) at: round_apply_location color: rgb(87,87,87);
-			draw "" + rounds_before_application at: {round_apply_location.x -(font_size/6)#px , round_apply_location.y + (font_size/3)#px } color: #white font: font1;
+			draw "" + current_action.nb_rounds_before_activation_and_waiting_for_lever_to_activate() at: {round_apply_location.x -(font_size/6)#px , round_apply_location.y + (font_size/3)#px } color: #white font: font1;
 		}
 		else {
 			draw file("../images/ihm/I_valider.png") at: round_apply_location size: bullet_size color: rgb(87,87,87);
 		}
 
-		rgb mc <- (final_price = initialx_price) ? rgb(87,87,87): rgb(235,33,46);
+		rgb mc <- (final_price = initial_price) ? rgb(87,87,87): rgb(235,33,46);
 		draw "" + int(final_price) at: { price_location.x , price_location.y + (font_size / 3)#px } color: mc font: font1;
 		
 		if(highlighted_action = current_action){
@@ -1232,7 +1228,7 @@ species Basket_Element parent: Displayed_List_Element {
 		font font1 <- font ('Helvetica Neue', font_size, #bold ); 
 		
 		draw "" + world.thousands_separator(int(current_action.cost))  at: {button_location.x - 50#px, button_location.y + (font_size/ 2)#px}  color: #black font: font1;
-		draw circle(bullet_size.x / 2) at:round_apply_location color: rgb(87,87,87);
+		draw circle(bullet_size.x / 2) at: round_apply_location color: rgb(87,87,87);
 		draw "" + world.delay_of_action(current_action.command) at: {round_apply_location.x - (font_size / 6)#px , round_apply_location.y + (font_size / 3)#px } color: #white font: font1;
 	
 		if(highlighted_action = current_action){
@@ -1286,8 +1282,10 @@ species Network_Listener_To_Leader skills: [network] {
 					match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
 						bool shouldWait <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
 						if shouldWait {
-							Player_Action aAct <-(Land_Use_Action+Coastal_Defense_Action) first_with (each.id = string(m_contents[PLAYER_ACTION_ID]));
-							aAct.should_wait_lever_to_activate <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
+							Player_Action aAct <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = m_contents[PLAYER_ACTION_ID]);
+							if aAct != nil {
+								aAct.should_wait_lever_to_activate <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);	
+							}
 						}
 					}
 					match NEW_ACTIVATED_LEVER {
@@ -1295,6 +1293,10 @@ species Network_Listener_To_Leader skills: [network] {
 							create Activated_Lever {
 								do init_from_map (m_contents);
 								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"]);
+								if ply_act = nil {
+									do die;
+									return;
+								}
 								ask world {
 									do user_msg (myself. my_map["lever_explanation"], INFORMATION_MESSAGE);
 								}
@@ -1345,7 +1347,7 @@ species Network_Player skills:[network]{
 				}
 				match INFORM_NEW_ROUND {
 					game_round	<- game_round + 1;
-					ask Land_Use_Action + Coastal_Defense_Action where (!(each.is_sent)) {
+					ask (Land_Use_Action + Coastal_Defense_Action) where (!each.is_sent) {
 						initial_application_round <- initial_application_round + 1;
 					}
 					switch game_round {
@@ -1413,7 +1415,7 @@ species Network_Player skills:[network]{
 						lu_code 	<- int(m_contents["lu_code"]);
 						lu_name 	<- lu_type_names[lu_code];
 						population 	<-int(m_contents["population"]);
-						is_in_densification <- bool(m_contents["isInDensification"]);
+						is_in_densification <- bool(m_contents["is_in_densification"]);
 					}
 				}
 				match DATA_RETRIEVE {
@@ -1443,7 +1445,7 @@ species Network_Player skills:[network]{
 									}
 								} else {
 									ask tmp { do init_from_map(m_contents); }
-								}	
+								}
 							}
 						}
 						match OBJECT_TYPE_COASTAL_DEFENSE {
@@ -1466,7 +1468,9 @@ species Network_Player skills:[network]{
 							create Activated_Lever {
 								do init_from_map(m_contents);
 								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"] );
-								add self to: ply_act.activated_levers;
+								if ply_act != nil {
+									add self to: ply_act.activated_levers;	
+								}
 							}				
 						}
 					}
@@ -1555,10 +1559,10 @@ species Player_Action {
 	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF ;
 	string previous_lu_name <- nil;
 	bool is_expropriation 	<- false;
-	bool inProtectedArea 	<- false;
-	bool inCoastBorderArea 	<- false;
-	bool inRiskArea 		<- false; 
-	bool isInlandDike 		<- false;
+	bool is_in_protected_area 	<- false;
+	bool is_in_coast_border_area 	<- false;
+	bool is_in_risk_area 		<- false; 
+	bool is_inland_dike 		<- false;
 	bool has_activated_levers 				-> {!empty(activated_levers)};
 	list<Activated_Lever> activated_levers 	<-[];
 	bool should_wait_lever_to_activate 		<- false;
@@ -1570,11 +1574,11 @@ species Player_Action {
 		self.label 			<- string(a at "label");
 		self.cost 			<- float(a at "cost");
 		self.initial_application_round <- int(a at "initial_application_round");
-		self.isInlandDike 	<- bool(a at "isInlandDike");
-		self.inRiskArea 	<- bool(a at "inRiskArea");
-		self.inCoastBorderArea 	<- bool(a at "inCoastBorderArea");
+		self.is_inland_dike 	<- bool(a at "is_inland_dike");
+		self.is_in_risk_area 	<- bool(a at "is_in_risk_area");
+		self.is_in_coast_border_area 	<- bool(a at "is_in_coast_border_area");
 		self.is_expropriation 	<- bool(a at "is_expropriation");
-		self.inProtectedArea 	<- bool(a at "inProtectedArea");
+		self.is_in_protected_area 	<- bool(a at "is_in_protected_area");
 		self.previous_lu_name 	<- string(a at "previous_lu_name");
 		self.action_type 	<- string(a at "action_type");
 		self.is_applied		<- bool(a at "is_applied");
@@ -1609,7 +1613,7 @@ species Player_Action {
 			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
 			"id"::id,
 			"element_id"::string(element_id),
-			"district_code"::active_district_code,
+			(DISTRICT_CODE)::active_district_code,
 			"command"::string(command),
 			"label"::label,
 			"cost"::string(cost),
@@ -1617,10 +1621,10 @@ species Player_Action {
 			"action_type"::action_type,
 			"previous_lu_name"::previous_lu_name,
 			"is_expropriation"::string(is_expropriation),
-			"isInlandDike"::string(isInlandDike),
-			"inRiskArea"::string(inRiskArea),
-			"inCoastBorderArea"::string(inCoastBorderArea),
-			"inProtectedArea"::string(inProtectedArea),
+			"is_inland_dike"::string(is_inland_dike),
+			"is_in_risk_area"::string(is_in_risk_area),
+			"is_in_coast_border_area"::string(is_in_coast_border_area),
+			"is_in_protected_area"::string(is_in_protected_area),
 			"is_applied"::string(is_applied),
 			"is_sent"::string(is_sent),
 			"shape"::string(shape)];
@@ -1642,7 +1646,7 @@ species Player_Action {
 		map<string,string> mp <- ["command"::command,"id"::id,
 			"initial_application_round"::initial_application_round,
 			"element_id"::element_id, "action_type"::action_type,
-			"inProtectedArea"::inProtectedArea, "previous_lu_name"::previous_lu_name,
+			"is_in_protected_area"::is_in_protected_area, "previous_lu_name"::previous_lu_name,
 			"is_expropriation"::is_expropriation, "cost"::int(cost)];
 		
 		if command = ACTION_CREATE_DIKE  {
@@ -1977,12 +1981,11 @@ experiment LittoSIM_GEN_Player type: gui{
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 
 	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
-	parameter "Language choiceé : " var: my_language	 <- default_language  among: languages_list;
-	
+	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	
 	init { minimum_cycle_duration <- 0.5; }
 	
-	layout horizontal([vertical([0::7500,1::2500])::7000, vertical([2::5000,3::5000])::3000]) tabs:false toolbars:false;
+	layout horizontal([vertical([0::75,1::25])::70,vertical([2::50,3::50])::30]) tabs: false toolbars: false;
 	
 	output{
 		

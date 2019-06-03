@@ -151,10 +151,10 @@ global {
 			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   	ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
 			new_comers_still_to_dispatch <- new_comers_to_dispatch();
-			ask shuffle(Land_Use) 			 { pop_updated <- false; do evolve_AU_to_U;  }
-			ask shuffle(Land_Use) 			 { do evolve_pop_U_densification; 				 }
-			ask shuffle(Land_Use) 			 { do evolve_pop_U_standard; 					 } 
-			ask districts_in_game			 { do calculate_taxes;						 }
+			ask shuffle(Land_Use){ pop_updated <- false; do evolve_AU_to_U; }
+			ask shuffle(Land_Use){ do evolve_pop_U_densification; 			}
+			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				} 
+			ask districts_in_game{ do calculate_taxes;						}
 		}
 		else {
 			stateSimPhase <- SIM_GAME;
@@ -677,7 +677,7 @@ species Network_Game_Manager skills: [network]{
 							self.district_code 				<- m_sender;
 							self.element_id 				<- int(m_contents["element_id"]);
 							self.action_type 				<- m_contents["action_type"];
-							self.is_in_protected_area 		<- bool(m_contents["inProtectedArea"]);
+							self.is_in_protected_area 		<- bool(m_contents["is_in_protected_area"]);
 							self.previous_lu_name 			<- m_contents["previous_lu_name"];
 							self.is_expropriation 			<- bool(m_contents["is_expropriation"]);
 							self.cost 						<- float(m_contents["cost"]);
@@ -722,66 +722,68 @@ species Network_Game_Manager skills: [network]{
 		}
 	}
 
-	reflex apply_player_action when: length (Player_Action where (each.is_alive)) > 0{
-		ask Player_Action where (each.is_alive and each.should_be_applied and !each.should_wait_lever_to_activate) {
-			int id_dist <- world.district_id (district_code);
-			bool acknowledge <- false;
-			switch(command){
-				match ACTION_CREATE_DIKE{	
-					ask(create_dike (self)) {
-						do build_dike;
-						acknowledge <- true;
+	reflex apply_player_action when: length(Player_Action where (each.is_alive)) > 0{
+		ask Player_Action where (each.is_alive){
+			if self.should_be_applied and !self.should_wait_lever_to_activate {
+				int id_dist <- world.district_id (district_code);
+				bool acknowledge <- false;
+				switch(command){
+					match ACTION_CREATE_DIKE{	
+						ask(create_dike (self)) {
+							do build_dike;
+							acknowledge <- true;
+						}
 					}
-				}
-				match ACTION_REPAIR_DIKE {
-					ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
-						do repaire_dike;
-						not_updated <- true;
-						acknowledge <- true;
+					match ACTION_REPAIR_DIKE {
+						ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+							do repaire_dike;
+							not_updated <- true;
+							acknowledge <- true;
+						}
 					}
-				}
-			 	match ACTION_DESTROY_DIKE {
-			 		ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
-						not_updated <- true;
-						acknowledge <- true;
-						do destroy_dike;
-					}		
-				}
-			 	match ACTION_RAISE_DIKE {
-			 		ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
-						do raise_dike;
-						not_updated <- true;
-						acknowledge <- true;
+				 	match ACTION_DESTROY_DIKE {
+				 		ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+							not_updated <- true;
+							acknowledge <- true;
+							do destroy_dike;
+						}		
 					}
-				}
-				match ACTION_INSTALL_GANIVELLE {
-				 	ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
-						do install_ganivelle;
-						not_updated <- true;
-						acknowledge <- true;
+				 	match ACTION_RAISE_DIKE {
+				 		ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+							do raise_dike;
+							not_updated <- true;
+							acknowledge <- true;
+						}
 					}
+					match ACTION_INSTALL_GANIVELLE {
+					 	ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+							do install_ganivelle;
+							not_updated <- true;
+							acknowledge <- true;
+						}
+					}
+					match_one [ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
+								ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs] {
+						ask Land_Use first_with(each.id = element_id){
+				 			do modify_LU (world.lu_name_of_command(myself.command));
+				 		  	not_updated <- true;
+				 		  	acknowledge <- true;
+				 		}
+					}
+				 	match ACTION_MODIFY_LAND_COVER_Ui {
+				 		ask Land_Use first_with(each.id = element_id){
+				 			is_in_densification <- true;
+				 		 	not_updated <- true;
+				 		 	acknowledge <- true;
+				 		 }
+				 	 }
 				}
-				match_one [ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
-							ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs] {
-					ask Land_Use first_with(each.id = element_id){
-			 			do modify_LU (world.lu_name_of_command(myself.command));
-			 		  	not_updated <- true;
-			 		  	acknowledge <- true;
-			 		}
+				if(acknowledge) {
+					ask Network_Game_Manager { do acknowledge_application_of_player_action(myself); }
 				}
-			 	match ACTION_MODIFY_LAND_COVER_Ui {
-			 		ask Land_Use first_with(each.id = element_id){
-			 			isInDensification <- true;
-			 		 	not_updated <- true;
-			 		 	acknowledge <- true;
-			 		 }
-			 	 }
+				is_alive 	<- false; 
+				is_applied 	<- true;
 			}
-			if(acknowledge) {
-				ask Network_Game_Manager { do acknowledge_application_of_player_action(myself); }
-			}
-			is_alive 	<- false; 
-			is_applied 	<- true;
 		}		
 	}
 	
@@ -795,7 +797,7 @@ species Network_Game_Manager skills: [network]{
 		string msg <- "";
 		ask Land_Use where(each.not_updated) {
 			map<string,string> msg <- ["TOPIC"::ACTION_LAND_COVER_UPDATE, "id"::id, "lu_code"::lu_code,
-							"population"::population, "isInDensification"::isInDensification];
+							"population"::population, "is_in_densification"::is_in_densification];
 			not_updated <- false;
 			ask myself {
 				do send to: myself.dist_code contents: msg;
@@ -940,15 +942,17 @@ species Network_Listener_To_Leader skills:[network]{
 				match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
 					Player_Action act <- Player_Action first_with (each.id = string(m_contents[PLAYER_ACTION_ID]));
 					write "Action : " + act;
-					act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-					write "Should wait ? " + act.should_wait_lever_to_activate;
+					if act!= nil {
+						act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
+						write "Should wait ? " + act.should_wait_lever_to_activate;	
+					}	
 				}
 				match NEW_ACTIVATED_LEVER {
 					if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
 						create Activated_Lever{
 							do init_from_map (m_contents);
-							ply_action	<- Player_Action first_with (each.id 			= my_map["p_action_id"]);
-							District d 	<- District 	 first_with (each.district_code = my_map["district_code"]);
+							ply_action	<- Player_Action first_with (each.id = my_map["p_action_id"]);
+							District d 	<- District 	 first_with (each.district_code = my_map[DISTRICT_CODE]);
 							d.budget 	<- d.budget  -  int(my_map["added_cost"]); 
 							add self to: ply_action.activated_levers;
 							ply_action.a_lever_has_been_applied <- true;
@@ -1337,13 +1341,13 @@ species Land_Use {
 	string lu_name;
 	int lu_code;
 	string dist_code;
-	rgb my_color 			<- cell_color() update: cell_color();
-	int AU_to_U_counter 	<- 0;
-	string density_class 	-> {population = 0? POP_EMPTY :(population < POP_LOW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
-	int exp_cost 			-> {round (population * 400* population ^ (-0.5))};
-	bool isUrbanType 		-> {lu_name in ["U","Us","AU","AUs"]};
-	bool isAdapted 			-> {lu_name in ["Us","AUs"]};
-	bool isInDensification 	<- false;
+	rgb my_color 		<- cell_color() update: cell_color();
+	int AU_to_U_counter <- 0;
+	string density_class-> {population = 0? POP_EMPTY :(population < POP_LOW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	int exp_cost 		-> {round (population * 400 * population ^ (-0.5))};
+	bool isUrbanType 	-> {lu_name in ["U","Us","AU","AUs"]};
+	bool is_adapted 	-> {lu_name in ["Us","AUs"]};
+	bool is_in_densification<- false;
 	bool not_updated 		<- false;
 	bool pop_updated 		<- false;
 	int population;
@@ -1358,7 +1362,7 @@ species Land_Use {
 			"STEPS_FOR_AU_TO_U"::string(STEPS_FOR_AU_TO_U),
 			"AU_to_U_counter"::string(AU_to_U_counter),
 			"population"::string(population),
-			"isInDensification"::string(isInDensification),
+			"is_in_densification"::string(is_in_densification),
 			"not_updated"::string(not_updated),
 			"pop_updated"::string(pop_updated),
 			"locationx"::string(location.x),
@@ -1397,15 +1401,15 @@ species Land_Use {
 	}
 	
 	action evolve_pop_U_densification {
-		if !pop_updated and isInDensification and (lu_name in ["U","Us"]){
+		if !pop_updated and is_in_densification and (lu_name in ["U","Us"]){
 			string previous_d_class <- density_class; 
 			do assign_population (POP_FOR_U_DENSIFICATION);
-			if previous_d_class != density_class { isInDensification <- false; }
+			if previous_d_class != density_class { is_in_densification <- false; }
 		}
 	}
 		
-	action evolve_pop_U_standard {
-		if !pop_updated and (lu_name in ["U","Us"]){
+	action evolve_pop_U_standard { 
+		if !pop_updated and (lu_name in ["U","Us"]){ // TODO and !is_in_densification ?? avoid that these cells are populated in standard and in densification !
 			do assign_population (POP_FOR_U_STANDARD);
 		}
 	}
@@ -1421,8 +1425,8 @@ species Land_Use {
 
 	aspect base {
 		draw shape color: my_color;
-		if isAdapted		 {	draw "A" color:#black;	}
-		if isInDensification {	draw "D" color:#black;	}
+		if is_adapted		 {	draw "A" color:#black;	}
+		if is_in_densification{	draw "D" color:#black;	}
 	}
 
 	aspect population_density {
@@ -1537,7 +1541,7 @@ species District {
 		put string(my_coast_def where (each.type = COAST_DEF_TYPE_DIKE) sum_of (each.shape.perimeter)) key: "length_dikes_t0" in: my_indicators_t0;
 		put string(my_coast_def where (each.type = COAST_DEF_TYPE_DUNE) sum_of (each.shape.perimeter)) key: "length_dunes_t0" in: my_indicators_t0;
 		put string(length(LUs where (each.isUrbanType))) key: "count_LU_urban_t0" in: my_indicators_t0; // built cells (U , AU, Us and AUs)
-		put string(length(LUs where (each.isUrbanType and not(each.isAdapted) and each intersects all_coastal_border_area))) key: "count_LU_U_and_AU_is_in_coast_border_area_t0" in: my_indicators_t0; // non adapted built cells in littoral area (<400m)
+		put string(length(LUs where (each.isUrbanType and not(each.is_adapted) and each intersects all_coastal_border_area))) key: "count_LU_U_and_AU_is_in_coast_border_area_t0" in: my_indicators_t0; // non adapted built cells in littoral area (<400m)
 		put string(length(LUs where (each.isUrbanType and each intersects all_flood_risk_area))) key: "count_LU_urban_in_flood_risk_area_t0" in: my_indicators_t0; // built cells in flooded area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_flood_risk_area))) key: "count_LU_urban_dense_in_flood_risk_area_t0" in: my_indicators_t0; // dense cells in risk area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_coastal_border_area))) key: "count_LU_urban_dense_is_in_coast_border_area_t0" in: my_indicators_t0; //dense cells in littoral area
