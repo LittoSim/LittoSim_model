@@ -14,11 +14,6 @@ global{
 	int game_round <- 0;
 	point MOUSE_LOC;
 	
-	// strategies
-	string BUILDER 		<- "BUILDER";
-	string SOFT_DEFENSE <- "SOFT_DEFENSE";
-	string WITHDRAWAL 	<- "WITHDRAWAL";
-	
 	// messages to display in multi-langs
 	string MSG_CHOOSE_MSG_TO_SEND;	
 	string MSG_TYPE_CUSTOMIZED_MSG;

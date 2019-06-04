@@ -14,8 +14,8 @@ global{
 	float sim_id;
 	list<string> leader_activities <- [];	
 	Player_Action selection_player_action;
-	District selected_district		<- nil;
-	geometry shape 					<- square(100#m);
+	District selected_district <- nil;
+	geometry shape <- square(100#m);
 	list<species<Lever>> all_levers <- [];
 	
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
@@ -153,7 +153,7 @@ species Player_Action schedules:[]{
 	bool is_in_coast_border_area 	<- false; 
 	bool is_in_risk_area 	<- false; 				// for LU action
 	bool is_inland_dike 	<- false; 				// for COAST_DEF (retro dikes)
-	string tracked_profile 	<- "";
+	string strategy_profile	<- "";
 	geometry element_shape;
 	float lever_activation_time;
 	int length_coast_def;
@@ -161,19 +161,17 @@ species Player_Action schedules:[]{
 	bool should_wait_lever_to_activate 		<- false;
 	bool a_lever_has_been_applied			<- false;
 	
-	init {	shape <- rectangle(10#m,5#m);	}
-	
 	reflex save_data{
 		ask world {
 			save Player_Action to: "/tmp/player_action2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id", cost::"cost", command_round::"cround",
 					initial_application_round::"around", round_delay::"rdelay", is_delayed::"is_delayed", element_id::"chosenId",
-					district_code::DISTRICT_CODE, command::"command", label::"label", tracked_profile::"tracked_profile", is_inland_dike::"is_inland_dike",
+					district_code::DISTRICT_CODE, command::"command", label::"label", strategy_profile::"strategy_profile", is_inland_dike::"is_inland_dike",
 					is_in_risk_area::"is_in_risk_area", is_in_coast_border_area::"is_in_coast_border_area", is_in_protected_area::"is_in_protected_area", is_expropriation::"is_expropriation",
 					previous_lu_name::"previous_lu_name", action_type::"action_type"];
 		}
 	}
 	
-	string track_profile {
+	string get_strategy_profile {
 		if(action_type = PLAYER_ACTION_TYPE_COAST_DEF){
 			if is_inland_dike { return SOFT_DEFENSE; }
 			else{
@@ -192,6 +190,7 @@ species Player_Action schedules:[]{
 				}
 			}
 		}
+		return NEUTRAL;
 	}
 	
 	action init_from_map (map<string, string> a ){
@@ -205,12 +204,12 @@ species Player_Action schedules:[]{
 		self.action_type 				<- a at "action_type";
 		self.previous_lu_name 			<- a at "previous_lu_name";
 		self.is_expropriation 			<- bool(a at "is_expropriation");
-		self.is_in_protected_area 			<- bool(a at "is_in_protected_area");
-		self.is_in_coast_border_area 			<- bool(a at "is_in_coast_border_area");
-		self.is_in_risk_area 				<- bool(a at "is_in_risk_area");
-		self.is_inland_dike 				<- bool(a at "is_inland_dike");
+		self.is_in_protected_area 		<- bool(a at "is_in_protected_area");
+		self.is_in_coast_border_area 	<- bool(a at "is_in_coast_border_area");
+		self.is_in_risk_area 			<- bool(a at "is_in_risk_area");
+		self.is_inland_dike 			<- bool(a at "is_inland_dike");
 		self.command_round 				<- int(a at "command_round");
-		self.tracked_profile 			<- track_profile ();
+		self.strategy_profile 			<- get_strategy_profile();
 		self.element_shape 				<- geometry(a at "element_shape");
 		self.length_coast_def 			<- int(a at "length_coast_def");
 		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");			
@@ -288,9 +287,9 @@ species District{
 			ask Expropriation_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 		}
 		
-		switch (act.command){
+		switch act.command {
 			match ACTION_CREATE_DIKE {
-				if(act.is_inland_dike){
+				if act.is_inland_dike {
 					length_inland_dikes <- length_inland_dikes + act.length_coast_def;
 					ask Inland_Dike_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 				}else{
@@ -350,7 +349,7 @@ species District{
 				else{
 					if act.is_in_coast_border_area and act.previous_lu_name != "Us"{
 						count_AU_or_Ui_in_coast_border_area <- count_AU_or_Ui_in_coast_border_area + 1;
-						ask AU_or_Ui_in_Coast_Border_Area_Lever where(each.my_district = self) {	do register_and_check_activation(act); }
+						ask AU_or_Ui_in_Coast_Border_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 					}
 					if act.is_in_risk_area {
 						count_AU_or_Ui_in_risk_area <- count_AU_or_Ui_in_risk_area + 1;
@@ -362,15 +361,15 @@ species District{
 	}
 	
 	list<Player_Action> actions_install_ganivelle {
-		return ( (Ganivelle_Lever first_with (each.my_district = self)).associated_actions sort_by (-each.command_round) );
+		return ((Ganivelle_Lever first_with (each.my_district = self)).associated_actions sort_by (-each.command_round));
 	}
 	
 	list<Player_Action> actions_densification_out_coast_border_and_risk_area{
-		return ( (Densification_out_Coast_Border_and_Risk_Area_Lever first_with(each.my_district = self)).associated_actions sort_by(-each.command_round) );
+		return ((Densification_out_Coast_Border_and_Risk_Area_Lever first_with(each.my_district = self)).associated_actions sort_by(-each.command_round));
 	}
 	
 	list<Player_Action> actions_expropriation{
-		return ( (Expropriation_Lever first_with(each.my_district = self)).associated_actions sort_by(-each.command_round) );
+		return ((Expropriation_Lever first_with(each.my_district = self)).associated_actions sort_by(-each.command_round));
 	}
 }
 //------------------------------ End of District -------------------------------//
@@ -1112,6 +1111,8 @@ species Network_Leader skills:[network] {
 				ask District first_with (each.district_code = district_code) {
 					do update_indicators_and_register_player_action (myself);
 				}
+				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,(STRATEGY_PROFILE)::strategy_profile];
+				ask world { do send_message_from_leader(mpp); }
 			}
 		}
 		else{ // an update of an action already commanded
@@ -1145,7 +1146,6 @@ species District_Action_Button parent: District_Name{
 		string msg_player 			<- "";
 		list<string> msg_activity 	<- ["",""];
 		map<string, unknown> msg 	<-[];
-		
 		put my_district.district_code	key: DISTRICT_CODE 		in: msg;
 		
 		switch(command){
@@ -1229,7 +1229,7 @@ species District_Action_Button parent: District_Name{
 		if msg_player != "" {
 			ask world {
 				do send_message_from_leader(msg);
-				do record_leader_activity  (msg_activity[0], myself.my_district.district_name, msg_activity[1]);
+				do record_leader_activity (msg_activity[0], myself.my_district.district_name, msg_activity[1]);
 			}	
 		}
 	}

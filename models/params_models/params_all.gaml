@@ -29,26 +29,28 @@ global{
 	string OBJECT_TYPE_WINDOW_LOCKER	<- "WINDOW_LOCKER";
 
 	// Main-Leader network communication
-	string LEADER_COMMAND   		<- "LEADER_COMMAND";
-	string RESPONSE_TO_LEADER 		<- "RESPONSE_TO_LEADER";
+	string LEADER_COMMAND   	<- "LEADER_COMMAND";
+	string RESPONSE_TO_LEADER 	<- "RESPONSE_TO_LEADER";
 	
-	string TAKE_MONEY_FROM 			<- 'TAKE_MONEY_FROM';
-	string GIVE_MONEY_TO			<- 'GIVE_MONEY_TO';
-	string SEND_MESSAGE_TO			<- 'SEND_MESSAGE_TO';
+	string TAKE_MONEY_FROM 		<- 'TAKE_MONEY_FROM';
+	string GIVE_MONEY_TO		<- 'GIVE_MONEY_TO';
+	string SEND_MESSAGE_TO		<- 'SEND_MESSAGE_TO';
 	
-	string ASK_NUM_ROUND 			<- "LEADER_ASKS_FOR_ROUND_NUMBER";
-	string NUM_ROUND 				<- "ROUND_NUMBER";
-	string ASK_INDICATORS_T0		<- "LEADER_ASKS_FOR_T0_IDICATORS";
-	string INDICATORS_T0 			<- "INDICATORS_AT_T0";
-	string ASK_ACTION_STATE 		<- "LEADER_ASKS_FOR_ACTION_STATE";
-	string ACTION_STATE 		  	<- "ACTION_STATE";
+	string ASK_NUM_ROUND 		<- "LEADER_ASKS_FOR_ROUND_NUMBER";
+	string NUM_ROUND 			<- "ROUND_NUMBER";
+	string ASK_INDICATORS_T0	<- "LEADER_ASKS_FOR_T0_IDICATORS";
+	string INDICATORS_T0 		<- "INDICATORS_AT_T0";
+	string ASK_ACTION_STATE 	<- "LEADER_ASKS_FOR_ACTION_STATE";
+	string ACTION_STATE 		<- "ACTION_STATE";
 	
-	string AMOUNT 					<- "AMOUNT";
-	string BUDGET 					<- "BUDGET";
-	string DISTRICT_CODE 			<- "DISTRICT_CODE";
+	string AMOUNT 				<- "AMOUNT";
+	string BUDGET 				<- "BUDGET";
+	string DISTRICT_CODE 		<- "DISTRICT_CODE";
 	
-	string PLAYER_ACTION_ID 		<- "PLAYER_ACTION_ID";
-	string NEW_ACTIVATED_LEVER		<- "NEW_ACTIVATED_LEVER";
+	string PLAYER_ACTION_ID 	<- "PLAYER_ACTION_ID";
+	string NEW_ACTIVATED_LEVER	<- "NEW_ACTIVATED_LEVER";
+	string NEW_REQUESTED_ACTION	<- "NEW_REQUESTED_ACTION";
+	string STRATEGY_PROFILE		<- "STRATEGY_PROFILE";
 	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
 	
 	// Manager-Player network communication
@@ -67,6 +69,12 @@ global{
 	string ACTION_LAND_COVER_UPDATE <- "ACTION_LAND_COVER_UPDATE";
 	int REFRESH_ALL 			<- 20;
 	int CONNECTION_MESSAGE 		<- 23;
+	
+	// strategies
+	string BUILDER 		<- "BUILDER";
+	string SOFT_DEFENSE <- "SOFT_DEFENSE";
+	string WITHDRAWAL 	<- "WITHDRAWAL";
+	string NEUTRAL 	<- "NEUTRAL";
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE,
@@ -122,7 +130,8 @@ global{
 	file coastal_defenses_shape <- file(shapes_def["COASTAL_DEFENSES_SHAPE"]);
 	file land_use_shape 		<- file(shapes_def["LAND_USE_SHAPE"]);	
 	file convex_hull_shape 		<- file(shapes_def["CONVEX_HULL_SHAPE"]); 
-	file dem_file 				<- file(shapes_def["DEM_FILE"]) ;
+	file dem_file 				<- file(shapes_def["DEM_FILE"]);
+	file hillshade_file 		<- file(shapes_def["HILLSHADE"]);
 	file buffer_in_100m_shape 	<- file(shapes_def["BUFFER_IN100M_SHAPE"]);
 	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
