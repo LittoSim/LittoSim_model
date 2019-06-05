@@ -1111,7 +1111,8 @@ species Network_Leader skills:[network] {
 				ask District first_with (each.district_code = district_code) {
 					do update_indicators_and_register_player_action (myself);
 				}
-				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,(STRATEGY_PROFILE)::strategy_profile];
+				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
+					(STRATEGY_PROFILE)::strategy_profile,"cost"::cost];
 				ask world { do send_message_from_leader(mpp); }
 			}
 		}

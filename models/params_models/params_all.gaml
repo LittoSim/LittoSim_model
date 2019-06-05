@@ -75,6 +75,7 @@ global{
 	string SOFT_DEFENSE <- "SOFT_DEFENSE";
 	string WITHDRAWAL 	<- "WITHDRAWAL";
 	string NEUTRAL 	<- "NEUTRAL";
+	map<string,int> strategies_index <- [(BUILDER)::0,(SOFT_DEFENSE)::1,(WITHDRAWAL)::2,(NEUTRAL)::3];
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE,

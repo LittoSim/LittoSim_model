@@ -53,7 +53,7 @@ global {
 	geometry all_coastal_border_area;
 	list<list<int>> districts_budgets <- [[],[],[],[]];						// budget tables to draw evolution graphs
 	int new_comers_still_to_dispatch <- 0;									// population dynamics
-	
+	list<list<float>> strategies_score <-[[],[],[],[]];
 	// other variables 
 	bool show_max_water_height	<- false;						// defines if the water_height displayed on the map should be the max one or the current one
 	string stateSimPhase 		<- SIM_NOT_STARTED; 			// state variable of current simulation state 
@@ -66,7 +66,7 @@ global {
 	init{
 		// Create GIS agents
 		create District from: districts_shape with: [district_code::string(read("dist_code")),
-													 district_name::string(read("dist_sname")),
+													 district_name::string(read("dist_sname")), district_long_name::string(read("dist_lname")),
 													 dist_id::int(read("player_id"))];
 													 
 		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
@@ -156,7 +156,9 @@ global {
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
 			ask districts_in_game{
-				strategies <- [0,0,0,0];
+				strategies_count_4 <- [0,0,0,0];
+				strategies_count_3 <- [0,0,0];
+				strategies_cost <- [0.0,0.0,0.0,0.0];
 			}
 		}
 		game_round <- game_round + 1;
@@ -281,7 +283,10 @@ global {
 	
 	action save_budget_data {
 		loop ix from: 1 to: 4 {
-			add (District first_with(each.dist_id = ix)).budget to: districts_budgets[ix-1];
+			ask District first_with(each.dist_id = ix){
+				add budget to: districts_budgets[ix-1];
+				add mean(strategies_count_3) to: strategies_score[ix-1];
+			}
 		}
 	}	
 	   
@@ -958,17 +963,14 @@ species Network_Listener_To_Leader skills:[network]{
 						}
 					}
 				}
-				match NEW_REQUESTED_ACTION{
-					write m_contents;
+				match NEW_REQUESTED_ACTION {
 					ask District first_with(each.district_code = m_contents[DISTRICT_CODE]){
-						write district_name;
-						switch m_contents[STRATEGY_PROFILE]{
-							match BUILDER { strategies[0] <- strategies[0] + 1; write "buiiilder";}
-							match SOFT_DEFENSE { strategies[1] <- strategies[1] + 1;write "soooooooooft";}
-							match WITHDRAWAL { strategies[2] <- strategies[2] + 1;write "withdraaaaaaal";}
-							match NEUTRAL { strategies[3] <- strategies[3] + 1;write "neuuuuuuuuuter";}
+						int strix <- strategies_index at m_contents[STRATEGY_PROFILE];
+						strategies_count_4[strix] <- strategies_count_4[strix] + 1;
+						strategies_cost[strix] <- strategies_cost[strix] + float(m_contents["cost"]);
+						if strix < 3 {
+							strategies_count_3[strix] <- strategies_count_3[strix] + 1;
 						}
-						write strategies;
 					}
 				}
 			}	
@@ -1478,6 +1480,7 @@ species District {
 	int dist_id <- 0;
 	string district_code; 
 	string district_name;
+	string district_long_name;
 	int budget;
 	int received_tax <-0;
 	list<Land_Use> LUs;
@@ -1502,11 +1505,13 @@ species District {
 	// Indicators calculated at initialization, and sent to Leader when he connects
 	map<string,string> my_indicators_t0 <- [];
 	// Strategy profiles actions
-	list<int> strategies <- [30,30,30,30];	
+	list<int> strategies_count_4 <- [30,30,30,30];
+	list<int> strategies_count_3 <- [10,10,10];
+	list<float> strategies_cost <- [100000.0,100000.0,100000.0,100000.0];	
 	
 	aspect flooding { draw shape color: rgb (0,0,0,0) border:#black; }
 	aspect planning { draw shape color:#whitesmoke border: #black; }
-	aspect population { draw shape color: #lightgray border:#black; }
+	aspect population { draw shape color: rgb(240,186,112) border:#black; }
 	
 	int current_population {  return sum(LUs accumulate (each.population));	}
 	
@@ -1617,14 +1622,14 @@ species Legend_Planning{
 	}
 }
 
-species Legend_Population parent: Legend_Planning{
+species Legend_Population parent: Legend_Planning {
 	init{
 		texts <- ["High density","Medium density","Low density","Empty"];
 		colors<- [rgb(169,169,169),rgb(192,192,192),rgb(220,220,220),rgb(245,245,245)];
 	}
 }
 
-species Legend_Map parent: Legend_Planning{
+species Legend_Map parent: Legend_Planning {
 	init {
 		start_location <- {700, 1500};
 		text_color <- #white;
@@ -1678,37 +1683,6 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			event mouse_down 		action: button_click_map;
 		}
 		
-		display "Planning and population" background: #black{
-			graphics "World" { draw shape color: rgb(230,251,255); }
-			species District 		aspect: planning size: {0.48,0.48} position: {0.01,0.01};
-			species Land_Use 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Road 	 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Water			aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Coastal_Defense aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Legend_Planning size: {0.48,0.48} position: {0.01,0.01};
-		
-			species District aspect: population size: {0.48,0.48} position: {0.51,0.01};
-			species Land_Use aspect: population_density size: {0.48,0.48} position: {0.51,0.01};
-			species Road 	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
-			species Water	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
-			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
-			
-			chart "Budgets" type: series size: {0.48,0.48} position: {0.01,0.51}{
-			 	data districts_in_game[0].district_name value: districts_budgets[0] color:#red;
-			 	data districts_in_game[1].district_name value: districts_budgets[1] color:#blue;
-			 	data districts_in_game[2].district_name value: districts_budgets[2] color:#green;
-			 	data districts_in_game[3].district_name value: districts_budgets[3] color:#black;			
-			}
-			
-			chart "Strategies" type: radar size: {0.48,0.48} position: {0.51,0.51} x_serie_labels:
-					["Builder","Soft defense","Strategic withdrawal","Neutral"] series_label_position: xaxis{
-				data districts_in_game[0].district_name value: districts_in_game[0].strategies color: #red;
-				data districts_in_game[1].district_name value: districts_in_game[1].strategies color: #blue;
-				data districts_in_game[2].district_name value: districts_in_game[2].strategies color: #green;
-				data districts_in_game[3].district_name value: districts_in_game[3].strategies color: #black;
-			}
-		}
-		
 		display "Game control"{	
 			species Button  aspect: buttons_master;
 			
@@ -1726,52 +1700,123 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			event mouse_down action: button_click_master_control;
 		}
 		
+		display "Planning and population" background: #black{
+			graphics "World" { draw shape color: rgb(230,251,255); }
+			species District 		aspect: planning size: {0.48,0.48} position: {0.01,0.01};
+			species Land_Use 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
+			species Road 	 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
+			species Water			aspect: base size: {0.48,0.48} position: {0.01,0.01};
+			species Coastal_Defense aspect: base size: {0.48,0.48} position: {0.01,0.01};
+			species Legend_Planning size: {0.48,0.48} position: {0.01,0.01};
+		
+			species District aspect: population size: {0.48,0.48} position: {0.51,0.01};
+			species Land_Use aspect: population_density size: {0.48,0.48} position: {0.51,0.01};
+			species Road 	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
+			species Water	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
+			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
+			
+			chart "Budgets" type: series size: {0.48,0.48} position: {0.01,0.51} x_range:8 {
+			 	data districts_in_game[0].district_name value: districts_budgets[0] color:#red;
+			 	data districts_in_game[1].district_name value: districts_budgets[1] color:#blue;
+			 	data districts_in_game[2].district_name value: districts_budgets[2] color:#green;
+			 	data districts_in_game[3].district_name value: districts_budgets[3] color:#black;			
+			}
+						
+			chart "Actions" type: histogram style:stack size: {0.48,0.48} position: {0.51,0.51}
+				x_serie_labels: districts_in_game collect each.district_name{
+			 	data "Builder" style: stack value: districts_in_game collect each.strategies_count_4[0] color:#red;
+			 	data "Soft defense" style: stack value: districts_in_game collect each.strategies_count_4[1] color:#blue;
+			 	data "Strategic withdrawal" style: stack value: districts_in_game collect each.strategies_count_4[2] color:#green;
+			 	data "Neutral" style: stack value: districts_in_game collect each.strategies_count_4[3] color:#black;			
+			}
+		}
+		
+		display "Strategies" background: #lightgray{
+			chart "Number of actions" type: radar size: {0.48,0.48} position: {0.01,0.01}
+				x_serie_labels: ["Builder","Soft defense","Strategic withdrawal","Neutral"] {
+				data districts_in_game[0].district_name value: districts_in_game[0].strategies_count_4 color: #red;
+				data districts_in_game[1].district_name value: districts_in_game[1].strategies_count_4 color: #blue;
+				data districts_in_game[2].district_name value: districts_in_game[2].strategies_count_4 color: #green;
+				data districts_in_game[3].district_name value: districts_in_game[3].strategies_count_4 color: #black;
+			}
+			
+			chart "Cost of actions" type: radar size: {0.48,0.48} position: {0.51,0.01}
+				x_serie_labels: ["Builder","Soft defense","Strategic withdrawal","Neutral"] {
+				data districts_in_game[0].district_name value: districts_in_game[0].strategies_cost color: #red;
+				data districts_in_game[1].district_name value: districts_in_game[1].strategies_cost color: #blue;
+				data districts_in_game[2].district_name value: districts_in_game[2].strategies_cost color: #green;
+				data districts_in_game[3].district_name value: districts_in_game[3].strategies_cost color: #black;
+			}
+			
+			chart "" type: radar size: {0.24,0.24} position: {0.01,0.51}
+				x_serie_labels: ["Builder","Soft def","Withdrawal"] {
+				data districts_in_game[0].district_long_name value: districts_in_game[0].strategies_count_3 color: #red;
+			}
+			chart "" type: radar size: {0.24,0.24} position: {0.255,0.51} 
+				x_serie_labels: ["Builder","Soft def","Withdrawal"] {
+				data districts_in_game[1].district_long_name value: districts_in_game[1].strategies_count_3 color: #blue;
+			}
+			chart "" type: radar size: {0.24,0.24} position: {0.505,0.51}
+				x_serie_labels: ["Builder","Soft def","Withdrawal"] {
+				data districts_in_game[2].district_long_name value: districts_in_game[2].strategies_count_3 color: #green;
+			}
+			chart "" type: radar size: {0.24,0.24} position: {0.75,0.51}
+			x_serie_labels: ["Builder","Soft def","Withdrawal"] {
+				data districts_in_game[3].district_long_name value: districts_in_game[3].strategies_count_3 color: #black;
+			}
+			
+			chart "" type: series size: {0.24,0.24} position: {0.01,0.76} x_range:8 {
+				data districts_in_game[0].district_long_name value: strategies_score[0] color: #red;
+			}
+			chart "" type: series size: {0.24,0.24} position: {0.255,0.76} x_range:8 {
+				data districts_in_game[1].district_long_name value: strategies_score[1] color: #blue;
+			}
+			chart "" type: series size: {0.24,0.24} position: {0.505,0.76} x_range:8 {
+				data districts_in_game[2].district_long_name value: strategies_score[2] color: #green;
+			}
+			chart "" type: series size: {0.24,0.24} position: {0.75,0.76} x_range:8 {
+				data districts_in_game[3].district_long_name value: strategies_score[3] color: #black;
+			}
+			
+		}
+		
 		display "Flooded depth per area"{
-			graphics "Legend" {
-				draw rectangle({600, 300}) at: {world.shape.width/2, world.shape.height/2} - {900,550} color: world.color_of_water_height(0.5) border: #black;
-				draw "0.5" at: {world.shape.width/2, world.shape.height/2} - {1000, 200} color: #black size: 400;
-				
-				draw rectangle({600, 300}) at: {world.shape.width/2, world.shape.height/2} - {0,550} color: world.color_of_water_height(0.9) border: #black;
-				draw "1" at: {world.shape.width/2, world.shape.height/2} - {100, 200} color: #black size: 400;
-				
-				draw rectangle({600, 300}) at: {world.shape.width/2, world.shape.height/2} + {900,-550} color: world.color_of_water_height(1.9) border: #black;
-				draw ">1" at: {world.shape.width/2, world.shape.height/2} + {800, -200} color: #black size: 400;
+			chart "U Area" type: histogram style:stack background: rgb("white") size: {0.32,0.48} position: {0, 0}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value: districts_in_game collect each.U_0_5c style:stack color: world.color_of_water_height(0.5);
+				data "1" value: districts_in_game collect each.U_1c style:stack color: world.color_of_water_height(0.9); 
+				data ">1" value: districts_in_game collect each.U_maxc style:stack color: world.color_of_water_height(1.9); 
 			}
-			chart "U Area" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0}
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
-				data "" value:(districts_in_game collect each.U_0_5c) style:stack color: world.color_of_water_height(0.5);
-				data ""  value:(districts_in_game collect each.U_1c) style:stack color: world.color_of_water_height(0.9); 
-				data ""  value:(districts_in_game collect each.U_maxc) style:stack color: world.color_of_water_height(1.9); 
+			
+			chart "Us Area" type: histogram style:stack background: rgb("white") size: {0.32,0.48} position: {0.33, 0}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value:(districts_in_game collect each.Us_0_5c) style:stack color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.Us_1c)   style:stack color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.Us_maxc) style:stack color: world.color_of_water_height(1.9); 
 			}
-			chart "Us Area" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0}
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
-				data "" value:(districts_in_game collect each.Us_0_5c) style:stack color: world.color_of_water_height(0.5);
-				data ""  value:(districts_in_game collect each.Us_1c)   style:stack color: world.color_of_water_height(0.9); 
-				data ""  value:(districts_in_game collect each.Us_maxc) style:stack color: world.color_of_water_height(1.9); 
+			chart "Ui Area" type: histogram style:stack background: rgb("white") size: {0.32,0.48} position: {0.66, 0}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value:(districts_in_game collect each.Udense_0_5c) style:stack color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.Udense_1c)   style:stack color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.Udense_maxc) style:stack color: world.color_of_water_height(1.9); 
 			}
-			chart "Ui Area" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0}
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
-				data "" value:(districts_in_game collect each.Udense_0_5c) style:stack color: world.color_of_water_height(0.5);
-				data ""  value:(districts_in_game collect each.Udense_1c)   style:stack color: world.color_of_water_height(0.9); 
-				data ""  value:(districts_in_game collect each.Udense_maxc) style:stack color: world.color_of_water_height(1.9); 
+			chart "AU Area" type: histogram style:stack background: rgb("white") size: {0.32,0.48} position: {0, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value:(districts_in_game collect each.AU_0_5c) style:stack color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.AU_1c)   style:stack color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.AU_maxc) style:stack color: world.color_of_water_height(1.9); 
 			}
-			chart "AU Area" type: histogram background: rgb("white") size: {0.31,0.4} position: {0, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
-				data "" value:(districts_in_game collect each.AU_0_5c) style:stack color: world.color_of_water_height(0.5);
-				data ""  value:(districts_in_game collect each.AU_1c)   style:stack color: world.color_of_water_height(0.9); 
-				data ""  value:(districts_in_game collect each.AU_maxc) style:stack color: world.color_of_water_height(1.9); 
+			chart "A Area" type: histogram style:stack background: rgb("white") size: {0.32,0.48} position: {0.33, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value:(districts_in_game collect each.A_0_5c) style:stack color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.A_1c)   style:stack color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.A_maxc) style:stack color: world.color_of_water_height(1.9); 
 			}
-			chart "A Area" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.33, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
-				data "" value:(districts_in_game collect each.A_0_5c) style:stack color: world.color_of_water_height(0.5);
-				data ""  value:(districts_in_game collect each.A_1c)   style:stack color: world.color_of_water_height(0.9); 
-				data ""  value:(districts_in_game collect each.A_maxc) style:stack color: world.color_of_water_height(1.9); 
-			}
-			chart "N Area" type: histogram background: rgb("white") size: {0.31,0.4} position: {0.66, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
-				data "" value:(districts_in_game collect each.N_0_5c) style:stack color: world.color_of_water_height(0.5);
-				data ""  value:(districts_in_game collect each.N_1c)   style:stack color: world.color_of_water_height(0.9); 
-				data ""  value:(districts_in_game collect each.N_maxc) style:stack color: world.color_of_water_height(1.9); 
+			chart "N Area" type: histogram style:stack background: rgb("white") size: {0.32,0.48} position: {0.66, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value:(districts_in_game collect each.N_0_5c) style:stack color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.N_1c)   style:stack color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.N_maxc) style:stack color: world.color_of_water_height(1.9); 
 			}	
 		}
 		
