@@ -154,7 +154,6 @@ species Player_Action schedules:[]{
 	bool is_in_risk_area 	<- false; 				// for LU action
 	bool is_inland_dike 	<- false; 				// for COAST_DEF (retro dikes)
 	string strategy_profile	<- "";
-	geometry element_shape;
 	float lever_activation_time;
 	int length_coast_def;
 	list<Activated_Lever> activated_levers 	<-[];
@@ -210,7 +209,6 @@ species Player_Action schedules:[]{
 		self.is_inland_dike 			<- bool(a at "is_inland_dike");
 		self.command_round 				<- int(a at "command_round");
 		self.strategy_profile 			<- get_strategy_profile();
-		self.element_shape 				<- geometry(a at "element_shape");
 		self.length_coast_def 			<- int(a at "length_coast_def");
 		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");			
 	}

@@ -60,6 +60,7 @@ global{
 	string PLAYER_ACTION_IS_APPLIED <- 'PLAYER_ACTION_IS_APPLIED';
 	string DISTRICT_BUDGET_UPDATE 	<- 'DISTRICT_BUDGET_UPDATE';
 	string INFORM_NEW_ROUND 		<- 'INFORM_NEW_ROUND';
+	string INFORM_LU_ALTS			<- 'INFORM_LU_ALTS';
 	string INFORM_CURRENT_ROUND		<- 'INFORM_CURRENT_ROUND';
 	string DATA_RETRIEVE 			<- 'DATA_RETRIEVE';
 	// Actions to acknowledge client requests
@@ -75,7 +76,6 @@ global{
 	string SOFT_DEFENSE <- "SOFT_DEFENSE";
 	string WITHDRAWAL 	<- "WITHDRAWAL";
 	string NEUTRAL 	<- "NEUTRAL";
-	map<string,int> strategies_index <- [(BUILDER)::0,(SOFT_DEFENSE)::1,(WITHDRAWAL)::2,(NEUTRAL)::3];
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE,
@@ -124,6 +124,7 @@ global{
 	// Loading GIS data
 	file districts_shape 		<- file(shapes_def["DISTRICTS_SHAPE"]);
 	file roads_shape 			<- file(shapes_def["ROADS_SHAPE"]);
+	file isolines_shape 		<- file(shapes_def["ISOLINES_SHAPE"]);
 	file protected_areas_shape 	<- file(shapes_def["SPA_SHAPE"]);
 	file water_shape 			<- file(shapes_def["WATER_SHAPE"]);
 	file rpp_area_shape 		<- file(shapes_def["RPP_SHAPE"]);

@@ -45,18 +45,23 @@ global {
 	string log_export_filePath 	<- results_rep + "/log_" + machine_time + ".csv"; 					// file to save user actions (main model and players actions)  
 	
 	// operation variables
-	geometry shape 				<- envelope(convex_hull_shape);				// world geometry
-	float EXPERIMENT_START_TIME <- machine_time; 							// machine time at simulation initialization
-	int messageID 				<- 0; 										// network communication
-	geometry all_flood_risk_area; 											// geometry agrregating risked area polygons
-	geometry all_protected_area; 											// geometry agrregating protected area polygons	
+	geometry shape <- envelope(convex_hull_shape);	// world geometry
+	float EXPERIMENT_START_TIME <- machine_time; 	// machine time at simulation initialization
+	int messageID <- 0; 							// network communication
+	geometry all_flood_risk_area; 					// geometry agrregating risked area polygons
+	geometry all_protected_area; 					// geometry agrregating protected area polygons	
 	geometry all_coastal_border_area;
-	list<list<int>> districts_budgets <- [[],[],[],[]];						// budget tables to draw evolution graphs
-	int new_comers_still_to_dispatch <- 0;									// population dynamics
-	list<list<float>> strategies_score <-[[],[],[],[]];
+	list<list<int>> districts_budgets <- [[],[],[],[]];	// budget tables to draw evolution graphs
+	// Strategy profiles actions
+	list<list<int>> profil_strategies <- [[0],[0],[0],[0]];
+	int builders <- 0;
+	int soft_defs <- 0;
+	int withdrawals <- 0;
+	int neutrals <- 0;
+	int new_comers_still_to_dispatch <- 0;				// population dynamics
 	// other variables 
-	bool show_max_water_height	<- false;						// defines if the water_height displayed on the map should be the max one or the current one
-	string stateSimPhase 		<- SIM_NOT_STARTED; 			// state variable of current simulation state 
+	bool show_max_water_height	<- false;			// defines if the water_height displayed on the map should be the max one or the current one
+	string stateSimPhase 		<- SIM_NOT_STARTED; // state variable of current simulation state 
 	int game_round 				<- 0;
 	bool game_paused			<- false;
 	point play_b;
@@ -79,6 +84,7 @@ global {
 		all_protected_area <- union(Protected_Area);
 		
 		create Road from: roads_shape;
+		create Isoline from: isolines_shape;
 		create Water from: water_shape;
 		create Inland_Dike_Area from: buffer_in_100m_shape;
 		
@@ -100,8 +106,14 @@ global {
 				not_updated <- true;
 			}
 		}
-		
-		ask Land_Use { cells <- Cell overlapping self;	}
+		do load_dem_and_rugosity;
+		ask Coastal_Defense {
+			do init_coastal_def;
+		}
+		ask Land_Use {
+			cells <- Cell overlapping self;
+			mean_alt <- cells mean_of(each.soil_height);
+		}
 		ask districts_in_game{
 			LUs 	<- Land_Use where (each.dist_code = self.district_code);
 			cells 	<- LUs accumulate (each.cells);
@@ -110,10 +122,6 @@ global {
 			do calculate_indicators_t0;
 		}
 		
-		do load_dem_and_rugosity;
-		ask Coastal_Defense {
-			do init_coastal_def;
-		}
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, "results");
@@ -150,16 +158,19 @@ global {
 			ask shuffle(Land_Use){ pop_updated <- false; do evolve_AU_to_U; }
 			ask shuffle(Land_Use){ do evolve_pop_U_densification; 			}
 			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				} 
-			ask districts_in_game{ do calculate_taxes;						}
+			ask districts_in_game{ do calculate_taxes; }
+			add builders to: profil_strategies[0];
+			add soft_defs to: profil_strategies[1];
+			add withdrawals to: profil_strategies[2];
+			add neutrals to: profil_strategies[3];
+			builders <- 0;
+			soft_defs <- 0;
+			withdrawals <- 0;
+			neutrals <- 0;
 		}
-		else {
+		else { // round 0
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
-			ask districts_in_game{
-				strategies_count_4 <- [0,0,0,0];
-				strategies_count_3 <- [0,0,0];
-				strategies_cost <- [0.0,0.0,0.0,0.0];
-			}
 		}
 		game_round <- game_round + 1;
 		ask District 				 	{	do inform_new_round;			} 
@@ -176,6 +187,26 @@ global {
 	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
 		write flood_results;
 		save flood_results to: lisfloodRelativePath + results_rep + "/flood_results-" + machine_time + "-Tour" + game_round + ".txt" type: "text";
+		
+		// sending flood results to players
+		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT"];
+		map<string,string> mp <- ["TOPIC"::"NEW_FLOODED_CELL"];
+     	ask districts_in_game{
+     		string my_district <- district_code;
+     		ask Network_Game_Manager{
+				do send to: my_district contents: nmap;
+			}
+     		ask cells where(each.water_height > 0){
+     			add string(shape.width) at: "cell_width" to: mp;
+     			add string(shape.height) at: "cell_height" to: mp;
+				add string(shape.location.x) at: "cell_location_x" to: mp;
+				add string(shape.location.y) at: "cell_location_y" to: mp;
+				ask Network_Game_Manager{
+					do send to: my_district contents: mp;
+				}
+     		}
+     	}
+		
 		ask Cell { water_height <- 0.0; } // reset water heights						
 		ask Coastal_Defense {
 			if rupture = 1 { do remove_rupture; }
@@ -285,7 +316,6 @@ global {
 		loop ix from: 1 to: 4 {
 			ask District first_with(each.dist_id = ix){
 				add budget to: districts_budgets[ix-1];
-				add mean(strategies_count_3) to: strategies_score[ix-1];
 			}
 		}
 	}	
@@ -659,6 +689,7 @@ species Network_Game_Manager skills: [network]{
 					ask(District where(each.dist_id = id_dist)){
 						do inform_current_round;
 						do inform_budget_update;
+						do inform_LU_alts;
 					}
 					write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + id_dist;
 				}
@@ -797,7 +828,6 @@ species Network_Game_Manager skills: [network]{
 	
 	action acknowledge_application_of_player_action (Player_Action act){
 		map<string,string> msg <- ["TOPIC"::PLAYER_ACTION_IS_APPLIED,"id"::act.id];
-		put act.district_code at: DISTRICT_CODE in: msg;
 		do send to: act.district_code contents: msg;
 	}
 	
@@ -837,17 +867,17 @@ species Network_Game_Manager skills: [network]{
 			do inform_budget_update();
 		}
 		loop tmp over: Coastal_Defense where(each.district_code = d.district_code){
-			map<string, string> mp <- tmp.build_map_from_attributes();
+			map<string, string> mp <- tmp.build_map_from_coast_def_attributes();
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
 		}
 		loop tmp over: d.LUs{
-			map<string, string> mp <- tmp.build_map_from_attributes();
+			map<string, string> mp <- tmp.build_map_from_lu_attributes();
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
 		}
 		loop tmp over: Player_Action where(each.district_code = d.district_code){
-			map<string, string> mp <- tmp.build_map_from_attributes();
+			map<string, string> mp <- tmp.build_map_from_action_attributes();
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
 		}
@@ -954,22 +984,24 @@ species Network_Listener_To_Leader skills:[network]{
 				match NEW_ACTIVATED_LEVER {
 					if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
 						create Activated_Lever{
-							do init_from_map (m_contents);
-							ply_action <- Player_Action first_with (each.id = my_map["p_action_id"]);
+							do init_activ_lever_from_map (m_contents);
 							District d <- District first_with (each.district_code = my_map[DISTRICT_CODE]);
-							d.budget <- d.budget - int(my_map["added_cost"]); 
-							add self to: ply_action.activated_levers;
-							ply_action.a_lever_has_been_applied <- true;
+							if d != nil { d.budget <- d.budget - int(my_map["added_cost"]); }
+							ply_action <- Player_Action first_with (each.id = my_map["p_action_id"]);
+							if ply_action != nil {
+								add self to: ply_action.activated_levers;
+								ply_action.a_lever_has_been_applied <- true;
+							}
 						}
 					}
 				}
 				match NEW_REQUESTED_ACTION {
 					ask District first_with(each.district_code = m_contents[DISTRICT_CODE]){
-						int strix <- strategies_index at m_contents[STRATEGY_PROFILE];
-						strategies_count_4[strix] <- strategies_count_4[strix] + 1;
-						strategies_cost[strix] <- strategies_cost[strix] + float(m_contents["cost"]);
-						if strix < 3 {
-							strategies_count_3[strix] <- strategies_count_3[strix] + 1;
+						switch m_contents[STRATEGY_PROFILE]{
+							match BUILDER 		{ builders <- builders + 1; }
+							match SOFT_DEFENSE 	{ soft_defs <- soft_defs + 1; }
+							match WITHDRAWAL 	{ withdrawals <- withdrawals + 1; }
+							match NEUTRAL 		{ neutrals <- neutrals + 1; }
 						}
 					}
 				}
@@ -979,7 +1011,7 @@ species Network_Listener_To_Leader skills:[network]{
 	
 	reflex inform_leader_action_state when: cycle mod 10 = 0 {
 		loop act over: Player_Action where (!each.is_sent_to_leader){
-			map<string,string> msg <- act.build_map_from_attributes();
+			map<string,string> msg <- act.build_map_from_action_attributes();
 			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg;
 			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
@@ -1011,7 +1043,7 @@ species Activated_Lever {
 	Player_Action ply_action;
 	map<string, string> my_map <- []; // contains attributes sent through network
 	
-	action init_from_map (map<string, string> m ){
+	action init_activ_lever_from_map (map<string, string> m ){
 		my_map <- m;
 		put OBJECT_TYPE_ACTIVATED_LEVER at: "OBJECT_TYPE" in: my_map;
 	}
@@ -1051,7 +1083,7 @@ species Player_Action schedules:[]{
 	bool a_lever_has_been_applied		<- false;
 	list<Activated_Lever> activated_levers <-[];
 
-	map<string,string> build_map_from_attributes{
+	map<string,string> build_map_from_action_attributes{
 		map<string,string> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
 			"id"::id,
@@ -1067,12 +1099,11 @@ species Player_Action schedules:[]{
 			"is_in_protected_area"::string(is_in_protected_area),
 			"previous_lu_name"::previous_lu_name,
 			"action_type"::action_type,
-			"locationx"::string(location.x),
-			"locationy"::string(location.y),
 			"is_applied"::string(is_applied),
 			"is_sent"::string(is_sent),
+			"locationx"::string(location.x),
+			"locationy"::string(location.y),
 			"command_round"::string(command_round),
-			"element_shape"::string(element_shape),
 			"length_coast_def"::string(length_coast_def),
 			"a_lever_has_been_applied"::string(a_lever_has_been_applied)];
 			
@@ -1133,18 +1164,15 @@ species Coastal_Defense {
 	float height_before_ganivelle;
 	list<Cell> cells;
 	
-	map<string,unknown> build_map_from_attributes{
+	map<string,unknown> build_map_from_coast_def_attributes{
 		map<string,unknown> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_COASTAL_DEFENSE,
 			"coast_def_id"::string(coast_def_id),
-			"type"::type, "status"::status,
+			"type"::type,
+			"status"::status,
 			"height"::string(height),
 			"alt"::string(alt),
-			"rupture"::string(rupture),
-			"rupture_area"::rupture_area,
-			"not_updated"::string(not_updated),
 			"ganivelle"::string(ganivelle),
-			"height_before_ganivelle"::string(height_before_ganivelle),
 			"locationx"::string(location.x),
 			"locationy"::string(location.y)];
 			int i <- 0;
@@ -1363,19 +1391,16 @@ species Land_Use {
 	bool pop_updated 		<- false;
 	int population;
 	list<Cell> cells;
+	float mean_alt <- 0.0;
 	
-	map<string,unknown> build_map_from_attributes {
+	map<string,unknown> build_map_from_lu_attributes {
 		map<string,string> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_LAND_USE,
 			"id"::string(id),
-			"lu_name"::lu_name,
 			"lu_code"::string(lu_code),
-			"STEPS_FOR_AU_TO_U"::string(STEPS_FOR_AU_TO_U),
-			"AU_to_U_counter"::string(AU_to_U_counter),
+			"mean_alt"::string(mean_alt),
 			"population"::string(population),
 			"is_in_densification"::string(is_in_densification),
-			"not_updated"::string(not_updated),
-			"pop_updated"::string(pop_updated),
 			"locationx"::string(location.x),
 			"locationy"::string(location.y)];
 			int i <- 0;
@@ -1504,10 +1529,6 @@ species District {
 
 	// Indicators calculated at initialization, and sent to Leader when he connects
 	map<string,string> my_indicators_t0 <- [];
-	// Strategy profiles actions
-	list<int> strategies_count_4 <- [30,30,30,30];
-	list<int> strategies_count_3 <- [10,10,10];
-	list<float> strategies_cost <- [100000.0,100000.0,100000.0,100000.0];	
 	
 	aspect flooding { draw shape color: rgb (0,0,0,0) border:#black; }
 	aspect planning { draw shape color:#whitesmoke border: #black; }
@@ -1518,7 +1539,6 @@ species District {
 	action inform_new_round {// inform about a new round
 		ask Network_Game_Manager{
 			map<string,string> msg <- ["TOPIC"::INFORM_NEW_ROUND];
-			put myself.district_code at: DISTRICT_CODE in: msg;
 			do send to: myself.district_code contents: msg;
 		}
 	}
@@ -1526,7 +1546,6 @@ species District {
 	action inform_current_round {// inform about the current round (when the player side district reconnects)
 		ask Network_Game_Manager{
 			map<string,string> msg <- ["TOPIC"::INFORM_CURRENT_ROUND];
-			put myself.district_code  		at: DISTRICT_CODE 	in: msg;
 			put string(game_round) 		  	at: NUM_ROUND		in: msg;
 			put string(game_paused) 		at: "GAME_PAUSED"	in: msg;
 			do send to: myself.district_code contents: msg;
@@ -1536,9 +1555,19 @@ species District {
 	action inform_budget_update {// inform about the budget (when the player side district reconnects)
 		ask Network_Game_Manager{
 			map<string,string> msg <- ["TOPIC"::DISTRICT_BUDGET_UPDATE];
-			put myself.district_code  	at: DISTRICT_CODE 	in: msg;
 			put string(myself.budget) 	at: BUDGET			in: msg;
 			do send to: myself.district_code contents: msg;
+		}
+	}
+	
+	action inform_LU_alts{
+		map<string,string> msg <- ["TOPIC"::INFORM_LU_ALTS];
+		loop lu over: LUs{
+			put string(lu.id) 		at: "id" 		in: msg;
+			put string(lu.mean_alt) at: "mean_alt"  in: msg;
+			ask Network_Game_Manager{
+				do send to: myself.district_code contents: msg;
+			}
 		}
 	}
 	
@@ -1648,6 +1677,8 @@ species Legend_Map parent: Legend_Planning {
 
 species Road {	aspect base { draw shape color: rgb (125,113,53); } }
 
+species Isoline {	aspect base { draw shape color: #gray; } }
+
 species Water { aspect base { draw shape color: #blue; } }
 
 species Protected_Area { aspect base { draw shape color: rgb (185, 255, 185,120) border:#black;} }
@@ -1674,6 +1705,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			grid Cell;
 			species Cell 			aspect: water_or_max_water_elevation;
 			species District 		aspect: flooding;
+			species Isoline			aspect: base;
 			species Road 			aspect: base;
 			species Water			aspect: base;
 			species Coastal_Defense aspect: base;
@@ -1715,24 +1747,23 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Water	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
 			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
 			
-			chart "Budgets" type: series size: {0.48,0.48} position: {0.01,0.51} x_range:8 {
-			 	data districts_in_game[0].district_name value: districts_budgets[0] color:#red;
-			 	data districts_in_game[1].district_name value: districts_budgets[1] color:#blue;
+			chart "Budgets" type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] x_label: "Round" {
+			 	data districts_in_game[0].district_name value: districts_budgets[0] color:#blue;
+			 	data districts_in_game[1].district_name value: districts_budgets[1] color:#red;
 			 	data districts_in_game[2].district_name value: districts_budgets[2] color:#green;
-			 	data districts_in_game[3].district_name value: districts_budgets[3] color:#black;			
+			 	data districts_in_game[3].district_name value: districts_budgets[3] color:#orange;			
 			}
 						
-			chart "Actions" type: histogram style:stack size: {0.48,0.48} position: {0.51,0.51}
-				x_serie_labels: districts_in_game collect each.district_name{
-			 	data "Builder" style: stack value: districts_in_game collect each.strategies_count_4[0] color:#red;
-			 	data "Soft defense" style: stack value: districts_in_game collect each.strategies_count_4[1] color:#blue;
-			 	data "Strategic withdrawal" style: stack value: districts_in_game collect each.strategies_count_4[2] color:#green;
-			 	data "Neutral" style: stack value: districts_in_game collect each.strategies_count_4[3] color:#black;			
+			chart "Actions" type: histogram style:stack size: {0.48,0.48} position: {0.51,0.51} x_range:[0,15] x_label: "Round"{
+			 	data "Builder" value: profil_strategies[0] color:#red;
+			 	data "Soft defense" value: profil_strategies[1] color:#yellow;
+			 	data "Strategic withdrawal" value: profil_strategies[2] color:#green;
+			 	data "Neutral" value: profil_strategies[3] color:#black;			
 			}
 		}
 		
 		display "Strategies" background: #lightgray{
-			chart "Number of actions" type: radar size: {0.48,0.48} position: {0.01,0.01}
+			/*chart "Number of actions" type: radar size: {0.48,0.48} position: {0.01,0.01}
 				x_serie_labels: ["Builder","Soft defense","Strategic withdrawal","Neutral"] {
 				data districts_in_game[0].district_name value: districts_in_game[0].strategies_count_4 color: #red;
 				data districts_in_game[1].district_name value: districts_in_game[1].strategies_count_4 color: #blue;
@@ -1765,18 +1796,18 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data districts_in_game[3].district_long_name value: districts_in_game[3].strategies_count_3 color: #black;
 			}
 			
-			chart "" type: series size: {0.24,0.24} position: {0.01,0.76} x_range:8 {
-				data districts_in_game[0].district_long_name value: strategies_score[0] color: #red;
+			chart "" type: radar size: {0.24,0.24} position: {0.01,0.76} {
+				data districts_in_game[0].district_name value: strategies_score[0] color:#red;
 			}
-			chart "" type: series size: {0.24,0.24} position: {0.255,0.76} x_range:8 {
-				data districts_in_game[1].district_long_name value: strategies_score[1] color: #blue;
+			chart "" type: radar size: {0.24,0.24} position: {0.255,0.76} {
+				data districts_in_game[1].district_name value: strategies_score[1] color:#blue;
 			}
-			chart "" type: series size: {0.24,0.24} position: {0.505,0.76} x_range:8 {
-				data districts_in_game[2].district_long_name value: strategies_score[2] color: #green;
+			chart "" type: radar size: {0.24,0.24} position: {0.505,0.76} {
+				data districts_in_game[2].district_name value: strategies_score[2] color:#green;
 			}
-			chart "" type: series size: {0.24,0.24} position: {0.75,0.76} x_range:8 {
-				data districts_in_game[3].district_long_name value: strategies_score[3] color: #black;
-			}
+			chart "" type: radar size: {0.24,0.24} position: {0.75,0.76} {
+				data districts_in_game[3].district_name value: strategies_score[3] color:#black;
+			}*/
 			
 		}
 		
