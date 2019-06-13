@@ -100,11 +100,11 @@ global{
 	// Constant vars
 	string PLAYER_ACTION_TYPE_LU		<- "PLAYER_ACTION_TYPE_LU";
 	string PLAYER_ACTION_TYPE_COAST_DEF	<- "PLAYER_ACTION_TYPE_COAST_DEF";
-	string COAST_DEF_TYPE_DIKE 			<- "Dike";
-	string COAST_DEF_TYPE_DUNE 			<- "Dune";
-	string STATUS_GOOD 					<- "Good";
-	string STATUS_MEDIUM				<- "Medium";
-	string STATUS_BAD 					<- "Bad";
+	string COAST_DEF_TYPE_DIKE 			<- "DIKE";
+	string COAST_DEF_TYPE_DUNE 			<- "DUNE";
+	string STATUS_GOOD 					<- "GOOD";
+	string STATUS_MEDIUM				<- "MEDIUM";
+	string STATUS_BAD 					<- "BAD";
 	
 	// Population density
 	string POP_EMPTY 		  <- "EMPTY";

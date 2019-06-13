@@ -39,9 +39,12 @@ global{
 		sim_id <- machine_time;
 
 		create District from: districts_shape with: [district_name::string(read("dist_sname")), district_code::string(read("dist_code")),
-			dist_id::int(read("player_id")), district_long_name::string(read("dist_lname"))]{
-			if(dist_id = 0) { do die; }
+			dist_id::int(read("player_id")), district_long_name::string(read("dist_lname"))] {
+			if(dist_id = 0) {
+				do die;
+			}
 		}
+		
 		do create_district_buttons_names;
 		do create_levers;		
 		create Network_Leader; 

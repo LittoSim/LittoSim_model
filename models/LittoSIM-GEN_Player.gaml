@@ -298,13 +298,13 @@ global{
 		}
 		
 		create Button_Map {
-			action_name  <- 'ACTION_DISPLAY_PROTECTED_AREA';
+			action_name  <- 'ACTION_DISPLAY_FLOODED_AREA';
 			display_name <- BOTH_DISPLAYS;
 			location 	 <- {1000,8000};
 			p 			 <- {0.80, increment + 0.13};
 		}
 		create Button_Map {
-			action_name  <- 'ACTION_DISPLAY_FLOODED_AREA';
+			action_name  <- 'ACTION_DISPLAY_PROTECTED_AREA';
 			display_name <- BOTH_DISPLAYS;
 			location 	 <- {1000,9000};
 			p 			 <- {0.90, increment + 0.13};
@@ -681,7 +681,9 @@ global{
 	
 	action user_msg (string msg, string type_msg) {
 		write "USER MSG : " + msg;
-		ask game_console{do write_message(msg, type_msg);}
+		ask game_console{
+			do write_message(msg, type_msg);
+		}
 	}
 	
 	bool basket_overflow {
@@ -720,6 +722,7 @@ global{
 
 species Displayed_List_Element skills: [UI_location] schedules: [] {
 	int font_size 	<- DISPLAY_FONT_SIZE - 4;
+	//bool event <- false update: false;
 	string label 	<- "";
 	Displayed_List my_parent;
 	bool is_displayed;
@@ -836,7 +839,7 @@ species Displayed_List skills: [UI_location] schedules: []{
 	action on_mouse_down;
 	
 	action add_item (Displayed_List_Element list_elem){
-		int index 	<- length(elements) ;
+		int index 	<- length(elements);
 		elements 	<- elements + list_elem;
 		point p 	<- get_location(index);
 		ask(list_elem){
@@ -845,7 +848,7 @@ species Displayed_List skills: [UI_location] schedules: []{
 			do lock_agent_at ui_location: p display_name: myself.display_name ui_width: myself.locked_ui_width ui_height: myself.element_height ;
 			shape <- rectangle(ui_width, ui_height);
 		}
-		if(length(elements) > max_size){
+		if length(elements) > max_size{
 			do go_to_end;
 			up_item.is_displayed 	<- true;
 			down_item.is_displayed 	<- true;
@@ -859,8 +862,7 @@ species Displayed_List skills: [UI_location] schedules: []{
 	point get_location (int idx) {
 		float header_size <- show_header ? header_height : 0.0;
 		idx <- min([idx, max_size - 1]);
-		point p <- {locked_location.x + locked_ui_width / 2, idx * element_height + header_size + element_height / 2};
-		return p;
+		return {locked_location.x + locked_ui_width / 2, idx * element_height + header_size + element_height / 2};
 	}
 	
 	action go_to_end {
@@ -1319,7 +1321,9 @@ species Network_Listener_To_Leader skills: [network] {
 								int added_delay <- int(my_map["added_delay"]);
 								if  added_delay != 0{
 									ask world{
-										do user_msg ("The dossier '" + myself.ply_act.label + "' has been " + (added_delay >= 0 ? "delayed":"advanced") + " by " + abs(added_delay) + " round" + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
+										do user_msg (world.get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + '(' + myself.ply_act.element_id + ")' " +
+											world.get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? world.get_message('PLY_DELAYED'):world.get_message('PLY_ADVANCED')) +
+											" " + world.get_message("PLY_BY") + " " + abs(added_delay) + " " + world.get_message('MSG_THE_ROUND') + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
 									}
 									ply_act.should_wait_lever_to_activate <- false;
 								}
@@ -1361,7 +1365,9 @@ species Network_Player skills:[network]{
 					}
 					switch game_round {
 						match 1 {
-							ask world {do user_msg (world.get_message('MSG_SIM_STARTED_ROUND1'), INFORMATION_MESSAGE);}
+							ask world {
+								do user_msg (world.get_message('MSG_SIM_STARTED_ROUND1'), INFORMATION_MESSAGE);
+							}
 						}
 						default {
 							ask world {do user_msg(world.get_message('MSG_THE_ROUND') + " " + game_round + " " + world.get_message('MSG_HAS_STARTED'), INFORMATION_MESSAGE);}
@@ -1439,43 +1445,60 @@ species Network_Player skills:[network]{
 							is_active_gui <- m_contents["LOCK_REQUEST"] = "UNLOCK";
 						}
 						match OBJECT_TYPE_PLAYER_ACTION {
+							
 							if(m_contents["action_type"] = PLAYER_ACTION_TYPE_COAST_DEF){
-								Coastal_Defense_Action tmp <- Coastal_Defense_Action first_with(each.id = m_contents["id"]);
-								if(tmp = nil){
+								//Coastal_Defense_Action tmp <- Coastal_Defense_Action first_with(each.id = m_contents["id"]);
+								//if(tmp = nil){
 									create Coastal_Defense_Action {
 										do init_action_from_map(m_contents);
-										ask (game_history){do add_action_to_history(myself);}
+										ask (game_history){
+											do add_action_to_history(myself);
+										}
 									}
-								} else {
-									ask tmp {do init_action_from_map(m_contents);}
-								}
+								//} else {
+								//	ask tmp {
+								//		do init_action_from_map(m_contents);
+								//	}
+								//}
 							}
 							else if m_contents["action_type"] = PLAYER_ACTION_TYPE_LU {
-								Land_Use_Action tmp <- Land_Use_Action first_with (each.id = m_contents["id"]);
-								if(tmp = nil){
+								//Land_Use_Action tmp <- Land_Use_Action first_with (each.id = m_contents["id"]);
+								//if(tmp = nil){
 									create Land_Use_Action {
 										do init_action_from_map(m_contents);
-										ask(game_history) {do add_action_to_history(myself);} 
+										ask(game_history) {
+											do add_action_to_history(myself);
+										} 
 									}
-								} else {
-									ask tmp {do init_action_from_map(m_contents);}
-								}
+								//} else {
+								//	ask tmp {
+								//		do init_action_from_map(m_contents);
+								//	}
+								//}
 							}
 						}
 						match OBJECT_TYPE_COASTAL_DEFENSE {
 							Coastal_Defense tmp <- Coastal_Defense first_with(each.coast_def_id = int(m_contents["coast_def_id"]) );
 							if(tmp = nil){
-								create Coastal_Defense {do init_coastal_def_from_map(m_contents);}
+								create Coastal_Defense {
+									do init_coastal_def_from_map(m_contents);
+								}
 							}else {
-								ask tmp {do init_coastal_def_from_map(m_contents);}
+								ask tmp {
+									do init_coastal_def_from_map(m_contents);
+								}
 							}	
 						}
 						match OBJECT_TYPE_LAND_USE {
 							Land_Use tmp <- Land_Use first_with(each.id = int(m_contents["id"]));
 							if(tmp = nil){
-								create Land_Use {do init_lu_from_map(m_contents);}
+								create Land_Use {
+									do init_lu_from_map(m_contents);
+								}
 							} else {
-								ask tmp {do init_lu_from_map(m_contents);}
+								ask tmp {
+									do init_lu_from_map(m_contents);
+								}
 							}	
 						}
 						match OBJECT_TYPE_ACTIVATED_LEVER{
@@ -1531,7 +1554,9 @@ species Network_Player skills:[network]{
 			do send to: GAME_MANAGER contents: mp;
 			budget <- int(budget - act.cost);
 		}
-		ask game_basket{do remove_all_elements;}
+		ask game_basket{
+			do remove_all_elements;
+		}
 		my_basket <- [];
 	}
 }
@@ -1568,35 +1593,35 @@ species Player_Action {
 	list<Activated_Lever> activated_levers 	<-[];
 	bool should_wait_lever_to_activate 		<- false;
 	
-	action init_action_from_map(map<string, unknown> a){
-		self.id			 	<- string(a at "id");
-		self.element_id 	<- int(a at "element_id");
-		self.command 		<- int(a at "command");
-		self.label 			<- string(a at "label");
-		self.cost 			<- float(a at "cost");
-		self.initial_application_round <- int(a at "initial_application_round");
-		self.is_inland_dike 	<- bool(a at "is_inland_dike");
-		self.is_in_risk_area 	<- bool(a at "is_in_risk_area");
-		self.is_in_coast_border_area 	<- bool(a at "is_in_coast_border_area");
-		self.is_expropriation 	<- bool(a at "is_expropriation");
-		self.is_in_protected_area 	<- bool(a at "is_in_protected_area");
-		self.previous_lu_name 	<- string(a at "previous_lu_name");
-		self.action_type 	<- string(a at "action_type");
-		self.is_applied		<- bool(a at "is_applied");
-		self.is_sent		<- bool(a at "is_sent");
+	action init_action_from_map(map<string, unknown> mp){
+		self.id			 	<- string(mp at "id");
+		self.element_id 	<- int(mp at "element_id");
+		self.command 		<- int(mp at "command");
+		self.label 			<- world.label_of_action(command);
+		self.cost 			<- float(mp at "cost");
+		self.initial_application_round <- int(mp at "initial_application_round");
+		self.is_inland_dike 	<- bool(mp at "is_inland_dike");
+		self.is_in_risk_area 	<- bool(mp at "is_in_risk_area");
+		self.is_in_coast_border_area 	<- bool(mp at "is_in_coast_border_area");
+		self.is_expropriation 	<- bool(mp at "is_expropriation");
+		self.is_in_protected_area 	<- bool(mp at "is_in_protected_area");
+		self.previous_lu_name 	<- string(mp at "previous_lu_name");
+		self.action_type 	<- string(mp at "action_type");
+		self.is_applied		<- bool(mp at "is_applied");
+		self.is_sent		<- bool(mp at "is_sent");
 		
-		point pp <- {float(a at "locationx"), float(a at "locationy")};
-		point mpp <- pp;
+		location <- {float(mp at "locationx"), float(mp at "locationy")};
+		bool loop_again <- true;
 		int i <- 0;
 		list<point> all_points <- [];
-		loop while: (pp != nil){
-			string xd <- a at ("locationx" + i);
-			if(xd != nil){
-				pp <- {float(xd), float(a at ("locationy" + i)) };
-				all_points <- all_points + pp;
+		loop while: loop_again{
+			string xd <- mp at ("locationx" + i);
+			if xd != nil {
+				all_points <- all_points + {float(xd), float(mp at ("locationy" + i))};
+				i <- i + 1;
+			} else {
+				loop_again <- false;
 			}
-			else{pp<-nil;}
-			i <- i + 1;
 		}
 		if(self.action_type = PLAYER_ACTION_TYPE_COAST_DEF){
 			element_shape <- polyline(all_points);
@@ -1606,7 +1631,6 @@ species Player_Action {
 			element_shape <- polygon(all_points);
 			shape <- element_shape;
 		}
-		location <- mpp;
 	}
 	
 	map<string,string> build_map_from_attribute{
@@ -2026,7 +2050,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					point target2 <- {explored_coast_def.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_coast_def.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
 					draw rectangle(target,target2) empty: false border: false color: #black ;
 					
-					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + upper_case(explored_coast_def.type)) at: target + {5#px, 15#px} font: regular color: #white;
+					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + explored_coast_def.type) at: target + {5#px, 15#px} font: regular color: #white;
 					int xpx <-0;
 					draw world.get_message('PLY_MSG_LENGTH') + " : " + string(round(100*explored_coast_def.length_coast_def)/100) + "m" at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 					xpx <- xpx+20;
@@ -2036,7 +2060,7 @@ experiment LittoSIM_GEN_Player type: gui{
 						draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*explored_coast_def.height)/100) + "m" at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 						xpx <- xpx+20;
 					}
-					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_' + upper_case(explored_coast_def.status)) at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_' + explored_coast_def.status) at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 					draw "ID : "+ string(explored_coast_def.coast_def_id) at: target + {30#px, xpx#px + 55#px} font: regular color: # white;
 				}
 			}
@@ -2059,18 +2083,18 @@ experiment LittoSIM_GEN_Player type: gui{
 					point target2 <- {explored_coast_def_action.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_coast_def_action.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
 					draw rectangle(target,target2) empty: false border: false color: #black ;
 					
-					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + upper_case(explored_coast_def_action.coast_def_type))  at: target + {5#px, 15#px} font: regular color: #white;
+					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + explored_coast_def_action.coast_def_type)  at: target + {5#px, 15#px} font: regular color: #white;
 					int xpx <-0;
-					draw world.get_message('PLY_MSG_APP_ROUND') + " : " + string(explored_coast_def_action.initial_application_round) at: target + {30#px, xpx#px +35#px} font: regular color: # white;
-					xpx <- xpx+20;
 					draw world.get_message('PLY_MSG_LENGTH') + " : " + string(round(100*explored_coast_def_action.shape.perimeter)/100) + "m" at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 					xpx <- xpx+20;
 					if explored_coast_def_action.coast_def_type = COAST_DEF_TYPE_DIKE {
-						draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*BUILT_DIKE_HEIGHT)/100.0) + "m" at: target + {30#px, xpx#px +35#px} font: regular color: # white;
+						draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*explored_coast_def_action.altit)/100) + "m" at: target + {30#px, xpx#px +35#px} font: regular color: # white;
 						xpx <- xpx+20;
 					}
-					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*explored_coast_def_action.altit)/100) + "m" at: target + {30#px, xpx#px +35#px} font: regular color: # white;
-					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_GOOD') at: target + {30#px, xpx#px +55#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*BUILT_DIKE_HEIGHT)/100.0) + "m" at: target + {30#px, xpx#px +35#px} font: regular color: # white;
+					xpx <- xpx+20;
+					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_GOOD') at: target + {30#px, xpx#px +35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_APP_ROUND') + " : " + string(explored_coast_def_action.initial_application_round) at: target + {30#px, xpx#px +55#px} font: regular color: # white;
 				}
 			}
 			
