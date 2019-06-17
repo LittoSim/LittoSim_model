@@ -26,10 +26,10 @@ global {
 	// paths to Lisflood
 	string lisfloodPath 			<- flooding_def["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
 	string lisfloodRelativePath 	<- flooding_def["LISFLOOD_RELATIVE_PATH"]; 								// Lisflood folder relatife path 
-	string results_lisflood_rep 	<- flooding_def["RESULTS_LISFLOOD_REP"]; 								// Lisflood results folder
-	string lisflood_par_file 		-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_config_" + floodEventType + timestamp + ".par"};   // parameter file
-	string lisflood_DEM_file 		-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_DEM"     + timestamp + ".asc"}; 					  // DEM file 
-	string lisflood_rugosity_file 	-> {"inputs/" + "LittoSIM_GEN_" + application_name + "_n"       + timestamp + ".asc"}; 					  // rugosity file
+	string results_lisflood_rep 	<- application_name + "/results"; 								// Lisflood results folder
+	string lisflood_par_file 		-> {application_name+"/inputs/" + application_name + "_par_" + timestamp + ".par"};   // parameter file
+	string lisflood_DEM_file 		-> {application_name+"/inputs/" + application_name + "_dem" + timestamp + ".asc"}; 					  // DEM file 
+	string lisflood_rugosity_file 	-> {application_name+"/inputs/" + application_name + "_rug" + timestamp + ".asc"}; 					  // rugosity file
 	string lisflood_bat_file 		<- flooding_def["LISFLOOD_BAT_FILE"];												       		  // Lisflood executable
 	
 	// variables for Lisflood calculs 
@@ -59,10 +59,10 @@ global {
 	list<list<int>> districts_actions_costs <- [[0],[0],[0],[0]];
 	list<list<int>> districts_levers_costs 	<- [[0],[0],[0],[0]];
 	// Strategy profiles actions
-	list<list<int>> districts_build_strategies 	<- [[0],[0],[0],[0]];
-	list<list<int>> districts_soft_strategies 	<- [[0],[0],[0],[0]];
-	list<list<int>> districts_withdraw_strategies<- [[0],[0],[0],[0]];
-	list<list<int>> districts_neutral_strategies <- [[0],[0],[0],[0]];
+	list<list<int>> districts_build_strategies 	<- [[30],[30],[30],[30]];
+	list<list<int>> districts_soft_strategies 	<- [[30],[30],[30],[30]];
+	list<list<int>> districts_withdraw_strategies<- [[30],[30],[30],[30]];
+	list<list<int>> districts_neutral_strategies <- [[30],[30],[30],[30]];
 
 	list<list<float>> districts_build_costs 	<- [[0],[0],[0],[0]];
 	list<list<float>> districts_soft_costs 	<- [[0],[0],[0],[0]];
@@ -201,6 +201,11 @@ global {
 			}
 		}
 		else { // round 0
+			districts_build_strategies 	<- [[0],[0],[0],[0]];
+			districts_soft_strategies 	<- [[0],[0],[0],[0]];
+			districts_withdraw_strategies<- [[0],[0],[0],[0]];
+			districts_neutral_strategies <- [[0],[0],[0],[0]];
+			
 			ask districts_in_game{
 				add budget to: districts_taxes[dist_id-1];	
 			}
@@ -249,7 +254,9 @@ global {
 		write stateSimPhase;
 	}
 	
-	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD	{	do read_lisflood;	} // reading flooding files
+	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD{
+		do read_lisflood;  // reading flooding files
+	} 
 	
 	action replay_flood_event (int fe) {
 		string replayed_flooding_event  <- (list_flooding_events.keys)[fe];
@@ -266,17 +273,21 @@ global {
 			map values <- user_input([(get_message('MSG_SIM_NOT_STARTED'))::true]);
 	     	write stateSimPhase;
 		}
-		else{											// excuting Lisflood
+		else{	// excuting Lisflood
 			do new_round;
-			ask Cell { max_water_height <- 0.0;	} // reset of max_water_height
-			ask Coastal_Defense {	do calculate_rupture;		}
+			ask Cell {
+				max_water_height <- 0.0;
+			} // reset of max_water_height
+			ask Coastal_Defense {
+				do calculate_rupture;
+			}
 			stateSimPhase <- SIM_EXEC_LISFLOOD;
 			write stateSimPhase;
 			do execute_lisflood;
-		} 
-		lisfloodReadingStep <- 0;
-		stateSimPhase 		<- SIM_SHOWING_LISFLOOD;
-		write stateSimPhase;
+			lisfloodReadingStep <- 0;
+			stateSimPhase 		<- SIM_SHOWING_LISFLOOD;
+			write stateSimPhase;
+		}
 	}
 
 	action add_element_in_list_flooding_events (string sub_name, string sub_rep){
@@ -288,7 +299,7 @@ global {
 		
 	action execute_lisflood{
 		timestamp <- "_R" + game_round + "_t" + machine_time;
-		results_lisflood_rep <- "results" + timestamp;
+		results_lisflood_rep <- application_name + "/results" + timestamp;
 		do save_dem_and_rugosity;
 		do save_lf_launch_files;
 		do add_element_in_list_flooding_events("Submersion round " + game_round , results_lisflood_rep);
@@ -301,8 +312,8 @@ global {
 	action save_lf_launch_files {
 		save ("DEMfile         " + lisfloodPath + lisflood_DEM_file + 
 				"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\nmanningfile     " +
-				lisfloodPath+lisflood_rugosity_file + "\nbcifile         " + lisfloodPath + lisflood_bci_file + "\nbdyfile         " + lisfloodPath + lisflood_bdy_file + 
-				"\nstartfile       " + lisfloodPath + lisflood_start_file +"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath + lisflood_par_file type: "text";
+				lisfloodPath + lisflood_rugosity_file + "\nbcifile         " + lisfloodPath + application_name + "/" + lisflood_bci_file + "\nbdyfile         " + lisfloodPath + application_name + "/" + lisflood_bdy_file + 
+				"\nstartfile       " + lisfloodPath + application_name + "/" + lisflood_start_file +"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath + lisflood_par_file type: "text";
 		
 		save (lisfloodPath + "lisflood.exe -dir " + lisfloodPath + results_lisflood_rep + " " + (lisfloodPath + lisflood_par_file)) rewrite: true to: lisfloodRelativePath + lisflood_bat_file type: "text";
 	}
@@ -310,10 +321,10 @@ global {
 	action load_dem_and_rugosity {
 		list<string> dem_data <- [];
 		list<string> rug_data <- [];
-		list<string> hill_data <- [];
+		//list<string> hill_data <- [];
 		file dem_grid <- text_file(dem_file);
 		file rug_grid <- text_file(RUGOSITY_DEFAULT);
-		file hill_grid<- text_file(hillshade_file);
+		//file hill_grid<- text_file(hillshade_file);
 		
 		DEM_XLLCORNER <- float((dem_grid[2] split_with " ")[1]);
 		DEM_YLLCORNER <- float((dem_grid[3] split_with " ")[1]);
@@ -323,21 +334,20 @@ global {
 		loop rw from: 0 to: DEM_NB_ROWS - 1 {
 			dem_data <- dem_grid [rw+6] split_with " ";
 			rug_data <- rug_grid [rw+6] split_with " ";
-			hill_data <- hill_grid[rw+6] split_with " ";
+			//hill_data <- hill_grid[rw+6] split_with " ";
 			loop cl from: 0 to: DEM_NB_COLS - 1 {
 				Cell[cl, rw].soil_height <- float(dem_data[cl]);
 				Cell[cl, rw].rugosity <- float(rug_data[cl]);
-				Cell[cl, rw].hillshade <- int(hill_data[cl]);
+				//Cell[cl, rw].hillshade <- int(hill_data[cl]);
 			}
 		}
 		ask Cell {
 			if soil_height > 0 {
 				cell_type <-1; //  1 -> land
-			}  
+			}
 		}
-		land_min_height <- min(Cell where (each.cell_type = 1 and each.soil_height != no_data_value) collect each.soil_height);
-		land_max_height <- max(Cell where (each.cell_type = 1 and each.soil_height != no_data_value) collect each.soil_height);
-		land_range_height <- land_max_height - land_min_height;
+		land_max_height <- Cell max_of(each.soil_height);
+		land_color_interval <- land_max_height / 4.999; // not 5 to include the last value
 		cells_max_depth <- abs(min(Cell where (each.cell_type = 0 and each.soil_height != no_data_value) collect each.soil_height));
 		ask Cell {
 			do init_cell_color;
@@ -608,7 +618,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "4";
-			location 	<- { 11000, 9000 };
+			location 	<- {11000, 9000};
 			my_icon 	<- image_file("../images/icons/4.png");
 			display_text <- "Replay submersion 4";
 		}
@@ -617,17 +627,27 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			nb_button 	<- 4;
 			command  	<- SHOW_LU_GRID;
 			shape 		<- square(800);
-			location 	<- { 800, 800 };
 			my_icon 	<- image_file("../images/icons/avec_quadrillage.png");
 			is_selected <- false;
+			if LEGEND_POSITION = ' topleft' {
+				location 	<- {800, 800};
+			} else {
+				location 	<- {800, 13800};
+			}
+			
 		}
 		create Button{
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
 			shape 		<- square(800);
-			location 	<- { 1800, 800 };
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
 			is_selected <- false;
+			if LEGEND_POSITION = ' topleft' {
+				location 	<- {1800, 800};
+			} else {
+				location 	<- {1800, 13800};
+			}
+			
 		}
 	}
 	
@@ -690,11 +710,11 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 		}
 	}
 	
-	rgb color_of_water_height (float aWaterHeight){
-		if 		aWaterHeight  	<= 0.5	{	return rgb (200,200,255);	}
-		else if aWaterHeight  	<= 1  	{	return rgb (115,115,255);	}
-		else if aWaterHeight	<= 2  	{	return rgb (65,65,255);		}
-		else 							{	return rgb (30,30,255);		}
+	rgb color_of_water_height (float w_height){
+		if 		w_height  	<= 0.5	{	return rgb (200,200,255);	}
+		else if w_height  	<= 1  	{	return rgb (115,115,255);	}
+		else if w_height	<= 2  	{	return rgb (65,65,255);		}
+		else 						{	return rgb (30,30,255);		}
 	}
 }
 //------------------------------ End of world global -------------------------------//
@@ -1412,14 +1432,14 @@ grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {
 	float rugosity					<- 0.0;
 	float soil_height_before_broken <- soil_height;
 	rgb soil_color <- rgb(255,255,255);
-	int hillshade <- 0;
+	//int hillshade <- 0;
 	
 	action init_cell_color {		
 		if cell_type = 0 { // sea
 			float tmp  <- ((soil_height  / cells_max_depth) with_precision 1) * - 170;
 			soil_color <- rgb(80, 80 , int(255 - tmp));
 		}else{ // land
-			soil_color <- rgb(hillshade,hillshade,hillshade);
+			soil_color <- land_colors [int(soil_height/land_color_interval)];// rgb(hillshade,hillshade,hillshade);
 		}
 	}
 	
@@ -1533,7 +1553,7 @@ species Land_Use {
 			match POP_LOW_DENSITY 	{acolor <- rgb(220,220,220); } 
 			match POP_MEDIUM_DENSITY{acolor <- rgb(192,192,192); }
 			match POP_DENSE 		{acolor <- rgb(169,169,169); }
-			default 				{acolor <- # yellow;		 }
+			default 				{write "Density class problem !"; }
 		}
 		draw shape color: acolor;
 	}
@@ -1711,13 +1731,20 @@ species Button{
 species Legend_Planning{
 	list<rgb> colors <- [];
 	list<string> texts <- [];
-	point start_location <- {700, 750};
+	point start_location;
 	point rect_size <- {300, 400};
 	rgb text_color  <- #black;
 	
 	init{
 		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
 		colors<- [#palegreen,rgb(225,165,0),#yellow,rgb(245,245,245),rgb(220,220,220),rgb(192,192,192),rgb(169,169,169)];
+		
+		if LEGEND_POSITION = 'topleft' {
+			start_location <- {700, 750};
+		} else{ // LEGEND_POSITION = 'bottomleft'
+			start_location <- {700, 15000};
+		}
+		
 	}
 	
 	aspect {
@@ -1737,18 +1764,21 @@ species Legend_Population parent: Legend_Planning {
 
 species Legend_Map parent: Legend_Planning {
 	init {
-		start_location <- {700, 1500};
+		
+		if LEGEND_POSITION = 'topleft' {
+			start_location <- {700, 1500};
+		} else{ // LEGEND_POSITION = 'bottomleft'
+			start_location <- {700, 15750};
+		}
+		
+		
 		text_color <- #white;
-		int t1 <- int(land_range_height*0.25);
-		int t2 <- int(land_range_height*0.5);
-		int t3 <- int(land_range_height*0.75);
-		texts <- [''+int(land_max_height)+' m',''+t3+' m',''+t2+' m',''+t1+' m',''+int(land_min_height)+' m'];
-
-		float c1  <- (((t1 - land_min_height)  / land_range_height) with_precision 1) * 255;
-		float c2  <- (((t2 - land_min_height)  / land_range_height) with_precision 1) * 255;
-		float c3  <- (((t3 - land_min_height)  / land_range_height) with_precision 1) * 255;
-
-		colors<- [rgb(0,0,0), rgb(int(255 - c3), int(180 - c3), 0), rgb(int(255 - c2), int(180 - c2), 0), rgb(int(255 - c1), int(180 - c1), 0), rgb(255,180,0)];
+		int t1 <- int(land_color_interval);
+		int t2 <- int(land_color_interval*2);
+		int t3 <- int(land_color_interval*3);
+		texts <- [''+int(land_max_height)+' m',''+t3+' m',''+t2+' m',''+t1+' m','0 m'];
+		
+		colors <- reverse(land_colors); 
 	}
 }
 
@@ -1835,13 +1865,13 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data districts_in_game[3].district_name value: districts_budgets[3] color:#orange;			
 			}			
 			chart "Actions" type: histogram size: {0.48,0.48} position: {0.51,0.51} x_serie_labels: strat_lbls style:stack {
-			 	data districts_in_game[0].district_name value: [sum(districts_build_strategies[0]), sum(districts_soft_strategies[0]),
+			 	data districts_in_game[0].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[0]), sum(districts_soft_strategies[0]),
 			 				sum(districts_withdraw_strategies[0]), sum(districts_neutral_strategies[0])] color: #red;
-			 	data districts_in_game[1].district_name value: [sum(districts_build_strategies[1]), sum(districts_soft_strategies[1]),
+			 	data districts_in_game[1].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[1]), sum(districts_soft_strategies[1]),
 			 				sum(districts_withdraw_strategies[1]), sum(districts_neutral_strategies[1])] color: #blue;
-			 	data districts_in_game[2].district_name value: [sum(districts_build_strategies[2]), sum(districts_soft_strategies[2]),
+			 	data districts_in_game[2].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[2]), sum(districts_soft_strategies[2]),
 			 				sum(districts_withdraw_strategies[2]), sum(districts_neutral_strategies[2])] color: #green;
-			 	data districts_in_game[3].district_name value: [sum(districts_build_strategies[3]), sum(districts_soft_strategies[3]),
+			 	data districts_in_game[3].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[3]), sum(districts_soft_strategies[3]),
 			 				sum(districts_withdraw_strategies[3]), sum(districts_neutral_strategies[3])] color: #orange;
 			}
 		}
@@ -1947,12 +1977,14 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 			chart "Profiles" type: radar size: {0.33,0.48} position: {0.67,0.01}
 				x_serie_labels: copy_between(strat_lbls,0,3) {
-				data districts_in_game[0].district_name value: [sum(districts_build_strategies[0]), sum(districts_soft_strategies[0]),
-			 				sum(districts_withdraw_strategies[0]), sum(districts_neutral_strategies[0])] color: #red;
-			 	data districts_in_game[1].district_name value: [sum(districts_build_strategies[1]), sum(districts_soft_strategies[1]),
-			 				sum(districts_withdraw_strategies[1]), sum(districts_neutral_strategies[1])] color: #blue;
-			 	data districts_in_game[2].district_name value: [sum(districts_build_strategies[2]), sum(districts_soft_strategies[2]),
-			 				sum(districts_withdraw_strategies[2]), sum(districts_neutral_strategies[2])] color: #green;			
+				data districts_in_game[0].district_name value: [sum(districts_build_strategies[0]),
+					sum(districts_soft_strategies[0]), sum(districts_withdraw_strategies[0])] color: #red;
+			 	data districts_in_game[1].district_name value: [sum(districts_build_strategies[1]),
+			 		sum(districts_soft_strategies[1]), sum(districts_withdraw_strategies[1])] color: #blue;
+			 	data districts_in_game[2].district_name value: [sum(districts_build_strategies[2]),
+			 		sum(districts_soft_strategies[2]), sum(districts_withdraw_strategies[2])] color: #green;
+			 	data districts_in_game[3].district_name value: [sum(districts_build_strategies[3]),
+			 		sum(districts_soft_strategies[3]), sum(districts_withdraw_strategies[3])] color: #orange;			
 			}
 		}
 		

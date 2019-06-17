@@ -67,10 +67,11 @@ global{
 	int DEM_CELL_SIZE;
 	float DEM_XLLCORNER;
 	float DEM_YLLCORNER;
-	float land_min_height;
+
 	float land_max_height;
-	float land_range_height;
 	float cells_max_depth;
+	list<rgb> land_colors <- [rgb(255,255,212), rgb(254,217,142), rgb(254,153,41), rgb(217,95,14), rgb(153,52,4)];
+	float land_color_interval;
 		
 	// Costs of actions
 	int ACTION_COST_LAND_COVER_TO_A 			<- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'cost');
@@ -96,6 +97,7 @@ global{
 	float button_size 		<- float(configuration_file["BUTTON_SIZE"]); 				// 2000#m;
 	int font_size 			<- int(shape.height/30); 	
 	int font_interleave 	<- int(shape.width/60);
+	string LEGEND_POSITION <- shapes_def["LEGEND_POSITION"];
 	
 	string get_message(string code_msg){
 		return langs_def at code_msg at my_language;

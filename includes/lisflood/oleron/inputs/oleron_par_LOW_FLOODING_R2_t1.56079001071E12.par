@@ -1,0 +1,15 @@
+DEMfile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron/inputs/oleron_dem_R2_t1.56079001071E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+initial_tstep   10.0
+massint         100.0
+saveint         3600.0
+manningfile     C:/littosim/workspace/LittoDev/includes/lisflood/oleron/inputs/oleron_rug_R2_t1.56079001071E12.asc
+bcifile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron/oleron2016.bci
+bdyfile         C:/littosim/workspace/LittoDev/includes/lisflood/oleron/oleron2016_Xynthia-50.bdy
+startfile       C:/littosim/workspace/LittoDev/includes/lisflood/oleron/oleron.start
+startelev
+elevoff
+SGC_enable
+

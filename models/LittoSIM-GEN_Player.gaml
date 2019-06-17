@@ -1849,6 +1849,7 @@ species Land_Use {
 					match POP_LOW_DENSITY	 {return rgb(220,220,220);	}
 					match POP_MEDIUM_DENSITY {return rgb(192,192,192);	}
 					match POP_DENSE 		 {return rgb(169,169,169);	}
+					default 				 {write "Density class problem !";}
 				}
 			}			
 		}

@@ -111,9 +111,9 @@ global{
 	string POP_LOW_DENSITY 	  <- "LOW_DENSITY";
 	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";
 	string POP_DENSE 		  <- "DENSE";
-	int    POP_LOW_NUMBER 	  <- 40;
-	int    POP_MEDIUM_NUMBER  <- 80;
-	int    MIN_POP_AREA 	  <- int (eval_gaml(shapes_def["MIN_POPU_AREA"]));
+	int    POP_LOW_NUMBER 	  <- int(eval_gaml(shapes_def["POP_LOW_NUMBER"]));
+	int    POP_MEDIUM_NUMBER  <- int(eval_gaml(shapes_def["POP_MEDIUM_NUMBER"]));
+	int    MIN_POP_AREA 	  <- int(eval_gaml(shapes_def["MIN_POPU_AREA"]));
 	
 	// Building and raising dikes parameters
 	float BUILT_DIKE_HEIGHT <- float(shapes_def["BUILT_DIKE_HEIGHT"]);
@@ -133,7 +133,7 @@ global{
 	file land_use_shape 		<- file(shapes_def["LAND_USE_SHAPE"]);	
 	file convex_hull_shape 		<- file(shapes_def["CONVEX_HULL_SHAPE"]); 
 	file dem_file 				<- file(shapes_def["DEM_FILE"]);
-	file hillshade_file 		<- file(shapes_def["HILLSHADE"]);
+	//file hillshade_file 		<- file(shapes_def["HILLSHADE"]);
 	file buffer_in_100m_shape 	<- file(shapes_def["BUFFER_IN100M_SHAPE"]);
 	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
