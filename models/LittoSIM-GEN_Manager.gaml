@@ -59,10 +59,10 @@ global {
 	list<list<int>> districts_actions_costs <- [[0],[0],[0],[0]];
 	list<list<int>> districts_levers_costs 	<- [[0],[0],[0],[0]];
 	// Strategy profiles actions
-	list<list<int>> districts_build_strategies 	<- [[30],[30],[30],[30]];
-	list<list<int>> districts_soft_strategies 	<- [[30],[30],[30],[30]];
-	list<list<int>> districts_withdraw_strategies<- [[30],[30],[30],[30]];
-	list<list<int>> districts_neutral_strategies <- [[30],[30],[30],[30]];
+	list<list<int>> districts_build_strategies 	<- [[0],[0],[0],[0]];
+	list<list<int>> districts_soft_strategies 	<- [[0],[0],[0],[0]];
+	list<list<int>> districts_withdraw_strategies<- [[0],[0],[0],[0]];
+	list<list<int>> districts_neutral_strategies <- [[0],[0],[0],[0]];
 
 	list<list<float>> districts_build_costs 	<- [[0],[0],[0],[0]];
 	list<list<float>> districts_soft_costs 	<- [[0],[0],[0],[0]];
@@ -172,6 +172,7 @@ global {
 			ask districts_in_game{
 				do calculate_taxes;
 				add received_tax to: districts_taxes[dist_id-1];
+				
 				add round_actions_cost to: districts_actions_costs[dist_id-1];
 				add round_given_money to: districts_given_money[dist_id-1];
 				add round_taken_money to: districts_taken_money[dist_id-1];
@@ -185,6 +186,8 @@ global {
 				add round_soft_actions to: districts_soft_strategies[dist_id-1];
 				add round_withdraw_actions to: districts_withdraw_strategies[dist_id-1];
 				add round_neutral_actions to: districts_neutral_strategies[dist_id-1];
+				sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + round_build_actions
+							+ round_soft_actions + round_withdraw_actions;
 				round_build_actions <- 0;
 				round_soft_actions <- 0;
 				round_withdraw_actions <- 0;
@@ -200,12 +203,7 @@ global {
 				round_neutral_cost <- 0.0;
 			}
 		}
-		else { // round 0
-			districts_build_strategies 	<- [[0],[0],[0],[0]];
-			districts_soft_strategies 	<- [[0],[0],[0],[0]];
-			districts_withdraw_strategies<- [[0],[0],[0],[0]];
-			districts_neutral_strategies <- [[0],[0],[0],[0]];
-			
+		else { // round 0	
 			ask districts_in_game{
 				add budget to: districts_taxes[dist_id-1];	
 			}
@@ -629,12 +627,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			shape 		<- square(800);
 			my_icon 	<- image_file("../images/icons/avec_quadrillage.png");
 			is_selected <- false;
-			if LEGEND_POSITION = ' topleft' {
-				location 	<- {800, 800};
-			} else {
-				location 	<- {800, 13800};
-			}
-			
+			location <- LEGEND_POSITION = 'topleft' ? {800, 800} : {800, 13800};
 		}
 		create Button{
 			nb_button 	<- 7;
@@ -642,12 +635,7 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 			shape 		<- square(800);
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
 			is_selected <- false;
-			if LEGEND_POSITION = ' topleft' {
-				location 	<- {1800, 800};
-			} else {
-				location 	<- {1800, 13800};
-			}
-			
+			location 	<- LEGEND_POSITION = 'topleft' ? {1800, 800} : {1800, 13800};
 		}
 	}
 	
@@ -765,7 +753,7 @@ species Network_Game_Manager skills: [network]{
 						create Player_Action {
 							self.command 					<- int(m_contents["command"]);
 							self.command_round  			<- game_round; 
-							self.id 						<- m_contents["id"];
+							self.act_id 						<- m_contents["id"];
 							self.initial_application_round 	<- int(m_contents["initial_application_round"]);
 							self.district_code 				<- m_sender;
 							self.element_id 				<- int(m_contents["element_id"]);
@@ -782,7 +770,7 @@ species Network_Game_Manager skills: [network]{
 								location 		 <- {float(m_contents["location.x"]),float(m_contents["location.y"])}; 
 							}
 							else{
-								if is_expropriation { write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.id; }
+								if is_expropriation { write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.act_id; }
 								switch self.action_type {
 									match PLAYER_ACTION_TYPE_LU {
 										Land_Use tmp  	<- Land_Use first_with (each.id = self.element_id);
@@ -829,28 +817,28 @@ species Network_Game_Manager skills: [network]{
 						}
 					}
 					match ACTION_REPAIR_DIKE {
-						ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+						ask Coastal_Defense first_with(each.coast_def_id = element_id){
 							do repaire_dike;
 							not_updated <- true;
 							acknowledge <- true;
 						}
 					}
 				 	match ACTION_DESTROY_DIKE {
-				 		ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+				 		ask Coastal_Defense first_with(each.coast_def_id = element_id){
 							not_updated <- true;
 							acknowledge <- true;
 							do destroy_dike;
 						}		
 					}
 				 	match ACTION_RAISE_DIKE {
-				 		ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+				 		ask Coastal_Defense first_with(each.coast_def_id = element_id){
 							do raise_dike;
 							not_updated <- true;
 							acknowledge <- true;
 						}
 					}
 					match ACTION_INSTALL_GANIVELLE {
-					 	ask(Coastal_Defense first_with(each.coast_def_id = element_id)){
+					 	ask Coastal_Defense first_with(each.coast_def_id = element_id){
 							do install_ganivelle;
 							not_updated <- true;
 							acknowledge <- true;
@@ -882,7 +870,7 @@ species Network_Game_Manager skills: [network]{
 	}
 	
 	action acknowledge_application_of_player_action (Player_Action act){
-		map<string,string> msg <- ["TOPIC"::PLAYER_ACTION_IS_APPLIED,"id"::act.id];
+		map<string,string> msg <- ["TOPIC"::PLAYER_ACTION_IS_APPLIED,"id"::act.act_id];
 		do send to: act.district_code contents: msg;
 	}
 	
@@ -1038,11 +1026,11 @@ species Network_Listener_To_Leader skills:[network]{
 					ask Player_Action { is_sent_to_leader <- false; }
 				}
 				match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
-					Player_Action act <- Player_Action first_with (each.id = string(m_contents[PLAYER_ACTION_ID]));
+					Player_Action act <- Player_Action first_with (each.act_id = string(m_contents[PLAYER_ACTION_ID]));
 					write "Action : " + act;
 					if act!= nil {
 						act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-						write "Should wait ? " + act.should_wait_lever_to_activate;	
+						write "Waiting for a lever : " + act.should_wait_lever_to_activate;	
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
@@ -1054,7 +1042,7 @@ species Network_Listener_To_Leader skills:[network]{
 								budget <- budget - money;
 								round_levers_cost <- round_levers_cost - money;
 							}
-							ply_action <- Player_Action first_with (each.id = my_map["p_action_id"]);
+							ply_action <- Player_Action first_with (each.act_id = my_map["p_action_id"]);
 							if ply_action != nil {
 								add self to: ply_action.activated_levers;
 								ply_action.a_lever_has_been_applied <- true;
@@ -1131,7 +1119,7 @@ species Activated_Lever {
 //------------------------------ End of Activated_lever -------------------------------//
 
 species Player_Action schedules:[]{
-	string id;
+	string act_id;
 	int element_id;
 	geometry element_shape;
 	int length_coast_def	<-0;
@@ -1166,7 +1154,7 @@ species Player_Action schedules:[]{
 	map<string,string> build_map_from_action_attributes{
 		map<string,string> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
-			"id"::id,
+			"id"::act_id,
 			"element_id"::string(element_id),
 			"command"::string(command),
 			"cost"::string(cost),
@@ -1216,7 +1204,7 @@ species Player_Action schedules:[]{
 			point p1 		<- first(myself.element_shape.points);
 			point p2 		<- last(myself.element_shape.points);
 			map<string,string> msg <- ["TOPIC"::ACTION_DIKE_CREATED,
-				 "coast_def_id"::new_dike.coast_def_id,"action_id"::myself.id,
+				 "coast_def_id"::new_dike.coast_def_id,"action_id"::myself.act_id,
 				 "p1.x"::p1.x, "p1.y"::p1.y, "p2.x"::p2.x, "p2.y"::p2.y,
 				 "height"::new_dike.height, "type"::new_dike.type, "status"::new_dike.status,
 				 "alt"::new_dike.alt, "location.x"::new_dike.location.x, "location.y"::new_dike.location.y];
@@ -1230,8 +1218,8 @@ species Player_Action schedules:[]{
 species Coastal_Defense {	
 	int coast_def_id;
 	string district_code;
-	string type;     // Dike or Dune
-	string status;	//  "Good" "Medium" "Bad"  
+	string type;     // DIKE or BAD
+	string status;	//  "GOOD" "MEDIUM" "BAD"  
 	float height;
 	float alt; 
 	rgb color 			 <- #pink;
@@ -1602,6 +1590,7 @@ species District {
 	int round_soft_actions <- 0;
 	int round_withdraw_actions <- 0;
 	int round_neutral_actions <- 0;
+	int sum_buil_sof_wit_actions <- 1;
 	
 	float round_build_cost <- 0.0;
 	float round_soft_cost <- 0.0;
@@ -1738,13 +1727,7 @@ species Legend_Planning{
 	init{
 		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
 		colors<- [#palegreen,rgb(225,165,0),#yellow,rgb(245,245,245),rgb(220,220,220),rgb(192,192,192),rgb(169,169,169)];
-		
-		if LEGEND_POSITION = 'topleft' {
-			start_location <- {700, 750};
-		} else{ // LEGEND_POSITION = 'bottomleft'
-			start_location <- {700, 15000};
-		}
-		
+		start_location <- LEGEND_POSITION = 'topleft' ? {700, 750} : {700, 15000};		
 	}
 	
 	aspect {
@@ -1764,20 +1747,12 @@ species Legend_Population parent: Legend_Planning {
 
 species Legend_Map parent: Legend_Planning {
 	init {
-		
-		if LEGEND_POSITION = 'topleft' {
-			start_location <- {700, 1500};
-		} else{ // LEGEND_POSITION = 'bottomleft'
-			start_location <- {700, 15750};
-		}
-		
-		
+		start_location <- LEGEND_POSITION = 'topleft' ? {700, 1500} : {700, 15750};
 		text_color <- #white;
 		int t1 <- int(land_color_interval);
 		int t2 <- int(land_color_interval*2);
 		int t3 <- int(land_color_interval*3);
 		texts <- [''+int(land_max_height)+' m',''+t3+' m',''+t2+' m',''+t1+' m','0 m'];
-		
 		colors <- reverse(land_colors); 
 	}
 }
@@ -1810,6 +1785,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	list<string> budget_lbls <- ["Taxes","Given","Taken","Actions","Levers"];
 	list<rgb> color_lbls <- [#palegreen,#cyan,#black,#gray,#magenta];
 	list<string> strat_lbls <-["Builder","Soft defense","Withdrawal","Neutral"];
+	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
 	
 	output {
 		display "Flooding" background: #black{
@@ -1859,29 +1835,23 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
 			
 			chart "Budgets" type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND') {
-			 	data districts_in_game[0].district_name value: districts_budgets[0] color:#red;
-			 	data districts_in_game[1].district_name value: districts_budgets[1] color:#blue;
-			 	data districts_in_game[2].district_name value: districts_budgets[2] color:#green;
-			 	data districts_in_game[3].district_name value: districts_budgets[3] color:#orange;			
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i];
+				}			
 			}			
 			chart "Actions" type: histogram size: {0.48,0.48} position: {0.51,0.51} x_serie_labels: strat_lbls style:stack {
-			 	data districts_in_game[0].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[0]), sum(districts_soft_strategies[0]),
-			 				sum(districts_withdraw_strategies[0]), sum(districts_neutral_strategies[0])] color: #red;
-			 	data districts_in_game[1].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[1]), sum(districts_soft_strategies[1]),
-			 				sum(districts_withdraw_strategies[1]), sum(districts_neutral_strategies[1])] color: #blue;
-			 	data districts_in_game[2].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[2]), sum(districts_soft_strategies[2]),
-			 				sum(districts_withdraw_strategies[2]), sum(districts_neutral_strategies[2])] color: #green;
-			 	data districts_in_game[3].district_name value: game_round = 0 ? 30 : [sum(districts_build_strategies[3]), sum(districts_soft_strategies[3]),
-			 				sum(districts_withdraw_strategies[3]), sum(districts_neutral_strategies[3])] color: #orange;
+				loop i from:0 to: 3{
+					data districts_in_game[i].district_name value: [sum(districts_build_strategies[i]), sum(districts_soft_strategies[i]),
+			 				sum(districts_withdraw_strategies[i]), sum(districts_neutral_strategies[i])] color: dist_colors[i];
+				}
 			}
 		}
 		
 		display "Budgets" {
 			chart "Total" type: histogram size: {0.33,0.48} position: {0.0,0.0}  {
-			 	data districts_in_game[0].district_name value: last(districts_budgets[0]) color:#red;
-			 	data districts_in_game[1].district_name value: last(districts_budgets[1]) color:#blue;
-			 	data districts_in_game[2].district_name value: last(districts_budgets[2]) color:#green;
-			 	data districts_in_game[3].district_name value: last(districts_budgets[3]) color:#orange;			
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: last(districts_budgets[i]) color: dist_colors[i];
+				}			
 			}
 			//-----
 			chart districts_in_game[0].district_name type: pie size: {0.33,0.24} position: {0.34,0.0}
@@ -1975,16 +1945,13 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data strat_lbls[2] value: districts_withdraw_costs collect sum(each) color: color_lbls[0];
 			 	data strat_lbls[3] value: districts_neutral_costs collect sum(each) color: color_lbls[3];
 			}
-			chart "Profiles" type: radar size: {0.33,0.48} position: {0.67,0.01}
-				x_serie_labels: copy_between(strat_lbls,0,3) {
-				data districts_in_game[0].district_name value: [sum(districts_build_strategies[0]),
-					sum(districts_soft_strategies[0]), sum(districts_withdraw_strategies[0])] color: #red;
-			 	data districts_in_game[1].district_name value: [sum(districts_build_strategies[1]),
-			 		sum(districts_soft_strategies[1]), sum(districts_withdraw_strategies[1])] color: #blue;
-			 	data districts_in_game[2].district_name value: [sum(districts_build_strategies[2]),
-			 		sum(districts_soft_strategies[2]), sum(districts_withdraw_strategies[2])] color: #green;
-			 	data districts_in_game[3].district_name value: [sum(districts_build_strategies[3]),
-			 		sum(districts_soft_strategies[3]), sum(districts_withdraw_strategies[3])] color: #orange;			
+			chart "Profiles" type: radar size: {0.33,0.48} position: {0.67,0.01} x_serie_labels: copy_between(strat_lbls,0,3) {
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: game_round = 0? 0.75 : [
+						sum(districts_build_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions,
+						sum(districts_soft_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions,
+						sum(districts_withdraw_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions] color: dist_colors[i];
+				}		
 			}
 		}
 		
@@ -2030,47 +1997,47 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		
 		display "Flooded area per district"{
 			chart "All areas" type: series size: {0.48,0.45} position: {0, 0}{
-				datalist value: length(District)= 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_flooded_area),
+				datalist value: [((District first_with(each.dist_id = 1)).data_flooded_area),
 																 ((District first_with(each.dist_id = 2)).data_flooded_area),
 																 ((District first_with(each.dist_id = 3)).data_flooded_area),
 																 ((District first_with(each.dist_id = 4)).data_flooded_area)]
-						color:[#red,#blue,#green,#orange] legend: (districts_in_game collect each.district_name); 			
+						color: dist_colors legend: (districts_in_game collect each.district_name); 			
 			}
 		
 
 			chart "U area" type: series size: {0.24,0.45} position: {0.5, 0}{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totU),
+				datalist value: [((District first_with(each.dist_id = 1)).data_totU),
 																 ((District first_with(each.dist_id = 2)).data_totU),
 																 ((District first_with(each.dist_id = 3)).data_totU),
 																 ((District first_with(each.dist_id = 4)).data_totU)]
-						color:[#red,#blue,#green,#orange] legend: (districts_in_game collect each.district_name); 			
+						color:dist_colors legend: (districts_in_game collect each.district_name); 			
 			}
 
 			chart "Us area" type: series size: {0.24,0.45} position: {0.75, 0}{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totUs),
+				datalist value: [((District first_with(each.dist_id = 1)).data_totUs),
 																 ((District first_with(each.dist_id = 2)).data_totUs),
 																 ((District first_with(each.dist_id = 3)).data_totUs),
 																 ((District first_with(each.dist_id = 4)).data_totUs)]
-						color:[#red,#blue,#green,#orange] legend: (districts_in_game collect each.district_name); 			
+						color: dist_colors legend: (districts_in_game collect each.district_name); 			
 			}
 
 			chart "Ui area" type: series size: {0.24,0.45} position: {0, 0.5}{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totUdense),
+				datalist value: [((District first_with(each.dist_id = 1)).data_totUdense),
 																 ((District first_with(each.dist_id = 2)).data_totUdense),
 																 ((District first_with(each.dist_id = 3)).data_totUdense),
 																 ((District first_with(each.dist_id = 4)).data_totUdense)]
-						color:[#red,#blue,#green,#orange] legend: (districts_in_game collect each.district_name); 			
+						color: dist_colors legend: (districts_in_game collect each.district_name); 			
 			}
 
 			chart "AU area" type: series size: {0.24,0.45} position: {0.25, 0.5}{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totAU),
+				datalist value: [((District first_with(each.dist_id = 1)).data_totAU),
 																 ((District first_with(each.dist_id = 2)).data_totAU),
 																 ((District first_with(each.dist_id = 3)).data_totAU),
 																 ((District first_with(each.dist_id = 4)).data_totAU)]
-						color:[#red,#blue,#green,#orange] legend: (districts_in_game collect each.district_name); 			
+						color: dist_colors legend: (districts_in_game collect each.district_name); 			
 			}
 			chart "N area" type: series size: {0.24,0.45} position: {0.50, 0.5}{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totN),
+				datalist value: [((District first_with(each.dist_id = 1)).data_totN),
 																 ((District first_with(each.dist_id = 2)).data_totN),
 																 ((District first_with(each.dist_id = 3)).data_totN),
 																 ((District first_with(each.dist_id = 4)).data_totN)]
@@ -2078,11 +2045,11 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 
 			chart "A area" type: series size: {0.24,0.45} position: {0.75, 0.5}{
-				datalist value:length(District) = 0 ? [0,0,0,0]:[((District first_with(each.dist_id = 1)).data_totA),
+				datalist value: [((District first_with(each.dist_id = 1)).data_totA),
 																 ((District first_with(each.dist_id = 2)).data_totA),
 																 ((District first_with(each.dist_id = 3)).data_totA),
 																 ((District first_with(each.dist_id = 4)).data_totA)]
-						color:[#red,#blue,#green,#orange] legend: (districts_in_game collect each.district_name); 			
+						color: dist_colors legend: (districts_in_game collect each.district_name); 			
 			}
 		}
 	}
