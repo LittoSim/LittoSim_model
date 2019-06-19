@@ -1,7 +1,0 @@
-<1.556553037939E12><1:1>Send a message to dieppe -> Hi dieppe
-<1.556553063334E12><1:2>Send a message to dieppe -> Bccimmam a Dieppe
-<1.556553103799E12><1:3>Take money from dieppe -> The authorities are reorienting their policies: your actions cost you more than expected. You are withdrawn with : 5000By
-<1.556553141901E12><1:5>Take money from dieppe -> The authorities are reorienting their policies: your actions cost you more than expected. You are withdrawn with : 580By
-<1.556553176332E12><1:6>Send money to dieppe -> bccimmak : 6000By
-<1.556553321993E12><1:11>Take money from dieppe -> hi dieppe : 50000By
-<1.556553357415E12><1:12>Change lever Build Ganivelle at dieppe -> The new threshold value is : 0.19

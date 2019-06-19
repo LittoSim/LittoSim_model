@@ -15,8 +15,6 @@ global{
 	
 	string log_file_name 		 <- "log_" + machine_time + "csv";
 	int game_round 		 		 <- 0;
-	bool is_shown_protected_area <- false;
-	bool is_shown_flooded_area 	 <- false;
 	
 	geometry shape 		 <- envelope(convex_hull_shape);
 	geometry local_shape <- nil;
@@ -95,7 +93,9 @@ global{
 		}
 		create Protected_Area from: protected_areas_shape;
 		create Road from: roads_shape;
-		create Water from: water_shape;
+		if water_shape != nil {
+			create Water from: water_shape;
+		}
 		create Flood_Risk_Area from: rpp_area_shape;
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
@@ -212,91 +212,40 @@ global{
 	}
 	
 	action create_buttons {
-		float interleave 	<- world.local_shape.height / 20;
-		float button_s 		<- world.local_shape.height / 10;
-		float increment 	<- active_district_name = DISTRICT_AT_TOP ? 0.8:0.0;
+		float increment <- active_district_name = DISTRICT_AT_TOP ? 0.8:0.0;
+		string act_name;
+		int lu_ix <- 0;
+		int codef_ix <- 0;
+		loop i from: 0 to: length(data_action)-1{
+			act_name <- data_action.keys[i];
+			if int(data_action at act_name at 'lu_index') > 0 {
+				create Button {
+					action_name  <- act_name; 
+					display_name <- LU_DISPLAY;
+					p <- {0.05 + (lu_ix*0.1), increment + 0.13};
+					lu_ix <- lu_ix + 1;
+				}
+			} else if int(data_action at act_name at 'coast_def_index') > 0 {
+				create Button {
+					action_name  <- act_name; 
+					display_name <- COAST_DEF_DISPLAY;
+					p <- {0.05 + (codef_ix*0.1), increment + 0.13};
+					codef_ix <- codef_ix + 1;
+				}
+			}
+		}
 		
 		create Button {
-			action_name  <- 'ACTION_MODIFY_LAND_COVER_N'; 
-			display_name <- LU_DISPLAY;
-			p 	 		 <- {0.50,increment+0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 2 * (interleave + button_size)};
-		}
-		create Button {
-			action_name  <- 'ACTION_MODIFY_LAND_COVER_A';
-			display_name <- LU_DISPLAY;
-			p 	 		 <- {0.40, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave};
-		}
-		create Button {
-			action_name  <- 'ACTION_MODIFY_LAND_COVER_AU';
-			display_name <- LU_DISPLAY;
-			p 	 		 <- {0.05, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + interleave + button_size};
-		}
-		create Button {
-			action_name  <- 'ACTION_MODIFY_LAND_COVER_AUs';
-			display_name <- LU_DISPLAY;
-			p 			 <- {0.15, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5 + 2 * interleave, world.local_shape.location.y - (world.local_shape.height / 2) + 2 * interleave + button_size};
-		}
-		create Button {
-			action_name  <- 'ACTION_MODIFY_LAND_COVER_Ui';
-			display_name <- LU_DISPLAY;
-			p 			 <- {0.25, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5 + 4*interleave, world.local_shape.location.y - (world.local_shape.height / 2) + 2 * interleave + button_size};
-		}
-		create Button {
-			action_name  <- 'ACTION_INSPECT_LAND_USE';
-			display_name <- LU_DISPLAY;
+			action_name  <- 'ACTION_INSPECT';
+			display_name <- BOTH_DISPLAYS;
 			p 			 <- {0.60, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 3 * (interleave + button_size)};
 		}
-		create Button {
-			action_name  <- 'ACTION_CREATE_DIKE';
-			display_name <- COAST_DEF_DISPLAY;
-			p 			 <- {0.05, increment + 0.13};
-			location <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave };
-		}
-		create Button {
-			action_name  <- 'ACTION_REPAIR_DIKE';
-			display_name <- COAST_DEF_DISPLAY;
-			p 			 <- {0.15, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 2 * (interleave + button_size)};
-		}
-		create Button {
-			action_name  <- 'ACTION_DESTROY_DIKE';
-			display_name <- COAST_DEF_DISPLAY;
-			p 			 <- {0.35, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 3 * (interleave + button_size)};
-		}
-		create Button {
-			action_name  <- 'ACTION_RAISE_DIKE';
-			display_name <- COAST_DEF_DISPLAY;
-			p 			 <- {0.25, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 1 * (interleave + button_size)};
-		}
-		create Button {
-			action_name  <- 'ACTION_INSTALL_GANIVELLE';
-			display_name <- COAST_DEF_DISPLAY;
-			 p 			 <- {0.45, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 4 * (interleave + button_size)};
-		}
-		
-		create Button {
-			action_name  <- 'ACTION_INSPECT_DIKE';
-			display_name <- COAST_DEF_DISPLAY;
-			p 			 <- {0.60, increment + 0.13};
-			location 	 <- {world.local_shape.location.x + (world.local_shape.width / 2) + world.local_shape.width / 5, world.local_shape.location.y - (world.local_shape.height / 2) + interleave + 5 * (interleave + button_size)};			
-		}
-		
 		create Button_Map {
 			action_name  <- 'ACTION_DISPLAY_FLOODING';
 			display_name <- BOTH_DISPLAYS;
 			location 	 <- {1000, 7000};
 			p 			 <- {0.70, increment + 0.13};
 		}
-		
 		create Button_Map {
 			action_name  <- 'ACTION_DISPLAY_FLOODED_AREA';
 			display_name <- BOTH_DISPLAYS;
@@ -329,9 +278,9 @@ global{
 			explored_coast_def_action<- nil;
 			current_action 	 		 <- nil;
 		}
-		else if(!show_hide_maps_click()){
-			if(active_display = LU_DISPLAY){do button_click_lu; 		}
-			else						   {do button_click_coast_def;}
+		else{
+			if(active_display = LU_DISPLAY){do button_click_lu; 	  }
+			else						   {do button_click_coast_def;}	
 		}	
 	}
 	
@@ -342,7 +291,7 @@ global{
 			active_display <- LU_DISPLAY;
 			do clear_selected_button;
 		}
-		list<Button> clicked_lu_button <- (Button where (each overlaps loc)) where (each.display_name = active_display);
+		list<Button> clicked_lu_button <- (Button where (each overlaps loc and each.display_name != COAST_DEF_DISPLAY));
 		if(length(clicked_lu_button) > 0){
 			list<Button> current_active_button <- Button where (each.is_selected);
 			do clear_selected_button;
@@ -368,21 +317,19 @@ global{
 	
 	action button_click_coast_def {
 		point loc <- #user_location;
-		if(active_display != COAST_DEF_DISPLAY){
+		if active_display != COAST_DEF_DISPLAY{
 			current_action <- nil;
 			active_display <- COAST_DEF_DISPLAY;
 			do clear_selected_button;
 		}
 		
-		Button clicked_coast_def_button <- first(Button where (each overlaps loc and each.display_name = active_display));
+		Button clicked_coast_def_button <- first(Button where (each overlaps loc and each.display_name != LU_DISPLAY));
 		if clicked_coast_def_button != nil {
 			Button current_active_button <- first(Button where (each.is_selected));
 			do clear_selected_button;
 			
 			if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
-				ask (clicked_coast_def_button){
-					is_selected <- true;
-				}
+				ask clicked_coast_def_button { is_selected <- true; }
 			}
 		}
 		else{
@@ -396,9 +343,7 @@ global{
 					}			
 				}
 			}
-			else {
-				do change_dike;
-			}
+			else {	do change_dike; }
 		}
 	}
 	
@@ -407,23 +352,6 @@ global{
 		ask Button {
 			self.is_selected <- false;
 		}
-	}
-	
-	bool show_hide_maps_click {
-		point loc <- #user_location;
-		list<Button> cliked_button <- (Button where (each.display_name = BOTH_DISPLAYS )) overlapping loc;
-		
-		if(length(cliked_button) > 0){
-			Button a_map_button 	<- first(cliked_button);
-			is_shown_protected_area <- false;
-			is_shown_flooded_area 	<- false;
-			switch a_map_button.command {
-				match ACTION_DISPLAY_PROTECTED_AREA {is_shown_protected_area <- true;	}
-				match ACTION_DISPLAY_FLOODED_AREA 	{is_shown_flooded_area   <- false;}
-			}			
-			return true;
-		}
-		return false;
 	}
 
 	action mouse_move_general {
@@ -438,7 +366,7 @@ global{
 		explored_button <- (Button + Button_Map) first_with (each overlaps loc and each.display_name != COAST_DEF_DISPLAY); // for inspect
 		
 		Button current_active_button <- first(Button where (each.is_selected));
-		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_LAND_USE {
+		if current_active_button != nil and current_active_button.command = ACTION_INSPECT {
 			explored_land_use_action <- first(Land_Use_Action overlapping loc);
 			explored_lu <- first(Land_Use overlapping loc);
 		}
@@ -452,7 +380,7 @@ global{
 		point loc <- #user_location;
 		explored_button <- (Button + Button_Map) first_with (each overlaps loc and each.display_name != LU_DISPLAY); // for inspect
 		Button current_active_button <- first(Button where (each.is_selected));
-		if current_active_button != nil and current_active_button.command = ACTION_INSPECT_DIKE {
+		if current_active_button != nil and current_active_button.command = ACTION_INSPECT {
 			explored_coast_def_action <- first(Coastal_Defense_Action overlapping (loc buffer(20#m)));
 			explored_coast_def <- first(Coastal_Defense overlapping (loc buffer(10#m))); 
 		}
@@ -467,7 +395,7 @@ global{
 		Coastal_Defense selected_dike <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
 		Button selected_button <- Button first_with(each.is_selected);
 		if(selected_button != nil){
-			if selected_button.command = ACTION_INSPECT_DIKE {
+			if selected_button.command = ACTION_INSPECT {
 				return;
 			}else if selected_button.command = ACTION_CREATE_DIKE {
 				if basket_overflow() {return;}
@@ -586,7 +514,7 @@ global{
 						return;
 					}
 				}
-				if selected_button.command = ACTION_INSPECT_LAND_USE 				   {return;}	// inspect : do nothing
+				if selected_button.command = ACTION_INSPECT	   {return;}	// inspect : do nothing
 				if length((Player_Action collect(each.location)) inside cell_tmp) > 0  {return;}
 				if(		(lu_name = "N" 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_N)
 					 or (lu_name = "A" 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
@@ -1447,34 +1375,20 @@ species Network_Player skills:[network]{
 						match OBJECT_TYPE_PLAYER_ACTION {
 							
 							if(m_contents["action_type"] = PLAYER_ACTION_TYPE_COAST_DEF){
-								//Coastal_Defense_Action tmp <- Coastal_Defense_Action first_with(each.id = m_contents["id"]);
-								//if(tmp = nil){
-									create Coastal_Defense_Action {
-										do init_action_from_map(m_contents);
-										ask (game_history){
-											do add_action_to_history(myself);
-										}
+								create Coastal_Defense_Action {
+									do init_action_from_map(m_contents);
+									ask (game_history){
+										do add_action_to_history(myself);
 									}
-								//} else {
-								//	ask tmp {
-								//		do init_action_from_map(m_contents);
-								//	}
-								//}
+								}
 							}
 							else if m_contents["action_type"] = PLAYER_ACTION_TYPE_LU {
-								//Land_Use_Action tmp <- Land_Use_Action first_with (each.id = m_contents["id"]);
-								//if(tmp = nil){
-									create Land_Use_Action {
-										do init_action_from_map(m_contents);
-										ask(game_history) {
-											do add_action_to_history(myself);
-										} 
-									}
-								//} else {
-								//	ask tmp {
-								//		do init_action_from_map(m_contents);
-								//	}
-								//}
+								create Land_Use_Action {
+									do init_action_from_map(m_contents);
+									ask(game_history) {
+										do add_action_to_history(myself);
+									} 
+								}
 							}
 						}
 						match OBJECT_TYPE_COASTAL_DEFENSE {
@@ -2111,8 +2025,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw explored_button.label    at: target2 + {5#px, 15#px} font: regular color: # white;
 					draw explored_button.help_msg at: target2 + {30#px, 35#px} font: regular color: # white;
 
-					if !(explored_button.command in [ACTION_INSPECT_LAND_USE, ACTION_INSPECT_DIKE,ACTION_DISPLAY_PROTECTED_AREA,
-								ACTION_DISPLAY_FLOODED_AREA, ACTION_DISPLAY_FLOODING]) {
+					if !(explored_button.command in [ACTION_INSPECT,ACTION_DISPLAY_PROTECTED_AREA, ACTION_DISPLAY_FLOODED_AREA, ACTION_DISPLAY_FLOODING]) {
 						string txtt;
 						if active_display = LU_DISPLAY { txtt <- world.get_message('MSG_COST_APPLIED_PARCEL'); }
 						switch explored_button.command {	

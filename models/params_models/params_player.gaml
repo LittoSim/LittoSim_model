@@ -17,8 +17,7 @@ global{
 	int ACTION_DISPLAY_PROTECTED_AREA 	<- int(data_action at 'ACTION_DISPLAY_PROTECTED_AREA' at 'action_code');
 	int ACTION_DISPLAY_FLOODED_AREA 	<- int(data_action at 'ACTION_DISPLAY_FLOODED_AREA'   at 'action_code');
 	int ACTION_DISPLAY_FLOODING 		<- int(data_action at 'ACTION_DISPLAY_FLOODING' 	  at 'action_code');
-	int ACTION_INSPECT_DIKE  			<- int(data_action at 'ACTION_INSPECT_DIKE' 		  at 'action_code');
-	int ACTION_INSPECT_LAND_USE  		<- int(data_action at 'ACTION_INSPECT_LAND_USE' 	  at 'action_code');
+	int ACTION_INSPECT		  			<- int(data_action at 'ACTION_INSPECT' 		  		  at 'action_code');
 	
 	// map tab displays
 	string LU_DISPLAY 		 <- "LU_DISPLAY";

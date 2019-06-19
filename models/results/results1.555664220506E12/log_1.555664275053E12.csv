@@ -1,3 +1,0 @@
-(string(machine_time - EXPERIMENT_START_TIME),self.district_code) + data
-129260.0,17140,7,17140_1,3,44,PLAYER_ACTION_TYPE_COAST_DEF,false,nil,false,670
-361747.0,17385,7,17385_1,3,38,PLAYER_ACTION_TYPE_COAST_DEF,false,nil,false,1865

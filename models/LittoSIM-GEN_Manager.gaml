@@ -93,14 +93,16 @@ global {
 		
 		create Protected_Area from: protected_areas_shape;
 		all_protected_area <- union(Protected_Area);
-		
-		create Road from: roads_shape;
-		create Isoline from: isolines_shape;
-		create Water from: water_shape;
 		create Inland_Dike_Area from: buffer_in_100m_shape;
-		
 		create Flood_Risk_Area from: rpp_area_shape;
 		all_flood_risk_area <- union(Flood_Risk_Area);
+		create Road from: roads_shape;
+		if isolines_shape != nil {
+			create Isoline from: isolines_shape;
+		}
+		if water_shape != nil {
+			create Water from: water_shape;
+		}
 		
 		create Coastal_Border_Area from: coastline_shape { shape <-  shape + coastBorderBuffer#m; }
 		all_coastal_border_area <- union(Coastal_Border_Area);
@@ -128,7 +130,7 @@ global {
 		ask districts_in_game{
 			LUs 	<- Land_Use where (each.dist_code = self.district_code);
 			cells 	<- LUs accumulate (each.cells);
-			budget 	<- int(self.current_population() * tax_unit * (1 +  pctBudgetInit / 100));
+			budget 	<- int(self.current_population() * tax_unit * (1 +  initial_budget / 100));
 			write world.get_message('MSG_COMMUNE') + " " + district_name + " (" + district_code + ") " + dist_id + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
 			do calculate_indicators_t0;
 		}
@@ -345,7 +347,7 @@ global {
 			}
 		}
 		land_max_height <- Cell max_of(each.soil_height);
-		land_color_interval <- land_max_height / 4.999; // not 5 to include the last value
+		land_color_interval <- land_max_height / 5;
 		cells_max_depth <- abs(min(Cell where (each.cell_type = 0 and each.soil_height != no_data_value) collect each.soil_height));
 		ask Cell {
 			do init_cell_color;
@@ -1427,7 +1429,7 @@ grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {
 			float tmp  <- ((soil_height  / cells_max_depth) with_precision 1) * - 170;
 			soil_color <- rgb(80, 80 , int(255 - tmp));
 		}else{ // land
-			soil_color <- land_colors [int(soil_height/land_color_interval)];// rgb(hillshade,hillshade,hillshade);
+			soil_color <- land_colors [min(int(soil_height/land_color_interval),4)];
 		}
 	}
 	
@@ -1792,9 +1794,9 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			grid Cell;
 			species Cell 			aspect: water_or_max_water_height;
 			species District 		aspect: flooding;
-			species Isoline			aspect: base;
+			//species Isoline			aspect: base;
 			species Road 			aspect: base;
-			species Water			aspect: base;
+			//species Water			aspect: base;
 			species Coastal_Defense aspect: base;
 			species Land_Use 		aspect: conditional_outline;
 			species Button 			aspect: buttons_map;
