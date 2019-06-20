@@ -27,9 +27,9 @@ global {
 	string lisfloodPath 			<- flooding_def["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
 	string lisfloodRelativePath 	<- flooding_def["LISFLOOD_RELATIVE_PATH"]; 								// Lisflood folder relatife path 
 	string results_lisflood_rep 	<- application_name + "/results"; 								// Lisflood results folder
-	string lisflood_par_file 		-> {application_name+"/inputs/" + application_name + "_par_" + timestamp + ".par"};   // parameter file
-	string lisflood_DEM_file 		-> {application_name+"/inputs/" + application_name + "_dem" + timestamp + ".asc"}; 					  // DEM file 
-	string lisflood_rugosity_file 	-> {application_name+"/inputs/" + application_name + "_rug" + timestamp + ".asc"}; 					  // rugosity file
+	string lisflood_par_file 		-> {application_name + "/inputs/" + application_name + "_par" + timestamp + ".par"};   // parameter file
+	string lisflood_DEM_file 		-> {application_name + "/inputs/" + application_name + "_dem" + timestamp + ".asc"}; 					  // DEM file 
+	string lisflood_rugosity_file 	-> {application_name + "/inputs/" + application_name + "_rug" + timestamp + ".asc"}; 					  // rugosity file
 	string lisflood_bat_file 		<- flooding_def["LISFLOOD_BAT_FILE"];												       		  // Lisflood executable
 	
 	// variables for Lisflood calculs 
@@ -40,8 +40,8 @@ global {
 	string flood_results 	<- "";   					// text of flood results per district // saved as a txt file
 	
 	// parameters for saving submersion results
-	string results_rep 			<- results_lisflood_rep + "/results" + EXPERIMENT_START_TIME; 		// folder to save main model results
-	string shape_export_filePath -> {results_rep + "/results_SHP_Tour" + game_round + ".shp"}; 		// shapefile to save cells
+	string results_rep 			<- results_lisflood_rep + "/stats" + EXPERIMENT_START_TIME; 		// folder to save main model results
+	string shape_export_filePath -> {results_rep + "/SHP_Round" + game_round + ".shp"}; 		// shapefile to save cells
 	string log_export_filePath 	<- results_rep + "/log_" + machine_time + ".csv"; 					// file to save user actions (main model and players actions)  
 	
 	// operation variables
@@ -137,7 +137,7 @@ global {
 		
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
-		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, "results");
+		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, application_name + "/results");
 		
 		// Create Network agents
 		if activemq_connect {
@@ -164,7 +164,14 @@ global {
 		if save_shp  {	do save_cells_as_shp_file;	}
 		write get_message('MSG_NEW_ROUND') + " : " + (game_round + 1);
 		
-		if game_round != 0 {
+		if game_round = 0 { // round 0
+			ask districts_in_game{
+				add budget to: districts_taxes[dist_id-1];
+			}
+			stateSimPhase <- SIM_GAME;
+			write stateSimPhase;
+		}
+		else {
 			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   	ask Coastal_Defense where (each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
 			new_comers_still_to_dispatch <- new_comers_to_dispatch();
@@ -205,13 +212,6 @@ global {
 				round_neutral_cost <- 0.0;
 			}
 		}
-		else { // round 0	
-			ask districts_in_game{
-				add budget to: districts_taxes[dist_id-1];	
-			}
-			stateSimPhase <- SIM_GAME;
-			write stateSimPhase;
-		}
 		game_round <- game_round + 1;
 		ask Network_Listener_To_Leader {
 			do inform_leader_round_number;
@@ -232,20 +232,14 @@ global {
 		write flood_results;
 		save flood_results to: lisfloodRelativePath + results_rep + "/flood_results-" + machine_time + "-Tour" + game_round + ".txt" type: "text";
 		
-		do send_flooding_results;
-		
 		ask Cell { water_height <- 0.0; } // reset water heights						
 		ask Coastal_Defense {
 			if rupture = 1 { do remove_rupture; }
 		}
-		if game_round = 0{		// restarting the game
-			stateSimPhase <- SIM_NOT_STARTED;
-			write stateSimPhase;
-		}
-		else{
-			stateSimPhase <- SIM_GAME;
-			write stateSimPhase + " - " + get_message('MSG_ROUND') + " " + game_round;
-		}
+		
+		do send_flooding_results (nil); // to districts
+		stateSimPhase <- SIM_GAME;
+		write stateSimPhase + " - " + get_message('MSG_ROUND') + " " + game_round;
 	}
 	
 	reflex calculate_flood_stats when: stateSimPhase = SIM_CALCULATING_FLOOD_STATS{			// end of a flooding event
@@ -255,13 +249,15 @@ global {
 	}
 	
 	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD{
-		do read_lisflood;  // reading flooding files
+		do read_lisflood_step_file;  // reading flooding files
 	} 
 	
 	action replay_flood_event (int fe) {
 		string replayed_flooding_event  <- (list_flooding_events.keys)[fe];
 		write replayed_flooding_event;
-		ask Cell { max_water_height <- 0.0;	} // reset of max_water_height
+		ask Cell {
+			max_water_height <- 0.0;
+		} // reset of max_water_height
 		lisfloodReadingStep <- 0;
 		results_lisflood_rep <- list_flooding_events at replayed_flooding_event;
 		stateSimPhase <- SIM_SHOWING_LISFLOOD;
@@ -344,6 +340,9 @@ global {
 		ask Cell {
 			if soil_height > 0 {
 				cell_type <-1; //  1 -> land
+			} else if soil_height = -9999 {
+				cell_type <- -1; // NODATA
+				soil_color <- land_colors[4];
 			}
 		}
 		land_max_height <- Cell max_of(each.soil_height);
@@ -381,7 +380,7 @@ global {
 		save Cell type:"shp" to: shape_export_filePath with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
 	}
 	   
-	action read_lisflood {  
+	action read_lisflood_step_file {  
 	 	string nb <- string(lisfloodReadingStep);
 		loop i from: 0 to: 3 - length(nb) {
 			nb <- "0" + nb;
@@ -420,24 +419,39 @@ global {
 	}
 	
 	// sending flood results to players
-	action send_flooding_results{	
-		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT"];
-		map<string,string> mp <- ["TOPIC"::"NEW_FLOODED_CELL"];
-     	ask districts_in_game{
-     		string my_district <- district_code;
-     		ask Network_Game_Manager{
-				do send to: my_district contents: nmap;
-			}
-     		ask cells where(each.max_water_height > 0){
-     			add string(shape.width) at: "cell_width" to: mp;
-     			add string(shape.height) at: "cell_height" to: mp;
-				add string(shape.location.x) at: "cell_location_x" to: mp;
-				add string(shape.location.y) at: "cell_location_y" to: mp;
-				ask Network_Game_Manager{
-					do send to: my_district contents: mp;
-				}
+	action send_flooding_results (District d){
+		write "Sending flood results to players ...";
+		if d != nil {
+			do send_flooding_results_to_district(d);
+		} else{
+			loop dd over: districts_in_game{
+     			do send_flooding_results_to_district (dd);
      		}
-     	}
+		}
+     	write "Flooding results sent!";
+	}
+	
+	action send_flooding_results_to_district (District d){
+		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT"];
+		map<string,string> mp <- ["TOPIC"::"NEW_FLOODED_CELLS"];
+		string my_district <- d.district_code;
+		
+		list<Cell> my_flooded_cells <- d.cells where(each.max_water_height > 0);
+		add string(length(my_flooded_cells)) at: "flooded_cells" to: nmap;
+ 		ask Network_Game_Manager{
+			do send to: my_district contents: nmap;
+		}
+		int i <- 0;
+ 		ask my_flooded_cells {
+ 			add string(shape.width) at: "cell_width"+i to: mp;
+ 			add string(shape.height) at: "cell_height"+i to: mp;
+			add string(shape.location.x) at: "cell_location_x"+i to: mp;
+			add string(shape.location.y) at: "cell_location_y"+i to: mp;
+			i <- i + 1;
+ 		}
+ 		ask Network_Game_Manager{
+			do send to: my_district contents: mp;
+		}
 	}
 	
 	action calculate_districts_results {
@@ -515,7 +529,7 @@ global {
 				N_0_5c <- N_0_5 * 0.04;
 				N_1c <- N_1 * 0.04;
 				N_maxc <- N_max * 0.04;
-				text <- text + "Résultats commune " + district_name +"
+				text <- text + "Results for district : " + district_name +"
 Surface U innondée : moins de 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
 Surface Us innondée : moins de 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
 Surface Udense innondée : moins de 50cm " + ((Udense_0_5c) with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Udense_1 * 0.04) with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Udense_max * 0.04) with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
@@ -931,9 +945,12 @@ species Network_Game_Manager skills: [network]{
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
 		}
-		ask world{
-			do send_flooding_results;
+		if flood_results != "" {
+			ask world{
+				do send_flooding_results (d);	
+			}
 		}
+		
 	}
 	
 	action lock_user (District d, bool lock){ // lock or unlock the player GUI
@@ -1428,7 +1445,7 @@ grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {
 		if cell_type = 0 { // sea
 			float tmp  <- ((soil_height  / cells_max_depth) with_precision 1) * - 170;
 			soil_color <- rgb(80, 80 , int(255 - tmp));
-		}else{ // land
+		}else if cell_type = 1{ // land
 			soil_color <- land_colors [min(int(soil_height/land_color_interval),4)];
 		}
 	}
@@ -1436,7 +1453,7 @@ grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {
 	aspect water_or_max_water_height {
 		if cell_type = 0 or (show_max_water_height? max_water_height = 0 : water_height = 0){ // if sea and water level = 0
 			color <- soil_color;
-		}else{ // if land 
+		}else if cell_type = 1{ // if land 
 			if show_max_water_height {	color <- world.color_of_water_height(max_water_height);	}
 			else					 {	color <- world.color_of_water_height(water_height);		}
 		}
@@ -1794,9 +1811,9 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			grid Cell;
 			species Cell 			aspect: water_or_max_water_height;
 			species District 		aspect: flooding;
-			//species Isoline			aspect: base;
+			species Isoline			aspect: base;
 			species Road 			aspect: base;
-			//species Water			aspect: base;
+			species Water			aspect: base;
 			species Coastal_Defense aspect: base;
 			species Land_Use 		aspect: conditional_outline;
 			species Button 			aspect: buttons_map;

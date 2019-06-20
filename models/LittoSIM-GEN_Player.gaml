@@ -60,6 +60,8 @@ global{
 	font f0 <- font('Helvetica Neue', DISPLAY_FONT_SIZE - 4, #plain);
 	font f1 <- font('Helvetica Neue', DISPLAY_FONT_SIZE, #bold);
 	
+	int flooded_cells <- 0;
+	
 	init{		
 		create District from: districts_shape with:[district_code::string(read("dist_code")), district_name::string(read("dist_sname"))];
 		active_district <- District first_with (each.district_code = active_district_code);
@@ -214,23 +216,23 @@ global{
 	action create_buttons {
 		float increment <- active_district_name = DISTRICT_AT_TOP ? 0.8:0.0;
 		string act_name;
-		int lu_ix <- 0;
-		int codef_ix <- 0;
+		int lu_index;
+		int codef_index;
 		loop i from: 0 to: length(data_action)-1{
 			act_name <- data_action.keys[i];
-			if int(data_action at act_name at 'lu_index') > 0 {
+			lu_index <- int(data_action at act_name at 'lu_index') - 1;
+			codef_index <- int(data_action at act_name at 'coast_def_index') - 1;
+			if lu_index >= 0 {
 				create Button {
 					action_name  <- act_name; 
 					display_name <- LU_DISPLAY;
-					p <- {0.05 + (lu_ix*0.1), increment + 0.13};
-					lu_ix <- lu_ix + 1;
+					p <- {0.05 + (lu_index*0.1), increment + 0.13};
 				}
-			} else if int(data_action at act_name at 'coast_def_index') > 0 {
+			} else if codef_index >= 0 {
 				create Button {
 					action_name  <- act_name; 
 					display_name <- COAST_DEF_DISPLAY;
-					p <- {0.05 + (codef_ix*0.1), increment + 0.13};
-					codef_ix <- codef_ix + 1;
+					p <- {0.05 + (codef_index*0.1), increment + 0.13};
 				}
 			}
 		}
@@ -238,25 +240,25 @@ global{
 		create Button {
 			action_name  <- 'ACTION_INSPECT';
 			display_name <- BOTH_DISPLAYS;
-			p 			 <- {0.60, increment + 0.13};
+			p 			 <- {0.65, increment + 0.13};
 		}
 		create Button_Map {
 			action_name  <- 'ACTION_DISPLAY_FLOODING';
 			display_name <- BOTH_DISPLAYS;
 			location 	 <- {1000, 7000};
-			p 			 <- {0.70, increment + 0.13};
+			p 			 <- {0.75, increment + 0.13};
 		}
 		create Button_Map {
 			action_name  <- 'ACTION_DISPLAY_FLOODED_AREA';
 			display_name <- BOTH_DISPLAYS;
 			location 	 <- {1000,8000};
-			p 			 <- {0.80, increment + 0.13};
+			p 			 <- {0.85, increment + 0.13};
 		}
 		create Button_Map {
 			action_name  <- 'ACTION_DISPLAY_PROTECTED_AREA';
 			display_name <- BOTH_DISPLAYS;
 			location 	 <- {1000,9000};
-			p 			 <- {0.90, increment + 0.13};
+			p 			 <- {0.95, increment + 0.13};
 		}
 
 		ask Button + Button_Map	{
@@ -1427,12 +1429,15 @@ species Network_Player skills:[network]{
 					}
 				}
 				match "NEW_SUBMERSION_EVENT" {
+					flooded_cells <- int(m_contents["flooded_cells"]);
 					ask Cell { do die; }
 				}
-				match "NEW_FLOODED_CELL" {
-					create Cell{
-						shape <- rectangle(float(m_contents["cell_width"]), float(m_contents["cell_height"]));
-						loc <- point(float(m_contents["cell_location_x"]), float(m_contents["cell_location_y"]));
+				match "NEW_FLOODED_CELLS" {
+					loop i from: 0 to: flooded_cells - 1{
+						create Cell{
+							shape <- rectangle(float(m_contents["cell_width"+i]), float(m_contents["cell_height"+i]));
+							loc <- point(float(m_contents["cell_location_x"+i]), float(m_contents["cell_location_y"+i]));
+						}
 					}
 				}
 			}
@@ -1675,7 +1680,7 @@ species Button skills:[UI_location] {
 	string help_msg;
 		
 	action init_button {
-		command 	<- int (data_action at action_name at 'action_code');
+		command 	<- int(data_action at action_name at 'action_code');
 		label 		<- world.label_of_action(command);
 		action_cost <- world.cost_of_action(action_name);
 		help_msg 	<- world.get_message((data_action at action_name at 'button_help_message'));

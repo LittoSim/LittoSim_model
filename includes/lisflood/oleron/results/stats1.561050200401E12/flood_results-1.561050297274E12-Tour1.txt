@@ -1,0 +1,33 @@
+Results for district : sttrojan
+Surface U innondée : moins de 50cm 0.2 ha (0.0%) | entre 50cm et 1m 0.4 ha (0.0%) | plus de 1m 2.2 ha (0.1%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface A innondée : moins de 50cm 10.9 ha (0.6%) | entre 50cm et 1m 19.2 ha (1.0%) | plus de 1m 30.4 ha (1.6%) 
+Surface N innondée : moins de 50cm 6.7 ha (0.4%) | entre 50cm et 1m 13.2 ha (0.7%) | plus de 1m 18.4 ha (1.0%) 
+--------------------------------------------------------------------------------------------------------------------
+Results for district : stpierre
+Surface U innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface A innondée : moins de 50cm 48.7 ha (1.4%) | entre 50cm et 1m 24.2 ha (0.7%) | plus de 1m 11.9 ha (0.3%) 
+Surface N innondée : moins de 50cm 14.0 ha (0.4%) | entre 50cm et 1m 12.6 ha (0.4%) | plus de 1m 10.8 ha (0.3%) 
+--------------------------------------------------------------------------------------------------------------------
+Results for district : dolus
+Surface U innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface A innondée : moins de 50cm 63.9 ha (1.8%) | entre 50cm et 1m 84.5 ha (2.4%) | plus de 1m 24.5 ha (0.7%) 
+Surface N innondée : moins de 50cm 0.1 ha (0.0%) | entre 50cm et 1m 0.1 ha (0.0%) | plus de 1m 0.7 ha (0.0%) 
+--------------------------------------------------------------------------------------------------------------------
+Results for district : lechateau
+Surface U innondée : moins de 50cm 3.2 ha (0.2%) | entre 50cm et 1m 1.2 ha (0.1%) | plus de 1m 2.9 ha (0.2%) 
+Surface Us innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface Udense innondée : moins de 50cm 0.0 ha (0.0%) | entre 50cm et 1m 0.0 ha (0.0%) | plus de 1m 0.0 ha (0.0%) 
+Surface AU innondée : moins de 50cm 2.3 ha (0.1%) | entre 50cm et 1m 1.2 ha (0.1%) | plus de 1m 0.2 ha (0.0%) 
+Surface A innondée : moins de 50cm 14.5 ha (0.8%) | entre 50cm et 1m 19.8 ha (1.0%) | plus de 1m 29.4 ha (1.6%) 
+Surface N innondée : moins de 50cm 0.2 ha (0.0%) | entre 50cm et 1m 0.5 ha (0.0%) | plus de 1m 2.8 ha (0.1%) 
+--------------------------------------------------------------------------------------------------------------------
+

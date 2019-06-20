@@ -1,1 +1,1 @@
-C:/littosim/workspace/LittoDev/includes/lisflood/lisflood.exe -dir C:/littosim/workspace/LittoDev/includes/lisflood/oleron/results_R2_t1.56079001071E12 C:/littosim/workspace/LittoDev/includes/lisflood/oleron/inputs/oleron_par_LOW_FLOODING_R2_t1.56079001071E12.par
+C:/littosim/workspace/LittoDev/includes/lisflood/lisflood.exe -dir C:/littosim/workspace/LittoDev/includes/lisflood/camargue/results_R2_t1.561047572446E12 C:/littosim/workspace/LittoDev/includes/lisflood/camargue/inputs/camargue_par_R2_t1.561047572446E12.par
