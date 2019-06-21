@@ -1437,6 +1437,7 @@ species Network_Player skills:[network]{
 						create Cell{
 							shape <- rectangle(float(m_contents["cell_width"+i]), float(m_contents["cell_height"+i]));
 							loc <- point(float(m_contents["cell_location_x"+i]), float(m_contents["cell_location_y"+i]));
+							col <- world.color_of_water_height (float(m_contents["water_height"+i]));
 						}
 					}
 				}
@@ -1894,9 +1895,10 @@ species Tab skills: [UI_location]{
 
 species Cell{
 	point loc;
+	rgb col;
 	aspect base{
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			draw shape color: #blue at: loc;	
+			draw shape color: col at: loc;	
 		}
 	}
 }

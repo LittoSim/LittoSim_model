@@ -16,6 +16,7 @@ global{
 	Player_Action selection_player_action;
 	District selected_district <- nil;
 	geometry shape <- square(100#m);
+	bool show_lever_window <- false;
 	list<species<Lever>> all_levers <- [];
 	
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
@@ -47,7 +48,8 @@ global{
 		
 		do create_district_buttons_names;
 		do create_levers;		
-		create Network_Leader; 
+		create Network_Leader;
+		create Lever_Window;
 	}
 	//------------------------------ end of init -------------------------------//
 	
@@ -111,14 +113,20 @@ global{
 	
 	action user_click{
 		point loc <- #user_location;
-		unknown aButtonT <- ((District_Action_Button) first_with (each overlaps loc ));
-		if aButtonT != nil { 
-			if aButtonT in District_Action_Button{
-				ask District_Action_Button where (each = aButtonT){
-					write command;
-					do button_cliked();
+		District_Action_Button but <- (District_Action_Button) first_with (each overlaps loc);
+		if but != nil { 
+			ask District_Action_Button where (each = but){
+				do district_button_cliked();
+			}
+		}else{
+			Lever lev <- Lever(first(all_levers accumulate (each.population) first_with (each overlaps loc)));
+			if lev != nil {
+				write lev.name;
+				ask Lever_Window{
+					loca <- lev.location; // tester sur les indices de la grille pour bien positionner le rectangle
 				}
-			}	
+				show_lever_window <- true;
+			}
 		}
 	}
 	
@@ -419,6 +427,17 @@ species Activated_Lever {
 	}
 }
 //------------------------------ End of Activated_Lever -------------------------------//
+
+species Lever_Window{
+	point loca;
+	
+	aspect {
+		if show_lever_window {
+			draw rectangle(40#m,25#m) color: #yellow border: #black at: loca;	
+		}
+	}
+}
+//------------------------------ End of Lever_Windows -------------------------------//
 
 species Lever {
 	
@@ -1137,14 +1156,16 @@ species District_Action_Button parent: District_Name{
 	string command;
 	District my_district;
 	
-	init { shape <- rectangle(17,3); }
+	init {
+		shape <- rectangle(17,3);
+	}
 
 	aspect default{
 		draw shape color: rgb(176,97,188) border: #black;
 		draw "" + display_name color: #white at: location - {length(display_name)/3, -0.5};
 	}
 	
-	action button_cliked {
+	action district_button_cliked {
 		string msg_player 			<- "";
 		list<string> msg_activity 	<- ["",""];
 		map<string, unknown> msg 	<-[];
@@ -1279,6 +1300,7 @@ experiment LittoSIM_GEN_Leader {
 			species Densification_out_Coast_Border_and_Risk_Area_Lever ;
 			species Expropriation_Lever;
 			species Destroy_Dike_Lever;
+			species Lever_Window;
 			
 			event [mouse_down] action: user_click;
 		}

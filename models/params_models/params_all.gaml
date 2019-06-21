@@ -216,6 +216,13 @@ global{
 		}
 	}
 	
+	rgb color_of_water_height (float w_height){
+		if 		w_height  	<= 0.5	{	return rgb (200,200,255);	}
+		else if w_height  	<= 1  	{	return rgb (115,115,255);	}
+		else if w_height	<= 2  	{	return rgb (65,65,255);		}
+		else 						{	return rgb (30,30,255);		}
+	}
+	
 	string get_message(string code_msg){
 		return langs_def at code_msg at configuration_file["LANGUAGE"]; // getting the right message from languages file
 	}

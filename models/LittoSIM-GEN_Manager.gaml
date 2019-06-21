@@ -342,7 +342,7 @@ global {
 				cell_type <-1; //  1 -> land
 			} else if soil_height = -9999 {
 				cell_type <- -1; // NODATA
-				soil_color <- land_colors[4];
+				soil_color <- #black;
 			}
 		}
 		land_max_height <- Cell max_of(each.soil_height);
@@ -447,6 +447,7 @@ global {
  			add string(shape.height) at: "cell_height"+i to: mp;
 			add string(shape.location.x) at: "cell_location_x"+i to: mp;
 			add string(shape.location.y) at: "cell_location_y"+i to: mp;
+			add string(max_water_height) at: "water_height"+i to: mp;
 			i <- i + 1;
  		}
  		ask Network_Game_Manager{
@@ -712,13 +713,6 @@ Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((
 				}
 			}
 		}
-	}
-	
-	rgb color_of_water_height (float w_height){
-		if 		w_height  	<= 0.5	{	return rgb (200,200,255);	}
-		else if w_height  	<= 1  	{	return rgb (115,115,255);	}
-		else if w_height	<= 2  	{	return rgb (65,65,255);		}
-		else 						{	return rgb (30,30,255);		}
 	}
 }
 //------------------------------ End of world global -------------------------------//
