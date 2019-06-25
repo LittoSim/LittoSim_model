@@ -438,13 +438,13 @@ global {
 		
 		list<Cell> my_flooded_cells <- d.cells where(each.max_water_height > 0);
 		add string(length(my_flooded_cells)) at: "flooded_cells" to: nmap;
+		add string(Cell[0].shape.width) at: "cell_width" to: nmap;
+ 		add string(Cell[0].shape.height) at: "cell_height" to: nmap;
  		ask Network_Game_Manager{
 			do send to: my_district contents: nmap;
 		}
 		int i <- 0;
  		ask my_flooded_cells {
- 			add string(shape.width) at: "cell_width"+i to: mp;
- 			add string(shape.height) at: "cell_height"+i to: mp;
 			add string(shape.location.x) at: "cell_location_x"+i to: mp;
 			add string(shape.location.y) at: "cell_location_y"+i to: mp;
 			add string(max_water_height) at: "water_height"+i to: mp;
@@ -1231,7 +1231,7 @@ species Player_Action schedules:[]{
 species Coastal_Defense {	
 	int coast_def_id;
 	string district_code;
-	string type;     // DIKE or BAD
+	string type;     // DIKE or DUNE
 	string status;	//  "GOOD" "MEDIUM" "BAD"  
 	float height;
 	float alt; 
@@ -1255,12 +1255,13 @@ species Coastal_Defense {
 			"ganivelle"::string(ganivelle),
 			"locationx"::string(location.x),
 			"locationy"::string(location.y)];
-			int i <- 0;
-			loop pp over:shape.points{
-				put string(pp.x) key:"locationx"+i in: res;
-				put string(pp.y) key:"locationy"+i in: res;
-				i <- i+ 1;
-			}
+		int i <- 0;
+		loop pp over: shape.points{
+			add string(pp.x) at: "locationx"+i to: res;
+			add string(pp.y) at: "locationy"+i to: res;
+			i <- i + 1;
+		}
+		add string(i) at: "tot_points" to: res;
 		return res;
 	}
 	
@@ -1965,6 +1966,35 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 						sum(districts_soft_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions,
 						sum(districts_withdraw_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions] color: dist_colors[i];
 				}		
+			}
+			//-------						
+			chart districts_in_game[0].district_name type: histogram size: {0.33,0.24} position: {0.34,0.5}
+				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+			 	data strat_lbls[0] value: districts_build_strategies[0] color: color_lbls[2];
+			 	data strat_lbls[1] value: districts_soft_strategies[0] color: color_lbls[1];
+			 	data strat_lbls[2] value: districts_withdraw_strategies[0] color: color_lbls[0];
+			 	data strat_lbls[3] value: districts_neutral_strategies[0] color: color_lbls[3];
+			}
+			chart districts_in_game[1].district_name type: histogram size: {0.33,0.24} position: {0.67,0.5}
+				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+			 	data strat_lbls[0] value: districts_build_strategies[1] color: color_lbls[2];
+			 	data strat_lbls[1] value: districts_soft_strategies[1] color: color_lbls[1];
+			 	data strat_lbls[2] value: districts_withdraw_strategies[1] color: color_lbls[0];
+			 	data strat_lbls[3] value: districts_neutral_strategies[1] color: color_lbls[3];
+			}
+			chart districts_in_game[2].district_name type: histogram size: {0.33,0.24} position: {0.34,0.75}
+				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+			 	data strat_lbls[0] value: districts_build_strategies[2] color: color_lbls[2];
+			 	data strat_lbls[1] value: districts_soft_strategies[2] color: color_lbls[1];
+			 	data strat_lbls[2] value: districts_withdraw_strategies[2] color: color_lbls[0];
+			 	data strat_lbls[3] value: districts_neutral_strategies[2] color: color_lbls[3];
+			}
+			chart districts_in_game[3].district_name type: histogram size: {0.33,0.24} position: {0.67,0.75}
+				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+			 	data strat_lbls[0] value: districts_build_strategies[3] color: color_lbls[2];
+			 	data strat_lbls[1] value: districts_soft_strategies[3] color: color_lbls[1];
+			 	data strat_lbls[2] value: districts_withdraw_strategies[3] color: color_lbls[0];
+			 	data strat_lbls[3] value: districts_neutral_strategies[3] color: color_lbls[3];
 			}
 		}
 		

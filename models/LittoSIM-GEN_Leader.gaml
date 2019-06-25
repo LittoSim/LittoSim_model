@@ -16,7 +16,8 @@ global{
 	Player_Action selection_player_action;
 	District selected_district <- nil;
 	geometry shape <- square(100#m);
-	bool show_lever_window <- false;
+	Lever selected_lever;
+	Lever explored_lever;
 	list<species<Lever>> all_levers <- [];
 	
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
@@ -49,7 +50,8 @@ global{
 		do create_district_buttons_names;
 		do create_levers;		
 		create Network_Leader;
-		create Lever_Window;
+		create Lever_Window_Info;
+		create Lever_Window_Actions;
 	}
 	//------------------------------ end of init -------------------------------//
 	
@@ -86,7 +88,9 @@ global{
 				if levers_def at levers_names[j] at 'active' = 'yes'{
 					create all_levers[j]{
 						my_district <- District[i];
-						location	<- (Grille[i, int(j/2 + 2)]).location - {0, 3 + (-4.5 * j mod 2)};
+						col_index <- i;
+						row_index <- int(j/2 + 2);
+						location	<- (Grille[col_index, row_index]).location - {0, 3 + (-4.5 * j mod 2)};
 						add self to: my_district.levers;
 					}
 				}
@@ -110,25 +114,101 @@ global{
 			save a to: "leader_records/record-" + sim_id + "/all_levers_Tour" + game_round + ".csv"  type: "csv" rewrite: false;
 		}
 	}
-	
+
 	action user_click{
 		point loc <- #user_location;
-		District_Action_Button but <- (District_Action_Button) first_with (each overlaps loc);
-		if but != nil { 
-			ask District_Action_Button where (each = but){
-				do district_button_cliked();
-			}
-		}else{
-			Lever lev <- Lever(first(all_levers accumulate (each.population) first_with (each overlaps loc)));
-			if lev != nil {
-				write lev.name;
-				ask Lever_Window{
-					loca <- lev.location; // tester sur les indices de la grille pour bien positionner le rectangle
+		if selected_lever != nil {
+			Lever_Window_Button but <- (Lever_Window_Button) first_with (each overlaps loc);
+			if but != nil {
+				switch but.command {
+					match 0 {
+						if species(selected_lever).parent = Delay_Lever {
+							ask Delay_Lever(selected_lever) { do change_lever_delay; }
+						} else{
+							ask Cost_Lever(selected_lever) { do change_lever_cost; }
+						}
+						selected_lever <- nil;
+					}
+					match 1 {
+						ask selected_lever { do change_lever_threshold_value; }
+						selected_lever <- nil;
+					}
+					match 2 {
+						ask selected_lever { do change_lever_player_msg; }
+						selected_lever <- nil;
+					}
+					match 3 {
+						if selected_lever.status_on and selected_lever.timer_activated {
+							ask selected_lever { do cancel_next_activated_action; }
+							selected_lever <- nil;
+						}
+					}
+					match 4 {
+						if selected_lever.status_on and selected_lever.timer_activated{
+							ask selected_lever { do accept_next_activated_action; }
+							selected_lever <- nil;
+						}
+					}
+					match 5 {
+						if selected_lever.status_on and selected_lever.timer_activated {
+							ask selected_lever { do accept_all_activated_actions; }
+							selected_lever <- nil;
+						}
+					}
+					match 6 {
+						ask selected_lever { do toggle_status; }
+						selected_lever <- nil;
+					}
+					match 7 {
+						ask selected_lever { do write_help_lever_msg; }
+						selected_lever <- nil;
+					}
+					match 8 {
+						selected_lever <- nil;
+					}
 				}
-				show_lever_window <- true;
+				
+			}
+			
+		} else {
+			District_Action_Button but <- (District_Action_Button) first_with (each overlaps loc);
+			if but != nil { 
+				ask District_Action_Button where (each = but){
+					do district_button_cliked();
+				}
+			}else{
+				selected_lever <- Lever(first(all_levers accumulate (each.population) first_with (each overlaps loc)));
+				if selected_lever != nil {
+					 string code_msg <- species(selected_lever).parent = Delay_Lever ? 'LEV_CHANGE_IMPACT_DELAY' : 'LEV_CHANGE_IMPACT_COST';
+					 Lever_Window_Button[0].text <- world.get_message(code_msg);
+				}
+			}	
+		}
+	}
+	
+	action user_move {
+		if selected_lever != nil {
+			explored_lever <- nil;
+			return;
+		}
+		point loc <- #user_location;
+		explored_lever <- Lever(first(all_levers accumulate (each.population) first_with (each overlaps loc)));
+
+		if explored_lever != nil {
+			ask Lever_Window_Info{
+				loca <- explored_lever.location;
+				if explored_lever.col_index = 0 {
+					loca <- loca + {5,0};
+				}else if explored_lever.col_index = 3 {
+					loca <- loca - {5,0};
+				}
+				if explored_lever.row_index = 10 {
+					loca <- loca - {0,2.5};
+				}
 			}
 		}
 	}
+	
 	
 	action send_message_from_leader (map<string,unknown> msg){
 		ask Network_Leader { do send to: LISTENER_TO_LEADER contents:msg; }		
@@ -149,7 +229,7 @@ species Player_Action schedules:[]{
 	int element_id;
 	string district_code;
 	int command 		 			<- -1 on_change: { label <- world.label_of_action(command); };
-	string label 		 			<- "no name";
+	string label 		 			<- "";
 	int cost 			 			<- 0;
 	int initial_application_round 	<- -1;
 	int command_round 				<- -1;	
@@ -160,7 +240,7 @@ species Player_Action schedules:[]{
 	string action_type 		<- ""; 					// COAST_DEF or LU
 	string previous_lu_name <- "";  				// for LU action
 	bool is_expropriation 	<- false; 				// for LU action
-	bool is_in_protected_area 	<- false; 				// for COAST_DEF action
+	bool is_in_protected_area 	<- false; 			// for COAST_DEF action
 	bool is_in_coast_border_area 	<- false; 
 	bool is_in_risk_area 	<- false; 				// for LU action
 	bool is_inland_dike 	<- false; 				// for COAST_DEF (retro dikes)
@@ -186,17 +266,27 @@ species Player_Action schedules:[]{
 			if is_inland_dike { return SOFT_DEFENSE; }
 			else{
 				switch command {
-					match_one  [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE] 	{ return BUILDER; 		}
-					match 		ACTION_INSTALL_GANIVELLE 				{ return SOFT_DEFENSE;  }
-					match 		ACTION_DESTROY_DIKE						{ return WITHDRAWAL;	}
+					match_one [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE, ACTION_REPAIR_DIKE] { return BUILDER; }
+					match ACTION_INSTALL_GANIVELLE	{ return SOFT_DEFENSE;  }
+					match ACTION_DESTROY_DIKE	{ return WITHDRAWAL;	}
 				}
 			}
 		}else {
 			if is_expropriation { return WITHDRAWAL; }
 			else {
 				switch command {
-					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U]   { return BUILDER; 	 }
+					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U]   { return BUILDER;	 }
 					match_one [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] { return SOFT_DEFENSE; }
+					match ACTION_MODIFY_LAND_COVER_A {
+						if previous_lu_name = 'N' { return BUILDER;}
+					}
+					match ACTION_MODIFY_LAND_COVER_N {
+						if previous_lu_name = 'A'{
+							return is_in_risk_area ? WITHDRAWAL :SOFT_DEFENSE;						
+						} else if previous_lu_name = 'AU'{
+							return WITHDRAWAL;
+						}
+					}
 				}
 			}
 		}
@@ -208,7 +298,7 @@ species Player_Action schedules:[]{
 		self.element_id 				<- int(a at "element_id");
 		self.district_code 				<- a at DISTRICT_CODE;
 		self.command 					<- int(a at "command");
-		self.label 						<- a at "label";
+		self.label 						<- world.label_of_action(command);
 		self.cost 						<- int(a at "cost");
 		self.initial_application_round 	<- int(a at "initial_application_round");
 		self.action_type 				<- a at "action_type";
@@ -261,7 +351,7 @@ species District{
 	int length_dikes_t0 								<- int(0#m);
 	int length_dunes_t0 								<- int(0#m); 
 	int count_LU_urban_t0 								<- 0;
-	int count_LU_U_and_AU_is_in_coast_border_area_t0 		<- 0;
+	int count_LU_U_and_AU_is_in_coast_border_area_t0 	<- 0;
 	int count_LU_urban_in_flood_risk_area_t0 			<- 0;
 	int count_LU_urban_dense_in_flood_risk_area_t0 		<- 0;
 	int count_LU_urban_dense_is_in_coast_border_area_t0 <- 0;
@@ -289,7 +379,7 @@ species District{
 	
 	action update_indicators_and_register_player_action (Player_Action act){
 		if act.is_applied {
-			write world.get_message('LDR_MSG_ACTION_RECEIVED') + " : " + act.id + " -> " + world.get_message('LDR_MSG_ALREADY_VALIDATED');
+			write world.replace_strings('LDR_MSG_ACTION_RECEIVED_VALIDATED', [act.id]);
 		}
 		if act.is_expropriation {	
 			count_expropriation <- count_expropriation + 1;
@@ -428,36 +518,95 @@ species Activated_Lever {
 }
 //------------------------------ End of Activated_Lever -------------------------------//
 
-species Lever_Window{
+species Lever_Window_Info {
 	point loca;
+	geometry shape <- rectangle(30#m,15#m);
 	
 	aspect {
-		if show_lever_window {
-			draw rectangle(40#m,25#m) color: #yellow border: #black at: loca;	
+		if explored_lever != nil {
+			draw shape color: explored_lever.color_profile() border: #black at: loca;
+			
+			if explored_lever.timer_activated {
+				draw shape+0.2#m color: #red;
+			}
+			
+			draw explored_lever.box_title at: loca - {length(explored_lever.box_title)/3,2.5}  font: font("Arial", 12 , #bold) color: #black;
+			draw explored_lever.progression_bar at: loca - {length(explored_lever.progression_bar)/3, 0.5} font: font("Arial", 12 , #plain)
+								color: explored_lever.threshold_reached ? #red : #black;
+			
+			if explored_lever.timer_activated {
+				draw string(explored_lever.remaining_seconds()) + " s " + (length(explored_lever.activation_queue)=1? "" : "(" + 
+					length(explored_lever.activation_queue) + ")") + "-> " + explored_lever.info_of_next_activated_lever()
+						at: loca - {2.5+length(explored_lever.info_of_next_activated_lever())/3,-1.5} font: font("Arial", 12 , #plain) color:#black;
+			}
+			if explored_lever.has_activated_levers {
+				draw explored_lever.activation_label_L1 at: loca - {length(explored_lever.activation_label_L1)/3,-3.5} font: font("Arial", 12 , #plain) color:#black;
+				draw explored_lever.activation_label_L2 at: loca - {length(explored_lever.activation_label_L2)/3,-5}   font: font("Arial", 12 , #plain) color:#black;
+			}
+			
+			if !explored_lever.status_on { draw shape+0.1#m color: rgb(200,200,200,160); }
 		}
 	}
 }
+
+species Lever_Window_Actions {
+	point loca <- world.location;
+	geometry shape <- rectangle(30#m, 55#m);
+	
+	list<string> text_buttons <- ["",'LEV_CHANGE_TRESHOLD','LEV_CHANGER_PLAYER_MSG','LEV_CANCEL_NEXT_APP',
+				'LEV_VALIDATE_NEXT_APP','LEV_VALIDATE_ALL_APPS','LEV_ACTIVE_DEACTIVE','LEV_HOW_WORKS','LEV_CLOSE_WINDOW'];
+	
+	init {
+		point lo <- loca - {15, 27.5};
+		loop i from: 0 to: 8 {
+			create Lever_Window_Button {
+				command <- i ;
+				text <- world.get_message(myself.text_buttons [i]);
+				loca <- lo + {15, 7 + (i * 5.5)};
+				if i = 8 {	col <- #red; }
+			}
+		}
+	}
+	
+	aspect {
+		if selected_lever != nil {
+			draw shape color: #lightgray border: #black at: loca;
+			draw selected_lever.box_title at: loca - {length(selected_lever.box_title)/3,25} font: font("Arial", 12 , #bold) color: #black;
+		}
+	}
+}
+
+species Lever_Window_Button {
+	int command;
+	string text;
+	point loca;
+	rgb col <- #yellow;
+	geometry shape <- rectangle(25#m, 5#m);
+	
+	aspect {
+		if selected_lever != nil {
+			draw shape color: col border: #black at: loca;
+			draw text font: font("Arial", 12 , #bold) color: #black at: loca - {length(text)/3,0};
+			if command in [3,4,5] and (!selected_lever.status_on or !selected_lever.timer_activated){
+				draw shape+0.1#m color: rgb(200,200,200,160);
+			}
+		}
+	}
+}
+
 //------------------------------ End of Lever_Windows -------------------------------//
 
 species Lever {
 	
-	user_command "Change the treshold value of this lever" 				action: change_lever_threshold_value;
-	user_command "Change the message sent to the player"  				action: change_lever_player_msg;
-	user_command "Cancel the next application of this lever" 			action: cancel_next_activated_action when: status_on;
-	user_command "Validate the next application of this lever" 			action: accept_next_activated_action when: status_on;
-	user_command "Validate all current applications of this lever" 		action: accept_all_activated_actions  when: status_on;
-	user_command "Activate/Deactivate this lever" 						action: toggle_status;
-	user_command "How this lever works ?" 								action: write_help_lever_msg;
-	
 	District my_district;
 	float indicator;
 	float threshold 			<- 0.2;
-	bool status_on 			 	<- true;							// can be on or off . If off then the checkLeverActivation is not performed
+	bool status_on 			 	<- true; // can be on or off . If off then the checkLeverActivation is not performed
 	bool should_be_activated 	-> { indicator > threshold };
 	bool threshold_reached 	 	<- false;
 	bool timer_activated 	 	-> { !empty(activation_queue) };
 	bool has_activated_levers	-> { !empty(activated_levers) };
-	int timer_duration 		 	<- 240000;							// 1 minute = 60000 milliseconds //   4 mn = 240000
+	int timer_duration 		 	<- 240000;	// 1 minute = 60000 milliseconds //   4 mn = 240000
 	string lever_type		 	<-	"";
 	string lever_name		 	<-	"";
 	string box_title 		 	-> {lever_name +' ('+length(associated_actions)+')'};
@@ -466,6 +615,8 @@ species Lever {
 	string activation_label_L1	<-	"";
 	string activation_label_L2	<-	"";
 	string player_msg;
+	int row_index;
+	int col_index;
 	list<Player_Action>   associated_actions;
 	list<Activated_Lever> activation_queue;
 	list<Activated_Lever> activated_levers;
@@ -480,18 +631,19 @@ species Lever {
 		}
 		draw shape color: color_profile() border: #black at: location;
 		
-		draw box_title at: location - {length(box_title) / 4, 0.75} font: font("Arial", 12 , #bold) color: #black;
-		draw progression_bar at: location + {-length(progression_bar)/4, 0.4} font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
+		draw box_title at: location - {length(box_title) / 3, 0.75} font: font("Arial", 12 , #bold) color: #black;
+		draw progression_bar at: location + {-length(progression_bar)/3, 0.5} font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
 		
 		if timer_activated {
-			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "-> " + info_of_next_activated_lever() at: location + {-9,1.4} font: font("Arial", 12 , #plain) color:#black;
+			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "-> " + info_of_next_activated_lever()
+					at: location - {12.5,-1.75} font: font("Arial", 12 , #plain) color:#black;
 		}
-		if has_activated_levers {
+		/*if has_activated_levers {
 			draw activation_label_L1 at:location + {-10,2} font: font("Arial", 12 , #plain) color:#black;
 			draw activation_label_L2 at:location + {0,2}   font: font("Arial", 12 , #plain) color:#black;
-		}
+		}*/
 		
-		if !status_on{ draw shape+0.1#m color: rgb(200,200,200,160); }
+		if !status_on { draw shape+0.1#m color: rgb(200,200,200,160); }
 	}
 	    
 	action register_and_check_activation (Player_Action p_action){
@@ -519,7 +671,7 @@ species Lever {
 		}
 	}
 	
-	action queue_activated_lever( Player_Action a_p_action){
+	action queue_activated_lever(Player_Action a_p_action){
 		create Activated_Lever {
 			lever_name 		<- myself.lever_name;
 			district_code 	<- myself.my_district.district_code;
@@ -530,7 +682,7 @@ species Lever {
 			add self to: myself.activation_queue;
 		}
 		ask world {
-			do record_leader_activity("Lever " + myself.lever_name + " programmed at ", myself.my_district.district_name, a_p_action.label + "(" + a_p_action + ")");
+			do record_leader_activity("Lever " + myself.lever_name + " programmed at", myself.my_district.district_name, a_p_action.label + "(" + a_p_action + ")");
 		}
 	}
 
@@ -552,8 +704,7 @@ species Lever {
 	}
 	
 	action change_lever_threshold_value{
-		map values <- user_input((world.get_message('LEV_CURRENT_THRESHOLD_LEVER') + " " + lever_name + " " + world.get_message('LEV_MSG_IS_ABOUT') + " "
-			+ string(threshold)), [world.get_message('LEV_NEW_THRESHOLD_VALUE') + " : ":: threshold]); 
+		map values <- user_input(world.replace_strings('LEV_CURRENT_THRESHOLD_LEVER', [lever_name, string(threshold)]), [world.get_message('LEV_NEW_THRESHOLD_VALUE') + " : ":: threshold]); 
 		threshold <- float(values at values.keys[0]);
 		ask world {
 			do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "The new threshold value is : " + myself.threshold);
@@ -632,17 +783,12 @@ species Lever {
 }
 //------------------------------ End of Lever -------------------------------//
 
-species Cost_Lever parent: Lever { 
-	
-	user_command "Change the % impact on the cost" action: change_lever_cost;
-	
+species Cost_Lever parent: Lever { 	
 	float added_cost		<- 0.25;
 	int last_lever_cost 	<- 0;
 	
 	action change_lever_cost{
-		map values <- user_input((world.get_message('LEV_ACTUAL_PERCENTAGE_COST') + " " + lever_name + " " + world.get_message('LEV_MSG_IS_ABOUT') + " " + added_cost),
-			[world.get_message('LEV_ENTER_THE_NEW') + " :":: added_cost]
-		);
+		map values <- user_input(world.replace_strings('LEV_ACTUAL_PERCENTAGE_COST', [lever_name, string(added_cost)]), [world.get_message('LEV_ENTER_THE_NEW') + " :":: added_cost]);
 		float n_val <- float(values at values.keys[0]);
 		added_cost <- n_val;
 		
@@ -663,8 +809,8 @@ species Cost_Lever parent: Lever {
 		do send_lever_message(lev);
 		
 		last_lever_cost 	<- lev.added_cost;
-		activation_label_L1 <- "Last "   + (last_lever_cost >= 0 ? "levy"  : "payment") + " : " + abs(last_lever_cost) + ' By';
-		activation_label_L2 <- "Total "  + (last_lever_cost >= 0 ? "taken" : "given"  ) + " : " + abs(total_lever_cost()) + ' By';
+		activation_label_L1 <- world.get_message('LDR_LAST') + " "   + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : world.get_message('LDR_PAYMENT')) + " : " + abs(last_lever_cost) + ' By';
+		activation_label_L2 <- world.get_message('LDR_TOTAL') + " "  + (last_lever_cost >= 0 ? world.get_message('LDR_TAKEN') : world.get_message('LDR_GIVEN')) + " : " + abs(total_lever_cost()) + ' By';
 		ask world {
 			do record_leader_activity("Lever " + myself.lever_name + " validated at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_cost + "By" + "(" + lev.p_action + ")");
 		}
@@ -676,16 +822,11 @@ species Cost_Lever parent: Lever {
 }
 //------------------------------ End of Cost_Lever -------------------------------//
 
-species Delay_Lever parent: Lever{
-
-	user_command "Change the % impact on the delay" action: change_lever_delay;
-	
+species Delay_Lever parent: Lever{	
 	int added_delay <- 2;
 
 	action change_lever_delay {
-		map values <- user_input((world.get_message('LEV_ACTUAL_DELAY') + " " + lever_name + " " + world.get_message('LEV_MSG_IS_ABOUT') + " " + added_delay),
-			[world.get_message('LEV_ENTER_THE_NEW') + " :":: added_delay]
-		);
+		map values <- user_input(world.replace_strings('LEV_ACTUAL_DELAY', [lever_name, string(added_delay)]), [world.get_message('LEV_ENTER_THE_NEW') + " :":: added_delay]);
 		int n_val <- int(values at values.keys[0]);
 		added_delay <- n_val;
 		
@@ -734,7 +875,7 @@ species Create_Dike_Lever parent: Cost_Lever {
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_CREATE_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_CREATE_DIKE');
-		help_lever_msg 	<- world.get_message('LEV_CREATE_DIKE_HELPER1') + " : " + int(100*added_cost) + "% " + world.get_message('LEV_CREATE_DIKE_HELPER2');
+		help_lever_msg 	<- world.replace_strings('LEV_CREATE_DIKE_HELPER', [string(int(100*added_cost))]);
 		player_msg 		<- world.get_message('LEV_CREATE_DIKE_PLAYER');	
 	}
 }
@@ -746,7 +887,7 @@ species Raise_Dike_Lever parent: Cost_Lever {
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_RAISE_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_RAISE_DIKE');
-		help_lever_msg 	<- world.get_message('LEV_CREATE_DIKE_HELPER1') + " : " + int(100*added_cost) + "% " + world.get_message('LEV_CREATE_DIKE_HELPER2');
+		help_lever_msg 	<- world.replace_strings('LEV_CREATE_DIKE_HELPER', [string(int(100*added_cost))]);
 		player_msg 		<- world.get_message('LEV_CREATE_DIKE_PLAYER');
 	}
 }
@@ -760,7 +901,7 @@ species Repair_Dike_Lever parent: Cost_Lever{
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_REPAIR_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_REPAIR_DIKE');
-		help_lever_msg 	<- world.get_message('LEV_CREATE_DIKE_HELPER1') + " : " + int(100*added_cost) + "% " + world.get_message('LEV_CREATE_DIKE_HELPER2');
+		help_lever_msg 	<- world.replace_strings('LEV_CREATE_DIKE_HELPER', [string(int(100*added_cost))]);
 		player_msg 		<- world.get_message('LEV_REPAIR_DIKE_PLAYER');
 	}
 }
@@ -774,14 +915,14 @@ species AU_or_Ui_in_Coast_Border_Area_Lever parent: Delay_Lever{
 		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_COAST_BORDER_AREA');
 		lever_type	<- world.get_lever_type('LEVER_AU_Ui_COAST_BORDER_AREA');
 		threshold 	<- 2.0;
-		help_lever_msg 	<- world.get_message('LEV_COAST_BORDER_AREA_HELPER1') + " " + added_delay + " " + world.get_message('MSG_ROUND');
+		help_lever_msg 	<- world.replace_strings('LEV_COAST_BORDER_AREA_HELPER1', [string(added_delay)]);
 		player_msg 		<- world.get_message('LEV_COAST_BORDER_AREA_PLAYER');	
 	}
 		
 	string info_of_next_activated_lever {
 		switch activation_queue[0].p_action.command {
-			match ACTION_MODIFY_LAND_COVER_AU { return "Construction: "  + added_delay + " " + world.get_message('LDR_MSG_ROUNDS'); }
-			match ACTION_MODIFY_LAND_COVER_Ui { return "Densification: " + added_delay + " " + world.get_message('LDR_MSG_ROUNDS'); }
+			match ACTION_MODIFY_LAND_COVER_AU { return world.replace_strings('LEV_CONSTRUCTION', [string(added_delay)]);}
+			match ACTION_MODIFY_LAND_COVER_Ui { return world.replace_strings('LEV_DENSIFICATION', [string(added_delay)]);}
 		} 
 	}
 }
@@ -796,14 +937,14 @@ species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 		lever_type	<- world.get_lever_type('LEVER_AU_Ui_RISK_AREA');
 		threshold 	<- 1.0;
 		added_cost 	<- 0.5 ;
-		help_lever_msg 	<- world.get_message('LEV_CREATE_DIKE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_CREATE_DIKE_HELPER2');
+		help_lever_msg 	<- world.replace_strings('LEV_CREATE_DIKE_HELPER', [string(int(100*added_cost))]);
 		player_msg 		<- world.get_message('LEV_REPAIR_DIKE_PLAYER');	
 	}
 		
 	string info_of_next_activated_lever {
 		switch activation_queue[0].p_action.command {
-			match ACTION_MODIFY_LAND_COVER_AU { return "-" + int(activation_queue[0].p_action.cost * added_cost) + " By on the next construction"; }
-			match ACTION_MODIFY_LAND_COVER_Ui { return "-" + int(activation_queue[0].p_action.cost * added_cost) + " By on the next densification";}
+			match ACTION_MODIFY_LAND_COVER_AU { return "-" + int(activation_queue[0].p_action.cost * added_cost) + " By " + world.get_message('LEV_NEXT_CONSTRUCTION'); }
+			match ACTION_MODIFY_LAND_COVER_Ui { return "-" + int(activation_queue[0].p_action.cost * added_cost) + " By " + world.get_message('LEV_NEXT_DENSIFICATION');}
 		} 
 	}
 }
@@ -917,7 +1058,7 @@ species Inland_Dike_Lever parent: Delay_Lever {
 //------------------------------ End of Inland_Dike_Lever -------------------------------//
 
 species No_Action_On_Dike_Lever parent: Cost_Lever {
-	string progression_bar 	-> { "" + int(threshold - nb_rounds_before_activation) + " "+ world.get_message('LDR_MSG_ROUNDS') +" / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + int(threshold - nb_rounds_before_activation) + " " + world.get_message('LDR_MSG_ROUNDS') +" / " + int(threshold) + " max" };
 	int nb_activations 		<- 0;
 	string box_title 		-> { lever_name + ' (' + nb_activations +')' };
 	
@@ -933,7 +1074,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	}
 		
 	string info_of_next_activated_lever {
-		return "Last ganivelle - " + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By';
+		return world.get_message('LDR_LAST_GANIVELLE') + " - " + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By';
 	}	
 	
 	action register (Player_Action p_action){
@@ -955,8 +1096,10 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 		do send_lever_message(lev);
 		
 		last_lever_cost 	<-lev.added_cost;
-		activation_label_L1 <- "Last "  + (last_lever_cost >= 0 ? "levy" : "payment") + " : " + abs(last_lever_cost)   + ' By.';
-		activation_label_L2 <- "Total " + (last_lever_cost >= 0 ? "taken": "given"  ) + " : " + abs(total_lever_cost())+ ' By';
+		activation_label_L1 <- world.get_message('LDR_LAST') + " "  + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : 
+						world.get_message('LDR_PAYMENT')) + " : " + abs(last_lever_cost)   + ' By.';
+		activation_label_L2 <- world.get_message('LDR_TOTAL') + " " + (last_lever_cost >= 0 ? world.get_message('LDR_TAKEN'):
+						world.get_message('LDR_GIVEN')) + " : " + abs(total_lever_cost())+ ' By.';
 		
 		nb_rounds_before_activation <- int(threshold);
 		nb_activations 				<- nb_activations +1;
@@ -1005,7 +1148,7 @@ species A_to_N_in_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 		lever_type	<- world.get_lever_type('LEVER_A_N_COAST_BORDER_RISK_AREA');
 		threshold 	<- 2.0;
 		added_cost 	<- -0.5 ;
-		help_lever_msg 	<- world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% du coût d'une densification préalablement réalisée hors ZL et ZI";
+		help_lever_msg 	<- world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_DENSIFICATION_LA_FA');
 		player_msg 		<- world.get_message('LEV_GANIVELLE_PLAYER');
 	}
 
@@ -1029,14 +1172,14 @@ species Densification_out_Coast_Border_and_Risk_Area_Lever parent: Cost_Lever{
 	}
 	
 	string info_of_next_activated_lever {
-		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By on the last densification out of LA&FA';
+		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By ' + world.get_message('LEV_LAST_DENSIFICATION');
 	}			
 }
 //------------------------------ end of Densification_out_Coast_Border_and_Risk_Area_Lever -------------------------------//
 
 species Expropriation_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_expropriation };
-	string progression_bar 	-> { "" + my_district.count_expropriation + " expropriation / " + int(threshold) +" max" };
+	string progression_bar 	-> { "" + my_district.count_expropriation + " expropriation / " + int(threshold) + " max" };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_EXPROPRIATION');
@@ -1048,7 +1191,7 @@ species Expropriation_Lever parent: Cost_Lever{
 	}	
 		
 	string info_of_next_activated_lever {
-		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By on the last expropriation';
+		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By ' + world.get_message("LEV_LAST_EXPROPRIATION");
 	}		
 }
 //------------------------------ end of Expropriation_Lever -------------------------------//
@@ -1063,12 +1206,12 @@ species Destroy_Dike_Lever parent: Cost_Lever{
 		lever_type 	<- world.get_lever_type('LEVER_DESTROY_DIKE');
 		threshold 	<- 0.01;
 		added_cost 	<- -0.5 ;
-		help_lever_msg 	<- world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% du coût de démantellement ; si a aussi exproprié";
+		help_lever_msg 	<- world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_DESTROY_EXPROPR');
 		player_msg 		<- world.get_message('LEV_WITHDRAWAL_PLAYER');
 	}
 		
 	string info_of_next_activated_lever {
-		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By on the last destroy';
+		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By ' + world.get_message('LEV_LAST_DESTROY');
 	}	
 }
 //------------------------------ end of Destroy_Dike_Lever -------------------------------//
@@ -1123,7 +1266,6 @@ species Network_Leader skills:[network] {
 	}	
 	
 	action update_action (map<string,string> msg){
-		write msg;
 		Player_Action p_act <- first(Player_Action where(each.id = (msg at "id")));
 		if(p_act = nil){ // new action commanded by a player : indicators are updated and levers triggering tresholds are tested
 			create Player_Action{
@@ -1300,9 +1442,12 @@ experiment LittoSIM_GEN_Leader {
 			species Densification_out_Coast_Border_and_Risk_Area_Lever ;
 			species Expropriation_Lever;
 			species Destroy_Dike_Lever;
-			species Lever_Window;
+			species Lever_Window_Info;
+			species Lever_Window_Actions;
+			species Lever_Window_Button;
 			
 			event [mouse_down] action: user_click;
+			event [mouse_move] action: user_move;
 		}
 	}
 }

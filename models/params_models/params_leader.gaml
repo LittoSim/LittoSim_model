@@ -23,7 +23,7 @@ global{
 	string BTN_GET_REVENUE_MSG2;
 	
 	string get_lever_name(string lever_id){
-		return levers_def at lever_id at configuration_file["LANGUAGE"];
+		return levers_def at lever_id at my_language;
 	}
 	
 	string get_lever_type(string lever_id){

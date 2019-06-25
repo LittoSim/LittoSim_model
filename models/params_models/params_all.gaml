@@ -226,5 +226,13 @@ global{
 	string get_message(string code_msg){
 		return langs_def at code_msg at configuration_file["LANGUAGE"]; // getting the right message from languages file
 	}
+	
+	string replace_strings(string s, list<string> lisa){
+		s <- get_message (s);
+		loop i from:0 to: length(lisa)-1{
+			s <- replace(s,'#s'+(i+1), lisa[i]);
+		}
+		return s;
+	}
 	//------------------------------ End of methods -------------------------------//
 }

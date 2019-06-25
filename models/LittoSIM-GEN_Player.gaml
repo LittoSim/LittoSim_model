@@ -61,6 +61,8 @@ global{
 	font f1 <- font('Helvetica Neue', DISPLAY_FONT_SIZE, #bold);
 	
 	int flooded_cells <- 0;
+	int cell_width;
+	int cell_height;
 	
 	init{		
 		create District from: districts_shape with:[district_code::string(read("dist_code")), district_name::string(read("dist_sname"))];
@@ -1394,27 +1396,13 @@ species Network_Player skills:[network]{
 							}
 						}
 						match OBJECT_TYPE_COASTAL_DEFENSE {
-							Coastal_Defense tmp <- Coastal_Defense first_with(each.coast_def_id = int(m_contents["coast_def_id"]) );
-							if(tmp = nil){
-								create Coastal_Defense {
-									do init_coastal_def_from_map(m_contents);
-								}
-							}else {
-								ask tmp {
-									do init_coastal_def_from_map(m_contents);
-								}
+							create Coastal_Defense {
+								do init_coastal_def_from_map(m_contents);
 							}	
 						}
 						match OBJECT_TYPE_LAND_USE {
-							Land_Use tmp <- Land_Use first_with(each.id = int(m_contents["id"]));
-							if(tmp = nil){
-								create Land_Use {
-									do init_lu_from_map(m_contents);
-								}
-							} else {
-								ask tmp {
-									do init_lu_from_map(m_contents);
-								}
+							create Land_Use {
+								do init_lu_from_map(m_contents);
 							}	
 						}
 						match OBJECT_TYPE_ACTIVATED_LEVER{
@@ -1430,12 +1418,13 @@ species Network_Player skills:[network]{
 				}
 				match "NEW_SUBMERSION_EVENT" {
 					flooded_cells <- int(m_contents["flooded_cells"]);
+					cell_width <- int(m_contents["cell_width"]);
+					cell_height <- int(m_contents["cell_height"]);
 					ask Cell { do die; }
 				}
 				match "NEW_FLOODED_CELLS" {
 					loop i from: 0 to: flooded_cells - 1{
 						create Cell{
-							shape <- rectangle(float(m_contents["cell_width"+i]), float(m_contents["cell_height"+i]));
 							loc <- point(float(m_contents["cell_location_x"+i]), float(m_contents["cell_location_y"+i]));
 							col <- world.color_of_water_height (float(m_contents["water_height"+i]));
 						}
@@ -1804,22 +1793,17 @@ species Coastal_Defense {
 		self.height 	<- float(a at "height");
 		self.alt 		<- float(a at "alt");
 		self.ganivelle 	<- bool(a at "ganivelle");		
-		point pp		<- {float(a at "locationx"), float(a at "locationy")};
-		point mpp 		<- pp;
-		int i 			<- 0;
+		self.location	<- {float(a at "locationx"), float(a at "locationy")};
+		
+		int tot_points	<- int(a at "tot_points");
+		point pp;
 		list<point> all_points <- [];
-		loop while: (pp!=nil){
-			string xd <- a at ("locationx"+i);
-			if(xd != nil){
-				pp <- {float(xd), float(a at ("locationy"+i)) };
-				all_points <- all_points + pp;
-			}
-			else{pp <-nil;}
-			i<- i + 1;
+		loop i from: 0 to: tot_points - 1 {
+			pp <- {float(a at ("locationx"+i)), float(a at ("locationy"+i))};
+			add pp to: all_points;
 		}
 		shape <- polyline(all_points);
 		length_coast_def <- int(shape.perimeter);
-		location <-mpp;
 	}
 	
 	action init_coastal_def {
@@ -1898,7 +1882,7 @@ species Cell{
 	rgb col;
 	aspect base{
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			draw shape color: col at: loc;	
+			draw rectangle(cell_width,cell_height) color: col at: loc;	
 		}
 	}
 }
