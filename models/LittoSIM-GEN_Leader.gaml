@@ -278,7 +278,7 @@ species Player_Action schedules:[]{
 					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U]   { return BUILDER;	 }
 					match_one [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] { return SOFT_DEFENSE; }
 					match ACTION_MODIFY_LAND_COVER_A {
-						if previous_lu_name = 'N' { return BUILDER;}
+						if previous_lu_name = 'N' and is_in_risk_area { return BUILDER;}
 					}
 					match ACTION_MODIFY_LAND_COVER_N {
 						if previous_lu_name = 'A'{
