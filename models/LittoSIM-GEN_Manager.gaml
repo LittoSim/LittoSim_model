@@ -38,6 +38,8 @@ global {
 	int lisfloodReadingStep <- 9999999; 				// to indicate to which step of Lisflood results, the current cycle corresponds // lisfloodReadingStep = 9999999 it means that there is no Lisflood result corresponding to the current cycle 
 	string timestamp 		<- ""; 						// used to specify a unique name to the folder of flooding results
 	string flood_results 	<- "";   					// text of flood results per district // saved as a txt file
+	list<int> submersions;
+	int sub_event <- 0;
 	
 	// parameters for saving submersion results
 	string results_rep 			<- results_lisflood_rep + "/stats" + EXPERIMENT_START_TIME; 		// folder to save main model results
@@ -220,6 +222,8 @@ global {
 			do inform_new_round;
 			add budget to: districts_budgets[dist_id-1];
 		}
+		add sub_event to: submersions;
+		sub_event <- 0;
 		write get_message('MSG_GAME_DONE') + " !";
 	} 	
 	
@@ -414,6 +418,7 @@ global {
      		else {
      			stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
      			write stateSimPhase;
+     			sub_event <- max(districts_budgets accumulate each);
      		}
      	}
 	}
@@ -1795,7 +1800,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	parameter "Connect to ActiveMQ" var: activemq_connect<- true;
 	
 	list<string> budget_lbls <- ["Taxes","Given","Taken","Actions","Levers"];
-	list<rgb> color_lbls <- [#palegreen,#cyan,#black,#gray,#magenta];
+	list<rgb> color_lbls <- [#gold,#darkblue,#darkred,#darkgray,#darkgreen];
 	list<string> strat_lbls <-["Builder","Soft def","Withdraw","Neutr"];
 	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
 	
@@ -1847,9 +1852,10 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
 			
 			chart "Budgets" type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND') {
+				data "" value: submersions color: #black style: bar;
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i];
-				}			
+				}		
 			}			
 			chart "Actions" type: histogram size: {0.48,0.48} position: {0.51,0.51} x_serie_labels: strat_lbls style:stack {
 				loop i from:0 to: 3{
