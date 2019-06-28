@@ -1,0 +1,15 @@
+DEMfile         C:/littosim/workspace/LittoDev/includes/lisflood/caen/inputs/caen_dem_R4_t1.561728006734E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+initial_tstep   10.0
+massint         100.0
+saveint         3600.0
+manningfile     C:/littosim/workspace/LittoDev/includes/lisflood/caen/inputs/caen_rug_R4_t1.561728006734E12.asc
+bcifile         C:/littosim/workspace/LittoDev/includes/lisflood/caen/caen2019.bci
+bdyfile         C:/littosim/workspace/LittoDev/includes/lisflood/caen/caen2019_50cm.bdy
+startfile       C:/littosim/workspace/LittoDev/includes/lisflood/caen/caen2019.start
+startelev
+elevoff
+SGC_enable
+

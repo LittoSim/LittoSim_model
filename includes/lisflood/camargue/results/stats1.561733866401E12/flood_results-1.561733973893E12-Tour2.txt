@@ -1,0 +1,33 @@
+Results for district : sttrojan
+Flooded U : < 50cm 0.4 ha (0.0%) | between 50cm and 1m 0.4 ha (0.0%) | > 1m 1.9 ha (0.1%) 
+Flooded Us : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded Udense : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded AU : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded A : < 50cm 10.9 ha (0.6%) | between 50cm and 1m 15.8 ha (0.8%) | > 1m 26.0 ha (1.4%) 
+Flooded N : < 50cm 9.0 ha (0.5%) | between 50cm and 1m 14.2 ha (0.7%) | > 1m 20.6 ha (1.1%) 
+--------------------------------------------------------------------------------------------------------------------
+Results for district : stpierre
+Flooded U : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.5 ha (0.0%) 
+Flooded Us : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded Udense : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded AU : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded A : < 50cm 16.2 ha (0.5%) | between 50cm and 1m 18.6 ha (0.5%) | > 1m 5.8 ha (0.2%) 
+Flooded N : < 50cm 8.1 ha (0.2%) | between 50cm and 1m 6.8 ha (0.2%) | > 1m 7.8 ha (0.2%) 
+--------------------------------------------------------------------------------------------------------------------
+Results for district : dolus
+Flooded U : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded Us : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded Udense : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded AU : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded A : < 50cm 59.8 ha (1.7%) | between 50cm and 1m 84.8 ha (2.4%) | > 1m 23.0 ha (0.7%) 
+Flooded N : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.1 ha (0.0%) 
+--------------------------------------------------------------------------------------------------------------------
+Results for district : lechateau
+Flooded U : < 50cm 1.7 ha (0.1%) | between 50cm and 1m 0.2 ha (0.0%) | > 1m 2.9 ha (0.2%) 
+Flooded Us : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded Udense : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.0 ha (0.0%) | > 1m 0.0 ha (0.0%) 
+Flooded AU : < 50cm 0.0 ha (0.0%) | between 50cm and 1m 0.1 ha (0.0%) | > 1m 0.1 ha (0.0%) 
+Flooded A : < 50cm 17.0 ha (0.9%) | between 50cm and 1m 20.4 ha (1.1%) | > 1m 30.8 ha (1.6%) 
+Flooded N : < 50cm 1.7 ha (0.1%) | between 50cm and 1m 1.5 ha (0.1%) | > 1m 2.3 ha (0.1%) 
+--------------------------------------------------------------------------------------------------------------------
+

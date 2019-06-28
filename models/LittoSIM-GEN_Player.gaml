@@ -1921,7 +1921,7 @@ experiment LittoSIM_GEN_Player type: gui{
 	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 
-	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
+	parameter "District choice : " var: active_district_name <- districts[0] among: districts;
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	
 	init {minimum_cycle_duration <- 0.5;}

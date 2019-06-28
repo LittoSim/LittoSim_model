@@ -80,6 +80,7 @@ global {
 	point play_b;
 	point pause_b;
 	list<District> districts_in_game;
+	bool submersion_is_running <- false;
 	
 	init{
 		// Create GIS agents
@@ -298,6 +299,7 @@ global {
 	}
 		
 	action execute_lisflood{
+		submersion_is_running <- true;
 		timestamp <- "_R" + game_round + "_t" + machine_time;
 		results_lisflood_rep <- application_name + "/results" + timestamp;
 		do save_dem_and_rugosity;
@@ -307,6 +309,7 @@ global {
 		ask Network_Game_Manager {
 			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
 		}
+		submersion_is_running <- false;
  	}
  		
 	action save_lf_launch_files {
@@ -315,7 +318,7 @@ global {
 				lisfloodPath + lisflood_rugosity_file + "\nbcifile         " + lisfloodPath + application_name + "/" + lisflood_bci_file + "\nbdyfile         " + lisfloodPath + application_name + "/" + lisflood_bdy_file + 
 				"\nstartfile       " + lisfloodPath + application_name + "/" + lisflood_start_file +"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath + lisflood_par_file type: "text";
 		
-		save (lisfloodPath + "lisflood.exe -dir " + lisfloodPath + results_lisflood_rep + " " + (lisfloodPath + lisflood_par_file)) rewrite: true to: lisfloodRelativePath + lisflood_bat_file type: "text";
+		save (lisfloodPath + "lisflood.exe -dir " + lisfloodPath + results_lisflood_rep + " " + (lisfloodPath + lisflood_par_file) + "\nexit") rewrite: true to: lisfloodRelativePath + lisflood_bat_file type: "text";
 	}
 	
 	action load_dem_and_rugosity {
@@ -515,7 +518,7 @@ global {
 						}
 					}
 				}
-				U_0_5c <- U_0_5 * 0.04;
+				U_0_5c <- U_0_5 * 0.04; // TODO 0.04 ??? 
 				U_1c <- U_1 * 0.04;
 				U_maxc <- U_max * 0.04;
 				Us_0_5c <- Us_0_5 * 0.04;
@@ -534,12 +537,12 @@ global {
 				N_1c <- N_1 * 0.04;
 				N_maxc <- N_max * 0.04;
 				text <- text + "Results for district : " + district_name +"
-Surface U innondée : moins de 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
-Surface Us innondée : moins de 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
-Surface Udense innondée : moins de 50cm " + ((Udense_0_5c) with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((Udense_1 * 0.04) with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((Udense_max * 0.04) with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
-Surface AU innondée : moins de 50cm " + ((AU_0_5c) with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((AU_1c) with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((AU_maxc) with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
-Surface A innondée : moins de 50cm " + ((A_0_5c) with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((A_1c) with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((A_maxc) with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
-Surface N innondée : moins de 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | entre 50cm et 1m " + ((N_1c) with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | plus de 1m " + ((N_maxc) with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
+Flooded U : < 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
+Flooded Us : < 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
+Flooded Udense : < 50cm " + ((Udense_0_5c) with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((Udense_1 * 0.04) with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((Udense_max * 0.04) with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
+Flooded AU : < 50cm " + ((AU_0_5c) with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((AU_1c) with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((AU_maxc) with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
+Flooded A : < 50cm " + ((A_0_5c) with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((A_1c) with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((A_maxc) with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
+Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((N_1c) with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((N_maxc) with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
 --------------------------------------------------------------------------------------------------------------------
 ";	
 			}
@@ -1823,14 +1826,20 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Button  aspect: buttons_master;
 			
 			graphics "Control Panel"{
-				point loc 	<- { world.shape.width/2, world.shape.height/2};
-				float msize <- min([world.shape.width/2, world.shape.height/2]);
+				point loc 	<- {world.shape.width/2, world.shape.height/2};
+				float msize <- min([loc.x, loc.y]);
 				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
 				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #black;
 				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #blue font: font('Helvetica Neue', 20, #bold) at: loc + {-550,msize*0.66};
 			}
 			graphics "Play_pause" transparency: 0.5{
 				draw square(button_size) at: game_paused ? pause_b : play_b color: #gray ;
+			}
+			graphics "A submersion is running" {
+				if submersion_is_running {
+					point loc 	<- {world.shape.width/2, world.shape.height/2};
+					draw image_file("../images/ihm/tempete.jpg") at: loc size: {world.shape.width, world.shape.height};
+				}
 			}
 			
 			event mouse_down action: button_click_master_control;
@@ -2042,60 +2051,45 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Flooded area per district"{
-			chart "All areas" type: series size: {0.48,0.45} position: {0, 0}{
-				datalist value: [((District first_with(each.dist_id = 1)).data_flooded_area),
-																 ((District first_with(each.dist_id = 2)).data_flooded_area),
-																 ((District first_with(each.dist_id = 3)).data_flooded_area),
-																 ((District first_with(each.dist_id = 4)).data_flooded_area)]
-						color: dist_colors legend: (districts_in_game collect each.district_name); 			
+			chart "All areas" type: series size: {0.48,0.45} position: {0, 0} x_range:[0,5]{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i];
+				}			
 			}
 		
-
-			chart "U area" type: series size: {0.24,0.45} position: {0.5, 0}{
-				datalist value: [((District first_with(each.dist_id = 1)).data_totU),
-																 ((District first_with(each.dist_id = 2)).data_totU),
-																 ((District first_with(each.dist_id = 3)).data_totU),
-																 ((District first_with(each.dist_id = 4)).data_totU)]
-						color:dist_colors legend: (districts_in_game collect each.district_name); 			
+			chart "U area" type: series size: {0.24,0.45} position: {0.5, 0} x_range:[0,5]{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i];
+				}			
 			}
 
-			chart "Us area" type: series size: {0.24,0.45} position: {0.75, 0}{
-				datalist value: [((District first_with(each.dist_id = 1)).data_totUs),
-																 ((District first_with(each.dist_id = 2)).data_totUs),
-																 ((District first_with(each.dist_id = 3)).data_totUs),
-																 ((District first_with(each.dist_id = 4)).data_totUs)]
-						color: dist_colors legend: (districts_in_game collect each.district_name); 			
+			chart "Us area" type: series size: {0.24,0.45} position: {0.75, 0} x_range:[0,5]{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i];
+				}			
 			}
 
-			chart "Ui area" type: series size: {0.24,0.45} position: {0, 0.5}{
-				datalist value: [((District first_with(each.dist_id = 1)).data_totUdense),
-																 ((District first_with(each.dist_id = 2)).data_totUdense),
-																 ((District first_with(each.dist_id = 3)).data_totUdense),
-																 ((District first_with(each.dist_id = 4)).data_totUdense)]
-						color: dist_colors legend: (districts_in_game collect each.district_name); 			
+			chart "Ui area" type: series size: {0.24,0.45} position: {0, 0.5} x_range:[0,5]{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i];
+				} 			
 			}
 
-			chart "AU area" type: series size: {0.24,0.45} position: {0.25, 0.5}{
-				datalist value: [((District first_with(each.dist_id = 1)).data_totAU),
-																 ((District first_with(each.dist_id = 2)).data_totAU),
-																 ((District first_with(each.dist_id = 3)).data_totAU),
-																 ((District first_with(each.dist_id = 4)).data_totAU)]
-						color: dist_colors legend: (districts_in_game collect each.district_name); 			
+			chart "AU area" type: series size: {0.24,0.45} position: {0.25, 0.5} x_range:[0,5]{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i];
+				}			
 			}
-			chart "N area" type: series size: {0.24,0.45} position: {0.50, 0.5}{
-				datalist value: [((District first_with(each.dist_id = 1)).data_totN),
-																 ((District first_with(each.dist_id = 2)).data_totN),
-																 ((District first_with(each.dist_id = 3)).data_totN),
-																 ((District first_with(each.dist_id = 4)).data_totN)]
-						color:[#red,#blue,#green,#orange] legend: (districts_in_game collect each.district_name); 			
+			chart "N area" type: series size: {0.24,0.45} position: {0.50, 0.5} x_range:[0,5]{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i];
+				} 			
 			}
 
-			chart "A area" type: series size: {0.24,0.45} position: {0.75, 0.5}{
-				datalist value: [((District first_with(each.dist_id = 1)).data_totA),
-																 ((District first_with(each.dist_id = 2)).data_totA),
-																 ((District first_with(each.dist_id = 3)).data_totA),
-																 ((District first_with(each.dist_id = 4)).data_totA)]
-						color: dist_colors legend: (districts_in_game collect each.district_name); 			
+			chart "A area" type: series size: {0.24,0.45} position: {0.75, 0.5} x_range:[0,5]{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i];
+				}			
 			}
 		}
 	}

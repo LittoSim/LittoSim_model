@@ -1,0 +1,15 @@
+DEMfile         C:/littosim/workspace/LittoDev/includes/lisflood/camargue/inputs/camargue_dem_R4_t1.561741501247E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+initial_tstep   10.0
+massint         100.0
+saveint         3600.0
+manningfile     C:/littosim/workspace/LittoDev/includes/lisflood/camargue/inputs/camargue_rug_R4_t1.561741501247E12.asc
+bcifile         C:/littosim/workspace/LittoDev/includes/lisflood/camargue/camargue2019.bci
+bdyfile         C:/littosim/workspace/LittoDev/includes/lisflood/camargue/camargue2019_Xynthia-75.bdy
+startfile       C:/littosim/workspace/LittoDev/includes/lisflood/camargue/camargue2019.start
+startelev
+elevoff
+SGC_enable
+
