@@ -45,6 +45,7 @@ global{
 	geometry population_area <- nil;
 	Coastal_Defense explored_coast_def <- nil;
 	Land_Use explored_lu <- nil;
+	Land_Use hovered_lu <- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	Coastal_Defense_Action explored_coast_def_action<- nil;
 	
@@ -370,13 +371,23 @@ global{
 		explored_button <- (Button + Button_Map) first_with (each overlaps loc and each.display_name != COAST_DEF_DISPLAY); // for inspect
 		
 		Button current_active_button <- first(Button where (each.is_selected));
-		if current_active_button != nil and current_active_button.command = ACTION_INSPECT {
-			explored_land_use_action <- first(Land_Use_Action overlapping loc);
-			explored_lu <- first(Land_Use overlapping loc);
-		}
-		else{
-			explored_land_use_action <- nil;
-			explored_lu <- nil;
+		if current_active_button != nil  {
+			if hovered_lu != nil {
+				hovered_lu.focus_on_me <- false;
+			}
+			hovered_lu <- first(Land_Use overlapping loc);
+			if hovered_lu != nil {
+				hovered_lu.focus_on_me <- true;
+			}
+			// inspect
+			if current_active_button.command = ACTION_INSPECT {
+				explored_land_use_action <- first(Land_Use_Action overlapping loc);
+				explored_lu <- first(Land_Use overlapping loc);
+			}
+			else{
+				explored_land_use_action <- nil;
+				explored_lu <- nil;
+			}
 		}
 	}
 
@@ -1095,7 +1106,7 @@ species History_Element parent: Displayed_List_Element schedules:[]{
 	Player_Action current_action;
 	
 	action on_mouse_down{
-		if(highlighted_action = current_action ){
+		if(highlighted_action = current_action){
 			highlighted_action <- nil;
 		}
 		else {highlighted_action <- current_action;}
@@ -1722,6 +1733,7 @@ species Land_Use {
 	bool is_urban_type 	 -> {lu_name in ["U","Us","AU","AUs"]};
 	bool is_adapted_type -> {lu_name in ["Us","AUs"]};
 	bool is_in_densification <- false;
+	bool focus_on_me <- false;
 
 	action init_lu_from_map(map<string, unknown> a ){
 		self.id 				 <- int   (a at "id");
@@ -1767,9 +1779,12 @@ species Land_Use {
 
 	aspect map {
 		if(active_display = LU_DISPLAY){
-			draw shape color: my_color;
-			if(is_adapted_type)		{draw file("../images/icons/wave.png") size:self.shape.width;}
-			if(is_in_densification)	{draw file("../images/icons/crowd.png") size:self.shape.width;}
+			draw shape color: my_color;	
+			if(is_adapted_type)		{draw file("../images/icons/wave.png") size: self.shape.width;}
+			if(is_in_densification)	{draw file("../images/icons/crowd.png") size: self.shape.width;}
+			if focus_on_me {
+				draw 20#m around shape color: #black;
+			}
 		}			
 	}
 }
