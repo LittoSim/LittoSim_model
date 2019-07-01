@@ -14,9 +14,7 @@ model Manager
 import "params_models/params_manager.gaml"
 
 global {
-
-	// Lisflood configuration for the study area
-	string application_name 	<- shapes_def["APPLICATION_NAME"]; 											// used to name exported files
+	
 	// sea heights file sent to Lisflood
 	string lisflood_start_file	<- shapes_def["LISFLOOD_START_FILE"];
 	string lisflood_bci_file	<- shapes_def["LISFLOOD_BCI_FILE"];
@@ -778,7 +776,7 @@ species Network_Game_Manager skills: [network]{
 							self.previous_lu_name 			<- m_contents["previous_lu_name"];
 							self.is_expropriation 			<- bool(m_contents["is_expropriation"]);
 							self.cost 						<- float(m_contents["cost"]);
-							if command = ACTION_CREATE_DIKE { 
+							if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] { 
 								element_shape 	 <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
 								shape 			 <- element_shape;
@@ -826,8 +824,8 @@ species Network_Game_Manager skills: [network]{
 				int id_dist <- world.district_id (district_code);
 				bool acknowledge <- false;
 				switch(command){
-					match ACTION_CREATE_DIKE{	
-						ask(create_dike (self)) {
+					match_one [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]{	
+						ask create_dike (self, command) {
 							do build_dike;
 							acknowledge <- true;
 						}
@@ -1203,14 +1201,14 @@ species Player_Action schedules:[]{
 		return res;
 	}
 	
-	Coastal_Defense create_dike (Player_Action act){
+	Coastal_Defense create_dike (Player_Action act, int comm){
 		int next_coast_def_id <- max(Coastal_Defense collect(each.coast_def_id)) +1;
 		create Coastal_Defense returns: tmp_dike{
 			coast_def_id <- next_coast_def_id;
 			district_code<- act.district_code;
 			shape 		<- act.element_shape;
 			location 	<- act.location;
-			type 		<- COAST_DEF_TYPE_DIKE;
+			type 		<- comm = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
 			status 		<- BUILT_DIKE_STATUS;
 			height 		<- BUILT_DIKE_HEIGHT;	
 			cells 		<- Cell overlapping self;

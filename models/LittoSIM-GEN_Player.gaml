@@ -166,6 +166,7 @@ global{
 			match ACTION_RAISE_DIKE 			{return image_file("../images/ihm/S_elevation_digue.png");		}
 			match ACTION_DESTROY_DIKE			{return image_file("../images/ihm/S_suppression_digue.png");	}
 			match ACTION_INSTALL_GANIVELLE 		{return image_file("../images/ihm/S_ganivelle.png");			}
+			match ACTION_CREATE_DUNE 			{return image_file("../images/ihm/S_creation_digue.png");		}
 		}
 		return nil;
 	}
@@ -412,9 +413,9 @@ global{
 		if(selected_button != nil){
 			if selected_button.command = ACTION_INSPECT {
 				return;
-			}else if selected_button.command = ACTION_CREATE_DIKE {
+			}else if selected_button.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
 				if basket_overflow() {return;}
-				do create_new_dike(loc, selected_button);
+				do create_new_dike(loc, selected_button, selected_button.command);
 			}else {
 				if selected_dike = nil {return;}
 				if basket_overflow() {return;}
@@ -466,7 +467,7 @@ global{
 		}
 	}
 	
-	action create_new_dike (point loc, Button but){
+	action create_new_dike (point loc, Button but, int comm){
 		if(previous_clicked_point = nil){
 			previous_clicked_point <- loc;
 		}
@@ -475,8 +476,8 @@ global{
 				id 			<- world.get_action_id();
 				self.label 	<- but.label;
 				element_id 	<- -1;
-				self.command<- ACTION_CREATE_DIKE;
-				self.coast_def_type <- COAST_DEF_TYPE_DIKE;
+				self.command<- comm;
+				self.coast_def_type <- comm = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
 				self.initial_application_round <- game_round  + world.delay_of_action(self.command);
 				element_shape <- polyline([previous_clicked_point, loc]);
 				shape 		 <- element_shape;
@@ -936,7 +937,7 @@ species Basket parent: Displayed_List {
 	action add_action_to_basket (Player_Action act){
 	  	create Basket_Element returns: elem {
 			label 	<- act.label;
-			if act.is_applied or act.command != ACTION_CREATE_DIKE {
+			if act.is_applied or !(act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]) {
 				label <- label + " (" + act.element_id +")";	
 			}
 			icon 	<- world.get_action_icon (act.command);
@@ -1036,7 +1037,7 @@ species History parent: Displayed_List schedules:[]{
 	action add_action_to_history(Player_Action act){
 	  	create History_Element returns: elem {
 			label <- act.label;
-			if act.is_applied or act.command != ACTION_CREATE_DIKE {
+			if act.is_applied or !(act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]) {
 				label <- label + " (" + act.element_id +")";	
 			}
 			icon <- world.get_action_icon(act.command);
@@ -1594,7 +1595,7 @@ species Player_Action {
 			"is_in_protected_area"::is_in_protected_area, "previous_lu_name"::previous_lu_name,
 			"is_expropriation"::is_expropriation, "cost"::int(cost)];
 		
-		if command = ACTION_CREATE_DIKE  {
+		if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]  {
 				point end <- last (element_shape.points);
 				point origin <- first(element_shape.points);
 				put string(origin.x) at: "origin.x" in: mp;
@@ -1610,7 +1611,7 @@ species Player_Action {
 //------------------------------ End of Player_Action -------------------------------//
 
 species Coastal_Defense_Action parent: Player_Action {
-	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF;
+	string action_type 	<- PLAYER_ACTION_TYPE_COAST_DEF;
 	string coast_def_type;
 	float altit <- 0.0;
 		
@@ -1621,6 +1622,7 @@ species Coastal_Defense_Action parent: Player_Action {
 			 match ACTION_DESTROY_DIKE 		{return #orange;}
 			 match ACTION_RAISE_DIKE 		{return #blue;  }
 			 match ACTION_INSTALL_GANIVELLE {return #indigo;}
+			 match ACTION_CREATE_DUNE		{return #gold; }
 		} 
 		return #grey;
 	}
@@ -1643,8 +1645,7 @@ species Land_Use_Action parent: Player_Action {
 			 match_one [ACTION_MODIFY_LAND_COVER_AU,
 			 			ACTION_MODIFY_LAND_COVER_AUs,
 			 			ACTION_MODIFY_LAND_COVER_Us,
-			 			ACTION_MODIFY_LAND_COVER_Ui]
-			 								  {return rgb(0,129,161);}
+			 			ACTION_MODIFY_LAND_COVER_Ui] {return rgb(0,129,161);}
 		} 
 		return #grey;
 	}
@@ -1936,7 +1937,7 @@ experiment LittoSIM_GEN_Player type: gui{
 	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 
-	parameter "District choice : " var: active_district_name <- districts[0] among: districts;
+	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	
 	init {minimum_cycle_duration <- 0.5;}
@@ -1946,7 +1947,12 @@ experiment LittoSIM_GEN_Player type: gui{
 	output{
 		
 		display "Map" background: #black focus: active_district{
-			graphics "World" {draw shape color: rgb(0,188,196);}
+			graphics "World" {
+				draw shape color: rgb(0,188,196);
+				if application_name = "camargue" {
+					draw rectangle(2*world.shape.width, world.shape.height) at: {0,0} color: #black;
+				}
+			}
 			species District aspect: base;
 			graphics "Population" {
 				draw population_area color: rgb(105,105,105) ;
@@ -1989,7 +1995,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			graphics "Coast Def Icon" {
 				if explored_coast_def != nil {
 					if explored_coast_def.status != STATUS_GOOD {
-						point image_loc <- {explored_coast_def.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 50#px, explored_coast_def.location.y + 50#px};
+						point image_loc <- {explored_coast_def.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 40#px, explored_coast_def.location.y + 80#px};
 						switch(explored_coast_def.status){
 							match STATUS_MEDIUM {draw file("../images/icons/danger.png")  at: image_loc size: 50#px;}
 							match STATUS_BAD 	{draw file("../images/icons/rupture.png") at: image_loc size: 50#px;}
@@ -1999,7 +2005,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 		
 			graphics "Coast Def Action" transparency: 0.3 {// explore coast def action 
-				if explored_coast_def_action != nil and !explored_coast_def_action.is_applied and explored_coast_def_action.command = ACTION_CREATE_DIKE {
+				if explored_coast_def_action != nil and !explored_coast_def_action.is_applied and explored_coast_def_action.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
 					point target <- {explored_coast_def_action.location.x  ,explored_coast_def_action.location.y};
 					point target2 <- {explored_coast_def_action.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),explored_coast_def_action.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
 					draw rectangle(target,target2) empty: false border: false color: #black ;

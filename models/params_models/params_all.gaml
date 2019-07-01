@@ -13,12 +13,13 @@ global{
 	map<string,string> flooding_def 		<- read_configuration_file(configuration_file["FLOODING_FILE"],";"); // Flooding model
 	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANGUAGES_FILE"],";"); // Languages
 	map<string,map> data_action 			<- store_csv_data_into_map_of_map(shapes_def["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
-		
+	
+	string application_name <- shapes_def["APPLICATION_NAME"];
 	// Network 
-	string SERVER 					<- configuration_file["SERVER_ADDRESS"]; 
-	string GAME_MANAGER 			<- "GAME_MANAGER";
-	string GAME_LEADER	     	 	<- "GAME_LEADER";
-	string LISTENER_TO_LEADER	 	<- "LISTENER_TO_LEADER";
+	string SERVER 			<- configuration_file["SERVER_ADDRESS"]; 
+	string GAME_MANAGER 	<- "GAME_MANAGER";
+	string GAME_LEADER	    <- "GAME_LEADER";
+	string LISTENER_TO_LEADER<- "LISTENER_TO_LEADER";
 	
 	// Object types sent over network : OBJECT_TYPE
 	string OBJECT_TYPE_ACTIVATED_LEVER 	<- "ACTIVATED_LEVER";
@@ -78,7 +79,7 @@ global{
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE,
-							ACTION_INSTALL_GANIVELLE, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,
+							ACTION_CREATE_DUNE, ACTION_INSTALL_GANIVELLE, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,
 							ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
 	
 	// List of actions with their parameters
@@ -87,6 +88,7 @@ global{
 	int ACTION_DESTROY_DIKE 		 <- int(data_action at 'ACTION_DESTROY_DIKE' 			at 'action_code');
 	int ACTION_RAISE_DIKE 			 <- int(data_action at 'ACTION_RAISE_DIKE' 				at 'action_code');
 	int ACTION_INSTALL_GANIVELLE 	 <- int(data_action at 'ACTION_INSTALL_GANIVELLE' 		at 'action_code');
+	int ACTION_CREATE_DUNE 			 <- int(data_action at 'ACTION_CREATE_DUNE' 			at 'action_code');
 	int ACTION_MODIFY_LAND_COVER_AU  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code');
 	int ACTION_MODIFY_LAND_COVER_A 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' 	at 'action_code');
 	int ACTION_MODIFY_LAND_COVER_U 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_U' 	at 'action_code');
