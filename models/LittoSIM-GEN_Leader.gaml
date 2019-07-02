@@ -267,7 +267,7 @@ species Player_Action schedules:[]{
 			else{
 				switch command {
 					match_one [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE, ACTION_REPAIR_DIKE] { return BUILDER; }
-					match ACTION_INSTALL_GANIVELLE	{ return SOFT_DEFENSE;  }
+					match_one [ACTION_CREATE_DUNE, ACTION_INSTALL_GANIVELLE] { return SOFT_DEFENSE; }
 					match ACTION_DESTROY_DIKE	{ return WITHDRAWAL;	}
 				}
 			}
@@ -524,7 +524,8 @@ species Lever_Window_Info {
 	
 	aspect {
 		if explored_lever != nil {
-			draw shape color: explored_lever.color_profile() border: #black at: loca;
+			draw shape color: explored_lever.color_profile() at: loca;
+			draw 0.5 around shape color: #black;
 			
 			if explored_lever.timer_activated {
 				draw shape+0.2#m color: #red;
