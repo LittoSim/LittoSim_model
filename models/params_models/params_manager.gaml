@@ -94,10 +94,10 @@ global{
 	bool save_shp 			<- bool(configuration_file["SAVE_SHP"]); 					// saving results as shapefile. If true, at each round, water height and level are saved for all cells
 	bool activemq_connect 	<- bool(configuration_file["ACTIVEMQ_CONNECT"]); 			// start simulation without ACTIVEMQ
 	// User interface params
+	string LEGEND_POSITION <- shapes_def["LEGEND_POSITION"];
 	float button_size 		<- float(configuration_file["BUTTON_SIZE"]); 				// 2000#m;
 	int font_size 			<- int(shape.height/30); 	
 	int font_interleave 	<- int(shape.width/60);
-	string LEGEND_POSITION <- shapes_def["LEGEND_POSITION"];
 	
 	string get_message(string code_msg){
 		return langs_def at code_msg at my_language;

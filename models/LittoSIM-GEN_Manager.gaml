@@ -392,10 +392,6 @@ global {
 	}
 	   
 	action read_lisflood_step_file {
-		
-		Land_Use mylu <- first(Land_Use where (each.id = 3186));
-		
-		
 	 	string nb <- string(lisfloodReadingStep);
 		loop i from: 0 to: 3 - length(nb) {
 			nb <- "0" + nb;
@@ -415,10 +411,6 @@ global {
 						Cell[c, r].max_water_height <- w;
 					}
 					Cell[c, r].water_height <- w;
-					Cell mycell <- Cell[c, r];
-					if mycell in mylu.cells {
-						save string("nb: "+ nb + "col: " + c + " row: " + r + " | water: " + w) to: "C:/Users/Laatabi/Desktop/nb.txt" rewrite: false type:"text";
-					}
 				}
 			}	
 	        lisfloodReadingStep <- lisfloodReadingStep + 1;
