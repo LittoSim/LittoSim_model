@@ -10,7 +10,6 @@ global{
 	string config_file_name 				<- "../includes/config/littosim.conf"; 
 	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
 	map<string,string> shapes_def 			<- read_configuration_file(configuration_file["SHAPES_FILE"],";"); // Shapefiles data
-	map<string,string> flooding_def 		<- read_configuration_file(configuration_file["FLOODING_FILE"],";"); // Flooding model
 	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANGUAGES_FILE"],";"); // Languages
 	map<string,map> data_action 			<- store_csv_data_into_map_of_map(shapes_def["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
 	

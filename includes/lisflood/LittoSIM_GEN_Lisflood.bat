@@ -1,2 +1,3 @@
-C:/littosim/workspace/LittoDev/includes/lisflood/lisflood.exe -dir C:/littosim/workspace/LittoDev/includes/lisflood/camargue/results_R4_t1.561741501247E12 C:/littosim/workspace/LittoDev/includes/lisflood/camargue/inputs/camargue_par_R4_t1.561741501247E12.par
+cd C:/littosim/workspace/LittoDev/includes/lisflood/
+lisflood.exe -dir ../../includes/camargue/floodfiles/results_R3_t1.56234553567E12 ../../includes/camargue/floodfiles/inputs/camargue_par_R3_t1.56234553567E12.par
 exit

@@ -40,11 +40,12 @@ global{
 		
 		sim_id <- machine_time;
 
-		create District from: districts_shape with: [district_name::string(read("dist_sname")), district_code::string(read("dist_code")),
-			dist_id::int(read("player_id")), district_long_name::string(read("dist_lname"))] {
+		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))] {
 			if(dist_id = 0) {
 				do die;
 			}
+			district_name <- world.dist_code_sname_correspondance_table at district_code;
+			district_long_name <- world.dist_code_lname_correspondance_table at district_code;
 		}
 		
 		do create_district_buttons_names;
@@ -106,12 +107,12 @@ global{
 	
 	action save_leader_records{
 		loop a over: leader_activities {
-			save a to: "leader_records/record-" + sim_id + "/leader_activities_Tour" + game_round + ".txt" type: "text" rewrite: false;
+			save a to: records_folder + "record-" + sim_id + "/leader_activities_Tour" + game_round + ".txt" type: "text" rewrite: false;
 		}
-		save Player_Action   to: "leader_records/record-" + sim_id + "/player_actions_Tour"   + game_round + ".csv" type: "csv";
-		save Activated_Lever to: "leader_records/record-" + sim_id + "/activated_levers_Tour" + game_round + ".csv" type: "csv"; 
+		save Player_Action   to: records_folder + "record-" + sim_id + "/player_actions_Tour"   + game_round + ".csv" type: "csv";
+		save Activated_Lever to: records_folder + "record-" + sim_id + "/activated_levers_Tour" + game_round + ".csv" type: "csv"; 
 		loop a over: (all_levers accumulate (each.population) sort_by (each.my_district.dist_id)) {
-			save a to: "leader_records/record-" + sim_id + "/all_levers_Tour" + game_round + ".csv"  type: "csv" rewrite: false;
+			save a to: records_folder + "record-" + sim_id + "/all_levers_Tour" + game_round + ".csv"  type: "csv" rewrite: false;
 		}
 	}
 

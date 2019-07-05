@@ -16,19 +16,19 @@ import "params_models/params_manager.gaml"
 global {
 	
 	// sea heights file sent to Lisflood
+	string my_flooding_path <- "../../includes/" + application_name + "/floodfiles/";
 	string lisflood_start_file	<- shapes_def["LISFLOOD_START_FILE"];
 	string lisflood_bci_file	<- shapes_def["LISFLOOD_BCI_FILE"];
 	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING? shapes_def ["LISFLOOD_BDY_HIGH_FILENAME"] // scenario1 : HIGH 
 								:(floodEventType  = LOW_FLOODING ? shapes_def ["LISFLOOD_BDY_LOW_FILENAME" ] // scenario2 : LOW
 		  						:get_message('MSG_FLOODING_TYPE_PROBLEM'))};
 	// paths to Lisflood
-	string lisfloodPath 			<- flooding_def["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
-	string lisfloodRelativePath 	<- flooding_def["LISFLOOD_RELATIVE_PATH"]; 								// Lisflood folder relatife path 
-	string results_lisflood_rep 	<- application_name + "/results"; 								// Lisflood results folder
-	string lisflood_par_file 		-> {application_name + "/inputs/" + application_name + "_par" + timestamp + ".par"};   // parameter file
-	string lisflood_DEM_file 		-> {application_name + "/inputs/" + application_name + "_dem" + timestamp + ".asc"}; 					  // DEM file 
-	string lisflood_rugosity_file 	-> {application_name + "/inputs/" + application_name + "_rug" + timestamp + ".asc"}; 					  // rugosity file
-	string lisflood_bat_file 		<- flooding_def["LISFLOOD_BAT_FILE"];												       		  // Lisflood executable
+	string lisfloodPath 			<- configuration_file["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
+	string results_lisflood_rep 	<- "../includes/" + application_name + "/floodfiles/results"; 								// Lisflood results folder
+	string lisflood_par_file 		-> {"../includes/" + application_name + "/floodfiles/inputs/" + application_name + "_par" + timestamp + ".par"};   // parameter file
+	string lisflood_DEM_file 		-> {"../includes/" + application_name + "/floodfiles/inputs/" + application_name + "_dem" + timestamp + ".asc"}; 					  // DEM file 
+	string lisflood_rugosity_file 	-> {"../includes/" + application_name + "/floodfiles/inputs/" + application_name + "_rug" + timestamp + ".asc"}; 					  // rugosity file
+	string lisflood_bat_file 		<- "LittoSIM_GEN_Lisflood.bat";												       		  // Lisflood executable
 	
 	// variables for Lisflood calculs 
 	map<string,string> list_flooding_events;  			// list of submersions of a round
@@ -40,7 +40,7 @@ global {
 	int sub_event <- 0;
 	
 	// parameters for saving submersion results
-	string results_rep 			<- results_lisflood_rep + "/stats" + EXPERIMENT_START_TIME; 		// folder to save main model results
+	string results_rep 			<- "../includes/"+ application_name +"/floodfiles/stats" + EXPERIMENT_START_TIME; 		// folder to save main model results
 	string shape_export_filePath -> {results_rep + "/SHP_Round" + game_round + ".shp"}; 		// shapefile to save cells
 	string log_export_filePath 	<- results_rep + "/log_" + machine_time + ".csv"; 					// file to save user actions (main model and players actions)  
 	
@@ -82,10 +82,7 @@ global {
 	
 	init{
 		// Create GIS agents
-		create District from: districts_shape with: [district_code::string(read("dist_code")),
-													 district_name::string(read("dist_sname")), district_long_name::string(read("dist_lname")),
-													 dist_id::int(read("player_id"))];
-													 
+		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))]; 
 		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
 		
 		create Coastal_Defense from: coastal_defenses_shape with: [
@@ -129,8 +126,11 @@ global {
 			mean_alt <- cells mean_of(each.soil_height);
 		}
 		ask districts_in_game{
+			district_name <- world.dist_code_sname_correspondance_table at district_code;
+			district_long_name <- world.dist_code_lname_correspondance_table at district_code;
 			LUs 	<- Land_Use where (each.dist_code = self.district_code);
 			cells 	<- LUs accumulate (each.cells);
+			tax_unit  <- float(tax_unit_table at district_name);
 			budget 	<- int(self.current_population() * tax_unit * (1 +  initial_budget / 100));
 			write world.get_message('MSG_COMMUNE') + " " + district_name + " (" + district_code + ") " + dist_id + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
 			do calculate_indicators_t0;
@@ -138,7 +138,7 @@ global {
 		
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
-		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, application_name + "/results");
+		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		
 		// Create Network agents
 		if activemq_connect {
@@ -233,13 +233,16 @@ global {
 
 	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
 		write flood_results;
-		save flood_results to: lisfloodRelativePath + results_rep + "/flood_results-" + machine_time + "-Tour" + game_round + ".txt" type: "text";
+		save flood_results to: results_rep + "/flood_results-" + machine_time + "-R" + game_round + ".txt" type: "text";
 		
-		ask Cell { water_height <- 0.0; } // reset water heights						
+		ask Cell {
+			water_height <- 0.0; // reset water heights
+		} 				
 		ask Coastal_Defense {
-			if rupture = 1 { do remove_rupture; }
+			if rupture = 1 {
+				do remove_rupture; // when want we show ruptures ? (when to remove) !
+			}
 		}
-		
 		do send_flooding_results (nil); // to districts
 		stateSimPhase <- SIM_GAME;
 		write stateSimPhase + " - " + get_message('MSG_ROUND') + " " + game_round;
@@ -302,11 +305,11 @@ global {
 			ask Network_Game_Manager { do lock_user (myself, true); }
 		}
 		timestamp <- "_R" + game_round + "_t" + machine_time;
-		results_lisflood_rep <- application_name + "/results" + timestamp;
+		results_lisflood_rep <- "../includes/" + application_name + "/floodfiles/results" + timestamp;
 		do save_dem_and_rugosity;
 		do save_lf_launch_files;
 		do add_element_in_list_flooding_events("Submersion round " + game_round , results_lisflood_rep);
-		save "Directory created by LittoSIM GAMA model" to: lisfloodRelativePath + results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
+		save "Directory created by LittoSIM GAMA model" to: results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
 		ask Network_Game_Manager {
 			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
 		}
@@ -317,12 +320,12 @@ global {
  	}
  		
 	action save_lf_launch_files {
-		save ("DEMfile         " + lisfloodPath + lisflood_DEM_file + 
-				"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\nmanningfile     " +
-				lisfloodPath + lisflood_rugosity_file + "\nbcifile         " + lisfloodPath + application_name + "/" + lisflood_bci_file + "\nbdyfile         " + lisfloodPath + application_name + "/" + lisflood_bdy_file + 
-				"\nstartfile       " + lisfloodPath + application_name + "/" + lisflood_start_file +"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisfloodRelativePath + lisflood_par_file type: "text";
+		save ("DEMfile         ../" + lisflood_DEM_file + 
+				"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\nmanningfile     ../" + lisflood_rugosity_file +
+				"\nbcifile         " + my_flooding_path + lisflood_bci_file + "\nbdyfile         " + my_flooding_path + lisflood_bdy_file + "\nstartfile       " + my_flooding_path + lisflood_start_file +
+				"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisflood_par_file type: "text";
 		
-		save (lisfloodPath + "lisflood.exe -dir " + lisfloodPath + results_lisflood_rep + " " + (lisfloodPath + lisflood_par_file) + "\nexit") rewrite: true to: lisfloodRelativePath + lisflood_bat_file type: "text";
+		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../"+ results_lisflood_rep + " ../" + lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 	}
 	
 	action load_dem_and_rugosity {
@@ -365,8 +368,8 @@ global {
 	}    
 
 	action save_dem_and_rugosity {
-		string dem_filename <- lisfloodRelativePath + lisflood_DEM_file;
-		string rug_filename <- lisfloodRelativePath + lisflood_rugosity_file;
+		string dem_filename <- lisflood_DEM_file;
+		string rug_filename <- lisflood_rugosity_file;
 		
 		string h_txt <- 'ncols         ' + DEM_NB_COLS + '\nnrows         ' + DEM_NB_ROWS + '\nxllcorner     ' + DEM_XLLCORNER +
 						'\nyllcorner     ' + DEM_YLLCORNER + '\ncellsize      ' + DEM_CELL_SIZE + '\nNODATA_value  -9999';
@@ -375,12 +378,12 @@ global {
 		save h_txt rewrite: true to: rug_filename type: "text";
 		string dem_data;
 		string rug_data;
-		loop i from: 0 to: DEM_NB_ROWS - 1 {
+		loop rw from: 0 to: DEM_NB_ROWS - 1 {
 			dem_data <- "";
 			rug_data <- "";
-			loop j from: 0 to: DEM_NB_COLS - 1 {
-				dem_data <- dem_data + " " + Cell[j,i].soil_height;
-				rug_data <- rug_data + " " + Cell[j,i].rugosity;
+			loop cl from: 0 to: DEM_NB_COLS - 1 {
+				dem_data <- dem_data + " " + Cell[cl,rw].soil_height;
+				rug_data <- rug_data + " " + Cell[cl,rw].rugosity;
 			}
 			save dem_data to: dem_filename rewrite: false;
 			save rug_data to: rug_filename rewrite: false;
@@ -396,9 +399,7 @@ global {
 		loop i from: 0 to: 3 - length(nb) {
 			nb <- "0" + nb;
 		}
-		string fileName <- lisfloodRelativePath + results_lisflood_rep + "/res-" + nb + ".wd";
-		write "lisfloodRelativePath " + lisfloodRelativePath;
-		write "results_lisflood_rep " + results_lisflood_rep;
+		string fileName <- results_lisflood_rep + "/res-" + nb + ".wd";
 		write "nb " + nb;
 		if file_exists (fileName){
 			write fileName;
@@ -832,7 +833,7 @@ species Network_Game_Manager skills: [network]{
 				switch(command){
 					match_one [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]{	
 						ask create_dike (self, command) {
-							do build_dike;
+							do build_coast_def;
 							acknowledge <- true;
 						}
 					}
@@ -847,7 +848,7 @@ species Network_Game_Manager skills: [network]{
 				 		ask Coastal_Defense first_with(each.coast_def_id = element_id){
 							not_updated <- true;
 							acknowledge <- true;
-							do destroy_dike;
+							do destroy_coast_def;
 						}		
 					}
 				 	match ACTION_RAISE_DIKE {
@@ -1212,13 +1213,13 @@ species Player_Action schedules:[]{
 		create Coastal_Defense returns: tmp_dike{
 			coast_def_id <- next_coast_def_id;
 			district_code<- act.district_code;
-			shape 		<- act.element_shape;
-			location 	<- act.location;
-			type 		<- comm = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
-			status 		<- BUILT_DIKE_STATUS;
-			height 		<- BUILT_DIKE_HEIGHT;	
-			cells 		<- Cell overlapping self;
-			alt 		<- cells max_of(each.soil_height);
+			shape 	<- act.element_shape;
+			location <- act.location;
+			type 	<- comm = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
+			status 	<- BUILT_DIKE_STATUS;
+			height 	<- BUILT_DIKE_HEIGHT;	
+			cells 	<- Cell overlapping self;
+			alt 	<- cells max_of(each.soil_height);
 		}
 		Coastal_Defense new_dike <- first (tmp_dike);
 		act.element_id 		<-  new_dike.coast_def_id;
@@ -1276,20 +1277,20 @@ species Coastal_Defense {
 	}
 	
 	action init_coastal_def {
-		if status = ""  { status <- STATUS_GOOD; 			 } 
-		if type = '' 	{ type 	<- "Unknown";				 }
-		if height = 0.0 { height <- MIN_HEIGHT_DIKE;		 }
+		if status = ""  { status <- STATUS_GOOD; } 
+		if type = '' 	{ type 	<- "Unknown"; }
+		if height = 0.0 { height <- MIN_HEIGHT_DIKE; }
 		counter_status 	<- type = COAST_DEF_TYPE_DUNE ? rnd (STEPS_DEGRAD_STATUS_DUNE - 1) : rnd (STEPS_DEGRAD_STATUS_DIKE - 1);
-		cells 			<- Cell overlapping self;
+		cells 			<- Cell where (each overlaps self);
 		if type = COAST_DEF_TYPE_DUNE  {
 			height_before_ganivelle <- height;
 		}
-		do build_dike;
+		do build_coast_def;
 	}
 	
-	action build_dike {
-		// a dike raises soil around the highest cell / the altitude becomes the height of the heighest cell
-		alt <- cells max_of (each.soil_height);
+	action build_coast_def {
+		// a dike raises soil around the highest cell
+		alt <- cells max_of (each.soil_height);	
 		ask cells  {
 			soil_height <- myself.alt + myself.height;
 			soil_height_before_broken <- soil_height;
@@ -1305,6 +1306,7 @@ species Coastal_Defense {
 	action raise_dike {
 		do repaire_dike;
 		height 	<- height + RAISE_DIKE_HEIGHT; 
+		//alt 	<- alt + RAISE_DIKE_HEIGHT; 
 		ask cells {
 			soil_height <- soil_height + RAISE_DIKE_HEIGHT;
 			soil_height_before_broken <- soil_height;
@@ -1312,7 +1314,7 @@ species Coastal_Defense {
 		}
 	}
 	
-	action destroy_dike {
+	action destroy_coast_def {
 		ask Network_Game_Manager {
 			map<string,string> msg <- ["TOPIC"::ACTION_DIKE_DROPPED, "coast_def_id"::myself.coast_def_id];
 			loop dist over: District where (each.district_code = myself.district_code) {
@@ -1347,9 +1349,9 @@ species Coastal_Defense {
 			}
 			if height < height_before_ganivelle + H_MAX_GANIVELLE {
 				height 	<- height + H_DELTA_GANIVELLE;  // the dune raises by H_DELTA_GANIVELLE until it reaches H_MAX_GANIVELLE
-				alt 	<- alt + H_DELTA_GANIVELLE;
+				//alt 	<- alt + H_DELTA_GANIVELLE;
 				ask cells {
-					soil_height 			  <- soil_height + H_DELTA_GANIVELLE;
+					soil_height <- soil_height + H_DELTA_GANIVELLE;
 					soil_height_before_broken <- soil_height;
 					do init_cell_color();
 				}
@@ -1374,7 +1376,7 @@ species Coastal_Defense {
 			else if  status = STATUS_MEDIUM	{ p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM; }
 			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }	
 		}
-		else if type = COAST_DEF_TYPE_DUNE {
+		else if type = COAST_DEF_TYPE_DUNE  {
 			if      status = STATUS_BAD 	{ p <- PROBA_RUPTURE_DUNE_STATUS_BAD;	 }
 			else if status = STATUS_MEDIUM 	{ p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM; }
 			else 						 	{ p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }	
@@ -1387,16 +1389,21 @@ species Coastal_Defense {
 			rupture_area <- circle(RADIUS_RUPTURE#m,(cells[cIndex]).location);
 			// rupture is applied on relevant area cells
 			ask cells overlapping rupture_area {
-				if soil_height >= 0 {	soil_height <- max([0, soil_height - myself.height]);	}
+				if soil_height >= 0 {
+					soil_height <- max([0, soil_height - myself.height]);
+				}
 			}
-			write "rupture " + type + " n°" + coast_def_id + "(" + ", status " + status + ", height " + height + ", alt " + alt + ")";
-			write "rupture " + type + " n°" + coast_def_id + "(" + world.dist_code_sname_correspondance_table at (district_code)+ ", status " + status + ", height " + height + ", alt " + alt + ")";
+			write "rupture " + type + " n°" + coast_def_id + "(" + world.dist_code_sname_correspondance_table at district_code + ", status " + status + ", height " + height + ", alt " + alt + ")";
 		}
 	}
 	
 	action remove_rupture {
 		rupture <- 0;
-		ask cells overlapping rupture_area { if soil_height >= 0 { soil_height <- soil_height_before_broken; } }
+		ask cells overlapping rupture_area {
+			if soil_height >= 0 {
+				soil_height <- soil_height_before_broken;
+			}
+		}
 		rupture_area <- nil;
 	}
 	
@@ -1603,7 +1610,7 @@ species District {
 	list<Cell> cells;
 	 
 	int budget;
-	float tax_unit  <- float(tax_unit_table at district_name);
+	float tax_unit;
 	int received_tax <-0;
 	float round_actions_cost <- 0.0;
 	float round_given_money  <- 0.0;
@@ -1665,7 +1672,7 @@ species District {
 	action inform_budget_update {// inform about the budget (when the player side district reconnects)
 		ask Network_Game_Manager{
 			map<string,string> msg <- ["TOPIC"::DISTRICT_BUDGET_UPDATE];
-			put string(myself.budget) 	at: BUDGET			in: msg;
+			put string(myself.budget) at: BUDGET in: msg;
 			do send to: myself.district_code contents: msg;
 		}
 	}
@@ -1684,7 +1691,7 @@ species District {
 	action calculate_taxes {
 		received_tax <- int(self.current_population() * tax_unit);
 		budget <- budget + received_tax;
-		write district_name + "-> tax " + received_tax + "; budget "+ budget;
+		write district_name + " -> tax: " + received_tax + "; budget: "+ budget;
 	}
 	
 	action calculate_indicators_t0 {

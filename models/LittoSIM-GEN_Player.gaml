@@ -66,7 +66,9 @@ global{
 	int cell_height;
 	
 	init{		
-		create District from: districts_shape with:[district_code::string(read("dist_code")), district_name::string(read("dist_sname"))];
+		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
+			district_name <- world.dist_code_sname_correspondance_table at district_code;
+		}
 		active_district <- District first_with (each.district_code = active_district_code);
 		local_shape 	<- envelope(active_district);
 		tax_unit  		<- float(tax_unit_table at active_district_name); 
@@ -350,7 +352,7 @@ global{
 					}			
 				}
 			}
-			else {	do change_dike; }
+			else {	do change_coast_def; }
 		}
 	}
 	
@@ -407,44 +409,47 @@ global{
 		}
 	}
 	
-	action change_dike {
+	action change_coast_def {
 		point loc <- #user_location;
-		Coastal_Defense selected_dike <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
+		Coastal_Defense selected_codef <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
 		Button selected_button <- Button first_with(each.is_selected);
 		if(selected_button != nil){
 			if selected_button.command = ACTION_INSPECT {
 				return;
 			}else if selected_button.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
 				if basket_overflow() {return;}
-				do create_new_dike(loc, selected_button, selected_button.command);
+				do create_new_codef(loc, selected_button, selected_button.command);
 			}else {
-				if selected_dike = nil {return;}
+				if selected_codef = nil {return;}
 				if basket_overflow() {return;}
-				do modify_dike(selected_dike, selected_button);
+				do modify_coast_def(selected_codef, selected_button);
 			}
 		}
 	}
 	
-	action modify_dike (Coastal_Defense dk, Button but){
-		if dk != nil{
+	action modify_coast_def (Coastal_Defense codef, Button but){
+		if codef != nil{
 			ask my_basket { // an action on the same dike is already in the basket
-				if element_id = dk.coast_def_id {
+				if element_id = codef.coast_def_id {
 					return;
 				}
 			}
-			if dk.type = COAST_DEF_TYPE_DUNE and but.command != ACTION_INSTALL_GANIVELLE {return;} // nothing to do
-			if dk.type = COAST_DEF_TYPE_DIKE and but.command  = ACTION_INSTALL_GANIVELLE  {return;} // nothing to do
+			if codef.type = COAST_DEF_TYPE_DUNE and but.command != ACTION_INSTALL_GANIVELLE {return;} // nothing to do
+			if codef.type = COAST_DEF_TYPE_DIKE and but.command  = ACTION_INSTALL_GANIVELLE {return;} // nothing to do
 			
 			create Coastal_Defense_Action returns: action_list{
 				id 			<- world.get_action_id();
 				self.label 	<- but.label;
-				element_id 	<- dk.coast_def_id;
+				element_id 	<- codef.coast_def_id;
 				self.command<- but.command;
-				self.coast_def_type <- dk.type;
+				self.coast_def_type <- codef.type;
 				self.initial_application_round <- game_round  + world.delay_of_action(self.command);
-				element_shape 	<- dk.shape;
-				shape 			<- element_shape + 20#m;
-				cost 			<- but.action_cost * dk.length_coast_def;
+				element_shape 	<- codef.shape;
+				shape 	 		<- element_shape + 20#m;
+				cost 			<- but.action_cost * codef.length_coast_def;
+				if codef.type = COAST_DEF_TYPE_DUNE {
+					draw_around <- 50;
+				}
 			}
 			previous_clicked_point <- nil;
 			current_action <- first(action_list);
@@ -468,7 +473,7 @@ global{
 		}
 	}
 	
-	action create_new_dike (point loc, Button but, int comm){
+	action create_new_codef (point loc, Button but, int comm){
 		if(previous_clicked_point = nil){
 			previous_clicked_point <- loc;
 		}
@@ -483,6 +488,9 @@ global{
 				element_shape <- polyline([previous_clicked_point, loc]);
 				shape 		 <- element_shape;
 				cost 		 <- but.action_cost * shape.perimeter;
+				if coast_def_type = COAST_DEF_TYPE_DUNE {
+					draw_around <- 50;
+				}
 				// requesting the altitude of this future dike
 				map<string,string> mp <- ["REQUEST"::NEW_DIKE_ALT];
 				point end <- last (element_shape.points);
@@ -1615,6 +1623,7 @@ species Coastal_Defense_Action parent: Player_Action {
 	string action_type 	<- PLAYER_ACTION_TYPE_COAST_DEF;
 	string coast_def_type;
 	float altit <- 0.0;
+	int draw_around <- 20;
 		
 	rgb define_color {
 		switch(command){
@@ -1630,7 +1639,7 @@ species Coastal_Defense_Action parent: Player_Action {
 	
 	aspect map {
 		if active_display = COAST_DEF_DISPLAY and !is_applied {
-			draw 20#m around shape color: self = highlighted_action ? #red : (is_sent ? define_color() : #black);
+			draw draw_around#m around shape color: self = highlighted_action ? #red : (is_sent ? define_color() : #black);
 		}
 	}
 }
@@ -1946,7 +1955,8 @@ species Legend_Flood{
 	
 	aspect {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			start_location <- (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).location + {-300,500};
+			int py <- active_district_name = DISTRICT_AT_TOP ? -525 : 500 ;
+			start_location <- (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).location + {-300, py};
 			loop i from: 0 to: length(texts){
 				draw rectangle(rect_size) at: start_location + {i * rect_size.x,0} color: colors[i] border: #black;
 				draw texts[i] at: start_location + {(i * rect_size.x) - 120, 50} color: text_color size: rect_size.y;
@@ -1966,7 +1976,7 @@ experiment LittoSIM_GEN_Player type: gui{
 	
 	init {minimum_cycle_duration <- 0.5;}
 	
-	layout horizontal([vertical([0::75,1::25])::70, vertical([2::50,3::50])::30]) tabs: false toolbars: false;
+	layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]) tabs: false toolbars: false;
 	
 	output{
 		
@@ -2008,10 +2018,8 @@ experiment LittoSIM_GEN_Player type: gui{
 					xpx <- xpx+20;
 					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*explored_coast_def.alt)/100) + "m" at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 					xpx <- xpx+20;
-					if explored_coast_def.type = COAST_DEF_TYPE_DIKE {
-						draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*explored_coast_def.height)/100) + "m" at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
-						xpx <- xpx+20;
-					}
+					draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*explored_coast_def.height)/100) + "m" at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
+					xpx <- xpx+20;
 					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_' + explored_coast_def.status) at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 					draw "ID : "+ string(explored_coast_def.coast_def_id) at: target + {30#px, xpx#px + 55#px} font: regular color: # white;
 					
@@ -2035,10 +2043,8 @@ experiment LittoSIM_GEN_Player type: gui{
 					int xpx <-0;
 					draw world.get_message('PLY_MSG_LENGTH') + " : " + string(round(100*explored_coast_def_action.shape.perimeter)/100) + "m" at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 					xpx <- xpx+20;
-					if explored_coast_def_action.coast_def_type = COAST_DEF_TYPE_DIKE {
-						draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*explored_coast_def_action.altit)/100) + "m" at: target + {30#px, xpx#px +35#px} font: regular color: # white;
-						xpx <- xpx+20;
-					}
+					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*explored_coast_def_action.altit)/100) + "m" at: target + {30#px, xpx#px +35#px} font: regular color: # white;
+					xpx <- xpx+20;
 					draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*BUILT_DIKE_HEIGHT)/100.0) + "m" at: target + {30#px, xpx#px +35#px} font: regular color: # white;
 					xpx <- xpx+20;
 					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_GOOD') at: target + {30#px, xpx#px +35#px} font: regular color: # white;
