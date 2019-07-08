@@ -1,0 +1,18 @@
+<1.562521375019E12><1:1>Envoyer de l'argent a dolus -> L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez : 2000By
+<1.562521393012E12><1:2>Envoyer de l'argent a dolus -> L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez : 2000By
+<1.562521404485E12><1:2>Lever Const Retrodigue programmed at dolus -> Construire une digue(Player_Action(6))
+<1.5625214195E12><1:3>Lever Const Retrodigue programmed at stpierre -> Construire une digue(Player_Action(8))
+<1.562521473807E12><1:5>Envoyer de l'argent a dolus -> L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez : 20000By
+<1.562521479661E12><1:5>Envoyer de l'argent a stpierre -> L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez : 20000By
+<1.562521495934E12><1:5>Lever Exproprie programmed at stpierre -> Changer en zone naturelle(Player_Action(12))
+<1.562521536918E12><1:7>Lever Exproprie programmed at dolus -> Changer en zone naturelle(Player_Action(14))
+<1.562521536928E12><1:7>Lever Exproprie programmed at dolus -> Changer en zone naturelle(Player_Action(15))
+<1.56252153694E12><1:7>Lever Exproprie programmed at dolus -> Changer en zone naturelle(Player_Action(16))
+<1.562521536947E12><1:7>Lever Démantelle Digue programmed at dolus -> Démanteler une digue(Player_Action(17))
+<1.562521644611E12><1:10>Const Retrodigue triggered at dolus -> Avance de 1 Tour : -1 rounds(Player_Action(6))
+<1.562521659632E12><1:11>Const Retrodigue triggered at stpierre -> Avance de 1 Tour : -1 rounds(Player_Action(8))
+<1.562521736327E12><1:13>Lever Exproprie validated at stpierre -> Versement à la commune à hauteur de -25% du coût d'expropriation : -678By(Player_Action(12))
+<1.562521777383E12><1:15>Lever Exproprie validated at dolus -> Versement à la commune à hauteur de -25% du coût d'expropriation : -632By(Player_Action(14))
+<1.562521777391E12><1:15>Lever Démantelle Digue validated at dolus -> Versement à la commune à hauteur de -50% du coût de démantellement si a aussi exproprié : -57By(Player_Action(17))
+<1.562521777882E12><1:15>Lever Exproprie validated at dolus -> Versement à la commune à hauteur de -25% du coût d'expropriation : -400By(Player_Action(15))
+<1.562521778382E12><1:15>Lever Exproprie validated at dolus -> Versement à la commune à hauteur de -25% du coût d'expropriation : -469By(Player_Action(16))

@@ -149,6 +149,7 @@ global {
 		create Legend_Planning;
 		create Legend_Population;
 		create Legend_Map;
+		create Legend_Flood;
 	}
 	//------------------------------ End of init -------------------------------//
 	 	
@@ -259,6 +260,10 @@ global {
 	} 
 	
 	action replay_flood_event (int fe) {
+		if fe >= length(list_flooding_events) {
+			write "trying to replay a non existing event";
+			return;
+		}
 		string replayed_flooding_event  <- (list_flooding_events.keys)[fe];
 		write replayed_flooding_event;
 		ask Cell {
@@ -753,8 +758,8 @@ species Network_Game_Manager skills: [network]{
 						do inform_current_round;
 						do inform_budget_update;
 						do inform_LU_alts;
+						write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + district_name + " (" + id_dist + ")";
 					}
-					write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + id_dist;
 				}
 				match NEW_DIKE_ALT {
 					geometry new_tmp_dike <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
@@ -1788,6 +1793,24 @@ species Legend_Map parent: Legend_Planning {
 	}
 }
 
+species Legend_Flood parent: Legend_Planning {
+	init{
+		text_color <- #white;
+		texts <- [">1.0 m","","<0.5 m"];
+		colors<- [rgb(65,65,255),rgb(115,115,255),rgb(200,200,255)];
+	}
+	
+	aspect {
+		if show_max_water_height {
+			start_location <- LEGEND_POSITION = 'topleft' ? {2000, 1500} : {2000, 15750};
+			loop i from: 0 to: length(texts){
+				draw rectangle(rect_size) at: start_location + {0,i * rect_size.y} color: colors[i] border: #black;
+				draw texts[i] at: start_location + {175, (i * rect_size.y)+75} color: text_color size: rect_size.y;
+			}
+		}
+	}
+}
+
 species Road {	aspect base { draw shape color: rgb (125,113,53); } }
 
 species Isoline {	aspect base { draw shape color: #gray; } }
@@ -1830,6 +1853,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Land_Use 		aspect: conditional_outline;
 			species Button 			aspect: buttons_map;
 			species Legend_Map;
+			species Legend_Flood;
 			event mouse_down 		action: button_click_map;
 		}
 		

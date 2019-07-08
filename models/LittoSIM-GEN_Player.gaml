@@ -65,7 +65,9 @@ global{
 	int cell_width;
 	int cell_height;
 	
-	init{		
+	bool validate_clicked <- false;
+	
+	init{
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
 		}
@@ -117,6 +119,7 @@ global{
 		previous_population <- current_population();
 		MSG_WARNING 		<- get_message('MSG_WARNING');
 		create Legend_Flood;
+		write "++++++++++"+ACTION_MODIFY_LAND_COVER_U;
 	}
 	//------------------------------ End of init -------------------------------//
 	
@@ -969,7 +972,7 @@ species Basket parent: Displayed_List {
 		draw polygon([{0,0}, {0,0.1*ui_height}, {ui_width,header_height/2*ui_height}, {ui_width,0}, {0,0}]) 
 				at: {location.x + ui_width / 2, location.y + ui_height- header_height / 4 * ui_height} color: rgb(219,219,219);
 		
-		draw world.get_message('MSG_INITIAL_BUDGET') font: f0 color:rgb(101,101,101)
+		draw world.get_message('MSG_SOLDE') font: f0 color:rgb(101,101,101)
 						at: {location.x + ui_width - 170#px,location.y+ui_height-ui_height*header_height/4 #px};
 		draw "" + world.thousands_separator(int(final_budget)) font: f1 color:#black
 						at: {location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4 #px};
@@ -996,14 +999,17 @@ species Basket parent: Displayed_List {
 	}
 	
 	action on_mouse_down {
-		if(validation_button_location() distance_to #user_location < validation_button_size.x){
+		if !validate_clicked and validation_button_location() distance_to #user_location < validation_button_size.x {
+			validate_clicked <- true;
 			if game_round = 0 {
 				map<string,unknown> res <- user_input(MSG_WARNING, world.get_message('MSG_SIM_NOT_STARTED')::true);
+				validate_clicked <- false;
 				return;
 			}
 			if empty(game_basket.elements){
 				string msg <- world.get_message('PLR_EMPTY_BASKET');
 				map<string,unknown> res <- user_input(MSG_WARNING, msg::true);
+				validate_clicked <- false;
 				return;
 			}
 			if(budget - round(sum(my_basket collect(each.cost))) < minimal_budget){
@@ -1012,10 +1018,12 @@ species Basket parent: Displayed_List {
 					do user_msg (budget_display,INFORMATION_MESSAGE);
 				}
 				map<string,unknown> res <- user_input(MSG_WARNING, budget_display::true);
+				validate_clicked <- false;
 				return;
 			}
 			map<string,bool> vmap <- map<string,bool>(user_input(MSG_WARNING, world.get_message('PLR_VALIDATE_BASKET') +
 									"\n" + world.get_message('PLR_CHECK_BOX_VALIDATE')::false));
+			validate_clicked <- false;
 			if(vmap at vmap.keys[0]){
 				ask Network_Player{
 					do send_basket;
@@ -1976,9 +1984,9 @@ experiment LittoSIM_GEN_Player type: gui{
 	
 	init {minimum_cycle_duration <- 0.5;}
 	
-	layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]) tabs: false toolbars: false;
 	
 	output{
+		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]) tabs: false toolbars: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {

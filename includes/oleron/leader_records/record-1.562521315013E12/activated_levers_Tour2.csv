@@ -1,0 +1,3 @@
+cycle;name;location.x;location.y;location.z;name;p_action;activation_time;applied;id;district_code;lever_name;lever_explanation;p_action_id;added_delay;added_cost;round_creation;round_application
+211;Activated_Lever0;25.26178956032348;68.38121993913315;0.0;Activated_Lever0;Player_Action(6);1562521644483.0;false;1;17140;Const Retrodigue;;17140_4;0;0;1;0
+211;Activated_Lever1;43.51983371387346;27.022165121032838;0.0;Activated_Lever1;Player_Action(8);1562521659498.0;false;2;17385;Const Retrodigue;;17385_4;0;0;1;0
