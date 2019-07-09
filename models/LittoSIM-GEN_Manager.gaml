@@ -1246,7 +1246,8 @@ species Player_Action schedules:[]{
 			status 	<- BUILT_DIKE_STATUS;
 			height 	<- BUILT_DIKE_HEIGHT;	
 			cells 	<- Cell overlapping self;
-			alt 	<- cells max_of(each.soil_height);
+			//alt 	<- cells max_of(each.soil_height);
+			alt 	<- cells mean_of(each.soil_height);
 		}
 		Coastal_Defense new_dike <- first (tmp_dike);
 		act.element_id 		<-  new_dike.coast_def_id;
@@ -1317,9 +1318,9 @@ species Coastal_Defense {
 	
 	action build_coast_def {
 		// a dike raises soil around the highest cell
-		alt <- cells max_of (each.soil_height);	
+		//alt <- cells mean_of (each.soil_height);
 		ask cells  {
-			soil_height <- myself.alt + myself.height;
+			soil_height <- myself.alt;// + myself.height;
 			soil_height_before_broken <- soil_height;
 			do init_cell_color();
 		}
@@ -1333,7 +1334,7 @@ species Coastal_Defense {
 	action raise_dike {
 		do repaire_dike;
 		height 	<- height + RAISE_DIKE_HEIGHT; 
-		//alt 	<- alt + RAISE_DIKE_HEIGHT; 
+		alt 	<- alt + RAISE_DIKE_HEIGHT; 
 		ask cells {
 			soil_height <- soil_height + RAISE_DIKE_HEIGHT;
 			soil_height_before_broken <- soil_height;
@@ -1376,7 +1377,7 @@ species Coastal_Defense {
 			}
 			if height < height_before_ganivelle + H_MAX_GANIVELLE {
 				height 	<- height + H_DELTA_GANIVELLE;  // the dune raises by H_DELTA_GANIVELLE until it reaches H_MAX_GANIVELLE
-				//alt 	<- alt + H_DELTA_GANIVELLE;
+				alt 	<- alt + H_DELTA_GANIVELLE;
 				ask cells {
 					soil_height <- soil_height + H_DELTA_GANIVELLE;
 					soil_height_before_broken <- soil_height;
@@ -2118,42 +2119,42 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Previous flooded depth per area"{
-			chart "U Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
+			chart "U Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value: districts_in_game collect each.U_0_5c color: world.color_of_water_height(0.5);
-				data "1" value: districts_in_game collect each.U_1c color: world.color_of_water_height(0.9); 
-				data ">1" value: districts_in_game collect each.U_maxc color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect each.prev_U_0_5c color: world.color_of_water_height(0.5);
+				data "1" value: districts_in_game collect each.prev_U_1c color: world.color_of_water_height(0.9); 
+				data ">1" value: districts_in_game collect each.prev_U_maxc color: world.color_of_water_height(1.9); 
 			}
-			chart "U dense Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.25, 0}
+			chart "U dense Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.25, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.Udense_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.Udense_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.Udense_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value:(districts_in_game collect each.prev_Udense_0_5c) color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.prev_Udense_1c) color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.prev_Udense_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "Us Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.51, 0}
+			chart "Us Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.51, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.Us_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.Us_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.Us_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value:(districts_in_game collect each.prev_Us_0_5c) color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.prev_Us_1c) color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.prev_Us_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "AU Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.76, 0}
+			chart "AU Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.76, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.AU_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.AU_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.AU_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value:(districts_in_game collect each.prev_AU_0_5c) color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.prev_AU_1c) color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.prev_AU_maxc) color: world.color_of_water_height(1.9); 
 			}
 			
-			chart "A Area" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.165, 0.5}
+			chart "A Area" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.165, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true {
-				data "0.5" value:(districts_in_game collect each.A_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.A_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.A_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value:(districts_in_game collect each.prev_A_0_5c) color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.prev_A_1c) color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.prev_A_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "N Area" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.495, 0.5}
+			chart "N Area" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.495, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true{
-				data "0.5" value:(districts_in_game collect each.N_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.N_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.N_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value:(districts_in_game collect each.prev_N_0_5c) color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.prev_N_1c) color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.prev_N_maxc) color: world.color_of_water_height(1.9); 
 			}
 		}
 		

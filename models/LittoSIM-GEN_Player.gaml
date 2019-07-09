@@ -1,7 +1,7 @@
 //
 /**
  *  Commune
- *  Author: nicolas
+ *  Author: Ahmed
  *  Description: 
  */
 model Player
@@ -66,7 +66,7 @@ global{
 	int cell_height;
 	
 	bool validate_clicked <- false;
-
+	
 	init{
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
@@ -675,7 +675,7 @@ global{
 }
 //------------------------------ End of global -------------------------------//
 
-species Displayed_List_Element skills: [UI_location]{// schedules: [] {
+species Displayed_List_Element skills: [UI_location] {//schedules: [] {
 	int font_size 	<- DISPLAY_FONT_SIZE - 4;
 	//bool event <- false update: false;
 	string label 	<- "";
@@ -684,10 +684,10 @@ species Displayed_List_Element skills: [UI_location]{// schedules: [] {
 	int display_index;
 	image_file icon <- nil;
 	
-	reflex update
-	{
+	reflex update{
 		do refresh_me;
 	}
+	
 	action draw_item{
 		point pt 	<- location;
 		geometry rec2 <- polyline([{0,0}, {ui_width,0}]);		
@@ -767,11 +767,12 @@ species List_of_Elements parent: Displayed_List_Element {
 }
 //------------------------------ End of System_List_Element -------------------------------//
 
-species Message_Element parent: Displayed_List_Element {} //schedules:[] {}
+species Message_Element parent: Displayed_List_Element //schedules:[] 
+{}
 
 //------------------------------ End of Message_Console_Element -------------------------------//
 
-species Displayed_List skills: [UI_location]{// schedules: []{
+species Displayed_List skills: [UI_location] { //schedules: []{
 	int max_size 	<- 7;
 	int font_size 	<- 12;
 	float header_height 	<- 0.2;
@@ -784,10 +785,10 @@ species Displayed_List skills: [UI_location]{// schedules: []{
 	string display_name <- "";
 	bool show_header 	<- true;
 	
-	reflex update
-	{
+	reflex update{
 		do refresh_me;
 	}
+	
 	action move_down_event {
 		if up_item.is_displayed {
 			ask up_item   {do move_down_event;}
@@ -1073,7 +1074,7 @@ species History parent: Displayed_List { //schedules:[]{
 } 
 //------------------------------ End of History -------------------------------//
 
-species Message_Console parent: Displayed_List {// schedules:[]{
+species Message_Console parent: Displayed_List { //schedules:[]{
 	init{
 		font_size 	<- 11;
 		max_size 	<- 10;
@@ -1105,10 +1106,11 @@ species Message_Console parent: Displayed_List {// schedules:[]{
 
 species History_Left_Icon skills:[UI_location]{
 	image_file directory_icon <- file("../images/ihm/I_dossier.png");
-	reflex update
-	{
+	
+	reflex update{
 		do refresh_me;
 	}
+	
 	aspect base{
 		geometry rec <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
 		draw rec color: rgb(59, 124, 58) at: location;
@@ -1709,12 +1711,11 @@ species Button skills:[UI_location] {
 	point p;
 	image_file my_icon;
 	string help_msg;
-		
-	reflex update
-	{
+	
+	reflex update{
 		do refresh_me;
 	}
-	
+		
 	action init_button {
 		command 	<- int(data_action at action_name at 'action_code');
 		label 		<- world.label_of_action(command);
@@ -1893,10 +1894,10 @@ species Coastal_Defense {
 //------------------------------ End of Coastal_Defense -------------------------------//
 
 species Tab_Background skills: [UI_location]{
-	reflex update
-	{
+	reflex update{
 		do refresh_me;
 	}
+	
 	aspect base{
 		float increment 	<- active_district_name = DISTRICT_AT_TOP ? 0.8 : 0.0;
 		geometry rec1 		<- polygon([{0, 0}, {0, ui_height * 0.06}, {ui_width, ui_height * 0.06}, {ui_width, 0}, {0, 0}]);
@@ -1912,10 +1913,11 @@ species Tab_Background skills: [UI_location]{
 species Tab skills: [UI_location]{
 	string display_name;
 	string legend_name;
-	reflex update
-	{
+	
+	reflex update{
 		do refresh_me;
 	}
+	
 	aspect base{
 		float gem_height <- ui_height;
 		float gem_width  <- ui_width;
