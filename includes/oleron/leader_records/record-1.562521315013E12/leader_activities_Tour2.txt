@@ -1,4 +1,0 @@
-<1.562521375019E12><1:1>Envoyer de l'argent a dolus -> L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez : 2000By
-<1.562521393012E12><1:2>Envoyer de l'argent a dolus -> L'agence du risque finance une partie de vos pratiques de gestion integree des risques. Vous recevez : 2000By
-<1.562521404485E12><1:2>Lever Const Retrodigue programmed at dolus -> Construire une digue(Player_Action(6))
-<1.5625214195E12><1:3>Lever Const Retrodigue programmed at stpierre -> Construire une digue(Player_Action(8))

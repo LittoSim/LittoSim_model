@@ -1,0 +1,15 @@
+DEMfile         ../../includes/caen/floodfiles/inputs/caen_dem_R2_t1.562692151044E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+initial_tstep   10.0
+massint         100.0
+saveint         3600.0
+manningfile     ../../includes/caen/floodfiles/inputs/caen_rug_R2_t1.562692151044E12.asc
+bcifile         ../../includes/caen/floodfiles/caen2019.bci
+bdyfile         ../../includes/caen/floodfiles/caen2019.bdy
+startfile       ../../includes/caen/floodfiles/caen2019.start
+startelev
+elevoff
+SGC_enable
+
