@@ -1,4 +1,5 @@
-# STEP 1 - Install the Gama platform base
+# Install the LittoSIM environment
+## STEP 1 - Install the Gama platform base
 
 https://gama-platform.github.io/
 downloald
@@ -10,7 +11,7 @@ Click on Gama.exe or on Gama.app
 Choose a workspace directory as you please, but on the same drive as the gama-platform
 Click Yes if asked "Would you like to create a new workspace"
 
-# STEP 2 - Install the Gama extensions
+## STEP 2 - Install the Gama extensions
 In Gama, click on "Help -> Install new plugins"
 Choose Work with -> http://updates.gama-platform.org/experimental
 Choose   Optional components of GAMA	
@@ -19,7 +20,7 @@ Click on Next, and Next, then Accept the licence terms, then click on button Fin
 Click on Install Anyway, and then Restart now
 When Gama restarts, if requested, choose once again your Gama Workspace
 
-STEP3 - download LittoSIM 
+## STEP3 - download LittoSIM 
 Go to https://github.com/LittoSim/LittoSim_model
 On the left side, click on the gray button called "Branch: master", and choose "LittoDev"
 Then click "Clone or Download", then "download zip"
@@ -28,7 +29,7 @@ In Gama, right click on "User model", and choose Import->Gama Project
 Choose the directory you just unzipped
 Select the option "copy into workspace", then click on "Finish
 
-STEP4 - Download and Install ActiveMQ
+## STEP4 - Download and Install ActiveMQ
 Go to https://activemq.apache.org/
 Under ActiveMQ 5 "classic", choose download latest
 Choose adequateOS and download
@@ -36,8 +37,8 @@ Unzip the file where ever you like
 
 Well done ! you just finished installing the LittoSIM environment
 
-LAUNCH a littosim simulation
-STEP 1 - Start ActiveMQ
+# LAUNCH a littosim simulation
+## STEP 1 - Start ActiveMQ
 For a Windows version -> In your ActiveMQ folder, go to \bin\win64, and then launch wrapper.exe
 For a MAC version -> DIY
 STEP 2 - option -> play Locally
@@ -46,7 +47,7 @@ Click on the green button ">LittoSIM-GEN_Player"
 On the top menu, above the map, "Click on the green Play Button"
 Play!!
 
-STEP 2 - option -> connect to a remote Manager and play remotly (we assume that someone has a launch a littosim/manager remotly and as provide you with IP address)
+## STEP 2 - option -> connect to a remote Manager and play remotly (we assume that someone has a launch a littosim/manager remotly and as provide you with IP address)
 In Gama, choose under your User Models/LittoSIM folder the folder "Includes/config", then double click on "littosim.conf"
 In line "SERVER_ADDRESS;localhost;", replace "localhost",  by "192.168.1.100"
 Save this modification by "right click/ save ", or cltl+S
