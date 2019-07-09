@@ -37,20 +37,24 @@ Unzip the file where ever you like
 
 Well done ! you just finished installing the LittoSIM environment
 
-# LAUNCH a littosim simulation
+# Launch a littosim simulation
 ## STEP 1 - Start ActiveMQ
 For a Windows version -> In your ActiveMQ folder, go to \bin\win64, and then launch wrapper.exe
-For a MAC version -> DIY
-STEP 2 - option -> play Locally
+For a MAC version -> launch a terminal, go to the folder of ActiveMQ, then go to the folder bin/macosx/ then type ./activemq start
+
+## STEP 2 - option -> play Locally
 In Gama, choose under your User Models/LittoSIM folder the folder "Models", then double click on "LittoSIM-GEN Player.gaml"
 Click on the green button ">LittoSIM-GEN_Player"
 On the top menu, above the map, "Click on the green Play Button"
 Play!!
 
-## STEP 2 - option -> connect to a remote Manager and play remotly (we assume that someone has a launch a littosim/manager remotly and as provide you with IP address)
+## STEP 2 - option -> connect to a remote Manager and play remotly
+(we assume that someone has a launched littosim/manager remotly and has provided you with IP address)
+### Specify the IP address
 In Gama, choose under your User Models/LittoSIM folder the folder "Includes/config", then double click on "littosim.conf"
-In line "SERVER_ADDRESS;localhost;", replace "localhost",  by "192.168.1.100"
-Save this modification by "right click/ save ", or cltl+S
+In line "SERVER_ADDRESS;localhost;", replace "localhost",  by "192.168.1.100" (or other IP address provided by the LittoSIM-Manager)
+Save this modification by "right click/ save ", or ctrl+S
+### Launch LittoSIM player
 In Gama, choose under your User Models/LittoSIM folder the folder "Models", then double click on "LittoSIM-GEN Player.gaml"
 Click on the green button ">LittoSIM-GEN_Player"
 On the top menu, above the map, "Click on the green Play Button"
