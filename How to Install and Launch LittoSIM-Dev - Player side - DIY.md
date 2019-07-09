@@ -1,4 +1,4 @@
-STEP 1 - Install the Gama platform base
+# STEP 1 - Install the Gama platform base
 
 https://gama-platform.github.io/
 downloald
@@ -10,7 +10,7 @@ Click on Gama.exe or on Gama.app
 Choose a workspace directory as you please, but on the same drive as the gama-platform
 Click Yes if asked "Would you like to create a new workspace"
 
-STEP 2 - Install the Gama extensions
+# STEP 2 - Install the Gama extensions
 In Gama, click on "Help -> Install new plugins"
 Choose Work with -> http://updates.gama-platform.org/experimental
 Choose   Optional components of GAMA	
