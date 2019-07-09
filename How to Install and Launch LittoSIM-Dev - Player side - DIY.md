@@ -37,7 +37,7 @@ Unzip the file where ever you like
 
 Well done ! you just finished installing the LittoSIM environment
 
-# Launch a littosim simulation
+# Launch a LittoSIM simulation
 ## STEP 1 - Start ActiveMQ
 For a Windows version -> In your ActiveMQ folder, go to \bin\win64, and then launch wrapper.exe
 For a MAC version -> launch a terminal, go to the folder of ActiveMQ, then go to the folder bin/macosx/ then type ./activemq start
