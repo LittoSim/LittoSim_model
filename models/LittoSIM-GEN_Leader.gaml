@@ -49,7 +49,7 @@ global{
 		}
 		
 		do create_district_buttons_names;
-		do create_levers;		
+		do create_levers;
 		create Network_Leader;
 		create Lever_Window_Info;
 		create Lever_Window_Actions;
@@ -555,7 +555,7 @@ species Lever_Window_Actions {
 	point loca <- world.location;
 	geometry shape <- rectangle(30#m, 55#m);
 	
-	list<string> text_buttons <- ["",'LEV_CHANGE_TRESHOLD','LEV_CHANGER_PLAYER_MSG','LEV_CANCEL_NEXT_APP',
+	list<string> text_buttons <- ["",'LEV_CHANGE_TRESHOLD','LEV_CHANGE_PLAYER_MSG','LEV_CANCEL_NEXT_APP',
 				'LEV_VALIDATE_NEXT_APP','LEV_VALIDATE_ALL_APPS','LEV_ACTIVE_DEACTIVE','LEV_HOW_WORKS','LEV_CLOSE_WINDOW'];
 	
 	init {
@@ -563,7 +563,9 @@ species Lever_Window_Actions {
 		loop i from: 0 to: 8 {
 			create Lever_Window_Button {
 				command <- i ;
-				text <- world.get_message(myself.text_buttons [i]);
+				if myself.text_buttons [i] != "" {
+					text <- world.get_message(myself.text_buttons [i]);	
+				}
 				loca <- lo + {15, 7 + (i * 5.5)};
 				if i = 8 {	col <- #red; }
 			}
@@ -1414,8 +1416,11 @@ species District_Name {
 
 experiment LittoSIM_GEN_Leader {
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
+	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 	
-	init { minimum_cycle_duration <- 0.5; }
+	init {
+		minimum_cycle_duration <- 0.5;
+	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	

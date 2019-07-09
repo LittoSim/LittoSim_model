@@ -28,6 +28,7 @@ global{
 	string SHOW_LU_GRID				<- "SHOW_LU_GRID";
 	string SHOW_MAX_WATER_HEIGHT	<- "SHOW_MAX_WATER_HEIGHT";
 	string ONE_STEP					<- "ONE_STEP";
+	string SHOW_PREVIOUS_FLOODING	<- "SHOW_PREVIOUS_FLOODING";
 	
 	// Coastal defenses (dikes and dunes) evolution parameters
 	float H_MAX_GANIVELLE 				<- float(shapes_def["H_MAX_GANIVELLE"]); 				// A dune cannot exceed this height

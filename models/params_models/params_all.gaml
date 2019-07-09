@@ -5,7 +5,6 @@
 model paramsall
 
 global{
-	list<string> languages_list <- ['fr', 'en'];
 	// Configuration files
 	string config_file_name 				<- "../includes/config/littosim.conf"; 
 	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
@@ -82,20 +81,20 @@ global{
 							ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
 	
 	// List of actions with their parameters
-	int ACTION_REPAIR_DIKE 			 <- int(data_action at 'ACTION_REPAIR_DIKE' 			at 'action_code');
-	int ACTION_CREATE_DIKE 			 <- int(data_action at 'ACTION_CREATE_DIKE' 			at 'action_code');
-	int ACTION_DESTROY_DIKE 		 <- int(data_action at 'ACTION_DESTROY_DIKE' 			at 'action_code');
-	int ACTION_RAISE_DIKE 			 <- int(data_action at 'ACTION_RAISE_DIKE' 				at 'action_code');
-	int ACTION_INSTALL_GANIVELLE 	 <- int(data_action at 'ACTION_INSTALL_GANIVELLE' 		at 'action_code');
-	int ACTION_CREATE_DUNE 			 <- int(data_action at 'ACTION_CREATE_DUNE' 			at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_AU  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_A 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_A' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_U 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_U' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_N 	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_N' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_AUs <- int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs'	at 'action_code');	
-	int ACTION_MODIFY_LAND_COVER_Us	 <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code');
-	int ACTION_MODIFY_LAND_COVER_Ui  <- int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code');
-	int ACTION_EXPROPRIATION 		 <- int(data_action at 'ACTION_EXPROPRIATION' 			at 'action_code');
+	int ACTION_REPAIR_DIKE 			 <- data_action at 'ACTION_REPAIR_DIKE' != nil ? int(data_action at 'ACTION_REPAIR_DIKE' at 'action_code') : 0;
+	int ACTION_CREATE_DIKE 			 <- data_action at 'ACTION_CREATE_DIKE' != nil ? int(data_action at 'ACTION_CREATE_DIKE' at 'action_code') : 0;
+	int ACTION_DESTROY_DIKE 		 <- data_action at 'ACTION_DESTROY_DIKE' != nil ?int(data_action at 'ACTION_DESTROY_DIKE' at 'action_code') : 0;
+	int ACTION_RAISE_DIKE 			 <- data_action at 'ACTION_RAISE_DIKE' != nil ? int(data_action at 'ACTION_RAISE_DIKE' at 'action_code') : 0;
+	int ACTION_INSTALL_GANIVELLE 	 <- data_action at 'ACTION_INSTALL_GANIVELLE' != nil ?int(data_action at 'ACTION_INSTALL_GANIVELLE' at 'action_code') : 0;
+	int ACTION_CREATE_DUNE 			 <- data_action at 'ACTION_CREATE_DUNE' != nil ? int(data_action at 'ACTION_CREATE_DUNE' at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_AU  <- data_action at 'ACTION_MODIFY_LAND_COVER_AU' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_A 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_A' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_U 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_U' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_U' at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_N 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_N' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_N' at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_AUs <- data_action at 'ACTION_MODIFY_LAND_COVER_AUs' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs' at 'action_code') : 0;	
+	int ACTION_MODIFY_LAND_COVER_Us	 <- data_action at 'ACTION_MODIFY_LAND_COVER_Us' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_Ui  <- data_action at 'ACTION_MODIFY_LAND_COVER_Ui' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code') : 0;
+	int ACTION_EXPROPRIATION 		 <- data_action at 'ACTION_EXPROPRIATION'!= nil ? int(data_action at 'ACTION_EXPROPRIATION' at 'action_code') : 0;
 	
 	// Constant vars
 	string PLAYER_ACTION_TYPE_LU		<- "PLAYER_ACTION_TYPE_LU";

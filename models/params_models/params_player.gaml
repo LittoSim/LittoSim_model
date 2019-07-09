@@ -42,7 +42,7 @@ global{
 	string MSG_WARNING;
 	
 	string get_message(string code_msg){
-		return langs_def at code_msg at my_language;
+		return code_msg = 'na' ? "" : langs_def at code_msg at my_language;
 	}
 	
 }

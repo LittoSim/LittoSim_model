@@ -82,9 +82,9 @@ global{
 			do lock_agent_at ui_location: {0.075,0.5} display_name: GAMA_MESSAGES_DISPLAY ui_width: 0.15 ui_height: 1.0;
 		}
 		
-		create Basket  				{game_basket  <- self;}
-		create History				{game_history <- self;}
-		create Message_Console 		{game_console <- self;}
+		create Basket  			{game_basket  <- self;}
+		create History			{game_history <- self;}
+		create Message_Console 	{game_console <- self;}
 
 		do create_tabs;
 		create Network_Player;
@@ -115,11 +115,10 @@ global{
 			} else {do die;}
 		}
 
-		population_area 	<- union(Land_Use where(each.lu_name = "U" or each.lu_name = "AU"));
+		population_area <- union(Land_Use where(each.lu_name = "U" or each.lu_name = "AU"));
 		previous_population <- current_population();
-		MSG_WARNING 		<- get_message('MSG_WARNING');
+		MSG_WARNING <- get_message('MSG_WARNING');
 		create Legend_Flood;
-		write "++++++++++"+ACTION_MODIFY_LAND_COVER_U;
 	}
 	//------------------------------ End of init -------------------------------//
 	
@@ -1703,7 +1702,7 @@ species Button skills:[UI_location] {
 		command 	<- int(data_action at action_name at 'action_code');
 		label 		<- world.label_of_action(command);
 		action_cost <- world.cost_of_action(action_name);
-		help_msg 	<- world.get_message((data_action at action_name at 'button_help_message'));
+ 		help_msg 	<- world.get_message((data_action at action_name at 'button_help_message'));
 		my_icon 	<-  image_file(data_action at action_name at 'button_icon_file') ;
 	}
 	
@@ -1978,12 +1977,14 @@ experiment LittoSIM_GEN_Player type: gui{
 	font regular 			<- font("Helvetica", 14, # bold);
 	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
+	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 
 	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	
-	init {minimum_cycle_duration <- 0.5;}
-	
+	init {
+		minimum_cycle_duration <- 0.5;
+	}
 	
 	output{
 		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]) tabs: false toolbars: false;
