@@ -46,7 +46,7 @@ For a MAC version -> launch a terminal, go to the folder of ActiveMQ, then go to
 In Gama, choose under your User Models/LittoSIM folder the folder "Models", then double click on "LittoSIM-GEN Player.gaml"
 Click on the green button ">LittoSIM-GEN_Player"
 On the top menu, above the map, "Click on the green Play Button"
-Play!!
+*Play!!*
 
 ## STEP 2 - option -> connect to a remote Manager and play remotly
 (we assume that someone has a launched littosim/manager remotly and has provided you with IP address)
