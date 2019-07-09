@@ -43,9 +43,11 @@ For a Windows version -> In your ActiveMQ folder, go to \bin\win64, and then lau
 For a MAC version -> launch a terminal, go to the folder of ActiveMQ, then go to the folder bin/macosx/ then type ./activemq start
 
 ## STEP 2 - option -> play Locally
+### Launch LittoSIM player
 In Gama, choose under your User Models/LittoSIM folder the folder "Models", then double click on "LittoSIM-GEN Player.gaml"
 Click on the green button ">LittoSIM-GEN_Player"
 On the top menu, above the map, "Click on the green Play Button"
+
 *Play!!*
 
 ## STEP 2 - option -> connect to a remote Manager and play remotly
@@ -58,4 +60,5 @@ Save this modification by "right click/ save ", or ctrl+S
 In Gama, choose under your User Models/LittoSIM folder the folder "Models", then double click on "LittoSIM-GEN Player.gaml"
 Click on the green button ">LittoSIM-GEN_Player"
 On the top menu, above the map, "Click on the green Play Button"
-Play!!
+
+*Play!!*
