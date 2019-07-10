@@ -66,7 +66,6 @@ global{
 	int cell_height;
 	
 	bool validate_clicked <- false;
-	bool activemq_connect <- false;
 	
 	init{
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
@@ -116,17 +115,11 @@ global{
 		population_area <- union(Land_Use where(each.lu_name = "U" or each.lu_name = "AU"));
 		previous_population <- current_population();
 		MSG_WARNING <- get_message('MSG_WARNING');
+		create Network_Player;
+		create Network_Listener_To_Leader;
 		create Legend_Flood;
 	}
 	//------------------------------ End of init -------------------------------//
-	
-	action connect_to_server {
-		if activemq_connect and first(Network_Player) = nil{
-			create Network_Player;
-			create Network_Listener_To_Leader;
-			write "connected..";
-		}
-	}
 	
 	user_command "Refresh all the map" {
 		write "Refresh all";
@@ -698,7 +691,7 @@ species Displayed_List_Element skills: [UI_location] {//schedules: [] {
 		point pt 	<- location;
 		geometry rec2 <- polyline([{0,0}, {ui_width,0}]);		
 		geometry rec  <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
-		shape 		<- rec;
+	//	shape 		<- rec;
 		location 	<- pt;
 		draw rec   at: {location.x, location.y} color: rgb(233,233,233);
 		draw rec2  at: {location.x, location.y + ui_height / 2} color: #black;
@@ -1252,7 +1245,7 @@ species Network_Listener_To_Leader skills: [network] {
 	
 	init{do connect to: SERVER with_name: LISTENER_TO_LEADER;}
 	
-	reflex  wait_message {
+	reflex wait_message {
 		loop while:has_more_message(){
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
@@ -1724,8 +1717,9 @@ species Button skills:[UI_location] {
 	point p;
 	image_file my_icon;
 	string help_msg;
-	
+	float select_size <- 0.0 update: min([ui_width,ui_height]);
 	reflex update{
+		shape <- rectangle(select_size, select_size);
 		do refresh_me;
 	}
 		
@@ -1738,8 +1732,6 @@ species Button skills:[UI_location] {
 	}
 	
 	aspect map{
-		float select_size <- min([ui_width,ui_height]);
-		shape <- rectangle(select_size, select_size);
 		if(display_name = active_display or display_name = BOTH_DISPLAYS){
 			draw my_icon size: {select_size, select_size};
 			if(is_selected){
@@ -1926,17 +1918,18 @@ species Tab_Background skills: [UI_location]{
 species Tab skills: [UI_location]{
 	string display_name;
 	string legend_name;
+	float gem_height <- 0.0 update: ui_height;
+	float gem_width <- 0.0 update: ui_width;
+	float x 		 <- 0.0 update: location.x - ui_width / 2;
+	float y 		 <- 0.0 update: location.y - ui_height / 2;
 	
 	reflex update{
+		shape <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width, y + gem_height}, {x + gem_width, y}, {x, y}]);
+		
 		do refresh_me;
 	}
 	
 	aspect base{
-		float gem_height <- ui_height;
-		float gem_width  <- ui_width;
-		float x 		 <- location.x - ui_width / 2;
-		float y 		 <- location.y - ui_height / 2;
-		shape <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width, y + gem_height}, {x + gem_width, y}, {x, y}]);
 		
 		if(active_display = display_name){	
 			geometry rec2 <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width * 0.2, y + gem_height}, {x + gem_width * 0.225, y + gem_height * 1.2},
@@ -2003,7 +1996,11 @@ species Legend_Flood{
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
 			int py <- active_district_name = DISTRICT_AT_TOP ? -525 : 500 ;
 			start_location <- (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).location + {-300, py};
-			loop i from: 0 to: length(texts){
+<<<<<<< HEAD
+			loop i from: 0 to: length(texts) -1 {
+=======
+			loop i from: 0 to: length(texts)-1{
+>>>>>>> fc608e03e2ad67c0cb6e1295efef5394949f54a8
 				draw rectangle(rect_size) at: start_location + {i * rect_size.x,0} color: colors[i] border: #black;
 				draw texts[i] at: start_location + {(i * rect_size.x) - 120, 50} color: text_color size: rect_size.y;
 			}
@@ -2020,7 +2017,6 @@ experiment LittoSIM_GEN_Player type: gui{
 
 	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
 	parameter "Language choice : " var: my_language	<- default_language  among: languages_list;
-	parameter "Connect to Server : " var: activemq_connect <- false on_change: {ask world {do connect_to_server;}};
 	
 	init {
 		minimum_cycle_duration <- 0.01;
