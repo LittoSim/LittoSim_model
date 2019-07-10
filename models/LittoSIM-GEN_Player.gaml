@@ -676,23 +676,24 @@ global{
 
 species Displayed_List_Element skills: [UI_location] {//schedules: [] {
 	int font_size 	<- DISPLAY_FONT_SIZE - 4;
-	//bool event <- false update: false;
 	string label 	<- "";
 	Displayed_List my_parent;
 	bool is_displayed;
 	int display_index;
 	image_file icon <- nil;
+	geometry rec2;
+	geometry rec;
 	
 	reflex update{
+	//	point pt 	<- location;
+		 rec2 <- polyline([{0,0}, {ui_width,0}]);		
+		 rec  <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
+	//	shape 		<- rec;
+	//	location 	<- pt;
 		do refresh_me;
 	}
 	
 	action draw_item{
-		point pt 	<- location;
-		geometry rec2 <- polyline([{0,0}, {ui_width,0}]);		
-		geometry rec  <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
-	//	shape 		<- rec;
-		location 	<- pt;
 		draw rec   at: {location.x, location.y} color: rgb(233,233,233);
 		draw rec2  at: {location.x, location.y + ui_height / 2} color: #black;
 		draw label at: {location.x - ui_width / 2 + 2 * ui_height, location.y + (font_size/ 2) #px} font: font('Helvetica Neue', font_size, #bold) color: #black;
@@ -972,8 +973,8 @@ species Basket parent: Displayed_List {
 	}
 	
 	action draw_budget {
-		float gem_height <- ui_height * header_height / 2;
-		float gem_width  <- ui_width;
+		gem_height <- ui_height * header_height / 2;
+		gem_width  <- ui_width;
 		int mfont_size	 <- DISPLAY_FONT_SIZE - 2;
 		draw init_budget_label font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 150#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
 		draw " : " + world.thousands_separator(budget) font: f1 color: rgb(101,101,101)
@@ -986,7 +987,7 @@ species Basket parent: Displayed_List {
 		
 		draw solde_label font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 170#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 		draw " : " + world.thousands_separator(int(final_budget)) font: f1 color:#black
-						at: {location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+						at: {location.x + ui_width - 120#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 	}
 	
 	point validation_button_location (float msz){
@@ -1152,7 +1153,7 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 		font font1 <- font ('Helvetica Neue', font_size, #italic); 
 		
 		if(!current_action.is_applied) {
-			if(delay != 0){
+			if delay != 0 {
 				draw circle(bullet_size.x / 2) at: delay_location color: rgb(235,33,46);
 				draw "" + delay at: {delay_location.x - (font_size / 6)#px , delay_location.y + (font_size / 3)#px} color: #white font: font1;
 			}
@@ -1166,8 +1167,8 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 		rgb mc <- (final_price = initial_price) ? rgb(87,87,87): rgb(235,33,46);
 		draw "" + int(final_price) at: {price_location.x , price_location.y + (font_size / 3)#px} color: mc font: font1;
 		
-		if(highlighted_action = current_action){
-			geometry rec <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
+		if highlighted_action = current_action {
+			rec <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
 			draw rec at: {location.x, location.y} empty: true border: #red;
 		}
 	}
@@ -1192,8 +1193,7 @@ species Basket_Element parent: Displayed_List_Element {
 	
 	action on_mouse_down {
 		if button_location distance_to #user_location <= button_size.x {// Player wants to delete an action from the basket
-			write "ssssssssssssss";
-			
+			highlighted_action <- nil;
 			remove current_action from: ordered_action;
 			do remove_action;
 			remove current_action from: my_basket;
@@ -1208,12 +1208,7 @@ species Basket_Element parent: Displayed_List_Element {
 			}
 			do die;
 		} else {
-			if highlighted_action = current_action {
-				highlighted_action <- nil;
-			}
-			else {
-				highlighted_action <- current_action;
-			}
+			highlighted_action <-  highlighted_action = current_action  ? nil : current_action;
 		}
 	}
 	
@@ -1221,12 +1216,12 @@ species Basket_Element parent: Displayed_List_Element {
 		draw close_button at: button_location size: button_size ;
 		font font1 <- font ('Helvetica Neue', font_size, #bold ); 
 		
-		draw "" + world.thousands_separator(int(current_action.cost))  at: {button_location.x - 50#px, button_location.y + (font_size/ 2)#px}  color: #black font: font1;
+		draw "" + world.thousands_separator(int(current_action.cost))  at: {round(button_location.x) - 50#px, round(button_location.y) + (font_size/ 2)#px}  color: #black font: font1;
 		draw circle(bullet_size.x / 2) at: round_apply_location color: rgb(87,87,87);
-		draw "" + world.delay_of_action(current_action.command) at: {round_apply_location.x - (font_size / 6)#px , round_apply_location.y + (font_size / 3)#px} color: #white font: font1;
+		draw "" + world.delay_of_action(current_action.command) at: {round(round_apply_location.x) - (font_size / 6)#px , round(round_apply_location.y) + (font_size / 3)#px} color: #white font: font1;
 	
 		if location != nil and highlighted_action = current_action {
-			geometry rec <- polygon([{0, 0}, {0, ui_height}, {ui_width, ui_height}, {ui_width, 0},{0, 0}]);
+			rec <- polygon([{0, 0}, {0, ui_height}, {ui_width, ui_height}, {ui_width, 0},{0, 0}]);
 			draw rec at: {location.x, location.y} empty: true border: #red;
 		}
 	}
