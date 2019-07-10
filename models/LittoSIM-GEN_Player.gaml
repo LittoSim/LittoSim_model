@@ -66,6 +66,7 @@ global{
 	int cell_height;
 	
 	bool validate_clicked <- false;
+	bool activemq_connect <- false;
 	
 	init{
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
@@ -86,10 +87,7 @@ global{
 		create History			{game_history <- self;}
 		create Message_Console 	{game_console <- self;}
 
-		do create_tabs;
-		create Network_Player;
-		create Network_Listener_To_Leader;
-		
+		do create_tabs;		
 		do create_buttons;	
 										
 		create Coastal_Defense from: coastal_defenses_shape with: [coast_def_id::int(read("ID")),type::string(read("type")),
@@ -121,6 +119,14 @@ global{
 		create Legend_Flood;
 	}
 	//------------------------------ End of init -------------------------------//
+	
+	action connect_to_server {
+		if activemq_connect and first(Network_Player) = nil{
+			create Network_Player;
+			create Network_Listener_To_Leader;
+			write "connected..";
+		}
+	}
 	
 	user_command "Refresh all the map" {
 		write "Refresh all";
@@ -944,6 +950,9 @@ species Basket parent: Displayed_List {
 	string display_name <- GAMA_BASKET_DISPLAY;
 	int budget 		   -> {world.budget};
 	float final_budget -> {world.budget - sum(elements collect((Basket_Element(each).current_action).actual_cost))};
+	string init_budget_label;
+	string solde_label;
+	string validate_label;
 	
 	point validation_button_size <- {0, 0};
 	
@@ -952,11 +961,14 @@ species Basket parent: Displayed_List {
 		point p 	<- {0.0, 0.0};
 		do lock_agent_at ui_location: p display_name: display_name ui_width: 1.0 ui_height: 1.0 ;
 		do create_navigation_items;
+		init_budget_label <- world.get_message('MSG_INITIAL_BUDGET');
+		solde_label <- world.get_message('MSG_SOLDE');
+		validate_label <- world.get_message('PLY_MSG_VALIDATE');
 	}
 	
 	action add_action_to_basket (Player_Action act){
 	  	create Basket_Element returns: elem {
-			label 	<- act.label;
+			label <- act.label;
 			if act.is_applied or !(act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]) {
 				label <- label + " (" + act.element_id +")";	
 			}
@@ -970,9 +982,8 @@ species Basket parent: Displayed_List {
 		float gem_height <- ui_height * header_height / 2;
 		float gem_width  <- ui_width;
 		int mfont_size	 <- DISPLAY_FONT_SIZE - 2;
-		draw world.get_message('MSG_INITIAL_BUDGET') font: f0
-					color: rgb(101,101,101) at: {location.x + ui_width - 150#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
-		draw "" + world.thousands_separator(budget) font: f1 color: rgb(101,101,101)
+		draw init_budget_label font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 150#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
+		draw " : " + world.thousands_separator(budget) font: f1 color: rgb(101,101,101)
 						at: {location.x + ui_width - 70#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
 	}
 	
@@ -980,15 +991,14 @@ species Basket parent: Displayed_List {
 		draw polygon([{0,0}, {0,0.1*ui_height}, {ui_width,header_height/2*ui_height}, {ui_width,0}, {0,0}]) 
 				at: {location.x + ui_width / 2, location.y + ui_height- header_height / 4 * ui_height} color: rgb(219,219,219);
 		
-		draw world.get_message('MSG_SOLDE') font: f0 color:rgb(101,101,101)
-						at: {location.x + ui_width - 170#px,location.y+ui_height-ui_height*header_height/4 #px};
-		draw "" + world.thousands_separator(int(final_budget)) font: f1 color:#black
-						at: {location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4 #px};
+		draw solde_label font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 170#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		draw " : " + world.thousands_separator(int(final_budget)) font: f1 color:#black
+						at: {location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 	}
 	
-	point validation_button_location(float msz){
-		int index 	<- min([length(elements), max_size]) ;
-		float mx<- first(Basket collect(each.location.x)) + ui_width - 20#px;
+	point validation_button_location (float msz){
+		int index <- min([length(elements), max_size]) ;
+		float mx <- first(Basket collect(each.location.x)) + ui_width - 20#px;
 		float sz 	<- element_height * ui_height;
 		point p 	<- {mx /*ui_width - msz * 0.75*/, location.y + (index * sz) + (header_height * ui_height) + (0.75 * element_height * ui_height)};
 		return p;
@@ -1003,7 +1013,7 @@ species Basket parent: Displayed_List {
 		
 		int mfont <- DISPLAY_FONT_SIZE - 2;
 		font font1 <- font ('Helvetica Neue', mfont, #plain ); 
-		draw world.get_message('PLY_MSG_VALIDATE') at: {location.x + ui_width - 140#px, pt.y + ((DISPLAY_FONT_SIZE - 4) / 2)#px} size: {sz*0.8, sz*0.8} font: f0 color: #black;
+		draw validate_label at: {location.x + ui_width - 140#px, pt.y + ((DISPLAY_FONT_SIZE - 4) / 2)#px} size: {sz*0.8, sz*0.8} font: f0 color: #black;
 		draw " " + world.thousands_separator(int(budget - final_budget)) at: {location.x + ui_width - 90#px, pt.y + (mfont / 2)#px} size: {sz*0.8, sz*0.8} font: font1 color: #black;
 	}
 	
@@ -1131,10 +1141,11 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 	float final_price   -> {current_action.actual_cost};
 	float initial_price -> {current_action.cost};
 	point bullet_size   <- point(0,0)	update: {ui_height*0.6, ui_height*0.6};
-	
+
 	point delay_location <- point(0,0)		update: {location.x + 2 * ui_width / 5, location.y};
 	point round_apply_location<- point(0,0) 	update: {ui_width - (1.5 * bullet_size.x) /*location.x + 1.3 * ui_width / 5*/, location.y};
 	point price_location <- point(0,0)  update: {location.x + ui_width / 2 - 40#px, location.y};
+	
 	Player_Action current_action;
 	
 	action on_mouse_down{
@@ -1176,6 +1187,7 @@ species Basket_Element parent: Displayed_List_Element {
 	point button_location 	<- point(0,0) update: {location.x + ui_width / 2 - (button_size.x), location.y};
 	Player_Action current_action <- nil;
 	image_file close_button <- file("../images/ihm/I_close.png");
+	
 	point bullet_size 			<- point(0,0) update: {ui_height*0.6, ui_height*0.6};
 	point round_apply_location  <- point(0,0) update: {location.x + 1.3 * ui_width / 5, location.y};
 	
@@ -1648,13 +1660,13 @@ species Coastal_Defense_Action parent: Player_Action {
 	int draw_around <- 20;
 		
 	rgb define_color {
-		switch(command){
+		switch command {
 			 match ACTION_CREATE_DIKE 		{return #black; }
 			 match ACTION_REPAIR_DIKE 		{return #green; }
 			 match ACTION_DESTROY_DIKE 		{return #orange;}
 			 match ACTION_RAISE_DIKE 		{return #blue;  }
 			 match ACTION_INSTALL_GANIVELLE {return #indigo;}
-			 match ACTION_CREATE_DUNE		{return #gold; }
+			 match ACTION_CREATE_DUNE		{return #gold;  }
 		} 
 		return #grey;
 	}
@@ -1671,13 +1683,13 @@ species Land_Use_Action parent: Player_Action {
 	string action_type <- PLAYER_ACTION_TYPE_LU;
 	
 	rgb define_color {
-		switch(command){
+		switch command {
 			 match ACTION_MODIFY_LAND_COVER_A {return rgb(245,147,49);}
 			 match ACTION_MODIFY_LAND_COVER_N {return rgb(11,103,59); }
 			 match_one [ACTION_MODIFY_LAND_COVER_AU,
 			 			ACTION_MODIFY_LAND_COVER_AUs,
 			 			ACTION_MODIFY_LAND_COVER_Us,
-			 			ACTION_MODIFY_LAND_COVER_Ui] {return rgb(0,129,161);}
+			 			ACTION_MODIFY_LAND_COVER_Ui] {return #lightgray;}
 		} 
 		return #grey;
 	}
@@ -2007,10 +2019,11 @@ experiment LittoSIM_GEN_Player type: gui{
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 
 	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
-	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
+	parameter "Language choice : " var: my_language	<- default_language  among: languages_list;
+	parameter "Connect to Server : " var: activemq_connect <- false on_change: {ask world {do connect_to_server;}};
 	
 	init {
-		minimum_cycle_duration <- 0.5;
+		minimum_cycle_duration <- 0.01;
 	}
 	
 	output{

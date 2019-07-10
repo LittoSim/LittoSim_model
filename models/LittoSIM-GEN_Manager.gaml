@@ -139,19 +139,26 @@ global {
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
-		
-		// Create Network agents
-		if activemq_connect {
-			create Network_Control_Manager;
-			create Network_Listener_To_Leader;
-			create Network_Game_Manager;
-		}
+
 		create Legend_Planning;
 		create Legend_Population;
 		create Legend_Map;
 		create Legend_Flood;
 	}
 	//------------------------------ End of init -------------------------------//
+	
+	action connect_to_server {
+		if activemq_connect and first(Network_Control_Manager) = nil {
+			create Network_Control_Manager;
+			create Network_Listener_To_Leader;
+			create Network_Game_Manager;
+			write "connected..";
+		}
+	}
+	
+	action save_user_actions {
+		write log_user_action;
+	}
 	 	
 	int getMessageID{
  		messageID <- messageID +1;
@@ -786,7 +793,8 @@ species Network_Game_Manager skills: [network]{
 				match NEW_DIKE_ALT {
 					geometry new_tmp_dike <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
-					float altit <- (Cell overlapping new_tmp_dike) max_of(each.soil_height);
+					//float altit <- (Cell overlapping new_tmp_dike) max_of(each.soil_height);
+					float altit <- (Cell overlapping new_tmp_dike) mean_of(each.soil_height);
 					ask Network_Game_Manager{
 						map<string,string> mpp <- ["TOPIC"::NEW_DIKE_ALT];
 						put string(altit)  		at: "altit" 	in: mpp;
@@ -857,7 +865,7 @@ species Network_Game_Manager skills: [network]{
 			if self.should_be_applied and !self.should_wait_lever_to_activate {
 				int id_dist <- world.district_id (district_code);
 				bool acknowledge <- false;
-				switch(command){
+				switch command {
 					match_one [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]{	
 						ask create_dike (self, command) {
 							do build_coast_def;
@@ -865,50 +873,72 @@ species Network_Game_Manager skills: [network]{
 						}
 					}
 					match ACTION_REPAIR_DIKE {
-						ask Coastal_Defense first_with(each.coast_def_id = element_id){
-							do repaire_dike;
-							not_updated <- true;
-							acknowledge <- true;
+						Coastal_Defense cd <- Coastal_Defense first_with(each.coast_def_id = element_id);
+						if cd != nil {
+							ask cd {
+								do repaire_dike;
+								not_updated <- true;
+								acknowledge <- true;
+							}
 						}
+						
 					}
 				 	match ACTION_DESTROY_DIKE {
-				 		ask Coastal_Defense first_with(each.coast_def_id = element_id){
-							not_updated <- true;
-							acknowledge <- true;
-							do destroy_coast_def;
+				 		Coastal_Defense cd <- Coastal_Defense first_with(each.coast_def_id = element_id);
+						if cd != nil {
+							ask cd {
+								not_updated <- true;
+								acknowledge <- true;
+								do destroy_coast_def;
+							
+							}
 						}		
 					}
 				 	match ACTION_RAISE_DIKE {
-				 		ask Coastal_Defense first_with(each.coast_def_id = element_id){
-							do raise_dike;
-							not_updated <- true;
-							acknowledge <- true;
+				 		Coastal_Defense cd <- Coastal_Defense first_with(each.coast_def_id = element_id);
+						if cd != nil {
+							ask cd {
+								do raise_dike;
+								not_updated <- true;
+								acknowledge <- true;	
+							}
 						}
 					}
 					match ACTION_INSTALL_GANIVELLE {
-					 	ask Coastal_Defense first_with(each.coast_def_id = element_id){
-							do install_ganivelle;
-							not_updated <- true;
-							acknowledge <- true;
+					 	Coastal_Defense cd <- Coastal_Defense first_with(each.coast_def_id = element_id);
+						if cd != nil {
+							ask cd {
+								do install_ganivelle;
+								not_updated <- true;
+								acknowledge <- true;
+								
+							}
 						}
 					}
 					match_one [ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
 								ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs] {
-						ask Land_Use first_with(each.id = element_id){
-				 			do modify_LU (world.lu_name_of_command(myself.command));
-				 		  	not_updated <- true;
-				 		  	acknowledge <- true;
+						Land_Use luse <- Land_Use first_with(each.id = element_id);
+						if luse != nil {
+							ask luse {
+					 			do modify_LU (world.lu_name_of_command(myself.command));
+					 		  	not_updated <- true;
+					 		  	acknowledge <- true;
+					 		  	
+					 		}
 				 		}
 					}
 				 	match ACTION_MODIFY_LAND_COVER_Ui {
-				 		ask Land_Use first_with(each.id = element_id){
-				 			is_in_densification <- true;
-				 		 	not_updated <- true;
-				 		 	acknowledge <- true;
+				 		Land_Use luse <- Land_Use first_with(each.id = element_id);
+						if luse != nil {
+							ask luse {
+					 			is_in_densification <- true;
+					 		 	not_updated <- true;
+					 		 	acknowledge <- true;	
+					 		 }
 				 		 }
 				 	 }
 				}
-				if(acknowledge) {
+				if acknowledge {
 					ask Network_Game_Manager { do acknowledge_application_of_player_action(myself); }
 				}
 				is_alive 	<- false; 
@@ -1865,8 +1895,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	init { minimum_cycle_duration <- 0.5; }
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Log User Actions" 	var: log_user_action <- true;
-	parameter "Connect to ActiveMQ" var: activemq_connect<- true;
+	parameter "Log User Actions" 	var: log_user_action <- false on_change: {ask world{do save_user_actions;}};
+	parameter "Connect to ActiveMQ" var: activemq_connect <- false on_change: {ask world{do connect_to_server;}};
 	
 	list<string> budget_lbls <- ["Taxes","Given","Taken","Actions","Levers"];
 	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen];

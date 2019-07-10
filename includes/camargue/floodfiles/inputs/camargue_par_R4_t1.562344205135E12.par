@@ -1,0 +1,15 @@
+DEMfile         ../../includes/camargue/floodfiles/inputs/camargue_dem_R4_t1.562344205135E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+initial_tstep   10.0
+massint         100.0
+saveint         3600.0
+manningfile     ../../includes/camargue/floodfiles/inputs/camargue_rug_R4_t1.562344205135E12.asc
+bcifile         ../../includes/camargue/floodfiles/camargue2019.bci
+bdyfile         ../../includes/camargue/floodfiles/camargue2019_Xynthia-80.bdy
+startfile       ../../includes/camargue/floodfiles/camargue2019.start
+startelev
+elevoff
+SGC_enable
+
