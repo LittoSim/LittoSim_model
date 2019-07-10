@@ -19,7 +19,6 @@ global{
 	Lever selected_lever;
 	Lever explored_lever;
 	list<species<Lever>> all_levers <- [];
-	bool activemq_connect <- false;
 	
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
 								  'LEVER_GANIVELLE', 'LEVER_Us_COAST_BORDER_RISK_AREA', 'LEVER_Us_COAST_BORDER_AREA', 'LEVER_Us_RISK_AREA', 'LEVER_INLAND_DIKE',
@@ -51,18 +50,12 @@ global{
 		
 		do create_district_buttons_names;
 		do create_levers;
+		create Network_Leader;
 		
 		create Lever_Window_Info;
 		create Lever_Window_Actions;
 	}
 	//------------------------------ end of init -------------------------------//
-	
-	action connect_to_server {
-		if activemq_connect and first(Network_Leader) = nil{
-			create Network_Leader;
-			write "connected..";
-		}
-	}
 	
 	action create_district_buttons_names{
 		loop i from: 0 to: 3 {
@@ -1431,7 +1424,6 @@ experiment LittoSIM_GEN_Leader {
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Connect to Server : " var: activemq_connect <- false on_change: {ask world {do connect_to_server;}};
 	
 	output{
 		display levers{
