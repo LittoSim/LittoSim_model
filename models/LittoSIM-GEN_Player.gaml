@@ -985,18 +985,20 @@ species Basket parent: Displayed_List {
 						at: {location.x + ui_width - 80#px,location.y+ui_height-ui_height*header_height/4 #px};
 	}
 	
-	point validation_button_location{
+	point validation_button_location(float msz){
 		int index 	<- min([length(elements), max_size]) ;
+		float mx<- first(Basket collect(each.location.x)) + ui_width - 20#px;
 		float sz 	<- element_height * ui_height;
-		point p 	<- {ui_width - sz * 0.75, location.y + (index * sz) + (header_height * ui_height) + (0.75 * element_height * ui_height)};
+		point p 	<- {mx /*ui_width - msz * 0.75*/, location.y + (index * sz) + (header_height * ui_height) + (0.75 * element_height * ui_height)};
 		return p;
 	}
 	
 	action draw_valid_button {
-		point pt 		 <- validation_button_location();
 		float sz 		 <- element_height*ui_height;
-		image_file icone <- file("../images/ihm/I_valider.png");
+		write "element "+ sz;
 		validation_button_size <- {sz * 0.8, sz * 0.8};
+		point pt 		 <- validation_button_location(validation_button_size.x);
+		image_file icone <- file("../images/ihm/I_valider.png");
 		draw icone at: pt size: validation_button_size;
 		
 		int mfont <- DISPLAY_FONT_SIZE - 2;
@@ -1006,7 +1008,7 @@ species Basket parent: Displayed_List {
 	}
 	
 	action on_mouse_down {
-		if !validate_clicked and validation_button_location() distance_to #user_location < validation_button_size.x {
+		if !validate_clicked and validation_button_location(validation_button_size.x) distance_to #user_location < validation_button_size.x {
 			validate_clicked <- true;
 			if game_round = 0 {
 				map<string,unknown> res <- user_input(MSG_WARNING, world.get_message('MSG_SIM_NOT_STARTED')::true);
@@ -1127,11 +1129,11 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 	int delay -> {current_action.added_delay};
 	float final_price   -> {current_action.actual_cost};
 	float initial_price -> {current_action.cost};
-	point bullet_size   -> {ui_height*0.6, ui_height*0.6};
+	point bullet_size   <- point(0,0)	update: {ui_height*0.6, ui_height*0.6};
 	
-	point delay_location 		-> {location.x + 2 * ui_width / 5, location.y};
-	point round_apply_location 	-> {location.x + 1.3 * ui_width / 5, location.y};
-	point price_location 		-> {location.x + ui_width / 2 - 40#px, location.y};
+	point delay_location <- point(0,0)		update: {location.x + 2 * ui_width / 5, location.y};
+	point round_apply_location<- point(0,0) 	update: {ui_width - (1.5 * bullet_size.x) /*location.x + 1.3 * ui_width / 5*/, location.y};
+	point price_location <- point(0,0)  update: {location.x + ui_width / 2 - 40#px, location.y};
 	Player_Action current_action;
 	
 	action on_mouse_down{
@@ -1169,12 +1171,12 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 
 species Basket_Element parent: Displayed_List_Element {
 	int font_size 			<- 12;
-	point button_size 		-> {ui_height * 0.6, ui_height * 0.6};
-	point button_location 	-> {location.x + ui_width / 2 - (button_size.x), location.y};
+	point button_size 		<- point(0,0) update: {ui_height * 0.6, ui_height * 0.6};
+	point button_location 	<- point(0,0) update: {location.x + ui_width / 2 - (button_size.x), location.y};
 	Player_Action current_action <- nil;
 	image_file close_button <- file("../images/ihm/I_close.png");
-	point bullet_size 			-> {ui_height*0.6, ui_height*0.6};
-	point round_apply_location  -> {location.x + 1.3 * ui_width / 5, location.y};
+	point bullet_size 			<- point(0,0) update: {ui_height*0.6, ui_height*0.6};
+	point round_apply_location  <- point(0,0) update: {location.x + 1.3 * ui_width / 5, location.y};
 	
 	action remove_action{
 		ask my_parent{
