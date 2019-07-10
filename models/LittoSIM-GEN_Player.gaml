@@ -692,7 +692,7 @@ species Displayed_List_Element skills: [UI_location] {//schedules: [] {
 		point pt 	<- location;
 		geometry rec2 <- polyline([{0,0}, {ui_width,0}]);		
 		geometry rec  <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
-		shape 		<- rec;
+	//	shape 		<- rec;
 		location 	<- pt;
 		draw rec   at: {location.x, location.y} color: rgb(233,233,233);
 		draw rec2  at: {location.x, location.y + ui_height / 2} color: #black;
@@ -1712,8 +1712,9 @@ species Button skills:[UI_location] {
 	point p;
 	image_file my_icon;
 	string help_msg;
-	
+	float select_size <- 0.0 update: min([ui_width,ui_height]);
 	reflex update{
+		shape <- rectangle(select_size, select_size);
 		do refresh_me;
 	}
 		
@@ -1726,8 +1727,6 @@ species Button skills:[UI_location] {
 	}
 	
 	aspect map{
-		float select_size <- min([ui_width,ui_height]);
-		shape <- rectangle(select_size, select_size);
 		if(display_name = active_display or display_name = BOTH_DISPLAYS){
 			draw my_icon size: {select_size, select_size};
 			if(is_selected){
@@ -1914,17 +1913,18 @@ species Tab_Background skills: [UI_location]{
 species Tab skills: [UI_location]{
 	string display_name;
 	string legend_name;
+	float gem_height <- 0.0 update: ui_height;
+	float gem_width <- 0.0 update: ui_width;
+	float x 		 <- 0.0 update: location.x - ui_width / 2;
+	float y 		 <- 0.0 update: location.y - ui_height / 2;
 	
 	reflex update{
+		shape <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width, y + gem_height}, {x + gem_width, y}, {x, y}]);
+		
 		do refresh_me;
 	}
 	
 	aspect base{
-		float gem_height <- ui_height;
-		float gem_width  <- ui_width;
-		float x 		 <- location.x - ui_width / 2;
-		float y 		 <- location.y - ui_height / 2;
-		shape <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width, y + gem_height}, {x + gem_width, y}, {x, y}]);
 		
 		if(active_display = display_name){	
 			geometry rec2 <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width * 0.2, y + gem_height}, {x + gem_width * 0.225, y + gem_height * 1.2},
