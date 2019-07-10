@@ -144,17 +144,11 @@ global {
 		create Legend_Population;
 		create Legend_Map;
 		create Legend_Flood;
+		create Network_Control_Manager;
+		create Network_Listener_To_Leader;
+		create Network_Game_Manager;
 	}
 	//------------------------------ End of init -------------------------------//
-	
-	action connect_to_server {
-		if activemq_connect and first(Network_Control_Manager) = nil {
-			create Network_Control_Manager;
-			create Network_Listener_To_Leader;
-			create Network_Game_Manager;
-			write "connected..";
-		}
-	}
 	
 	action save_user_actions {
 		write log_user_action;
@@ -769,7 +763,7 @@ species Network_Game_Manager skills: [network]{
 		do connect to: SERVER with_name: GAME_MANAGER;
 	}
 	
-	reflex wait_message when: activemq_connect{
+	reflex wait_message {
 		loop while: has_more_message(){
 			message msg <- fetch_message();
 			string m_sender <- msg.sender;
@@ -1896,7 +1890,6 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	parameter "Log User Actions" 	var: log_user_action <- false on_change: {ask world{do save_user_actions;}};
-	parameter "Connect to ActiveMQ" var: activemq_connect <- false on_change: {ask world{do connect_to_server;}};
 	
 	list<string> budget_lbls <- ["Taxes","Given","Taken","Actions","Levers"];
 	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen];
