@@ -996,7 +996,6 @@ species Basket parent: Displayed_List {
 	
 	action draw_valid_button {
 		float sz 		 <- element_height*ui_height;
-		write "element "+ sz;
 		validation_button_size <- {sz * 0.8, sz * 0.8};
 		point pt 		 <- validation_button_location(validation_button_size.x);
 		image_file icone <- file("../images/ihm/I_valider.png");
