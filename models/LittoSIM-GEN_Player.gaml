@@ -1996,11 +1996,8 @@ species Legend_Flood{
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
 			int py <- active_district_name = DISTRICT_AT_TOP ? -525 : 500 ;
 			start_location <- (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).location + {-300, py};
-<<<<<<< HEAD
+
 			loop i from: 0 to: length(texts) -1 {
-=======
-			loop i from: 0 to: length(texts)-1{
->>>>>>> fc608e03e2ad67c0cb6e1295efef5394949f54a8
 				draw rectangle(rect_size) at: start_location + {i * rect_size.x,0} color: colors[i] border: #black;
 				draw texts[i] at: start_location + {(i * rect_size.x) - 120, 50} color: text_color size: rect_size.y;
 			}
