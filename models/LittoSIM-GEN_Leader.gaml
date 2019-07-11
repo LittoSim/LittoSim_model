@@ -914,7 +914,7 @@ species Repair_Dike_Lever parent: Cost_Lever{
 
 species AU_or_Ui_in_Coast_Border_Area_Lever parent: Delay_Lever{
 	int indicator 			-> { my_district.count_AU_or_Ui_in_coast_border_area};
-	string progression_bar 	-> { "" + indicator + " actions / " + int(threshold) + " max"};
+	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max"};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_COAST_BORDER_AREA');
@@ -935,7 +935,7 @@ species AU_or_Ui_in_Coast_Border_Area_Lever parent: Delay_Lever{
 
 species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_AU_or_Ui_in_risk_area };
-	string progression_bar 	-> { "" + indicator + " actions / "+ int(threshold) + " max" };
+	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / "+ int(threshold) + " max" };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_RISK_AREA');
@@ -972,7 +972,7 @@ species Ganivelle_Lever parent: Cost_Lever {
 
 species Us_out_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_Us_out_coast_border_or_risk_area };
-	string progression_bar 	-> { "" + indicator + " actions / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max" };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_Us_COAST_BORDER_RISK_AREA');
@@ -1007,7 +1007,7 @@ species Us_out_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 
 species Us_in_Coast_Border_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_Us_in_coast_border_area };
-	string progression_bar 	-> { "" + my_district.count_Us_in_coast_border_area + " actions / " + int(threshold) +" max" };
+	string progression_bar 	-> { "" + my_district.count_Us_in_coast_border_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) +" max" };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_Us_COAST_BORDER_AREA');
@@ -1026,7 +1026,7 @@ species Us_in_Coast_Border_Area_Lever parent: Cost_Lever{
 
 species Us_in_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_Us_in_risk_area };
-	string progression_bar 	-> { "" + my_district.count_Us_in_risk_area + " actions / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + my_district.count_Us_in_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max" };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_Us_RISK_AREA');
@@ -1145,7 +1145,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 
 species A_to_N_in_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 				-> { my_district.count_A_to_N_in_coast_border_or_risk_area };
-	string progression_bar 		-> { "" + my_district.count_A_to_N_in_coast_border_or_risk_area + " actions / " + int(threshold) + " max" };
+	string progression_bar 		-> { "" + my_district.count_A_to_N_in_coast_border_or_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max" };
 	bool should_be_activated 	-> { indicator > threshold and !empty(my_district.actions_densification_out_coast_border_and_risk_area()) };
 	
 	init{
@@ -1165,7 +1165,7 @@ species A_to_N_in_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 
 species Densification_out_Coast_Border_and_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_densification_out_coast_border_and_risk_area };
-	string progression_bar 	-> { "" + my_district.count_densification_out_coast_border_and_risk_area + " actions / " + int(threshold) +" max" };
+	string progression_bar 	-> { "" + my_district.count_densification_out_coast_border_and_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) +" max" };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
@@ -1184,7 +1184,7 @@ species Densification_out_Coast_Border_and_Risk_Area_Lever parent: Cost_Lever{
 
 species Expropriation_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_expropriation };
-	string progression_bar 	-> { "" + my_district.count_expropriation + " expropriation / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + my_district.count_expropriation + " " + world.get_message('MSG_EXPROPRIATION') + " / " + int(threshold) + " max" };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_EXPROPRIATION');

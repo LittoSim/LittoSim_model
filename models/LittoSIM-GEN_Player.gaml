@@ -550,7 +550,7 @@ global{
 						return; // the cell has already the selected action, do nothing
 				}
 				if(lu_name in ["U","Us"]){
-					switch  selected_button.command {
+					switch selected_button.command {
 						match ACTION_MODIFY_LAND_COVER_A {
 							map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_U_N')::true);							
 							return;	
@@ -610,7 +610,7 @@ global{
 					else if command = ACTION_MODIFY_LAND_COVER_AUs {
 						if previous_lu_name = "U" {
 							command <- ACTION_MODIFY_LAND_COVER_Us;
-							label 	<- "Change to urban adapted area " + (subsidized_adapted_habitat ? "(Subsidized)":"");
+							label 	<- world.get_message('PLY_CHANGE_TO_Us') + " " + (subsidized_adapted_habitat ? "(Subsidized)":"");
 							cost 	<- subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
 						}
 					}
@@ -627,7 +627,8 @@ global{
 	
 	string thousands_separator (int a_value){
 		string txt <- "" + a_value;
-		if length(txt) > 3 {
+		bool separate1000 <- a_value >= 0 ? length(txt) > 3 : length(txt) > 4;
+		if separate1000 {
 			txt <- copy_between(txt, 0, length(txt) -3) + "." + copy_between(txt, length(txt) - 3, length(txt));
 		}
 		return txt;
@@ -697,7 +698,7 @@ species Displayed_List_Element skills: [UI_location] {//schedules: [] {
 		draw rec   at: {location.x, location.y} color: rgb(233,233,233);
 		draw rec2  at: {location.x, location.y + ui_height / 2} color: #black;
 		draw label at: {location.x - ui_width / 2 + 2 * ui_height, location.y + (font_size/ 2) #px} font: font('Helvetica Neue', font_size, #bold) color: #black;
-		if( icon != nil){
+		if icon != nil {
 			draw icon at: {location.x - ui_width / 2 + ui_height, location.y} size: {ui_height * 0.8, ui_height * 0.8};
 		}
 	}
@@ -1168,8 +1169,8 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 		draw "" + int(final_price) at: {price_location.x , price_location.y + (font_size / 3)#px} color: mc font: font1;
 		
 		if highlighted_action = current_action {
-			rec <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
-			draw rec at: {location.x, location.y} empty: true border: #red;
+			geometry recx <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
+			draw recx at: {location.x, location.y} empty: true border: #red;
 		}
 	}
 } 
@@ -1221,8 +1222,8 @@ species Basket_Element parent: Displayed_List_Element {
 		draw "" + world.delay_of_action(current_action.command) at: {round(round_apply_location.x) - (font_size / 6)#px , round(round_apply_location.y) + (font_size / 3)#px} color: #white font: font1;
 	
 		if location != nil and highlighted_action = current_action {
-			rec <- polygon([{0, 0}, {0, ui_height}, {ui_width, ui_height}, {ui_width, 0},{0, 0}]);
-			draw rec at: {location.x, location.y} empty: true border: #red;
+			geometry recx <- polygon([{0, 0}, {0, ui_height}, {ui_width, ui_height}, {ui_width, 0},{0, 0}]);
+			draw recx at: {location.x, location.y} empty: true border: #red;
 		}
 	}
 }
@@ -1924,12 +1925,10 @@ species Tab skills: [UI_location]{
 	
 	reflex update{
 		shape <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width, y + gem_height}, {x + gem_width, y}, {x, y}]);
-		
 		do refresh_me;
 	}
 	
 	aspect base{
-		
 		if(active_display = display_name){	
 			geometry rec2 <- polygon([{x, y}, {x, y + gem_height}, {x + gem_width * 0.2, y + gem_height}, {x + gem_width * 0.225, y + gem_height * 1.2},
 					{x + gem_width * 0.25, y + gem_height}, {x + gem_width, y + gem_height}, {x + gem_width, y}, {x, y}]);
@@ -2208,10 +2207,10 @@ experiment LittoSIM_GEN_Player type: gui{
 		}
 		
 		display "History" background:#black {
-			species History_Left_Icon aspect: base;
-			species History 				   aspect: base;
-			species History_Element   		   aspect: base;
-			species List_of_Elements	 	   aspect: dossier;
+			species History_Left_Icon 	aspect: base;
+			species History 			aspect: base;
+			species History_Element  	aspect: base;
+			species List_of_Elements	aspect: dossier;
 				
 			graphics "Lock Window" transparency: 0.3 {
 				if(!is_active_gui){
