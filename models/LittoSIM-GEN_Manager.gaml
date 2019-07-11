@@ -1821,7 +1821,7 @@ species Legend_Planning{
 	}
 	
 	aspect {
-		loop i from: 0 to: length(texts){
+		loop i from: 0 to: length(texts) - 1 {
 			draw rectangle(rect_size) at: start_location + {0, i * rect_size.y} color: colors[i] border: #black;
 			draw texts[i] at: start_location + {rect_size.x, (i * rect_size.y) + 50} color: text_color size: rect_size.y;
 		}
@@ -1857,7 +1857,7 @@ species Legend_Flood parent: Legend_Planning {
 	aspect {
 		if show_max_water_height {
 			start_location <- LEGEND_POSITION = 'topleft' ? {2000, 1500} : {2000, 15750};
-			loop i from: 0 to: length(texts){
+			loop i from: 0 to: length(texts) - 1 {
 				draw rectangle(rect_size) at: start_location + {0,i * rect_size.y} color: colors[i] border: #black;
 				draw texts[i] at: start_location + {175, (i * rect_size.y)+75} color: text_color size: rect_size.y;
 			}
