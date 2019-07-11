@@ -93,7 +93,6 @@ global{
 	float coastBorderBuffer <- float(eval_gaml(shapes_def["COAST_BORDER_BUFFER"])); 	// width of littoral area from the coast line (<400m)	
 	bool log_user_action 	<- bool(configuration_file["LOG_USER_ACTION"]); 			// logging user actions
 	bool save_shp 			<- bool(configuration_file["SAVE_SHP"]); 					// saving results as shapefile. If true, at each round, water height and level are saved for all cells
-	bool activemq_connect 	<- bool(configuration_file["ACTIVEMQ_CONNECT"]); 			// start simulation without ACTIVEMQ
 	// User interface params
 	string LEGEND_POSITION <- shapes_def["LEGEND_POSITION"];
 	float button_size 		<- float(configuration_file["BUTTON_SIZE"]); 				// 2000#m;
