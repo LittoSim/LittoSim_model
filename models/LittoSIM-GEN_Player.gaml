@@ -1112,15 +1112,17 @@ species Message_Console parent: Displayed_List { //schedules:[]{
 
 species History_Left_Icon skills:[UI_location]{
 	image_file directory_icon <- file("../images/ihm/I_dossier.png");
+	float lui_width <- 0 update: ui_width;
+	float lui_height <- 0 update: ui_height;
 	
 	reflex update{
 		do refresh_me;
 	}
 	
 	aspect base{
-		geometry rec <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
+		geometry rec <- polygon([{0,0}, {0,lui_height}, {lui_width,lui_height}, {lui_width,0}, {0,0}]);
 		draw rec color: rgb(59, 124, 58) at: location;
-		draw directory_icon at: {location.x, location.y - ui_height / 4} size: {0.7 * ui_width, 0.7 * ui_width};
+		draw directory_icon at: {location.x, location.y - lui_height / 4} size: {0.7 * lui_width, 0.7 * ui_width};
 	}
 }
 //------------------------------ End of History_Left_Icon -------------------------------//
