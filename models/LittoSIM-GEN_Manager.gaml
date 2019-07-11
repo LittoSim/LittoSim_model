@@ -144,9 +144,9 @@ global {
 		create Legend_Population;
 		create Legend_Map;
 		create Legend_Flood;
-		create Network_Control_Manager;
-		create Network_Listener_To_Leader;
 		create Network_Game_Manager;
+		create Network_Listener_To_Leader;
+		create Network_Control_Manager;
 	}
 	//------------------------------ End of init -------------------------------//
 	
