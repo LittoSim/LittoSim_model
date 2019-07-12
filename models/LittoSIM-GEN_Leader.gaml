@@ -61,7 +61,7 @@ global{
 		loop i from: 0 to: 3 {
 			create District_Name {
 				display_name <- District[i].district_long_name;
-				location	 <- (Grille grid_at {i,0}).location - {1,-1};
+				location	 <- (Grille grid_at {i,0}).location;
 			}
 			create District_Action_Button {
 				command 	 <- GIVE_MONEY_TO;
@@ -376,7 +376,7 @@ species District{
 	int count_AU_or_Ui_in_risk_area 						<- 0;
 	int count_Us_out_coast_border_or_risk_area				<- 0;
 	int count_Us_in_coast_border_area						<- 0;					
-	int count_A_to_N_in_coast_border_or_risk_area			<-0;
+	int count_A_to_N_in_coast_border_or_risk_area			<- 0;
 	int count_densification_out_coast_border_and_risk_area	<- 0;
 	
 	action update_indicators_and_register_player_action (Player_Action act){
@@ -486,8 +486,8 @@ species Activated_Lever {
 	string lever_name;
 	string lever_explanation <- "";
 	string p_action_id 		 <- "";
-	int added_delay 	 <- 0;
-	int added_cost 		 <- 0;
+	int added_delay <- 0;
+	int added_cost 	<- 0;
 	int round_creation;
 	int round_application;
 	
@@ -497,7 +497,7 @@ species Activated_Lever {
 		district_code 		<- m[DISTRICT_CODE];
 		p_action_id 		<- m["p_action_id"];
 		added_cost 			<- int(m["added_cost"]);
-		added_delay 	<- int(m["added_delay"]);
+		added_delay 		<- int(m["added_delay"]);
 		lever_explanation 	<- m["lever_explanation"];
 		round_creation 		<- int(m["round_creation"]);
 		round_application	<- int(m["round_application"]);
@@ -526,28 +526,28 @@ species Lever_Window_Info {
 	
 	aspect {
 		if explored_lever != nil {
-			draw shape color: explored_lever.color_profile() at: loca;
+			Lever my_lever <- explored_lever;
+			draw shape color: my_lever.color_profile() at: loca;
 			draw 0.5 around shape color: #black;
 			
-			if explored_lever.timer_activated {
+			if my_lever.timer_activated {
 				draw shape+0.2#m color: #red;
 			}
 			
-			draw explored_lever.box_title at: loca - {length(explored_lever.box_title)/3,2.5}  font: font("Arial", 12 , #bold) color: #black;
-			draw explored_lever.progression_bar at: loca - {length(explored_lever.progression_bar)/3, 0.5} font: font("Arial", 12 , #plain)
-								color: explored_lever.threshold_reached ? #red : #black;
+			draw my_lever.box_title at: loca - {0,4} anchor: #center font: font("Arial", 12 , #bold) color: #black;
+			draw my_lever.progression_bar at: loca - {0, 2} anchor: #center font: font("Arial", 12 , #plain) color: my_lever.threshold_reached ? #red : #black;
 			
-			if explored_lever.timer_activated {
-				draw string(explored_lever.remaining_seconds()) + " s " + (length(explored_lever.activation_queue)=1? "" : "(" + 
-					length(explored_lever.activation_queue) + ")") + "-> " + explored_lever.info_of_next_activated_lever()
-						at: loca - {2.5+length(explored_lever.info_of_next_activated_lever())/3,-1.5} font: font("Arial", 12 , #plain) color:#black;
+			if my_lever.timer_activated {
+				draw string(my_lever.remaining_seconds()) + " s " + (length(my_lever.activation_queue)=1? "" : "(" + 
+					length(my_lever.activation_queue) + ")") + "-> " + my_lever.info_of_next_activated_lever()
+						at: loca anchor: #center font: font("Arial", 12 , #plain) color:#black;
 			}
-			if explored_lever.has_activated_levers {
-				draw explored_lever.activation_label_L1 at: loca - {length(explored_lever.activation_label_L1)/3,-3.5} font: font("Arial", 12 , #plain) color:#black;
-				draw explored_lever.activation_label_L2 at: loca - {length(explored_lever.activation_label_L2)/3,-5}   font: font("Arial", 12 , #plain) color:#black;
+			if my_lever.has_activated_levers {
+				draw my_lever.activation_label_L1 at: loca + {0,2} anchor: #center font: font("Arial", 12 , #plain) color:#black;
+				draw my_lever.activation_label_L2 at: loca + {0,4} anchor: #center font: font("Arial", 12 , #plain) color:#black;
 			}
 			
-			if !explored_lever.status_on { draw shape+0.1#m color: rgb(200,200,200,160); }
+			if !my_lever.status_on { draw shape+0.1#m color: rgb(200,200,200,160); }
 		}
 	}
 }
@@ -556,7 +556,7 @@ species Lever_Window_Actions {
 	point loca <- world.location;
 	geometry shape <- rectangle(30#m, 55#m);
 	
-	list<string> text_buttons <- ["",'LEV_CHANGE_TRESHOLD','LEV_CHANGE_PLAYER_MSG','LEV_CANCEL_NEXT_APP',
+	list<string> text_buttons <- ['','LEV_CHANGE_TRESHOLD','LEV_CHANGE_PLAYER_MSG','LEV_CANCEL_NEXT_APP',
 				'LEV_VALIDATE_NEXT_APP','LEV_VALIDATE_ALL_APPS','LEV_ACTIVE_DEACTIVE','LEV_HOW_WORKS','LEV_CLOSE_WINDOW'];
 	
 	init {
@@ -576,7 +576,7 @@ species Lever_Window_Actions {
 	aspect {
 		if selected_lever != nil {
 			draw shape color: #lightgray border: #black at: loca;
-			draw selected_lever.box_title at: loca - {length(selected_lever.box_title)/3,25} font: font("Arial", 12 , #bold) color: #black;
+			draw selected_lever.box_title at: loca anchor: #center font: font("Arial", 12 , #bold) color: #black;
 		}
 	}
 }
@@ -591,7 +591,7 @@ species Lever_Window_Button {
 	aspect {
 		if selected_lever != nil {
 			draw shape color: col border: #black at: loca;
-			draw text font: font("Arial", 12 , #bold) color: #black at: loca - {length(text)/3,0};
+			draw text font: font("Arial", 12 , #bold) color: #black at: loca anchor: #center;
 			if command in [3,4,5] and (!selected_lever.status_on or !selected_lever.timer_activated){
 				draw shape+0.1#m color: rgb(200,200,200,160);
 			}
@@ -634,21 +634,20 @@ species Lever {
 		if timer_activated {
 			draw shape+0.2#m color: #red;
 		}
-		draw shape color: color_profile() border: #black at: location;
 		
-		draw box_title at: location - {length(box_title) / 3, 0.75} font: font("Arial", 12 , #bold) color: #black;
-		draw progression_bar at: location + {-length(progression_bar)/3, 0.5} font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
+		draw shape color: color_profile() border: #black at: location;
+		draw lever_name +' ('+length(associated_actions)+')' at: location -{0,1.5} anchor: #center font: font("Arial", 12 , #bold) color: #black;
+		draw progression_bar at: location anchor: #center font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
 		
 		if timer_activated {
-			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "-> " + info_of_next_activated_lever()
-					at: location - {12.5,-1.75} font: font("Arial", 12 , #plain) color:#black;
+			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "->" + info_of_next_activated_lever()
+					at: location + {0,1.5} anchor: #center font: font("Arial", 12 , #plain) color:#black;
 		}
-		/*if has_activated_levers {
-			draw activation_label_L1 at:location + {-10,2} font: font("Arial", 12 , #plain) color:#black;
-			draw activation_label_L2 at:location + {0,2}   font: font("Arial", 12 , #plain) color:#black;
-		}*/
 		
-		if !status_on { draw shape+0.1#m color: rgb(200,200,200,160); }
+		if !status_on { draw shape+0.1#m color: rgb(200,200,200,160); } // activate|deactivate
+		if explored_lever != nil and explored_lever = self {
+			draw shape+0.1#m empty: true color: #black;
+		}
 	}
 	    
 	action register_and_check_activation (Player_Action p_action){
@@ -1309,7 +1308,7 @@ species District_Action_Button parent: District_Name{
 
 	aspect default{
 		draw shape color: rgb(176,97,188) border: #black;
-		draw "" + display_name color: #white at: location - {length(display_name)/3, -0.5};
+		draw display_name color: #white at: location anchor: #center;
 	}
 	
 	action district_button_cliked {
@@ -1410,7 +1409,7 @@ species District_Name {
 	string display_name;
 	
 	aspect default{
-		draw "" + display_name color:#black font: font("Arial", 20 , #bold) at: location - {length(display_name)/2, 0};
+		draw "" + display_name color:#black font: font("Arial", 17.5 , #bold) at: location anchor:#center;
 	}
 }
 //------------------------------ end of District_Name -------------------------------//
