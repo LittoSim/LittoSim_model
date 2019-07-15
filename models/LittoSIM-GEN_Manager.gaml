@@ -616,7 +616,7 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 			command  	<- LOCK_USERS;
 			location 	<- {1000, 3000};
 			my_icon 	<- image_file("../images/icons/pause.png");
-			display_text <- "Pause game";
+			display_text <- world.get_message('MSG_PAUSE_GAME');
 			pause_b <- self.location;
 		}
 		create Button{
@@ -624,57 +624,57 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 			command  	<- UNLOCK_USERS;
 			location 	<- { 1000, 5000 };
 			my_icon 	<- image_file("../images/icons/play.png");
-			display_text <- "Resume game";
+			display_text <- world.get_message('MSG_RESUME_GAME');
 			play_b <- self.location;
 		}
 		create Button{
 			nb_button 	<- 3;
 			command	 	<- HIGH_FLOODING;
-			location 	<- {5000, 1000};
+			location 	<- {4500, 1000};
 			my_icon 	<- image_file("../images/icons/launch_lisflood.png");
-			display_text <- "High flooding";
+			display_text <- world.get_message('MSG_HIGH_FLOODING');
 		}
 		create Button{
 			nb_button 	<- 5;
 			command	 	<- LOW_FLOODING;
-			location 	<- {7000, 1000};
+			location 	<- {7500, 1000};
 			my_icon 	<- image_file("../images/icons/launch_lisflood_small.png");
-			display_text <- "Low flooding";
+			display_text <- world.get_message('MSG_LOW_FLOODING');
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "0";
 			location 	<- {11000, 1000};
 			my_icon 	<- image_file("../images/icons/0.png");
-			display_text <- "Replay initial submersion";
+			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "1";
 			location 	<- {11000, 3000};
 			my_icon 	<- image_file("../images/icons/1.png");
-			display_text <- "Replay submersion 1";
+			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button {
 			nb_button 	<- 6;
 			command  	<- "2";
 			location 	<- {11000, 5000};
 			my_icon 	<- image_file("../images/icons/2.png");
-			display_text <- "Replay submersion 2";
+			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "3";
 			location 	<- {11000, 7000};
 			my_icon 	<- image_file("../images/icons/3.png");
-			display_text <- "Replay submersion 3";
+			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "4";
 			location 	<- {11000, 9000};
 			my_icon 	<- image_file("../images/icons/4.png");
-			display_text <- "Replay submersion 4";
+			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		
 		create Button{
@@ -1788,12 +1788,12 @@ species Button{
 			}else if (nb_button = 2){
 				draw shape color: #white border: game_paused ? #blue : #white;	
 			}
-			draw display_text color: #black at: {location.x - (shape.width*0.33), location.y + (shape.height*0.66)};
+			draw display_text color: #black at: location + {0,shape.height*0.66} anchor: #center;
 			draw my_icon size: button_size-50#m;
 		} else if(nb_button = 6){
 			if (int(command) < length(list_flooding_events)){
 				draw shape color: #white border: is_selected ? #red : #white;
-				draw list_flooding_events.keys[int(command)] color: #black at: {location.x - (shape.width*0.33), location.y + (shape.height*0.66)};
+				draw display_text color: #black at: location + {0, shape.height*0.66} anchor: #center;
 				draw my_icon size: button_size-50#m;
 			}
 		}	
@@ -1886,15 +1886,15 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 	
-	init { minimum_cycle_duration <- 0.5; }
+	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen];
+	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
+	
+	init {
+		minimum_cycle_duration <- 0.5;
+	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
 	parameter "Log User Actions" 	var: log_user_action <- false on_change: {ask world{do save_user_actions;}};
-	
-	list<string> budget_lbls <- ["Taxes","Given","Taken","Actions","Levers"];
-	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen];
-	list<string> strat_lbls <-["Builder","Soft def","Withdraw","Neutr"];
-	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
 	
 	output {
 		display "Flooding" background: #black{
@@ -1912,15 +1912,15 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			event mouse_down 		action: button_click_map;
 		}
 		
-		display "Game control"{	
+		display "Game control" background: #moccasin{	
 			species Button  aspect: buttons_master;
 			
 			graphics "Control Panel"{
 				point loc 	<- {world.shape.width/2, world.shape.height/2};
 				float msize <- min([loc.x, loc.y]);
 				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
-				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #black;
-				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #blue font: font('Helvetica Neue', 20, #bold) at: loc + {-550,msize*0.66};
+				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #black anchor:#center;
+				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #blue font: font('Helvetica Neue', 20, #bold) at: loc + {0,msize*0.66} anchor:#center;
 			}
 			graphics "Play_pause" transparency: 0.5{
 				draw square(button_size) at: game_paused ? pause_b : play_b color: #gray ;
@@ -1950,22 +1950,25 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Water	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
 			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
 			
-			chart "Budgets" type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND') {
+			chart world.get_message('MSG_BUDGETS') type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] 
+					x_label: world.get_message('MSG_THE_ROUND') background: #white axes: #black y_tick_line_visible: false x_tick_line_visible: false
+			{
 				data "" value: submersions color: #black style: bar;
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}			
-			chart "Actions" type: histogram size: {0.48,0.48} position: {0.51,0.51} x_serie_labels: strat_lbls style:stack {
-				loop i from:0 to: 3{
-					data districts_in_game[i].district_name value: [sum(districts_build_strategies[i]), sum(districts_soft_strategies[i]),
-			 				sum(districts_withdraw_strategies[i]), sum(districts_neutral_strategies[i])] color: dist_colors[i];
-				}
+			chart world.get_message('MSG_ACTIONS') type: histogram size: {0.48,0.48} position: {0.51,0.51} 
+					x_serie_labels: districts_in_game collect each.district_name style:stack {
+				data world.get_message("MSG_BUILDER") value: districts_build_strategies collect sum(each) color: color_lbls[2];
+			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_strategies collect sum(each) color: color_lbls[1];
+			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_strategies collect sum(each) color: color_lbls[0];
+			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies collect sum(each) color: color_lbls[3];
 			}
 		}
 		
 		display "Budgets" {
-			chart "Total" type: histogram size: {0.33,0.48} position: {0.0,0.0}  {
+			chart world.get_message('LDR_TOTAL') type: histogram size: {0.33,0.48} position: {0.0,0.0}  {
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: last(districts_budgets[i]) color: dist_colors[i];
 				}			
@@ -1973,96 +1976,97 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			//-----
 			chart districts_in_game[0].district_name type: pie size: {0.33,0.24} position: {0.34,0.0}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: sum(districts_taxes[0]) color: color_lbls[0];
-			 	data budget_lbls[1] value: sum(districts_given_money[0]) color: color_lbls[1];
-			 	data budget_lbls[2] value: sum(districts_taken_money[0] collect abs(each)) color: color_lbls[2];
-			 	data budget_lbls[3] value: sum(districts_actions_costs[0] collect abs(each)) color: color_lbls[3];
-			 	data budget_lbls[4] value: sum(districts_levers_costs[0]) color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[0]) color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[0]) color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[0] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[0] collect abs(each)) color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[0]) color: color_lbls[4];		
 			}
 			chart districts_in_game[1].district_name type: pie size: {0.33,0.24} position: {0.67,0.0}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: sum(districts_taxes[1]) color: color_lbls[0];
-			 	data budget_lbls[1] value: sum(districts_given_money[1]) color: color_lbls[1];
-			 	data budget_lbls[2] value: sum(districts_taken_money[1] collect abs(each)) color: color_lbls[2];
-			 	data budget_lbls[3] value: sum(districts_actions_costs[1] collect abs(each)) color: color_lbls[3];
-			 	data budget_lbls[4] value: sum(districts_levers_costs[1]) color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[1]) color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[1]) color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[1] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[1] collect abs(each)) color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[1]) color: color_lbls[4];		
 			}
 			chart districts_in_game[2].district_name type: pie size: {0.33,0.24} position: {0.34,0.25}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: sum(districts_taxes[2]) color: color_lbls[0];
-			 	data budget_lbls[1] value: sum(districts_given_money[2]) color: color_lbls[1];
-			 	data budget_lbls[2] value: sum(districts_taken_money[2] collect abs(each)) color: color_lbls[2];
-			 	data budget_lbls[3] value: sum(districts_actions_costs[2] collect abs(each)) color: color_lbls[3];
-			 	data budget_lbls[4] value: sum(districts_levers_costs[2]) color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[2]) color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[2]) color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[2] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[2] collect abs(each)) color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[2]) color: color_lbls[4];		
 			}
 			chart districts_in_game[3].district_name type: pie size: {0.33,0.24} position: {0.67,0.25}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: sum(districts_taxes[3]) color: color_lbls[0];
-			 	data budget_lbls[1] value: sum(districts_given_money[3]) color: color_lbls[1];
-			 	data budget_lbls[2] value: sum(districts_taken_money[3] collect abs(each)) color: color_lbls[2];
-			 	data budget_lbls[3] value: sum(districts_actions_costs[3] collect abs(each)) color: color_lbls[3];
-			 	data budget_lbls[4] value: sum(districts_levers_costs[3]) color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[3]) color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[3]) color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[3] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[3] collect abs(each)) color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[3]) color: color_lbls[4];		
 			}			
 			//-------
-			chart "Total" type: histogram size: {0.33,0.48} position: {0.0,0.5} style:stack
+			chart world.get_message('LDR_TOTAL') type: histogram size: {0.33,0.48} position: {0.0,0.5} style:stack
 				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
-			 	data budget_lbls[0] value: districts_taxes collect sum(each) color: color_lbls[0];
-			 	data budget_lbls[1] value: districts_given_money collect sum(each) color: color_lbls[1];
-			 	data budget_lbls[2] value: districts_taken_money collect sum(each) color: color_lbls[2];
-			 	data budget_lbls[3] value: districts_actions_costs collect sum(each) color: color_lbls[3];
-			 	data budget_lbls[4] value: districts_levers_costs collect sum(each) color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: districts_taxes collect sum(each) color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: districts_given_money collect sum(each) color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: districts_taken_money collect sum(each) color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs collect sum(each) color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs collect sum(each) color: color_lbls[4];		
 			}
 						
 			chart districts_in_game[0].district_name type: histogram size: {0.33,0.24} position: {0.34,0.5}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: districts_taxes[0] color: color_lbls[0];
-			 	data budget_lbls[1] value: districts_given_money[0] color: color_lbls[1];
-			 	data budget_lbls[2] value: districts_taken_money[0] color: color_lbls[2];
-			 	data budget_lbls[3] value: districts_actions_costs[0] color: color_lbls[3];
-			 	data budget_lbls[4] value: districts_levers_costs[0] color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: districts_taxes[0] color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: districts_given_money[0] color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[0] color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[0] color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[0] color: color_lbls[4];		
 			}
 			chart districts_in_game[1].district_name type: histogram size: {0.33,0.24} position: {0.67,0.5}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: districts_taxes[1] color: color_lbls[0];
-			 	data budget_lbls[1] value: districts_given_money[1] color: color_lbls[1];
-			 	data budget_lbls[2] value: districts_taken_money[1] color: color_lbls[2];
-			 	data budget_lbls[3] value: districts_actions_costs[1] color: color_lbls[3];
-			 	data budget_lbls[4] value: districts_levers_costs[1] color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: districts_taxes[1] color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: districts_given_money[1] color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[1] color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[1] color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[1] color: color_lbls[4];		
 			}
 			chart districts_in_game[2].district_name type: histogram size: {0.33,0.24} position: {0.34,0.75}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: districts_taxes[2] color: color_lbls[0];
-			 	data budget_lbls[1] value: districts_given_money[2] color: color_lbls[1];
-			 	data budget_lbls[2] value: districts_taken_money[2] color: color_lbls[2];
-			 	data budget_lbls[3] value: districts_actions_costs[2] color: color_lbls[3];
-			 	data budget_lbls[4] value: districts_levers_costs[2] color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: districts_taxes[2] color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: districts_given_money[2] color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[2] color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[2] color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[2] color: color_lbls[4];		
 			}
 			chart districts_in_game[3].district_name type: histogram size: {0.33,0.24} position: {0.67,0.75}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data budget_lbls[0] value: districts_taxes[3] color: color_lbls[0];
-			 	data budget_lbls[1] value: districts_given_money[3] color: color_lbls[1];
-			 	data budget_lbls[2] value: districts_taken_money[3] color: color_lbls[2];
-			 	data budget_lbls[3] value: districts_actions_costs[3] color: color_lbls[3];
-			 	data budget_lbls[4] value: districts_levers_costs[3] color: color_lbls[4];		
+			 	data world.get_message('MSG_TAXES') value: districts_taxes[3] color: color_lbls[0];
+			 	data world.get_message('LDR_GIVEN') value: districts_given_money[3] color: color_lbls[1];
+			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[3] color: color_lbls[2];
+			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[3] color: color_lbls[3];
+			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[3] color: color_lbls[4];		
 			}
 		}
 		
 		display "Actions & Strategies" {
-			chart "Number of actions" type: histogram size: {0.33,0.48} position: {0.01,0.01}
+			chart world.get_message('MSG_NUMBER_ACTIONS') type: histogram size: {0.33,0.48} position: {0.01,0.01}
 				x_serie_labels: districts_in_game collect (each.district_name) style:stack {
-			 	data strat_lbls[0] value: districts_build_strategies collect sum(each) color: color_lbls[2];
-			 	data strat_lbls[1] value: districts_soft_strategies collect sum(each) color: color_lbls[1];
-			 	data strat_lbls[2] value: districts_withdraw_strategies collect sum(each) color: color_lbls[0];
-			 	data strat_lbls[3] value: districts_neutral_strategies collect sum(each) color: color_lbls[3];
+			 	data world.get_message("MSG_BUILDER") value: districts_build_strategies collect sum(each) color: color_lbls[2];
+			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_strategies collect sum(each) color: color_lbls[1];
+			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_strategies collect sum(each) color: color_lbls[0];
+			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies collect sum(each) color: color_lbls[3];
 			}
-			chart "Cost of actions" type: histogram size: {0.33,0.48} position: {0.34,0.01}
+			chart world.get_message('MSG_COST_ACTIONS') type: histogram size: {0.33,0.48} position: {0.34,0.01}
 				x_serie_labels: districts_in_game collect (each.district_name) style:stack {
-			 	data strat_lbls[0] value: districts_build_costs collect sum(each) color: color_lbls[2];
-			 	data strat_lbls[1] value: districts_soft_costs collect sum(each) color: color_lbls[1];
-			 	data strat_lbls[2] value: districts_withdraw_costs collect sum(each) color: color_lbls[0];
-			 	data strat_lbls[3] value: districts_neutral_costs collect sum(each) color: color_lbls[3];
+			 	data world.get_message("MSG_BUILDER") value: districts_build_costs collect sum(each) color: color_lbls[2];
+			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_costs collect sum(each) color: color_lbls[1];
+			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_costs collect sum(each) color: color_lbls[0];
+			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_costs collect sum(each) color: color_lbls[3];
 			}
-			chart "Profiles" type: radar size: {0.33,0.48} position: {0.67,0.01} x_serie_labels: copy_between(strat_lbls,0,3) {
+			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.01} 
+					x_serie_labels: [world.get_message("MSG_BUILDER"),world.get_message("MSG_SOFT_DEF"), world.get_message("MSG_WITHDRAWAL")] {
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: float(game_round = 0? 0.75 : [
 						sum(districts_build_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions,
@@ -2073,67 +2077,75 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			//-------					
 			chart districts_in_game[0].district_name type: histogram size: {0.48,0.24} position: {0.01,0.5}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data strat_lbls[0] value: districts_build_strategies[0] color: color_lbls[2];
-			 	data strat_lbls[1] value: districts_soft_strategies[0] color: color_lbls[1];
-			 	data strat_lbls[2] value: districts_withdraw_strategies[0] color: color_lbls[0];
-			 	data strat_lbls[3] value: districts_neutral_strategies[0] color: color_lbls[3];
+			 	data world.get_message("MSG_BUILDER") value: districts_build_strategies[0] color: color_lbls[2];
+			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_strategies[0] color: color_lbls[1];
+			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_strategies[0] color: color_lbls[0];
+			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies[0] color: color_lbls[3];
 			}
 			chart districts_in_game[1].district_name type: histogram size: {0.48,0.24} position: {0.5,0.5}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data strat_lbls[0] value: districts_build_strategies[1] color: color_lbls[2];
-			 	data strat_lbls[1] value: districts_soft_strategies[1] color: color_lbls[1];
-			 	data strat_lbls[2] value: districts_withdraw_strategies[1] color: color_lbls[0];
-			 	data strat_lbls[3] value: districts_neutral_strategies[1] color: color_lbls[3];
+			 	data world.get_message("MSG_BUILDER") value: districts_build_strategies[1] color: color_lbls[2];
+			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_strategies[1] color: color_lbls[1];
+			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_strategies[1] color: color_lbls[0];
+			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies[1] color: color_lbls[3];
 			}
 			chart districts_in_game[2].district_name type: histogram size: {0.48,0.24} position: {0.01,0.75}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data strat_lbls[0] value: districts_build_strategies[2] color: color_lbls[2];
-			 	data strat_lbls[1] value: districts_soft_strategies[2] color: color_lbls[1];
-			 	data strat_lbls[2] value: districts_withdraw_strategies[2] color: color_lbls[0];
-			 	data strat_lbls[3] value: districts_neutral_strategies[2] color: color_lbls[3];
+			 	data world.get_message("MSG_BUILDER") value: districts_build_strategies[2] color: color_lbls[2];
+			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_strategies[2] color: color_lbls[1];
+			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_strategies[2] color: color_lbls[0];
+			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies[2] color: color_lbls[3];
 			}
 			chart districts_in_game[3].district_name type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
-			 	data strat_lbls[0] value: districts_build_strategies[3] color: color_lbls[2];
-			 	data strat_lbls[1] value: districts_soft_strategies[3] color: color_lbls[1];
-			 	data strat_lbls[2] value: districts_withdraw_strategies[3] color: color_lbls[0];
-			 	data strat_lbls[3] value: districts_neutral_strategies[3] color: color_lbls[3];
+			 	data world.get_message("MSG_BUILDER") value: districts_build_strategies[3] color: color_lbls[2];
+			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_strategies[3] color: color_lbls[1];
+			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_strategies[3] color: color_lbls[0];
+			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies[3] color: color_lbls[3];
 			}
 		}
 		
+		/*display "Land Use" {
+			
+		}
+		
+		display "Coastal defenses" {
+			
+		}*/
+		
 		display "Flooded depth per area"{
-			chart "U Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
+			chart world.get_message('MSG_AREA')+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect each.U_0_5c color: world.color_of_water_height(0.5);
 				data "1" value: districts_in_game collect each.U_1c color: world.color_of_water_height(0.9); 
 				data ">1" value: districts_in_game collect each.U_maxc color: world.color_of_water_height(1.9); 
 			}
-			chart "U dense Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.25, 0}
+			chart world.get_message('MSG_AREA')+" U "+ world.get_message('MSG_DENSE') type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.25, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.Udense_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.Udense_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.Udense_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "Us Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.51, 0}
+			chart world.get_message('MSG_AREA')+" Us" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.51, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.Us_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.Us_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.Us_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "AU Area" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.76, 0}
+			chart world.get_message('MSG_AREA')+" AU" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.76, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.AU_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.AU_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.AU_maxc) color: world.color_of_water_height(1.9); 
 			}
 			
-			chart "A Area" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.165, 0.5}
+			chart world.get_message('MSG_AREA')+" A" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.165, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true {
 				data "0.5" value:(districts_in_game collect each.A_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.A_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.A_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "N Area" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.495, 0.5}
+			chart world.get_message('MSG_AREA')+" N" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.495, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true{
 				data "0.5" value:(districts_in_game collect each.N_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.N_1c) color: world.color_of_water_height(0.9); 
@@ -2142,38 +2154,38 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Previous flooded depth per area"{
-			chart "U Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0, 0}
+			chart world.get_message('MSG_AREA')+" U" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect each.prev_U_0_5c color: world.color_of_water_height(0.5);
 				data "1" value: districts_in_game collect each.prev_U_1c color: world.color_of_water_height(0.9); 
 				data ">1" value: districts_in_game collect each.prev_U_maxc color: world.color_of_water_height(1.9); 
 			}
-			chart "U dense Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.25, 0}
+			chart world.get_message('MSG_AREA')+" U "+ world.get_message('MSG_DENSE') type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.25, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_Udense_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_Udense_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_Udense_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "Us Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.51, 0}
+			chart world.get_message('MSG_AREA')+" Us" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.51, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_Us_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_Us_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_Us_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "AU Area" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.76, 0}
+			chart world.get_message('MSG_AREA')+" AU" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.76, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_AU_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_AU_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_AU_maxc) color: world.color_of_water_height(1.9); 
 			}
 			
-			chart "A Area" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.165, 0.5}
+			chart world.get_message('MSG_AREA')+" A" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.165, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true {
 				data "0.5" value:(districts_in_game collect each.prev_A_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_A_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_A_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart "N Area" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.495, 0.5}
+			chart world.get_message('MSG_AREA')+" N" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.495, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true{
 				data "0.5" value:(districts_in_game collect each.prev_N_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_N_1c) color: world.color_of_water_height(0.9); 
@@ -2182,38 +2194,39 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Flooded area per district"{
-			chart "All areas" type: series size: {0.48,0.45} position: {0, 0} x_range:[0,5]{
+			chart world.get_message("MSG_ALL_AREAS") type: series size: {0.48,0.45} position: {0, 0} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i];
 				}			
 			}
-			chart "U area" type: series size: {0.24,0.45} position: {0.5, 0} x_range:[0,5]{
+			chart world.get_message('MSG_AREA')+" U" type: series size: {0.24,0.45} position: {0.5, 0} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i];
 				}			
 			}
-			chart "U dense area" type: series size: {0.24,0.45} position: {0.75, 0} x_range:[0,5]{
+			chart world.get_message('MSG_AREA')+" U "+ world.get_message('MSG_DENSE') type: series size: {0.24,0.45} position: {0.75, 0} 
+					x_label: world.get_message('MSG_SUBMERSION') x_range:[0,5]{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i];
 				}			
 			}
-			chart "Us area" type: series size: {0.24,0.45} position: {0, 0.5} x_range:[0,5]{
+			chart world.get_message('MSG_AREA')+" Us" type: series size: {0.24,0.45} position: {0, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i];
 				} 			
 			}
-			chart "AU area" type: series size: {0.24,0.45} position: {0.25, 0.5} x_range:[0,5]{
+			chart world.get_message('MSG_AREA')+" AU" type: series size: {0.24,0.45} position: {0.25, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i];
 				}			
 			}
 			
-			chart "N area" type: series size: {0.24,0.45} position: {0.50, 0.5} x_range:[0,5]{
+			chart world.get_message('MSG_AREA')+" N" type: series size: {0.24,0.45} position: {0.50, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i];
 				} 			
 			}
-			chart "A area" type: series size: {0.24,0.45} position: {0.75, 0.5} x_range:[0,5]{
+			chart world.get_message('MSG_AREA')+" A" type: series size: {0.24,0.45} position: {0.75, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i];
 				}			
