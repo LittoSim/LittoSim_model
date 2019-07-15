@@ -36,8 +36,8 @@ global{
 	int STEPS_DEGRAD_STATUS_DIKE	 	<- int  (shapes_def["STEPS_DEGRAD_STATUS_DIKE"]);	    // Number of years for a dike to change status
 	int STEPS_DEGRAD_STATUS_DUNE 		<- int  (shapes_def["STEPS_DEGRAD_STATUS_DUNE"]); 		// Number of years for a dune to change status
 	int STEPS_REGAIN_STATUS_GANIVELLE   <- int  (shapes_def["STEPS_REGAIN_STATUS_GANIVELLE"]); 	// With a ganivelle, a dune regenerates 2 times fatser than it degrades
-	int STEPS_FOR_AU_TO_U 				<- 2;													// 2 years to change from AU to U)
-
+	int STEPS_FOR_AU_TO_U 				<- int  (shapes_def["STEPS_FOR_AU_TO_U"]);		    	// 2 years to change from AU to U)
+	
 	// Coastal defenses rupture parameters
 	int PROBA_RUPTURE_DIKE_STATUS_BAD 		<- int(shapes_def["PROBA_RUPTURE_DIGUE_ETAT_MAUVAIS"]);
 	int PROBA_RUPTURE_DIKE_STATUS_MEDIUM 	<- int(shapes_def["PROBA_RUPTURE_DIGUE_ETAT_MOYEN"]);

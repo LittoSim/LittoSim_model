@@ -64,21 +64,27 @@ global{
 				location	 <- (Grille grid_at {i,0}).location;
 			}
 			create District_Action_Button {
+				command 	 <- EXCHANGE_MONEY;
+				display_name <- world.get_message("LDR_EXCHANGE_MONEY");
+				location	 <- (Grille[i,1]).location - {0,6.5};
+				my_district  <- District[i];
+			}
+			create District_Action_Button {
 				command 	 <- GIVE_MONEY_TO;
 				display_name <- world.get_message("LDR_MSG_SEND_MONEY");
-				location	 <- (Grille[i,1]).location - {0,5};
+				location	 <- (Grille[i,1]).location - {0,3.5};
 				my_district  <- District[i];
 			}
 			create District_Action_Button {
 				command 	 <- TAKE_MONEY_FROM;
 				display_name <- world.get_message("LDR_MSG_WITHDRAW_MONEY");
-				location	 <- (Grille[i,1]).location - {0,1.5};
+				location	 <- (Grille[i,1]).location - {0,0.5};
 				my_district  <- District[i];
 			}
 			create District_Action_Button {
 				command 	 <- SEND_MESSAGE_TO;
 				display_name <- world.get_message("LDR_MSG_SEND_MSG");
-				location	 <- (Grille[i,1]).location + {0,2};
+				location	 <- (Grille[i,1]).location + {0,2.5};
 				my_district  <- District[i];
 			}
 		}
@@ -197,14 +203,15 @@ global{
 		explored_lever <- Lever(first(all_levers accumulate (each.population) first_with (each overlaps loc)));
 
 		if explored_lever != nil {
+			Lever my_lev <- explored_lever;
 			ask Lever_Window_Info{
-				loca <- explored_lever.location;
-				if explored_lever.col_index = 0 {
+				loca <- my_lev.location;
+				if my_lev.col_index = 0 {
 					loca <- loca + {5,0};
-				}else if explored_lever.col_index = 3 {
+				}else if my_lev.col_index = 3 {
 					loca <- loca - {5,0};
 				}
-				if explored_lever.row_index = 10 {
+				if my_lev.row_index = 10 {
 					loca <- loca - {0,2.5};
 				}
 			}
@@ -344,7 +351,7 @@ species District{
 	string district_code;
 	string district_name;
 	string district_long_name;
-	string budget;
+	float budget;
 	bool not_updated <- false;
 	bool is_selected -> {selected_district = self};
 	list<Lever> levers ;
@@ -576,7 +583,7 @@ species Lever_Window_Actions {
 	aspect {
 		if selected_lever != nil {
 			draw shape color: #lightgray border: #black at: loca;
-			draw selected_lever.box_title at: loca anchor: #center font: font("Arial", 12 , #bold) color: #black;
+			draw selected_lever.box_title at: loca - {0,25.5} anchor: #center font: font("Arial", 12 , #bold) color: #black;
 		}
 	}
 }
@@ -874,7 +881,7 @@ species Delay_Lever parent: Lever{
 
 species Create_Dike_Lever parent: Cost_Lever {
 	float indicator 		-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_created_dikes / my_district.length_dikes_t0 };
-	string progression_bar  -> { "" + my_district.length_created_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
+	string progression_bar  -> { "" + my_district.length_created_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " +world.get_message('LEV_AT')+ " t0"};
 	
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_CREATE_DIKE');
@@ -887,7 +894,7 @@ species Create_Dike_Lever parent: Cost_Lever {
 
 species Raise_Dike_Lever parent: Cost_Lever {
 	float indicator 		-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_raised_dikes / my_district.length_dikes_t0 };
-	string progression_bar 	-> { "" + my_district.length_raised_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
+	string progression_bar 	-> { "" + my_district.length_raised_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " +world.get_message('LEV_AT')+ " t0"};
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_RAISE_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_RAISE_DIKE');
@@ -900,7 +907,7 @@ species Raise_Dike_Lever parent: Cost_Lever {
 species Repair_Dike_Lever parent: Cost_Lever{
 	float indicator 			-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_repaired_dikes / my_district.length_dikes_t0 };
 	bool should_be_activated 	-> { indicator > threshold and (my_district.length_created_dikes != 0 or my_district.length_raised_dikes != 0)};
-	string progression_bar 		-> { "" + my_district.length_repaired_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
+	string progression_bar 		-> { "" + my_district.length_repaired_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " +world.get_message('LEV_AT')+ " t0"};
 	
 	init{
 		lever_name 		<- world.get_lever_name('LEVER_REPAIR_DIKE');
@@ -913,7 +920,7 @@ species Repair_Dike_Lever parent: Cost_Lever{
 
 species AU_or_Ui_in_Coast_Border_Area_Lever parent: Delay_Lever{
 	int indicator 			-> { my_district.count_AU_or_Ui_in_coast_border_area};
-	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max"};
+	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " " + world.get_message('LEV_MAX')};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_COAST_BORDER_AREA');
@@ -934,7 +941,7 @@ species AU_or_Ui_in_Coast_Border_Area_Lever parent: Delay_Lever{
 
 species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_AU_or_Ui_in_risk_area };
-	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / "+ int(threshold) + " max" };
+	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / "+ int(threshold) + " " + world.get_message('LEV_MAX') };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_RISK_AREA');
@@ -956,7 +963,7 @@ species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 
 species Ganivelle_Lever parent: Cost_Lever {
 		int indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 : int(my_district.length_created_ganivelles / my_district.length_dunes_t0) };
-		string progression_bar 	-> { "" + my_district.length_created_ganivelles + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m dunes" };
+		string progression_bar 	-> { "" + my_district.length_created_ganivelles + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " + world.get_message('LEV_DUNES') };
 	
 	init{
 		lever_name	<- world.get_lever_name('LEVER_GANIVELLE');
@@ -971,7 +978,7 @@ species Ganivelle_Lever parent: Cost_Lever {
 
 species Us_out_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_Us_out_coast_border_or_risk_area };
-	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + indicator + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " " + world.get_message('LEV_MAX') };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_Us_COAST_BORDER_RISK_AREA');
@@ -1006,7 +1013,7 @@ species Us_out_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 
 species Us_in_Coast_Border_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_Us_in_coast_border_area };
-	string progression_bar 	-> { "" + my_district.count_Us_in_coast_border_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) +" max" };
+	string progression_bar 	-> { "" + my_district.count_Us_in_coast_border_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) +" " + world.get_message('LEV_MAX')};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_Us_COAST_BORDER_AREA');
@@ -1025,7 +1032,7 @@ species Us_in_Coast_Border_Area_Lever parent: Cost_Lever{
 
 species Us_in_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_Us_in_risk_area };
-	string progression_bar 	-> { "" + my_district.count_Us_in_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + my_district.count_Us_in_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " " + world.get_message('LEV_MAX') };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_Us_RISK_AREA');
@@ -1044,7 +1051,7 @@ species Us_in_Risk_Area_Lever parent: Cost_Lever{
 
 species Inland_Dike_Lever parent: Delay_Lever {
 	float indicator 		-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_inland_dikes / my_district.length_dikes_t0 };
-	string progression_bar 	-> { "" + my_district.length_inland_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m dikes at t0"};
+	string progression_bar 	-> { "" + my_district.length_inland_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " + world.get_message('LEV_DIKES') + " " + world.get_message('LEV_AT') + " t0"};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_INLAND_DIKE');
@@ -1062,7 +1069,7 @@ species Inland_Dike_Lever parent: Delay_Lever {
 //------------------------------ End of Inland_Dike_Lever -------------------------------//
 
 species No_Action_On_Dike_Lever parent: Cost_Lever {
-	string progression_bar 	-> { "" + int(threshold - nb_rounds_before_activation) + " " + world.get_message('LDR_MSG_ROUNDS') +" / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + int(threshold - nb_rounds_before_activation) + " " + world.get_message('LDR_MSG_ROUNDS') +" / " + int(threshold) + " " + world.get_message('LEV_MAX') };
 	int nb_activations 		<- 0;
 	string box_title 		-> { lever_name + ' (' + nb_activations +')' };
 	
@@ -1144,7 +1151,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 
 species A_to_N_in_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 				-> { my_district.count_A_to_N_in_coast_border_or_risk_area };
-	string progression_bar 		-> { "" + my_district.count_A_to_N_in_coast_border_or_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " max" };
+	string progression_bar 		-> { "" + my_district.count_A_to_N_in_coast_border_or_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) + " " + world.get_message('LEV_MAX') };
 	bool should_be_activated 	-> { indicator > threshold and !empty(my_district.actions_densification_out_coast_border_and_risk_area()) };
 	
 	init{
@@ -1164,7 +1171,7 @@ species A_to_N_in_Coast_Border_or_Risk_Area_Lever parent: Cost_Lever{
 
 species Densification_out_Coast_Border_and_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_densification_out_coast_border_and_risk_area };
-	string progression_bar 	-> { "" + my_district.count_densification_out_coast_border_and_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) +" max" };
+	string progression_bar 	-> { "" + my_district.count_densification_out_coast_border_and_risk_area + " " + world.get_message('LEV_MSG_ACTIONS') + " / " + int(threshold) +" " + world.get_message('LEV_MAX') };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
@@ -1183,7 +1190,7 @@ species Densification_out_Coast_Border_and_Risk_Area_Lever parent: Cost_Lever{
 
 species Expropriation_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_expropriation };
-	string progression_bar 	-> { "" + my_district.count_expropriation + " " + world.get_message('MSG_EXPROPRIATION') + " / " + int(threshold) + " max" };
+	string progression_bar 	-> { "" + my_district.count_expropriation + " " + world.get_message('MSG_EXPROPRIATION') + " / " + int(threshold) + " " + world.get_message('LEV_MAX') };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_EXPROPRIATION');
@@ -1203,7 +1210,7 @@ species Expropriation_Lever parent: Cost_Lever{
 species Destroy_Dike_Lever parent: Cost_Lever{
 	float indicator 		 -> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_destroyed_dikes / my_district.length_dikes_t0 };
 	bool should_be_activated -> { indicator > threshold and !empty(my_district.actions_expropriation()) };
-	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m at t0"};
+	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " + world.get_message('LEV_AT') + " t0"};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_DESTROY_DIKE');
@@ -1242,6 +1249,13 @@ species Network_Leader skills:[network] {
 				match NUM_ROUND				{
 					game_round <-int (m_contents[NUM_ROUND]);
 					write world.get_message("MSG_ROUND") + " " + game_round;
+					ask District{
+						string bud <- m_contents[district_code];
+						if bud != nil {
+							budget <- float(bud);
+							write district_code + "  " + budget;
+						}
+					}
 					loop lev over: all_levers{
 						ask lev.population { do check_activation_at_new_round(); }	
 					}
@@ -1303,12 +1317,12 @@ species District_Action_Button parent: District_Name{
 	District my_district;
 	
 	init {
-		shape <- rectangle(17,3);
+		shape <- rectangle(17,2.5);
 	}
 
 	aspect default{
 		draw shape color: rgb(176,97,188) border: #black;
-		draw display_name color: #white at: location anchor: #center;
+		draw display_name color: #white font: font("Arial", 12, #bold) at: location anchor: #center;
 	}
 	
 	action district_button_cliked {
@@ -1318,6 +1332,31 @@ species District_Action_Button parent: District_Name{
 		put my_district.district_code	key: DISTRICT_CODE 		in: msg;
 		
 		switch(command){
+			match EXCHANGE_MONEY {
+				list<District> dists <- District - my_district;
+				map values 	<- user_input(world.get_message("LDR_TRANSFERT1") + " : \n(0 " + MSG_TO_CANCEL+")\n"
+						 + "1 : " + dists[0].district_long_name +
+						 "\n2 : " + dists[1].district_long_name +
+						 "\n3 : " + dists[2].district_long_name,
+										[MSG_AMOUNT + " :" :: "2000", world.get_message('MSG_COMMUNE') :: "0"]);
+				int amount_value <- int(values at values.keys[0]);
+				int ddist <- int(values at values.keys[1]);
+				if amount_value != 0 and ddist in [1,2,3] {
+					if my_district.budget - amount_value < PLAYER_MINIMAL_BUDGET {
+						map vimp <- user_input(world.get_message('MSG_WARNING'), world.get_message('LDR_TRANSFERT2')::true);
+					}else {
+						my_district.budget <- my_district.budget - amount_value;
+						
+						put EXCHANGE_MONEY 		key: LEADER_COMMAND 	in: msg;
+						put amount_value		key: AMOUNT 			in: msg;
+						put dists[ddist-1].district_code key: "TARGET_DIST" in: msg;
+						
+						msg_player <- world.get_message('LDR_TRANSFERT3');
+						msg_activity[0] <- world.get_message('LDR_EXCHANGE_MONEY');
+						msg_activity[1] <- msg_player + " : " + dists[ddist-1].district_name + " ( " + amount_value + "By)";
+					}
+				}
+			}
 			match TAKE_MONEY_FROM {			
 				string msg1 <- world.get_message('BTN_TAKE_MONEY_MSG1');
 				string msg2 <- world.get_message('BTN_TAKE_MONEY_MSG2');

@@ -33,6 +33,7 @@ global{
 	string TAKE_MONEY_FROM 		<- 'TAKE_MONEY_FROM';
 	string GIVE_MONEY_TO		<- 'GIVE_MONEY_TO';
 	string SEND_MESSAGE_TO		<- 'SEND_MESSAGE_TO';
+	string EXCHANGE_MONEY		<- 'EXCHANGE_MONEY';
 	
 	string ASK_NUM_ROUND 		<- "LEADER_ASKS_FOR_ROUND_NUMBER";
 	string NUM_ROUND 			<- "ROUND_NUMBER";
@@ -68,6 +69,8 @@ global{
 	string ACTION_LAND_COVER_UPDATE <- "ACTION_LAND_COVER_UPDATE";
 	int REFRESH_ALL 			<- 20;
 	int CONNECTION_MESSAGE 		<- 23;
+	
+	int PLAYER_MINIMAL_BUDGET  <- int(shapes_def['PLAYER_MINIMAL_BUDGET']);
 	
 	// strategies
 	string BUILDER 		<- "BUILDER";
@@ -137,9 +140,11 @@ global{
 	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
 	
+	bool AU_AND_AUs_TO_N				<- bool (shapes_def["AU_AND_AUs_TO_N"]);		    	// should we replace AU and AUs by N ?
+	
 	// Taxes
 	map tax_unit_table 		<- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
-	int initial_budget 		<- int(eval_gaml(shapes_def["PCT_BUDGET_TABLE"])); 			// at initialization, each district has a budget equal to an annual tax + %
+	int initial_budget 		<- int(eval_gaml(shapes_def["INITIAL_BUDGET_BONUS"])); 			// at initialization, each district has a budget equal to an annual tax + %
 		
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){

@@ -30,7 +30,6 @@ global{
 		
 	// tax attributes
 	int budget 			<- 0;
-	int minimal_budget  <- -2000;
 	int received_tax	<- 0;
 	float tax_unit  	<- 0.0;
 	
@@ -107,7 +106,11 @@ global{
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
 			if (self.dist_code = active_district_code){
 				lu_name <- lu_type_names [lu_code];
-				if lu_name = "U" and population = 0 {population <- MIN_POP_AREA;}
+				if lu_name = "U" and population < MIN_POP_AREA {population <- MIN_POP_AREA;}
+				if AU_AND_AUs_TO_N and lu_name in ["AU","AUs"] {
+					lu_name <- "N";
+					lu_code <- lu_type_names index_of lu_name;
+				}
 				my_color <- cell_color();
 			} else {do die;}
 		}
@@ -1026,7 +1029,7 @@ species Basket parent: Displayed_List {
 				validate_clicked <- false;
 				return;
 			}
-			if(budget - round(sum(my_basket collect(each.cost))) < minimal_budget){
+			if(budget - round(sum(my_basket collect(each.cost))) < PLAYER_MINIMAL_BUDGET){
 				string budget_display <- world.get_message('PLR_INSUFFICIENT_BUDGET');
 				ask world {
 					do user_msg (budget_display,INFORMATION_MESSAGE);
@@ -2020,7 +2023,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]) tabs: false toolbars: false;
+		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500])
+				tabs: false toolbars: false parameters: false consoles: false navigator: false controls: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {

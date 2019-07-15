@@ -36,7 +36,7 @@ global{
 	
 	int BASKET_MAX_SIZE 		<- 15;
 	int MAX_HISTORY_VIEW_SIZE 	<- 10;
-	point INFORMATION_BOX_SIZE 	<- {200,80};	
+	point INFORMATION_BOX_SIZE 	<- {200,80};
 
 	// Multi-langs
 	string MSG_WARNING;

@@ -105,17 +105,23 @@ global {
 		create Coastal_Border_Area from: coastline_shape { shape <-  shape + coastBorderBuffer#m; }
 		all_coastal_border_area <- union(Coastal_Border_Area);
 		
-		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")),
-													dist_code::string(read("dist_code")), population::int(get("unit_pop"))]{
-			lu_name 	<- lu_type_names[lu_code];
-			my_color 	<- cell_color();
-			if lu_name = "U"  and population = 0 {
+		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::int(get("unit_pop"))]{
+			lu_name <- lu_type_names[lu_code];
+			if lu_name = "U" and population < MIN_POP_AREA {
 				population <- MIN_POP_AREA;
 			}
-			if lu_name = "AU" {
-				AU_to_U_counter <- flip(0.5) ? 1 : 0;
-				not_updated <- true;
+			if lu_name in ["AU","AUs"] {
+				if AU_AND_AUs_TO_N {
+					lu_name <- "N";
+					lu_code <- lu_type_names index_of lu_name;
+				} else {
+					if lu_name = "AU" {
+						AU_to_U_counter <- flip(0.5) ? 1 : 0;
+						not_updated <- true;
+					}
+				}
 			}
+			my_color <- cell_color();
 		}
 		do load_dem_and_rugosity;
 		ask Coastal_Defense {
@@ -131,7 +137,7 @@ global {
 			LUs 	<- Land_Use where (each.dist_code = self.district_code);
 			cells 	<- LUs accumulate (each.cells);
 			tax_unit  <- float(tax_unit_table at district_name);
-			budget 	<- int(self.current_population() * tax_unit * (1 +  initial_budget / 100));
+			budget 	<- int(self.current_population() * tax_unit * (1 + initial_budget));
 			write world.get_message('MSG_COMMUNE') + " " + district_name + " (" + district_code + ") " + dist_id + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
 			do calculate_indicators_t0;
 		}
@@ -1164,8 +1170,11 @@ species Network_Listener_To_Leader skills:[network]{
 	
 	action inform_leader_round_number {
 		map<string,string> msg <- [];
-		put NUM_ROUND 			key: RESPONSE_TO_LEADER 	in: msg;
-		put string(game_round) 	key: NUM_ROUND 				in: msg;
+		put NUM_ROUND 			key: RESPONSE_TO_LEADER in: msg;
+		put string(game_round) 	key: NUM_ROUND in: msg;
+		ask districts_in_game {
+			put string(budget)  key: district_code	in: msg;
+		}
 		do send to: GAME_LEADER contents: msg;
 	}
 				
@@ -1587,7 +1596,7 @@ species Land_Use {
 	}
 	
 	action evolve_pop_U_densification {
-		if !pop_updated and is_in_densification and (lu_name in ["U","Us"]){
+		if !pop_updated and is_in_densification and lu_name in ["U","Us"]{
 			string previous_d_class <- density_class; 
 			do assign_population (POP_FOR_U_DENSIFICATION);
 			if previous_d_class != density_class {
@@ -1597,7 +1606,7 @@ species Land_Use {
 	}
 		
 	action evolve_pop_U_standard { 
-		if !pop_updated and (lu_name in ["U","Us"]){ // TODO and !is_in_densification ?? avoid that these cells are populated in standard and in densification !
+		if !pop_updated and !is_in_densification and lu_name in ["U","Us"]{
 			do assign_population (POP_FOR_U_STANDARD);
 		}
 	}
@@ -1859,7 +1868,7 @@ species Legend_Flood parent: Legend_Planning {
 			start_location <- LEGEND_POSITION = 'topleft' ? {2000, 1500} : {2000, 15750};
 			loop i from: 0 to: length(texts) - 1 {
 				draw rectangle(rect_size) at: start_location + {0,i * rect_size.y} color: colors[i] border: #black;
-				draw texts[i] at: start_location + {175, (i * rect_size.y)+75} color: text_color size: rect_size.y;
+				draw texts[i] at: start_location + {rect_size.x, (i * rect_size.y)+75} color: text_color size: rect_size.y;
 			}
 		}
 	}
@@ -1912,7 +1921,10 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			event mouse_down 		action: button_click_map;
 		}
 		
-		display "Game control" background: #moccasin{	
+		display "Game control"{	
+			graphics "Master" {
+				draw shape color: #moccasin;
+			}
 			species Button  aspect: buttons_master;
 			
 			graphics "Control Panel"{
