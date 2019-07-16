@@ -860,7 +860,7 @@ species Displayed_List skills: [UI_location] { //schedules: []{
 		
 	action create_navigation_items {
 		create List_of_Elements {
-			label 	<- "<< Previous";
+			label 	<- "<< " + world.get_message('PLY_MSG_PREVIOUS');
 			point p <- myself.get_location(0);
 			do lock_agent_at ui_location: p display_name: myself.display_name ui_width: myself.locked_ui_width ui_height: myself.element_height;
 			myself.up_item 		<- self;
@@ -869,7 +869,7 @@ species Displayed_List skills: [UI_location] { //schedules: []{
 			my_parent 			<- myself;
 		}
 		create List_of_Elements {
-			label 	<- "                 Next >>";
+			label 	<- "                 "+ world.get_message('PLY_MSG_NEXT') +" >>";
 			point p <- myself.get_location(myself.max_size - 1);
 			do lock_agent_at ui_location: p display_name: myself.display_name ui_width: myself.locked_ui_width ui_height: myself.element_height;
 			myself.down_item 	<- self;

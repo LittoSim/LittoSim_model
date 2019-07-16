@@ -1467,7 +1467,7 @@ experiment LittoSIM_GEN_Leader {
 		display levers{
 			graphics "Round" {
 				string msg_round <- world.get_message('MSG_ROUND');
-				draw  (msg_round + " : " + game_round)  at: {45,3} font: font("Arial", 20 , #bold) color: #red ;
+				draw  (msg_round + " : " + game_round)  at: {world.shape.width/2,2} font: font("Arial", 20 , #bold) color: #red anchor: #center;
 			}
 			species District_Name;
 			species District_Action_Button;

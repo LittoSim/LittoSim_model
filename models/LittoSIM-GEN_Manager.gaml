@@ -201,7 +201,7 @@ global {
 				round_taken_money  <- 0.0;
 				round_given_money  <- 0.0;
 				round_levers_cost  <- 0.0;
-				
+				write "round_build_actions: " + round_build_actions;
 				add round_build_actions to: districts_build_strategies[dist_id-1];
 				add round_soft_actions to: districts_soft_strategies[dist_id-1];
 				add round_withdraw_actions to: districts_withdraw_strategies[dist_id-1];
