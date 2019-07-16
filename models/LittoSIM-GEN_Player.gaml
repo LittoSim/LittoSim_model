@@ -652,13 +652,13 @@ global{
 		return false;
 	}
 	
-	bool basket_event <- false update: false;
+	//bool basket_event <- false update: false;
 	
 	action move_down_event_basket{
-		if(basket_event) {
+		/*if(basket_event) {
 			return;
 		}
-		basket_event <- true;
+		basket_event <- true;*/
 		ask Basket {
 			do move_down_event;
 		}
@@ -689,11 +689,8 @@ species Displayed_List_Element skills: [UI_location] {//schedules: [] {
 	geometry rec;
 	
 	reflex update{
-	//	point pt 	<- location;
 		 rec2 <- polyline([{0,0}, {ui_width,0}]);		
 		 rec  <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height},{ui_width,0},{0,0}]);
-	//	shape 		<- rec;
-	//	location 	<- pt;
 		do refresh_me;
 	}
 	
@@ -732,8 +729,10 @@ species List_of_Elements parent: Displayed_List_Element {
 	
 	bool move_down_event{
 		point loc <- #user_location;
-		if ! (self overlaps loc){return false;}
-		switch (direction){
+		if ! (self.rec overlaps loc){
+			return false;
+		}
+		switch direction{
 			match 2 {
 				ask my_parent {
 					do go_up;
@@ -813,7 +812,7 @@ species Displayed_List skills: [UI_location] { //schedules: []{
 		int index 	<- length(elements);
 		elements 	<- elements + list_elem;
 		point p 	<- get_location(index);
-		ask(list_elem){
+		ask list_elem {
 			is_displayed <- true;
 			my_parent 	 <- myself; 
 			do lock_agent_at ui_location: p display_name: myself.display_name ui_width: myself.locked_ui_width ui_height: myself.element_height ;
@@ -1115,8 +1114,8 @@ species Message_Console parent: Displayed_List { //schedules:[]{
 
 species History_Left_Icon skills:[UI_location]{
 	image_file directory_icon <- file("../images/ihm/I_dossier.png");
-	float lui_width <- 0 update: ui_width;
-	float lui_height <- 0 update: ui_height;
+	float lui_width <- 0.0 update: ui_width;
+	float lui_height <- 0.0 update: ui_height;
 	
 	reflex update{
 		do refresh_me;
@@ -1142,9 +1141,9 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 	float initial_price -> {current_action.cost};
 	point bullet_size   <- point(0,0)	update: {ui_height*0.6, ui_height*0.6};
 
-	point delay_location <- point(0,0)		update: {location.x + 2 * ui_width / 5, location.y};
-	point round_apply_location<- point(0,0) 	update: {ui_width - (1.5 * bullet_size.x) /*location.x + 1.3 * ui_width / 5*/, location.y};
-	point price_location <- point(0,0)  update: {location.x + ui_width / 2 - 40#px, location.y};
+	point delay_location <- point(0,0)		update: {location.x + ui_width / 4 + 350#px, location.y};
+	point round_apply_location<- point(0,0) 	update: {location.x + ui_width / 5 + 200#px, location.y};
+	point price_location <- point(0,0)  update: {location.x + ui_width / 3 + 400#px, location.y};
 	
 	Player_Action current_action;
 	
@@ -1157,21 +1156,22 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 	
 	action draw_element{
 		font font1 <- font ('Helvetica Neue', font_size, #italic); 
-		
+		int prix <- int(final_price);
 		if(!current_action.is_applied) {
 			if delay != 0 {
+				int ddl <- delay;
 				draw circle(bullet_size.x / 2) at: delay_location color: rgb(235,33,46);
-				draw "" + delay at: {delay_location.x - (font_size / 6)#px , delay_location.y + (font_size / 3)#px} color: #white font: font1;
+				draw ""  + ddl at: delay_location anchor:#center color: #white font: font1;
 			}
 			draw circle(bullet_size.x / 2) at: round_apply_location color: rgb(87,87,87);
-			draw "" + current_action.nb_rounds_before_activation_and_waiting_for_lever_to_activate() at: {round_apply_location.x -(font_size/6)#px , round_apply_location.y + (font_size/3)#px} color: #white font: font1;
+			draw "" + current_action.nb_rounds_before_activation_and_waiting_for_lever_to_activate() at: round_apply_location anchor: #center color: #white font: font1;
 		}
 		else {
 			draw file("../images/ihm/I_valider.png") at: round_apply_location size: bullet_size color: rgb(87,87,87);
 		}
 
 		rgb mc <- (final_price = initial_price) ? rgb(87,87,87): rgb(235,33,46);
-		draw "" + int(final_price) at: {price_location.x , price_location.y + (font_size / 3)#px} color: mc font: font1;
+		draw "" + prix at: price_location anchor: #center color: mc font: font1;
 		
 		if highlighted_action = current_action {
 			geometry recx <- polygon([{0,0}, {0,ui_height}, {ui_width,ui_height}, {ui_width,0}, {0,0}]);
@@ -1305,7 +1305,8 @@ species Network_Listener_To_Leader skills: [network] {
 								int added_delay <- int(my_map["added_delay"]);
 								if  added_delay != 0{
 									ask world{
-										do user_msg (world.get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + '(' + myself.ply_act.element_id + ")' " +
+										do user_msg (world.get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + 
+											(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : '(' + myself.ply_act.element_id + ")")+"' " +
 											world.get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? world.get_message('PLY_DELAYED'):world.get_message('PLY_ADVANCED')) +
 											" " + world.get_message("PLY_BY") + " " + abs(added_delay) + " " + world.get_message('MSG_THE_ROUND') + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
 									}
@@ -2023,8 +2024,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500])
-				tabs: false toolbars: false parameters: false consoles: false navigator: false controls: false tray: false;
+		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]);
+				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {
@@ -2124,7 +2125,8 @@ experiment LittoSIM_GEN_Player type: gui{
 							}
 							match ACTION_MODIFY_LAND_COVER_AUs{
 								draw txtt + " AU : " + my_button.action_cost  at: target2 + {30#px, 55#px} font: regular color: # white;
-								draw txtt + " U : "  + (subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us')) at: target2 + {30#px, 75#px} font: regular color: # white; 
+								draw txtt + " U : "  + (subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : 
+											world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us')) at: target2 + {30#px, 75#px} font: regular color: # white; 
 							}
 							default {
 								txtt <- active_display = COAST_DEF_DISPLAY ? "/m" : ""; 
