@@ -106,10 +106,15 @@ global{
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
 			if (self.dist_code = active_district_code){
 				lu_name <- lu_type_names [lu_code];
-				if lu_name = "U" and population < MIN_POP_AREA {population <- MIN_POP_AREA;}
-				if AU_AND_AUs_TO_N and lu_name in ["AU","AUs"] {
+				if lu_name = "U" and population < MIN_POP_AREA {
+					population <- MIN_POP_AREA;
+				}
+				if AU_AND_AUs_TO_N and lu_name in ["AU","AUs"] {  // if true, convert all AU and AUs to N
 					lu_name <- "N";
 					lu_code <- lu_type_names index_of lu_name;
+				}
+				if lu_name in ['N','A'] { // delete populations of Natural and Agricultural cells
+					population <- 0;
 				}
 				my_color <- cell_color();
 			} else {do die;}
@@ -2020,6 +2025,29 @@ species Legend_Flood{
 	}
 }
 //---------------------------- Experiment definiton -----------------------------//
+experiment District4 type: gui parent: LittoSIM_GEN_Player {
+	action _init_ {
+		create simulation with:[active_district_name::districts[3], my_language::default_language];		
+	}
+}
+
+experiment District3 type: gui parent: LittoSIM_GEN_Player {
+	action _init_ {
+		create simulation with:[active_district_name::districts[2], my_language::default_language];	
+	}
+}
+
+experiment District2 type: gui parent: LittoSIM_GEN_Player {
+	action _init_ {
+		create simulation with:[active_district_name::districts[1], my_language::default_language];	
+	}
+}
+
+experiment District1 type: gui parent: LittoSIM_GEN_Player {
+	action _init_ {
+		create simulation with:[active_district_name::districts[0], my_language::default_language];	
+	}
+}
 
 experiment LittoSIM_GEN_Player type: gui{
 	font regular 			<- font("Helvetica", 14, # bold);
@@ -2035,8 +2063,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]);//
-				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500])
+				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {

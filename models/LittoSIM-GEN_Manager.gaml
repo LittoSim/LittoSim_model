@@ -111,7 +111,7 @@ global {
 			if lu_name = "U" and population < MIN_POP_AREA {
 				population <- MIN_POP_AREA;
 			}
-			if lu_name in ["AU","AUs"] {
+			if lu_name in ["AU","AUs"] { // if true, convert all AU and AUs to N
 				if AU_AND_AUs_TO_N {
 					lu_name <- "N";
 					lu_code <- lu_type_names index_of lu_name;
@@ -121,6 +121,9 @@ global {
 						not_updated <- true;
 					}
 				}
+			}
+			if lu_name in ['N','A'] { // delete populations of Natural and Agricultural cells
+				population <- 0;
 			}
 			my_color <- cell_color();
 		}
