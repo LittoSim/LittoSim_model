@@ -1253,7 +1253,6 @@ species Network_Leader skills:[network] {
 						string bud <- m_contents[district_code];
 						if bud != nil {
 							budget <- float(bud);
-							write district_code + "  " + budget;
 						}
 					}
 					loop lev over: all_levers{
@@ -1329,7 +1328,7 @@ species District_Action_Button parent: District_Name{
 		string msg_player 			<- "";
 		list<string> msg_activity 	<- ["",""];
 		map<string, unknown> msg 	<-[];
-		put my_district.district_code	key: DISTRICT_CODE 		in: msg;
+		put my_district.district_code	key: DISTRICT_CODE in: msg;
 		
 		switch(command){
 			match EXCHANGE_MONEY {
@@ -1346,14 +1345,15 @@ species District_Action_Button parent: District_Name{
 						map vimp <- user_input(world.get_message('MSG_WARNING'), world.get_message('LDR_TRANSFERT2')::true);
 					}else {
 						my_district.budget <- my_district.budget - amount_value;
+						msg_player <- world.get_message('LDR_TRANSFERT3');
 						
 						put EXCHANGE_MONEY 		key: LEADER_COMMAND 	in: msg;
 						put amount_value		key: AMOUNT 			in: msg;
 						put dists[ddist-1].district_code key: "TARGET_DIST" in: msg;
+						put msg_player 			key: MSG_TO_PLAYER 	in: msg;
 						
-						msg_player <- world.get_message('LDR_TRANSFERT3');
 						msg_activity[0] <- world.get_message('LDR_EXCHANGE_MONEY');
-						msg_activity[1] <- msg_player + " : " + dists[ddist-1].district_name + " ( " + amount_value + "By)";
+						msg_activity[1] <- msg_player + " : " + dists[ddist-1].district_name + " (" + amount_value + "By)";
 					}
 				}
 			}

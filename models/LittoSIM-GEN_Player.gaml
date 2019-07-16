@@ -652,13 +652,7 @@ global{
 		return false;
 	}
 	
-	//bool basket_event <- false update: false;
-	
 	action move_down_event_basket{
-		/*if(basket_event) {
-			return;
-		}
-		basket_event <- true;*/
 		ask Basket {
 			do move_down_event;
 		}
@@ -979,9 +973,9 @@ species Basket parent: Displayed_List {
 		gem_height <- ui_height * header_height / 2;
 		gem_width  <- ui_width;
 		int mfont_size	 <- DISPLAY_FONT_SIZE - 2;
-		draw init_budget_label font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 150#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
+		draw init_budget_label font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 170#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
 		draw " : " + world.thousands_separator(budget) font: f1 color: rgb(101,101,101)
-						at: {location.x + ui_width - 70#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
+						at: {location.x + ui_width - 100#px, location.y + ui_height * 0.15 + (mfont_size / 2)#px};
 	}
 	
 	action draw_foot {
@@ -1253,8 +1247,25 @@ species Network_Listener_To_Leader skills: [network] {
 		loop while:has_more_message(){
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
-			if m_contents[DISTRICT_CODE] = active_district_code {
-				switch(m_contents[LEADER_COMMAND]){
+			if m_contents['TARGET_DIST'] = active_district_code { // I am a target of money transfer
+				int amount 	<- int(m_contents[AMOUNT]);
+				string sender_dist <- (District first_with(each.district_code = m_contents[DISTRICT_CODE])).district_name;
+				budget 	<- budget + amount;
+				ask world {
+					do user_msg(get_message('LDR_TRANSFERT4') + " : " + sender_dist + " ("+ amount + ' By)', BUDGET_MESSAGE);
+				}
+			}
+			else if m_contents[DISTRICT_CODE] = active_district_code {
+				switch m_contents[LEADER_COMMAND] {
+					match EXCHANGE_MONEY {
+						int amount 	<- int(m_contents[AMOUNT]);
+						string target_dist <- (District first_with(each.district_code = m_contents['TARGET_DIST'])).district_name;
+						budget 		<- budget - amount;
+						ask world {
+							do user_msg(string(m_contents[MSG_TO_PLAYER]) + " : " + target_dist + " ("+ amount + ' By)', BUDGET_MESSAGE);
+						}
+						
+					}
 					match GIVE_MONEY_TO {
 						int amount 	<- int(m_contents[AMOUNT]);
 						budget 		<- budget + amount;
@@ -2024,7 +2035,7 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]);
+		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]);//
 				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{

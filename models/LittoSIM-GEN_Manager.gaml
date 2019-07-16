@@ -56,6 +56,7 @@ global {
 	list<list<int>> districts_taxes <- [[],[],[],[]];
 	list<list<int>> districts_given_money 	<- [[0],[0],[0],[0]];
 	list<list<int>> districts_taken_money 	<- [[0],[0],[0],[0]];
+	list<list<int>> districts_transferred_money 	<- [[0],[0],[0],[0]];
 	list<list<int>> districts_actions_costs <- [[0],[0],[0],[0]];
 	list<list<int>> districts_levers_costs 	<- [[0],[0],[0],[0]];
 	// Strategy profiles actions
@@ -196,12 +197,14 @@ global {
 				add round_actions_cost to: districts_actions_costs[dist_id-1];
 				add round_given_money to: districts_given_money[dist_id-1];
 				add round_taken_money to: districts_taken_money[dist_id-1];
+				add round_transferred_money to: districts_transferred_money[dist_id-1];
 				add round_levers_cost to: districts_levers_costs[dist_id-1];
 				round_actions_cost <- 0.0;
 				round_taken_money  <- 0.0;
+				round_transferred_money <- 0.0;
 				round_given_money  <- 0.0;
 				round_levers_cost  <- 0.0;
-				write "round_build_actions: " + round_build_actions;
+				
 				add round_build_actions to: districts_build_strategies[dist_id-1];
 				add round_soft_actions to: districts_soft_strategies[dist_id-1];
 				add round_withdraw_actions to: districts_withdraw_strategies[dist_id-1];
@@ -736,8 +739,10 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 						ask world   { do launchFlood_event; }
 					}
 					match 6			{
-						is_selected <- true;
-						ask world { do replay_flood_event(int(myself.command));}
+						if int(command) < length(list_flooding_events) {
+							is_selected <- true;
+							ask world { do replay_flood_event(int(myself.command));}
+						}
 					}
 				}
 			}
@@ -1086,7 +1091,18 @@ species Network_Listener_To_Leader skills:[network]{
 			map<string, unknown> m_contents <- msg.contents;
 			string cmd <- m_contents[LEADER_COMMAND];
 			write "Leader command : " + cmd;
-			switch(cmd){
+			switch cmd {
+				match EXCHANGE_MONEY {
+					int money <- int(m_contents[AMOUNT]);
+					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]) {
+						budget 	<- budget - money;
+						round_transferred_money <- round_transferred_money - money;
+					}
+					ask districts_in_game first_with(each.district_code = m_contents["TARGET_DIST"]) {
+						budget 	<- budget + money;
+						round_transferred_money <- round_transferred_money + money;
+					}
+				}
 				match GIVE_MONEY_TO {
 					int money <- int(m_contents[AMOUNT]);
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]) {
@@ -1677,6 +1693,7 @@ species District {
 	float round_given_money  <- 0.0;
 	float round_taken_money  <- 0.0;
 	float round_levers_cost  <- 0.0;
+	float round_transferred_money <- 0.0;
 	
 	int round_build_actions <- 0;
 	int round_soft_actions <- 0;
@@ -1895,7 +1912,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 	
-	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen];
+	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen,#darkblue];
 	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
 	
 	init {
@@ -1923,7 +1940,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		
 		display "Game control"{	
 			graphics "Master" {
-				draw shape color: #moccasin;
+				draw shape color: #lightgray;
 			}
 			species Button  aspect: buttons_master;
 			
@@ -1991,6 +2008,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[0]) color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[0]) color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[0] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: sum(districts_transferred_money[0] collect abs(each)) color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[0] collect abs(each)) color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[0]) color: color_lbls[4];		
 			}
@@ -1999,6 +2017,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[1]) color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[1]) color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[1] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: sum(districts_transferred_money[1] collect abs(each)) color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[1] collect abs(each)) color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[1]) color: color_lbls[4];		
 			}
@@ -2007,6 +2026,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[2]) color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[2]) color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[2] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: sum(districts_transferred_money[2] collect abs(each)) color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[2] collect abs(each)) color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[2]) color: color_lbls[4];		
 			}
@@ -2015,6 +2035,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: sum(districts_taxes[3]) color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: sum(districts_given_money[3]) color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: sum(districts_taken_money[3] collect abs(each)) color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: sum(districts_transferred_money[3] collect abs(each)) color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: sum(districts_actions_costs[3] collect abs(each)) color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: sum(districts_levers_costs[3]) color: color_lbls[4];		
 			}			
@@ -2024,6 +2045,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: districts_taxes collect sum(each) color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: districts_given_money collect sum(each) color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: districts_taken_money collect sum(each) color: color_lbls[2];
+				data world.get_message('LDR_TRANSFERRED') value: districts_transferred_money collect sum(each) color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs collect sum(each) color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs collect sum(each) color: color_lbls[4];		
 			}
@@ -2033,6 +2055,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: districts_taxes[0] color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: districts_given_money[0] color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[0] color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: districts_transferred_money[0] color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[0] color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[0] color: color_lbls[4];		
 			}
@@ -2041,6 +2064,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: districts_taxes[1] color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: districts_given_money[1] color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[1] color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: districts_transferred_money[1] color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[1] color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[1] color: color_lbls[4];		
 			}
@@ -2049,6 +2073,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: districts_taxes[2] color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: districts_given_money[2] color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[2] color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: districts_transferred_money[2] color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[2] color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[2] color: color_lbls[4];		
 			}
@@ -2057,6 +2082,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message('MSG_TAXES') value: districts_taxes[3] color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: districts_given_money[3] color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: districts_taken_money[3] color: color_lbls[2];
+			 	data world.get_message('LDR_TRANSFERRED') value: districts_transferred_money[3] color: color_lbls[5];
 			 	data world.get_message('LEV_MSG_ACTIONS') value: districts_actions_costs[3] color: color_lbls[3];
 			 	data world.get_message("MSG_LEVERS") value: districts_levers_costs[3] color: color_lbls[4];		
 			}
@@ -2080,10 +2106,10 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.01} 
 					x_serie_labels: [world.get_message("MSG_BUILDER"),world.get_message("MSG_SOFT_DEF"), world.get_message("MSG_WITHDRAWAL")] {
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: float(game_round = 0? 0.75 : [
+					data districts_in_game[i].district_name value: game_round = 0? [0.75,0.75,0.75] : [
 						sum(districts_build_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions,
 						sum(districts_soft_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions,
-						sum(districts_withdraw_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions]) color: dist_colors[i];
+						sum(districts_withdraw_strategies[i])/districts_in_game[i].sum_buil_sof_wit_actions] color: dist_colors[i];
 				}		
 			}
 			//-------					
