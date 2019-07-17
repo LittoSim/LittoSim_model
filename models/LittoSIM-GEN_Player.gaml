@@ -790,7 +790,7 @@ species Displayed_List skills: [UI_location] { //schedules: []{
 	float gem_width  <- 0.0 update: ui_width;
 		
 	reflex update{
-		shape 			 <- rectangle(gem_width, gem_height);
+		shape <- rectangle(gem_width, gem_height);
 		do refresh_me;
 	}
 	
