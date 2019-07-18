@@ -12,8 +12,9 @@ import "params_models/params_leader.gaml"
 global{
 	
 	float sim_id;
-	list<string> leader_activities <- [];	
-	Player_Action selection_player_action;
+	list<string> leader_activities <- [];
+	list<Player_Action> player_actions <- [];
+	list<Activated_Lever> activated_levers <- [];	
 	District selected_district <- nil;
 	geometry shape <- square(100#m);
 	Lever selected_lever;
@@ -112,14 +113,29 @@ global{
 		add ("<" + machine_time + ">" + aText) to: leader_activities;
 	}
 	
-	action save_leader_records{
-		loop a over: leader_activities {
-			save a to: records_folder + "record-" + sim_id + "/leader_activities_Tour" + game_round + ".txt" type: "text" rewrite: false;
+	action save_leader_data{
+		string folder_name <- "leader_data-" + sim_id;
+		int num_round <- game_round;
+		if length(leader_activities) > 0 {
+			loop a over: leader_activities {
+				save a to: records_folder + folder_name + "/leader_activities_round" + num_round + ".txt" type: "text";
+			}
+			leader_activities <- [];
 		}
-		save Player_Action   to: records_folder + "record-" + sim_id + "/player_actions_Tour"   + game_round + ".csv" type: "csv";
-		save Activated_Lever to: records_folder + "record-" + sim_id + "/activated_levers_Tour" + game_round + ".csv" type: "csv"; 
+		if length(player_actions) > 0 {
+			loop pa over: player_actions {
+				save pa to: records_folder + folder_name + "/player_actions_round" + num_round + ".csv" type: "csv";
+			}
+			player_actions <- [];
+		}
+		if length(activated_levers) > 0 {
+			loop al over: activated_levers {
+				save al to: records_folder + folder_name + "/activated_levers_round" + num_round + ".csv" type: "csv";
+			}
+			activated_levers <- [];
+		} 
 		loop a over: (all_levers accumulate (each.population) sort_by (each.my_district.dist_id)) {
-			save a to: records_folder + "record-" + sim_id + "/all_levers_Tour" + game_round + ".csv"  type: "csv" rewrite: false;
+			save a to: records_folder + folder_name + "/all_levers_round" + num_round + ".csv"  type: "csv" rewrite: false;
 		}
 	}
 
@@ -259,16 +275,6 @@ species Player_Action schedules:[]{
 	list<Activated_Lever> activated_levers 	<-[];
 	bool should_wait_lever_to_activate 		<- false;
 	bool a_lever_has_been_applied			<- false;
-	
-	reflex save_data{
-		ask world {
-			save Player_Action to: "/tmp/player_action2.shp" type:"shp" crs: "EPSG:2154" with:[id::"id", cost::"cost", command_round::"cround",
-					initial_application_round::"around", round_delay::"rdelay", is_delayed::"is_delayed", element_id::"chosenId",
-					district_code::DISTRICT_CODE, command::"command", label::"label", strategy_profile::"strategy_profile", is_inland_dike::"is_inland_dike",
-					is_in_risk_area::"is_in_risk_area", is_in_coast_border_area::"is_in_coast_border_area", is_in_protected_area::"is_in_protected_area", is_expropriation::"is_expropriation",
-					previous_lu_name::"previous_lu_name", action_type::"action_type"];
-		}
-	}
 	
 	string get_strategy_profile {
 		if(action_type = PLAYER_ACTION_TYPE_COAST_DEF){
@@ -582,8 +588,8 @@ species Lever_Window_Actions {
 	
 	aspect {
 		if selected_lever != nil {
-			draw shape color: #lightgray border: #black at: loca;
-			draw selected_lever.box_title at: loca - {0,25.5} anchor: #center font: font("Arial", 12 , #bold) color: #black;
+			draw shape color: #white border: #black at: loca;
+			draw selected_lever.box_title at: loca - {0,25.5} anchor: #center font: font("Arial", 13 , #bold) color: #darkblue;
 		}
 	}
 }
@@ -598,7 +604,7 @@ species Lever_Window_Button {
 	aspect {
 		if selected_lever != nil {
 			draw shape color: col border: #black at: loca;
-			draw text font: font("Arial", 12 , #bold) color: #black at: loca anchor: #center;
+			draw text font: font("Arial", 12 , #bold) color: #darkblue at: loca anchor: #center;
 			if command in [3,4,5] and (!selected_lever.status_on or !selected_lever.timer_activated){
 				draw shape+0.1#m color: rgb(200,200,200,160);
 			}
@@ -646,7 +652,7 @@ species Lever {
 		draw lever_name +' ('+length(associated_actions)+')' at: location -{0,1.5} anchor: #center font: font("Arial", 12 , #bold) color: #black;
 		draw progression_bar at: location anchor: #center font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
 		
-		if timer_activated {
+		if timer_activated and length(activation_queue) > 0{
 			draw string(remaining_seconds()) + " s " + (length(activation_queue)=1? "" : "(" + length(activation_queue) + ")") + "->" + info_of_next_activated_lever()
 					at: location + {0,1.5} anchor: #center font: font("Arial", 12 , #plain) color:#black;
 		}
@@ -691,6 +697,7 @@ species Lever {
 			activation_time <- machine_time + myself.timer_duration ;
 			round_creation 	<- game_round;
 			add self to: myself.activation_queue;
+			add self to: activated_levers;
 		}
 		ask world {
 			do record_leader_activity("Lever " + myself.lever_name + " programmed at", myself.my_district.district_name, a_p_action.label + "(" + a_p_action + ")");
@@ -1246,7 +1253,8 @@ species Network_Leader skills:[network] {
 			string m_sender 				<- msg.sender;
 			map<string, string> m_contents 	<- msg.contents;
 			switch(m_contents[RESPONSE_TO_LEADER]) {
-				match NUM_ROUND				{
+				match NUM_ROUND	{
+					ask world { do save_leader_data; }
 					game_round <-int (m_contents[NUM_ROUND]);
 					write world.get_message("MSG_ROUND") + " " + game_round;
 					ask District{
@@ -1258,7 +1266,6 @@ species Network_Leader skills:[network] {
 					loop lev over: all_levers{
 						ask lev.population { do check_activation_at_new_round(); }	
 					}
-					ask world { do save_leader_records; }
 				}
 				match ACTION_STATE {
 					do update_action (m_contents);
@@ -1293,6 +1300,7 @@ species Network_Leader skills:[network] {
 				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
 					(STRATEGY_PROFILE)::strategy_profile,"cost"::cost];
 				ask world { do send_message_from_leader(mpp); }
+				add self to: player_actions;
 			}
 		}
 		else{ // an update of an action already commanded

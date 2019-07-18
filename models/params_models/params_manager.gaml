@@ -16,7 +16,7 @@ global{
 	string SIM_SHOWING_LISFLOOD 		<- 'SHOWING_LISFLOOD';
 	string SIM_CALCULATING_FLOOD_STATS 	<- 'CALCULATING_FLOOD_STATS';
 	string SIM_SHOWING_FLOOD_STATS 		<- 'SHOWING_FLOOD_STATS';
-	string INITIAL_SUBMERSION			<- 'Initial submersion';
+	string INITIAL_SUBMERSION			<- '0';
 	
 	// Network round manager & commands
 	string NEW_ROUND 				<- "NEW_ROUND";
@@ -91,8 +91,6 @@ global{
 	int ACTION_COST_LAND_COVER_TO_Us_SUBSIDY 	<- int(data_action at 'ACTION_MODIFY_LAND_COVER_Us_SUBSIDY' at 'cost');
 	
 	float coastBorderBuffer <- float(eval_gaml(shapes_def["COAST_BORDER_BUFFER"])); 	// width of littoral area from the coast line (<400m)	
-	bool log_user_action 	<- bool(configuration_file["LOG_USER_ACTION"]); 			// logging user actions
-	bool save_shp 			<- bool(configuration_file["SAVE_SHP"]); 					// saving results as shapefile. If true, at each round, water height and level are saved for all cells
 	// User interface params
 	string LEGEND_POSITION <- shapes_def["LEGEND_POSITION"];
 	float button_size 		<- float(configuration_file["BUTTON_SIZE"]); 				// 2000#m;

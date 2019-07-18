@@ -1315,7 +1315,8 @@ species Network_Listener_To_Leader skills: [network] {
 								if added_cost != 0 {
 									budget <- budget - added_cost;
 									ask world{
-										do user_msg ("You have been " + (added_cost > 0 ? "preleved":"given") + " " + abs(added_cost)+ " By for the dossier '" + myself.ply_act.label + "'", BUDGET_MESSAGE);
+										do user_msg (world.get_message('PLY_MSG_BEEN')+" " + (added_cost > 0 ? world.get_message('LDR_TAKEN'):world.get_message('LDR_GIVEN')) + " " +
+											abs(added_cost)+ " By "+world.get_message('PLY_MSG_DOSSIER')+" '" + myself.ply_act.label + "'", BUDGET_MESSAGE);
 									}	
 								}
 								int added_delay <- int(my_map["added_delay"]);
@@ -2026,25 +2027,25 @@ species Legend_Flood{
 }
 //---------------------------- Experiment definiton -----------------------------//
 experiment District4 type: gui parent: LittoSIM_GEN_Player {
-	action _init_ {
+	action init {
 		create simulation with:[active_district_name::districts[3], my_language::default_language];		
 	}
 }
 
 experiment District3 type: gui parent: LittoSIM_GEN_Player {
-	action _init_ {
+	action init {
 		create simulation with:[active_district_name::districts[2], my_language::default_language];	
 	}
 }
 
 experiment District2 type: gui parent: LittoSIM_GEN_Player {
-	action _init_ {
+	action init {
 		create simulation with:[active_district_name::districts[1], my_language::default_language];	
 	}
 }
 
 experiment District1 type: gui parent: LittoSIM_GEN_Player {
-	action _init_ {
+	action init {
 		create simulation with:[active_district_name::districts[0], my_language::default_language];	
 	}
 }

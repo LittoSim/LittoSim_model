@@ -16,18 +16,18 @@ import "params_models/params_manager.gaml"
 global {
 	
 	// sea heights file sent to Lisflood
-	string my_flooding_path <- "../../includes/" + application_name + "/floodfiles/";
+	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
 	string lisflood_start_file	<- shapes_def["LISFLOOD_START_FILE"];
 	string lisflood_bci_file	<- shapes_def["LISFLOOD_BCI_FILE"];
 	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING? shapes_def ["LISFLOOD_BDY_HIGH_FILENAME"] // scenario1 : HIGH 
 								:(floodEventType  = LOW_FLOODING ? shapes_def ["LISFLOOD_BDY_LOW_FILENAME" ] // scenario2 : LOW
 		  						:get_message('MSG_FLOODING_TYPE_PROBLEM'))};
 	// paths to Lisflood
-	string lisfloodPath 			<- configuration_file["LISFLOOD_PATH"]; 										// absolute path to Lisflood : "C:/lisflood-fp-604/"
-	string results_lisflood_rep 	<- "../includes/" + application_name + "/floodfiles/results"; 								// Lisflood results folder
-	string lisflood_par_file 		-> {"../includes/" + application_name + "/floodfiles/inputs/" + application_name + "_par" + timestamp + ".par"};   // parameter file
-	string lisflood_DEM_file 		-> {"../includes/" + application_name + "/floodfiles/inputs/" + application_name + "_dem" + timestamp + ".asc"}; 					  // DEM file 
-	string lisflood_rugosity_file 	-> {"../includes/" + application_name + "/floodfiles/inputs/" + application_name + "_rug" + timestamp + ".asc"}; 					  // rugosity file
+	string lisfloodPath 			<- configuration_file["LISFLOOD_PATH"];		// absolute path to Lisflood : "C:/littosim/lisflood"
+	string results_lisflood_rep 	<- my_flooding_path + "results"; 			// Lisflood results folder
+	string lisflood_par_file 		-> {my_flooding_path + "inputs/" + application_name + "_par" + timestamp + ".par"};   // parameter file
+	string lisflood_DEM_file 		-> {my_flooding_path + "inputs/" + application_name + "_dem" + timestamp + ".asc"}; 					  // DEM file 
+	string lisflood_rugosity_file 	-> {my_flooding_path + "inputs/" + application_name + "_rug" + timestamp + ".asc"}; 					  // rugosity file
 	string lisflood_bat_file 		<- "LittoSIM_GEN_Lisflood.bat";												       		  // Lisflood executable
 	
 	// variables for Lisflood calculs 
@@ -40,9 +40,10 @@ global {
 	int sub_event <- 0;
 	
 	// parameters for saving submersion results
-	string results_rep 			<- "../includes/"+ application_name +"/floodfiles/stats" + EXPERIMENT_START_TIME; 		// folder to save main model results
-	string shape_export_filePath -> {results_rep + "/SHP_Round" + game_round + ".shp"}; 		// shapefile to save cells
-	string log_export_filePath 	<- results_rep + "/log_" + machine_time + ".csv"; 					// file to save user actions (main model and players actions)  
+	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; 	// folder to save main model results
+	string shapes_export_path <- output_data_rep + "/shapes/"; // shapefiles to save
+	string csvs_export_path <- output_data_rep + "/csvs/"; // shapefiles to save
+	string log_export_filePath -> {output_data_rep + "/log_" + game_round + ".csv"}; 		// file to save user actions (main model and players actions)  
 	
 	// operation variables
 	geometry shape <- envelope(convex_hull_shape);	// world geometry
@@ -56,7 +57,7 @@ global {
 	list<list<int>> districts_taxes <- [[],[],[],[]];
 	list<list<int>> districts_given_money 	<- [[0],[0],[0],[0]];
 	list<list<int>> districts_taken_money 	<- [[0],[0],[0],[0]];
-	list<list<int>> districts_transferred_money 	<- [[0],[0],[0],[0]];
+	list<list<int>> districts_transferred_money <- [[0],[0],[0],[0]];
 	list<list<int>> districts_actions_costs <- [[0],[0],[0],[0]];
 	list<list<int>> districts_levers_costs 	<- [[0],[0],[0],[0]];
 	// Strategy profiles actions
@@ -159,10 +160,6 @@ global {
 		create Network_Control_Manager;
 	}
 	//------------------------------ End of init -------------------------------//
-	
-	action save_user_actions {
-		write log_user_action;
-	}
 	 	
 	int getMessageID{
  		messageID <- messageID +1;
@@ -174,7 +171,6 @@ global {
 	}
 
 	action new_round {
-		if save_shp  {	do save_cells_as_shp_file;	}
 		write get_message('MSG_NEW_ROUND') + " : " + (game_round + 1);
 		
 		if game_round = 0 { // round 0
@@ -229,6 +225,8 @@ global {
 				round_neutral_cost <- 0.0;
 			}
 		}
+		do calculate_lu_coast_def_data;
+		do save_round_data;
 		game_round <- game_round + 1;
 		ask Network_Listener_To_Leader {
 			do inform_leader_round_number;
@@ -240,7 +238,47 @@ global {
 		add sub_event to: submersions;
 		sub_event <- 0;
 		write get_message('MSG_GAME_DONE') + " !";
-	} 	
+	}
+	
+	action calculate_lu_coast_def_data{
+		ask districts_in_game{
+			add current_population() to: population;
+			add sum(LUs where(each.lu_code = 1) accumulate each.shape.area) to: surface_N;
+			add sum(LUs where(each.lu_code = 2) accumulate each.shape.area) to: surface_U;
+			add sum(LUs where(each.lu_code = 2 and each.is_in_densification) accumulate each.shape.area) to: surface_Ui;
+			add sum(LUs where(each.lu_code = 4) accumulate each.shape.area) to: surface_AU;
+			add sum(LUs where(each.lu_code = 5) accumulate each.shape.area) to: surface_A;
+			add sum(LUs where(each.lu_code = 6) accumulate each.shape.area) to: surface_Us;
+			add sum(LUs where(each.lu_code = 6 and each.is_in_densification) accumulate each.shape.area) to: surface_Usi;
+			add sum(LUs where(each.lu_code = 7) accumulate each.shape.area) to: surface_AUs;
+			
+			list<Coastal_Defense> my_dikes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DIKE);
+			length_dikes_good <- my_dikes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter);
+			length_dikes_medium <- my_dikes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter);
+			length_dikes_bad <- my_dikes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter);
+			add my_dikes mean_of(each.alt) to: mean_alt_dikes_all;
+			mean_alt_dikes_good <- my_dikes where (each.status=STATUS_GOOD) mean_of(each.alt);
+			mean_alt_dikes_medium <- my_dikes where (each.status=STATUS_MEDIUM) mean_of(each.alt);
+			mean_alt_dikes_bad <- my_dikes where (each.status=STATUS_BAD) mean_of(each.alt);
+			add my_dikes min_of(each.alt) to: min_alt_dikes_all;
+			min_alt_dikes_good <- my_dikes where (each.status=STATUS_GOOD) min_of(each.alt);
+			min_alt_dikes_medium <- my_dikes where (each.status=STATUS_MEDIUM) min_of(each.alt);
+			min_alt_dikes_bad <- my_dikes where (each.status=STATUS_BAD) min_of(each.alt);
+			
+			list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
+			length_dunes_good <- my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter);
+			length_dunes_medium <- my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter);
+			length_dunes_bad <- my_dunes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter);
+			add my_dunes mean_of(each.alt) to: mean_alt_dunes_all;
+			mean_alt_dunes_good <- my_dunes where (each.status=STATUS_GOOD) mean_of(each.alt);
+			mean_alt_dunes_medium <- my_dunes where (each.status=STATUS_MEDIUM) mean_of(each.alt);
+			mean_alt_dunes_bad <- my_dunes where (each.status=STATUS_BAD) mean_of(each.alt);
+			add my_dunes min_of(each.alt) to: min_alt_dunes_all;
+			min_alt_dunes_good <- my_dunes where (each.status=STATUS_GOOD) min_of(each.alt);
+			min_alt_dunes_medium <- my_dunes where (each.status=STATUS_MEDIUM) min_of(each.alt);
+			min_alt_dunes_bad <- my_dunes where (each.status=STATUS_BAD) min_of(each.alt);
+		}
+	}
 	
 	int district_id (string dist_code){
 		District d <- first(District first_with (each.district_code = dist_code));
@@ -249,7 +287,7 @@ global {
 
 	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
 		write flood_results;
-		save flood_results to: results_rep + "/flood_results-" + machine_time + "-R" + game_round + ".txt" type: "text";
+		save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";
 		
 		ask Cell {
 			water_height <- 0.0; // reset water heights
@@ -314,6 +352,11 @@ global {
 
 	action add_element_in_list_flooding_events (string sub_name, string sub_rep){
 		put sub_rep key: sub_name in: list_flooding_events;
+		// updating the button that displays this submersion
+		ask Button where (each.nb_button = 6 and int(each.command) = length(list_flooding_events)-1){
+			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " (" + sub_name + ")";
+		}
+
 		ask Network_Control_Manager{
 			do update_submersion_list;
 		}
@@ -325,11 +368,11 @@ global {
 			ask Network_Game_Manager { do lock_user (myself, true); }
 		}
 		timestamp <- "_R" + game_round + "_t" + machine_time;
-		results_lisflood_rep <- "../includes/" + application_name + "/floodfiles/results" + timestamp;
+		results_lisflood_rep <- "includes/" + application_name + "/floodfiles/results" + timestamp;
 		do save_dem_and_rugosity;
 		do save_lf_launch_files;
-		do add_element_in_list_flooding_events("Submersion round " + game_round , results_lisflood_rep);
-		save "Directory created by LittoSIM GAMA model" to: results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
+		do add_element_in_list_flooding_events("" + game_round , results_lisflood_rep);
+		save "Directory created by LittoSIM GAMA model" to: "../"+results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
 		ask Network_Game_Manager {
 			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
 		}
@@ -340,21 +383,20 @@ global {
  	}
  		
 	action save_lf_launch_files {
-		save ("DEMfile         ../" + lisflood_DEM_file + 
-				"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\nmanningfile     ../" + lisflood_rugosity_file +
-				"\nbcifile         " + my_flooding_path + lisflood_bci_file + "\nbdyfile         " + my_flooding_path + lisflood_bdy_file + "\nstartfile       " + my_flooding_path + lisflood_start_file +
-				"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: lisflood_par_file type: "text";
+		save ("DEMfile         ../workspace/LittoSIM-GEN/" + lisflood_DEM_file + 
+				"\nresroot         res\ndirroot         results\nsim_time        52200\ninitial_tstep   10.0\nmassint         100.0\nsaveint         3600.0\nmanningfile     ../workspace/LittoSIM-GEN/"
+				+ lisflood_rugosity_file + "\nbcifile         ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_bci_file + "\nbdyfile         ../workspace/LittoSIM-GEN/"
+				+ my_flooding_path + lisflood_bdy_file + "\nstartfile       ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_start_file + 
+				"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
 		
-		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../"+ results_lisflood_rep + " ../" + lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 	}
 	
 	action load_dem_and_rugosity {
 		list<string> dem_data <- [];
 		list<string> rug_data <- [];
-		//list<string> hill_data <- [];
 		file dem_grid <- text_file(dem_file);
 		file rug_grid <- text_file(RUGOSITY_DEFAULT);
-		//file hill_grid<- text_file(hillshade_file);
 		
 		DEM_XLLCORNER <- float((dem_grid[2] split_with " ")[1]);
 		DEM_YLLCORNER <- float((dem_grid[3] split_with " ")[1]);
@@ -364,11 +406,9 @@ global {
 		loop rw from: 0 to: DEM_NB_ROWS - 1 {
 			dem_data <- dem_grid [rw+6] split_with " ";
 			rug_data <- rug_grid [rw+6] split_with " ";
-			//hill_data <- hill_grid[rw+6] split_with " ";
 			loop cl from: 0 to: DEM_NB_COLS - 1 {
 				Cell[cl, rw].soil_height <- float(dem_data[cl]);
 				Cell[cl, rw].rugosity <- float(rug_data[cl]);
-				//Cell[cl, rw].hillshade <- int(hill_data[cl]);
 			}
 		}
 		ask Cell {
@@ -388,8 +428,8 @@ global {
 	}    
 
 	action save_dem_and_rugosity {
-		string dem_filename <- lisflood_DEM_file;
-		string rug_filename <- lisflood_rugosity_file;
+		string dem_filename <- "../"+lisflood_DEM_file;
+		string rug_filename <- "../"+lisflood_rugosity_file;
 		
 		string h_txt <- 'ncols         ' + DEM_NB_COLS + '\nnrows         ' + DEM_NB_ROWS + '\nxllcorner     ' + DEM_XLLCORNER +
 						'\nyllcorner     ' + DEM_YLLCORNER + '\ncellsize      ' + DEM_CELL_SIZE + '\nNODATA_value  -9999';
@@ -410,8 +450,42 @@ global {
 		}
 	}
 	
-	action save_cells_as_shp_file {
-		save Cell type:"shp" to: shape_export_filePath with: [soil_height::"SOIL_HEIGHT", water_height::"WATER_HEIGHT"];
+	action save_round_data{
+		int num_round <- game_round;
+		save Land_Use type:"shp" to: shapes_export_path+"Land_Use_" + num_round + ".shp"
+				attributes: ['id'::id, 'lu_code'::lu_code, 'dist_code'::dist_code, 'density_class'::density_class, 'population'::population];
+		save Coastal_Defense type: "shp" to: shapes_export_path+"Coastal_Defense_" + num_round + ".shp"
+				attributes: ['id'::coast_def_id, 'dist_code'::district_code, 'type'::type, 'status'::status, 'height'::height, 'alt'::alt];
+
+		ask districts_in_game {
+			int popul <- population[num_round];
+			float N_area <- surface_N[num_round];
+			float U_area <- surface_U[num_round];
+			float Ui_area <- surface_Ui[num_round];
+			float AU_area <- surface_AU[num_round];
+			float A_area <- surface_A[num_round];
+			float Us_area <- surface_Us[num_round];
+			float Usi_area <- surface_Usi[num_round];
+			float AUs_area <- surface_AUs[num_round];
+			
+			float min_alt_all_dikes <- min_alt_dikes_all[num_round];
+			float mean_alt_all_dikes <- mean_alt_dikes_all[num_round];
+			float min_alt_all_dunes <- min_alt_dunes_all[num_round];
+			float mean_alt_all_dunes <- mean_alt_dunes_all[num_round];
+			
+			int actions_cost <- districts_actions_costs[dist_id-1][num_round];
+			int given_money <- districts_given_money[dist_id-1][num_round];
+			int taken_money <- districts_taken_money[dist_id-1][num_round];
+			int transferred_money <- districts_transferred_money[dist_id-1][num_round];
+			int levers_costs <- districts_levers_costs[dist_id-1][num_round];
+			
+			save [dist_id,district_code,district_name,num_round,budget,received_tax,popul,N_area,U_area,Ui_area,AU_area,A_area,Us_area,Usi_area,AUs_area,
+				length_dikes_good,length_dikes_medium,length_dikes_bad,mean_alt_all_dikes,mean_alt_dikes_good,mean_alt_dikes_medium,mean_alt_dikes_bad,
+				min_alt_all_dikes,min_alt_dikes_good,min_alt_dikes_medium,min_alt_dikes_bad,length_dunes_good,length_dunes_medium,length_dunes_bad,mean_alt_all_dunes,
+				mean_alt_dunes_good,mean_alt_dunes_medium,mean_alt_dunes_bad,min_alt_all_dunes,min_alt_dunes_good,min_alt_dunes_medium,min_alt_dunes_bad,
+				actions_cost,given_money,taken_money,transferred_money,levers_costs]
+				to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;
+		}
 	}
 	   
 	action read_lisflood_step_file {
@@ -419,7 +493,7 @@ global {
 		loop i from: 0 to: 3 - length(nb) {
 			nb <- "0" + nb;
 		}
-		string fileName <- results_lisflood_rep + "/res-" + nb + ".wd";
+		string fileName <- "../" + results_lisflood_rep + "/res-" + nb + ".wd";
 		write "nb " + nb;
 		if file_exists (fileName){
 			write fileName;
@@ -595,8 +669,7 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 				
 			write get_message('MSG_FLOODED_AREA_DISTRICT');
 			ask districts_in_game {
-				flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1;
-				add flooded_area to: data_flooded_area; 
+				flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1;  
 				write ""+ district_name + " : " + flooded_area +" ha";
 
 				totU <- (U_0_5c + U_1c + U_maxc) with_precision 1;
@@ -604,13 +677,18 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 				totUdense <- (Udense_0_5c + Udense_1c + Udense_maxc) with_precision 1;
 				totAU <- (AU_0_5c + AU_1c + AU_maxc) with_precision 1;
 				totN <- (N_0_5c + N_1c + N_maxc) with_precision 1;
-				totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1;	
-				add totU to: data_totU;
-				add totUs to: data_totUs;
-				add totUdense to: data_totUdense;
-				add totAU to: data_totAU;
-				add totN to: data_totN;
-				add totA to: data_totA;	
+				totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1;
+				
+				
+				if length(data_flooded_area) < length (list_flooding_events) {
+					add flooded_area to: data_flooded_area;
+					add totU to: data_totU;
+					add totUs to: data_totUs;
+					add totUdense to: data_totUdense;
+					add totAU to: data_totAU;
+					add totN to: data_totN;
+					add totA to: data_totA;
+				}
 			}
 	}
 	
@@ -658,35 +736,30 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 			command  	<- "0";
 			location 	<- {11000, 1000};
 			my_icon 	<- image_file("../images/icons/0.png");
-			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "1";
 			location 	<- {11000, 3000};
 			my_icon 	<- image_file("../images/icons/1.png");
-			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button {
 			nb_button 	<- 6;
 			command  	<- "2";
 			location 	<- {11000, 5000};
 			my_icon 	<- image_file("../images/icons/2.png");
-			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "3";
 			location 	<- {11000, 7000};
 			my_icon 	<- image_file("../images/icons/3.png");
-			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "4";
 			location 	<- {11000, 9000};
 			my_icon 	<- image_file("../images/icons/4.png");
-			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " " + command;
 		}
 		
 		create Button{
@@ -852,13 +925,12 @@ species Network_Game_Manager skills: [network]{
 							if  self.element_shape intersects all_coastal_border_area    {	is_in_coast_border_area <- true;	}
 							if  self.element_shape intersects all_protected_area 		 {	is_in_protected_area 	<- true;	}
 							if command = ACTION_CREATE_DIKE and (self.element_shape.centroid overlaps first(Inland_Dike_Area))	{	is_inland_dike <- true;	}
-							if(log_user_action){
-								save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";
-							}
 							ask districts_in_game first_with(each.dist_id = world.district_id (self.district_code)) {
 								budget <- int(budget - myself.cost);	// updating players payment (server side)
 								round_actions_cost <- round_actions_cost - myself.cost;
 							}
+							// saving data
+							save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";
 						} // end of create Player_Action
 					}
 				}
@@ -1731,6 +1803,44 @@ species District {
 	float totAU 	   <- 0.0;	list<float> data_totAU 		 <- [];
 	float totN 		   <- 0.0;	list<float> data_totN 		 <- [];
 	float totA 		   <- 0.0;	list<float> data_totA 		 <- [];
+	
+	list<int> population <- [];
+	list<float> surface_N <- [];
+	list<float> surface_U <- [];
+	list<float> surface_Ui <- [];
+	list<float> surface_AU <- [];
+	list<float> surface_A <- [];
+	list<float> surface_Us <- [];
+	list<float> surface_Usi <- [];
+	list<float> surface_AUs <- [];
+				
+	float length_dikes_good <- 0.0;
+	float length_dikes_medium <- 0.0;
+	float length_dikes_bad <- 0.0;
+	
+	list<float> mean_alt_dikes_all <- [];
+	float mean_alt_dikes_good <- 0.0;
+	float mean_alt_dikes_medium <- 0.0;
+	float mean_alt_dikes_bad <- 0.0;
+				
+	list<float> min_alt_dikes_all <- [];
+	float min_alt_dikes_good <- 0.0;
+	float min_alt_dikes_medium <- 0.0;
+	float min_alt_dikes_bad <- 0.0;
+				
+	float length_dunes_good <- 0.0;
+	float length_dunes_medium <- 0.0;
+	float length_dunes_bad <- 0.0;
+				
+	list<float> mean_alt_dunes_all <- [];
+	float mean_alt_dunes_good <- 0.0;
+	float mean_alt_dunes_medium <- 0.0;
+	float mean_alt_dunes_bad <- 0.0;
+				
+	list<float> min_alt_dunes_all <- [];
+	float min_alt_dunes_good <- 0.0;
+	float min_alt_dunes_medium <- 0.0;
+	float min_alt_dunes_bad <- 0.0;
 
 	// Indicators calculated at initialization, and sent to Leader when he connects
 	map<string,string> my_indicators_t0 <- [];
@@ -1923,7 +2033,6 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Log User Actions" 	var: log_user_action <- false on_change: {ask world{do save_user_actions;}};
 	
 	output {
 		display "Flooding" background: #black{
@@ -1983,19 +2092,18 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
 			
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] 
-					x_label: world.get_message('MSG_THE_ROUND') background: #white axes: #black y_tick_line_visible: false x_tick_line_visible: false
-			{
+					x_label: world.get_message('MSG_THE_ROUND') x_tick_line_visible: false{
 				data "" value: submersions color: #black style: bar;
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}			
-			chart world.get_message('MSG_ACTIONS') type: histogram size: {0.48,0.48} position: {0.51,0.51} 
-					x_serie_labels: districts_in_game collect each.district_name style:stack {
-				data world.get_message("MSG_BUILDER") value: districts_build_strategies collect sum(each) color: color_lbls[2];
-			 	data world.get_message("MSG_SOFT_DEF") value: districts_soft_strategies collect sum(each) color: color_lbls[1];
-			 	data world.get_message("MSG_WITHDRAWAL") value: districts_withdraw_strategies collect sum(each) color: color_lbls[0];
-			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies collect sum(each) color: color_lbls[3];
+			chart world.get_message('MSG_POPULATION') type: series size: {0.48,0.48} position: {0.51,0.51} x_range:[0,15] 
+					x_label: world.get_message('MSG_THE_ROUND') x_tick_line_visible: false{
+				data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].population color: dist_colors[i] marker_shape: marker_circle;
+				}
 			}
 		}
 		
@@ -2044,7 +2152,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}			
 			//-------
 			chart world.get_message('LDR_TOTAL') type: histogram size: {0.33,0.48} position: {0.0,0.5} style:stack
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis {
+				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis x_tick_line_visible: false {
 			 	data world.get_message('MSG_TAXES') value: districts_taxes collect sum(each) color: color_lbls[0];
 			 	data world.get_message('LDR_GIVEN') value: districts_given_money collect sum(each) color: color_lbls[1];
 			 	data world.get_message('LDR_TAKEN') value: districts_taken_money collect sum(each) color: color_lbls[2];
@@ -2145,14 +2253,133 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data world.get_message("MSG_NEUTRAL") value: districts_neutral_strategies[3] color: color_lbls[3];
 			}
 		}
-		
-		/*display "Land Use" {
-			
+				
+		display "Land Use" {
+			chart world.get_message('MSG_AREA')+" U" type: series x_tick_line_visible: false size: {0.24,0.45} position: {0, 0} x_range:[0,15]
+				 x_label: world.get_message('MSG_THE_ROUND'){
+				 	data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_U color: dist_colors[i];
+				} 			
+			}
+			chart world.get_message('MSG_AREA')+" U "+ world.get_message('MSG_DENSE') type: series x_tick_line_visible: false size: {0.24,0.45}
+				position: {0.25, 0} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_Ui color: dist_colors[i];
+				}			
+			}
+			chart world.get_message('MSG_AREA')+" Us" type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.50, 0} x_range:[0,15]
+				x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_Us color: dist_colors[i];
+				} 			
+			}
+			chart world.get_message('MSG_AREA')+" Us "+ world.get_message('MSG_DENSE') type: series x_tick_line_visible: false size: {0.24,0.45}
+				position: {0.75, 0} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_Usi color: dist_colors[i];
+				}			
+			}
+			chart world.get_message('MSG_AREA')+" N" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,15]
+				x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_N color: dist_colors[i];
+				} 			
+			}
+			chart world.get_message('MSG_AREA')+" A" type: series size: {0.24,0.45} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,15]
+				x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_A color: dist_colors[i];
+				}			
+			}
+			chart world.get_message('MSG_AREA')+" AU" type: series size: {0.24,0.45} position: {0.50, 0.5} x_tick_line_visible: false x_range:[0,15]
+				x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_AU color: dist_colors[i];
+				} 			
+			}
+			chart world.get_message('MSG_AREA')+" AUs" type: series size: {0.24,0.45} position: {0.75, 0.5} x_tick_line_visible: false x_range:[0,15]
+				x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_AUs color: dist_colors[i];
+				}			
+			}
 		}
 		
 		display "Coastal defenses" {
-			
-		}*/
+			chart world.get_message('LEV_DIKES') + '(' + world.get_message('MSG_MIN_ALT')+')' type: series size: {0.24,0.45} position: {0, 0}
+				x_tick_line_visible: false x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].min_alt_dikes_all color: dist_colors[i];
+				} 			
+			}
+			chart world.get_message('LEV_DIKES') + '(' + world.get_message('MSG_MEAN_ALT')+')' type: series size: {0.24,0.45} position: {0.25, 0}
+				x_tick_line_visible: false x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].mean_alt_dikes_all color: dist_colors[i];
+				}			
+			}
+			chart world.get_message('LEV_DUNES') + '(' + world.get_message('MSG_MIN_ALT')+')' type: series x_tick_line_visible: false
+				size: {0.24,0.45} position: {0.50, 0} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].min_alt_dunes_all color: dist_colors[i];
+				} 			
+			}
+			chart world.get_message('LEV_DUNES') + '(' + world.get_message('MSG_MEAN_ALT')+')' type: series x_tick_line_visible: false
+				size: {0.24,0.45} position: {0.75, 0} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
+					data "" value: submersions color: #black style: bar;
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].mean_alt_dunes_all color: dist_colors[i];
+				}			
+			}
+			//-------
+			chart world.get_message('LEV_DIKES') + '(' + world.get_message('PLY_MSG_LENGTH')+')' type: histogram style: stack background: #white
+				size: {0.15,0.45} position: {0.01, 0.5} x_serie_labels: districts_in_game collect each.district_name{
+				data world.get_message('PLY_MSG_GOOD') value: districts_in_game collect each.length_dikes_good color: #green;
+				data world.get_message('PLY_MSG_MEDIUM') value: districts_in_game collect each.length_dikes_medium color: #orange; 
+				data world.get_message('PLY_MSG_BAD') value: districts_in_game collect each.length_dikes_bad color: #red; 			
+			}
+			chart world.get_message('LEV_DIKES') + '(' + world.get_message('MSG_MIN_ALT')+')' type: histogram style: stack background: #white
+				size: {0.15,0.45} position: {0.17, 0.5} x_serie_labels: districts_in_game collect each.district_name{
+				data world.get_message('PLY_MSG_GOOD') value: districts_in_game collect each.min_alt_dikes_good color: #green;
+				data world.get_message('PLY_MSG_MEDIUM') value: districts_in_game collect each.min_alt_dikes_medium color: #orange; 
+				data world.get_message('PLY_MSG_BAD') value: districts_in_game collect each.min_alt_dikes_bad color: #red; 						
+			}
+			chart world.get_message('LEV_DIKES') + '(' + world.get_message('MSG_MEAN_ALT')+')' type: histogram style: stack background: #white
+				size: {0.15,0.45} position: {0.33, 0.5} x_serie_labels: districts_in_game collect each.district_name{
+				data world.get_message('PLY_MSG_GOOD') value: districts_in_game collect each.mean_alt_dikes_good color: #green;
+				data world.get_message('PLY_MSG_MEDIUM') value: districts_in_game collect each.mean_alt_dikes_medium color: #orange; 
+				data world.get_message('PLY_MSG_BAD') value: districts_in_game collect each.mean_alt_dikes_bad color: #red;			
+			}
+			chart world.get_message('LEV_DUNES') + '(' + world.get_message('PLY_MSG_LENGTH')+')' type: histogram style: stack background: #white
+				size: {0.15,0.45} position: {0.52, 0.5} x_serie_labels: districts_in_game collect each.district_name{
+				data world.get_message('PLY_MSG_GOOD') value: districts_in_game collect each.length_dunes_good color: #green;
+				data world.get_message('PLY_MSG_MEDIUM') value: districts_in_game collect each.length_dunes_medium color: #orange; 
+				data world.get_message('PLY_MSG_BAD') value: districts_in_game collect each.length_dunes_bad color: #red; 					
+			}
+			chart world.get_message('LEV_DUNES') + '(' + world.get_message('MSG_MIN_ALT')+')' type: histogram style: stack background: #white
+				size: {0.15,0.45} position: {0.68, 0.5} x_serie_labels: districts_in_game collect each.district_name{
+				data world.get_message('PLY_MSG_GOOD') value: districts_in_game collect each.min_alt_dunes_good color: #green;
+				data world.get_message('PLY_MSG_MEDIUM') value: districts_in_game collect each.min_alt_dunes_medium color: #orange; 
+				data world.get_message('PLY_MSG_BAD') value: districts_in_game collect each.min_alt_dunes_bad color: #red; 						
+			}
+			chart world.get_message('LEV_DUNES') + '(' + world.get_message('MSG_MEAN_ALT')+')' type: histogram style: stack background: #white
+				size: {0.15,0.45} position: {0.84, 0.5} x_serie_labels: districts_in_game collect each.district_name{
+				data world.get_message('PLY_MSG_GOOD') value: districts_in_game collect each.mean_alt_dunes_good color: #green;
+				data world.get_message('PLY_MSG_MEDIUM') value: districts_in_game collect each.mean_alt_dunes_medium color: #orange; 
+				data world.get_message('PLY_MSG_BAD') value: districts_in_game collect each.mean_alt_dunes_bad color: #red;			
+			}
+		}
 		
 		display "Flooded depth per area"{
 			chart world.get_message('MSG_AREA')+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
@@ -2235,39 +2462,39 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Flooded area per district"{
-			chart world.get_message("MSG_ALL_AREAS") type: series size: {0.48,0.45} position: {0, 0} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
+			chart world.get_message("MSG_ALL_AREAS") type: series size: {0.48,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i];
 				}			
 			}
-			chart world.get_message('MSG_AREA')+" U" type: series size: {0.24,0.45} position: {0.5, 0} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
+			chart world.get_message('MSG_AREA')+" U" type: series size: {0.24,0.45} position: {0.5, 0} x_tick_line_visible: false x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i];
 				}			
 			}
-			chart world.get_message('MSG_AREA')+" U "+ world.get_message('MSG_DENSE') type: series size: {0.24,0.45} position: {0.75, 0} 
+			chart world.get_message('MSG_AREA')+" U "+ world.get_message('MSG_DENSE') type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.75, 0} 
 					x_label: world.get_message('MSG_SUBMERSION') x_range:[0,5]{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i];
 				}			
 			}
-			chart world.get_message('MSG_AREA')+" Us" type: series size: {0.24,0.45} position: {0, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
+			chart world.get_message('MSG_AREA')+" Us" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i];
 				} 			
 			}
-			chart world.get_message('MSG_AREA')+" AU" type: series size: {0.24,0.45} position: {0.25, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
+			chart world.get_message('MSG_AREA')+" AU" type: series size: {0.24,0.45} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i];
 				}			
 			}
 			
-			chart world.get_message('MSG_AREA')+" N" type: series size: {0.24,0.45} position: {0.50, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
+			chart world.get_message('MSG_AREA')+" N" type: series size: {0.24,0.45} position: {0.50, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i];
 				} 			
 			}
-			chart world.get_message('MSG_AREA')+" A" type: series size: {0.24,0.45} position: {0.75, 0.5} x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
+			chart world.get_message('MSG_AREA')+" A" type: series size: {0.24,0.45} position: {0.75, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: world.get_message('MSG_SUBMERSION'){
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i];
 				}			

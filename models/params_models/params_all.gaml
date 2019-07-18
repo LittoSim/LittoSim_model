@@ -135,7 +135,6 @@ global{
 	file land_use_shape 		<- file(shapes_def["LAND_USE_SHAPE"]);	
 	file convex_hull_shape 		<- file(shapes_def["CONVEX_HULL_SHAPE"]); 
 	file dem_file 				<- file(shapes_def["DEM_FILE"]);
-	//file hillshade_file 		<- file(shapes_def["HILLSHADE"]);
 	file buffer_in_100m_shape 	<- file(shapes_def["BUFFER_IN100M_SHAPE"]);
 	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
@@ -206,6 +205,7 @@ global{
 	}
 	
 	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
+	//			 lu_code			0	1	2	3	4	5	6	  7
     list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
 	
 	string lu_name_of_command (int command) {

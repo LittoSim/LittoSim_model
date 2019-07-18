@@ -22,7 +22,7 @@ global{
 	string MSG_123_OR_CUSTOMIZED;
 	string BTN_GET_REVENUE_MSG2;
 	
-	string records_folder <- "../includes/"+ application_name +"/leader_records/";
+	string records_folder <- "../includes/"+ application_name +"/";
 	
 	string get_lever_name(string lever_id){
 		return levers_def at lever_id at my_language;
