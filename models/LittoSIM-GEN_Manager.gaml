@@ -905,7 +905,7 @@ species Network_Game_Manager skills: [network]{
 						create Player_Action {
 							self.command 					<- int(m_contents["command"]);
 							self.command_round  			<- game_round; 
-							self.act_id 						<- m_contents["id"];
+							self.act_id 					<- m_contents["id"];
 							self.initial_application_round 	<- int(m_contents["initial_application_round"]);
 							self.district_code 				<- m_sender;
 							self.element_id 				<- int(m_contents["element_id"]);

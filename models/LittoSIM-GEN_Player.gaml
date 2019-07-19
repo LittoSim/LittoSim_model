@@ -602,24 +602,24 @@ global{
 					shape 			<- element_shape;
 					previous_lu_name<- myself.lu_name;
 					label 			<- selected_button.label;
-					cost 			<- selected_button.action_cost;
+					cost 			<- selected_button.action_cost * element_shape.area / STANDARD_LU_AREA;
 					initial_application_round <- game_round  + world.delay_of_action(command);
 					
 					// Overwrites
 					if command = ACTION_MODIFY_LAND_COVER_N {
 						if previous_lu_name in ["U","Us"] {
 							initial_application_round <- game_round + world.delay_of_action(ACTION_EXPROPRIATION);
-							cost <- float(myself.expro_cost);
+							cost <- float(myself.expro_cost) * element_shape.area / STANDARD_LU_AREA;
 							is_expropriation <- true;
 						} else if previous_lu_name = "A" {
-							cost <- world.cost_of_action ('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N');
+							cost <- world.cost_of_action ('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') * element_shape.area / STANDARD_LU_AREA;
 						}
 					} 
 					else if command = ACTION_MODIFY_LAND_COVER_AUs {
 						if previous_lu_name = "U" {
 							command <- ACTION_MODIFY_LAND_COVER_Us;
 							label 	<- world.get_message('PLY_CHANGE_TO_Us') + " " + (subsidized_adapted_habitat ? "(Subsidized)":"");
-							cost 	<- subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
+							cost 	<- element_shape.area / STANDARD_LU_AREA * (subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us'));	
 						}
 					}
 				}
@@ -1802,7 +1802,7 @@ species Land_Use {
 	int population;
 	float mean_alt;
 	string density_class -> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
-	int expro_cost 		 -> {round (population * 400* population ^ (-0.5))};
+	int expro_cost 		 -> {round (population *400* population ^ (-0.5))};
 	bool is_urban_type 	 -> {lu_name in ["U","Us","AU","AUs"]};
 	bool is_adapted_type -> {lu_name in ["Us","AUs"]};
 	bool is_in_densification <- false;
