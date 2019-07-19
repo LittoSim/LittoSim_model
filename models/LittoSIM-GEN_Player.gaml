@@ -769,12 +769,13 @@ species List_of_Elements parent: Displayed_List_Element {
 }
 //------------------------------ End of System_List_Element -------------------------------//
 
-species Message_Element parent: Displayed_List_Element //schedules:[] 
-{}
+species Message_Element parent: Displayed_List_Element{
+	int font_size 	<- DISPLAY_FONT_SIZE - 2;
+}
 
 //------------------------------ End of Message_Console_Element -------------------------------//
 
-species Displayed_List skills: [UI_location] { //schedules: []{
+species Displayed_List skills: [UI_location] {
 	int max_size 	<- 7;
 	int font_size 	<- 12;
 	float header_height 	<- 0.2;
@@ -1487,6 +1488,10 @@ species Network_Player skills:[network]{
 					}
 				}
 				match "NEW_SUBMERSION_EVENT" {
+					ask world{
+						do user_msg(get_message("PLY_SUBMERSION_RESULTS"),INFORMATION_MESSAGE);
+					}
+					is_active_gui <- false;
 					flooded_cells <- int(m_contents["flooded_cells"]);
 					cell_width <- int(m_contents["cell_width"]);
 					cell_height <- int(m_contents["cell_height"]);
@@ -1498,6 +1503,10 @@ species Network_Player skills:[network]{
 							loc <- point(float(m_contents["cell_location_x"+i]), float(m_contents["cell_location_y"+i]));
 							col <- world.color_of_water_height (float(m_contents["water_height"+i]));
 						}
+					}
+					is_active_gui <- true;
+					ask world{
+						do user_msg(get_message("PLY_SUBMERSION_RES_OK"),INFORMATION_MESSAGE);
 					}
 				}
 			}
@@ -2027,26 +2036,30 @@ species Legend_Flood{
 }
 //---------------------------- Experiment definiton -----------------------------//
 experiment District4 type: gui parent: LittoSIM_GEN_Player {
-	action init {
-		create simulation with:[active_district_name::districts[3], my_language::default_language];		
+	action _init_ {
+		create simulation with:[active_district_name::districts[3], my_language::default_language];
+		minimum_cycle_duration <- 0.5;	
 	}
 }
 
 experiment District3 type: gui parent: LittoSIM_GEN_Player {
-	action init {
-		create simulation with:[active_district_name::districts[2], my_language::default_language];	
+	action _init_ {
+		create simulation with:[active_district_name::districts[2], my_language::default_language];
+		minimum_cycle_duration <- 0.5;
 	}
 }
 
 experiment District2 type: gui parent: LittoSIM_GEN_Player {
-	action init {
-		create simulation with:[active_district_name::districts[1], my_language::default_language];	
+	action _init_ {
+		create simulation with:[active_district_name::districts[1], my_language::default_language];
+		minimum_cycle_duration <- 0.5;
 	}
 }
 
 experiment District1 type: gui parent: LittoSIM_GEN_Player {
-	action init {
-		create simulation with:[active_district_name::districts[0], my_language::default_language];	
+	action _init_ {
+		create simulation with:[active_district_name::districts[0], my_language::default_language];
+		minimum_cycle_duration <- 0.5;
 	}
 }
 

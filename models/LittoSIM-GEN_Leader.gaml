@@ -168,26 +168,32 @@ global{
 						}
 					}
 					match 4 {
+						if selected_lever.status_on and selected_lever.timer_activated {
+							ask selected_lever { do cancel_all_activated_actions; }
+							selected_lever <- nil;
+						}
+					}
+					match 5 {
 						if selected_lever.status_on and selected_lever.timer_activated{
 							ask selected_lever { do accept_next_activated_action; }
 							selected_lever <- nil;
 						}
 					}
-					match 5 {
+					match 6 {
 						if selected_lever.status_on and selected_lever.timer_activated {
 							ask selected_lever { do accept_all_activated_actions; }
 							selected_lever <- nil;
 						}
 					}
-					match 6 {
+					match 7 {
 						ask selected_lever { do toggle_status; }
 						selected_lever <- nil;
 					}
-					match 7 {
+					match 8 {
 						ask selected_lever { do write_help_lever_msg; }
 						selected_lever <- nil;
 					}
-					match 8 {
+					match 9 {
 						selected_lever <- nil;
 					}
 				}
@@ -567,21 +573,21 @@ species Lever_Window_Info {
 
 species Lever_Window_Actions {
 	point loca <- world.location;
-	geometry shape <- rectangle(30#m, 55#m);
+	geometry shape <- rectangle(30#m, 60#m);
 	
-	list<string> text_buttons <- ['','LEV_CHANGE_TRESHOLD','LEV_CHANGE_PLAYER_MSG','LEV_CANCEL_NEXT_APP',
+	list<string> text_buttons <- ['','LEV_CHANGE_TRESHOLD','LEV_CHANGE_PLAYER_MSG','LEV_CANCEL_NEXT_APP','LEV_CANCEL_ALL_APPS',
 				'LEV_VALIDATE_NEXT_APP','LEV_VALIDATE_ALL_APPS','LEV_ACTIVE_DEACTIVE','LEV_HOW_WORKS','LEV_CLOSE_WINDOW'];
 	
 	init {
-		point lo <- loca - {15, 27.5};
-		loop i from: 0 to: 8 {
+		point lo <- loca - {15, 30};
+		loop i from: 0 to: 9 {
 			create Lever_Window_Button {
 				command <- i ;
 				if myself.text_buttons [i] != "" {
 					text <- world.get_message(myself.text_buttons [i]);	
 				}
 				loca <- lo + {15, 7 + (i * 5.5)};
-				if i = 8 {	col <- #red; }
+				if i = 9 {	col <- #red; }
 			}
 		}
 	}
@@ -589,7 +595,7 @@ species Lever_Window_Actions {
 	aspect {
 		if selected_lever != nil {
 			draw shape color: #white border: #black at: loca;
-			draw selected_lever.box_title at: loca - {0,25.5} anchor: #center font: font("Arial", 13 , #bold) color: #darkblue;
+			draw selected_lever.box_title at: loca - {0,27.5} anchor: #center font: font("Arial", 13 , #bold) color: #darkblue;
 		}
 	}
 }
@@ -605,7 +611,7 @@ species Lever_Window_Button {
 		if selected_lever != nil {
 			draw shape color: col border: #black at: loca;
 			draw text font: font("Arial", 12 , #bold) color: #darkblue at: loca anchor: #center;
-			if command in [3,4,5] and (!selected_lever.status_on or !selected_lever.timer_activated){
+			if command in [3,4,5,6] and (!selected_lever.status_on or !selected_lever.timer_activated){
 				draw shape+0.1#m color: rgb(200,200,200,160);
 			}
 		}
@@ -745,16 +751,23 @@ species Lever {
 	action cancel_next_activated_action {		
 		if !empty(activation_queue){
 			do cancel_lever(activation_queue[0]);
-			ask world {
-				do record_leader_activity("Lever " + myself.lever_name + " canceled at", myself.my_district.district_name, "Cancel of " + myself.activation_queue[0].p_action);
-			}
-			remove index: 0 from: activation_queue ;	
+			remove index: 0 from: activation_queue;	
 		}
+	}
+	
+	action cancel_all_activated_actions {
+		loop aa over: activation_queue {
+			do cancel_lever(aa);
+		}
+		activation_queue <- [];
 	}
 	
 	action cancel_lever(Activated_Lever lev){
 		lev.p_action.should_wait_lever_to_activate <- false;
 		do inform_network_should_wait_lever_to_activate(lev.p_action);
+		ask world {
+			do record_leader_activity("Lever " + myself.lever_name + " canceled at", myself.my_district.district_name, "Cancel of " + myself.activation_queue[0].p_action);
+		}
 	}
 
 	action accept_next_activated_action{		

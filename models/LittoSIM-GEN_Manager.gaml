@@ -38,6 +38,9 @@ global {
 	string flood_results 	<- "";   					// text of flood results per district // saved as a txt file
 	list<int> submersions;
 	int sub_event <- 0;
+	int flooded_cells <- 0;
+	float cell_width;
+	float cell_height;
 	
 	// parameters for saving submersion results
 	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; 	// folder to save main model results
@@ -243,14 +246,14 @@ global {
 	action calculate_lu_coast_def_data{
 		ask districts_in_game{
 			add current_population() to: population;
-			add sum(LUs where(each.lu_code = 1) accumulate each.shape.area) to: surface_N;
-			add sum(LUs where(each.lu_code = 2) accumulate each.shape.area) to: surface_U;
-			add sum(LUs where(each.lu_code = 2 and each.is_in_densification) accumulate each.shape.area) to: surface_Ui;
-			add sum(LUs where(each.lu_code = 4) accumulate each.shape.area) to: surface_AU;
-			add sum(LUs where(each.lu_code = 5) accumulate each.shape.area) to: surface_A;
-			add sum(LUs where(each.lu_code = 6) accumulate each.shape.area) to: surface_Us;
-			add sum(LUs where(each.lu_code = 6 and each.is_in_densification) accumulate each.shape.area) to: surface_Usi;
-			add sum(LUs where(each.lu_code = 7) accumulate each.shape.area) to: surface_AUs;
+			add sum(LUs where(each.lu_code = 1) accumulate each.shape.area) /10000 to: surface_N;
+			add sum(LUs where(each.lu_code = 2) accumulate each.shape.area) /10000 to: surface_U;
+			add sum(LUs where(each.lu_code = 2 and each.density_class = POP_DENSE) accumulate each.shape.area)/10000 to: surface_Udense;
+			add sum(LUs where(each.lu_code = 4) accumulate each.shape.area)/10000 to: surface_AU;
+			add sum(LUs where(each.lu_code = 5) accumulate each.shape.area)/10000 to: surface_A;
+			add sum(LUs where(each.lu_code = 6) accumulate each.shape.area)/10000 to: surface_Us;
+			add sum(LUs where(each.lu_code = 6 and each.density_class = POP_DENSE) accumulate each.shape.area)/10000 to: surface_Usdense;
+			add sum(LUs where(each.lu_code = 7) accumulate each.shape.area)/10000 to: surface_AUs;
 			
 			list<Coastal_Defense> my_dikes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DIKE);
 			length_dikes_good <- my_dikes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter);
@@ -461,11 +464,11 @@ global {
 			int popul <- population[num_round];
 			float N_area <- surface_N[num_round];
 			float U_area <- surface_U[num_round];
-			float Ui_area <- surface_Ui[num_round];
+			float Udense_area <- surface_Udense[num_round];
 			float AU_area <- surface_AU[num_round];
 			float A_area <- surface_A[num_round];
 			float Us_area <- surface_Us[num_round];
-			float Usi_area <- surface_Usi[num_round];
+			float Usdense_area <- surface_Usdense[num_round];
 			float AUs_area <- surface_AUs[num_round];
 			
 			float min_alt_all_dikes <- min_alt_dikes_all[num_round];
@@ -479,7 +482,7 @@ global {
 			int transferred_money <- districts_transferred_money[dist_id-1][num_round];
 			int levers_costs <- districts_levers_costs[dist_id-1][num_round];
 			
-			save [dist_id,district_code,district_name,num_round,budget,received_tax,popul,N_area,U_area,Ui_area,AU_area,A_area,Us_area,Usi_area,AUs_area,
+			save [dist_id,district_code,district_name,num_round,budget,received_tax,popul,N_area,U_area,Udense_area,AU_area,A_area,Us_area,Usdense_area,AUs_area,
 				length_dikes_good,length_dikes_medium,length_dikes_bad,mean_alt_all_dikes,mean_alt_dikes_good,mean_alt_dikes_medium,mean_alt_dikes_bad,
 				min_alt_all_dikes,min_alt_dikes_good,min_alt_dikes_medium,min_alt_dikes_bad,length_dunes_good,length_dunes_medium,length_dunes_bad,mean_alt_all_dunes,
 				mean_alt_dunes_good,mean_alt_dunes_medium,mean_alt_dunes_bad,min_alt_all_dunes,min_alt_dunes_good,min_alt_dunes_medium,min_alt_dunes_bad,
@@ -544,9 +547,11 @@ global {
 		string my_district <- d.district_code;
 		
 		list<Cell> my_flooded_cells <- d.cells where(each.max_water_height > 0);
+		cell_width <- Cell[0].shape.width;
+		cell_height <- Cell[0].shape.height;
 		add string(length(my_flooded_cells)) at: "flooded_cells" to: nmap;
-		add string(Cell[0].shape.width) at: "cell_width" to: nmap;
- 		add string(Cell[0].shape.height) at: "cell_height" to: nmap;
+		add string(cell_width) at: "cell_width" to: nmap;
+ 		add string(cell_height) at: "cell_height" to: nmap;
  		ask Network_Game_Manager{
 			do send to: my_district contents: nmap;
 		}
@@ -556,6 +561,10 @@ global {
 			add string(shape.location.y) at: "cell_location_y"+i to: mp;
 			add string(max_water_height) at: "water_height"+i to: mp;
 			i <- i + 1;
+			create Polycell{
+				loc <- myself.shape.location;
+				col <- world.color_of_water_height (myself.max_water_height);
+			}
  		}
  		ask Network_Game_Manager{
 			do send to: my_district contents: mp;
@@ -636,6 +645,9 @@ global {
 				prev_N_0_5c <- N_0_5c;
 				prev_N_1c <- N_1c;
 				prev_N_maxc <- N_maxc;
+				prev_tot_0_5c <- tot_0_5c;
+				prev_tot_1c <- tot_1c;
+				prev_tot_maxc <- tot_maxc;
 				
 				U_0_5c <- U_0_5 * 0.04;
 				U_1c <- U_1 * 0.04;
@@ -655,6 +667,10 @@ global {
 				N_0_5c <- N_0_5 * 0.04;
 				N_1c <- N_1 * 0.04;
 				N_maxc <- N_max * 0.04;
+				tot_0_5c <- U_0_5c + Us_0_5c + AU_0_5c + A_0_5c + N_0_5c;
+				tot_1c <- U_1c + Us_1c + AU_1c + A_1c + N_1c;
+				tot_maxc <- U_maxc + Us_maxc + AU_maxc + A_maxc + N_maxc;
+				
 				text <- text + "Results for district : " + district_name +"
 Flooded U : < 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
 Flooded Us : < 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
@@ -874,8 +890,7 @@ species Network_Game_Manager skills: [network]{
 				match NEW_DIKE_ALT {
 					geometry new_tmp_dike <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
-					//float altit <- (Cell overlapping new_tmp_dike) max_of(each.soil_height);
-					float altit <- (Cell overlapping new_tmp_dike) mean_of(each.soil_height);
+					float altit <- (Cell overlapping new_tmp_dike) max_of(each.soil_height) + BUILT_DIKE_HEIGHT;
 					ask Network_Game_Manager{
 						map<string,string> mpp <- ["TOPIC"::NEW_DIKE_ALT];
 						put string(altit)  		at: "altit" 	in: mpp;
@@ -1370,8 +1385,7 @@ species Player_Action schedules:[]{
 			status 	<- BUILT_DIKE_STATUS;
 			height 	<- BUILT_DIKE_HEIGHT;	
 			cells 	<- Cell overlapping self;
-			//alt 	<- cells max_of(each.soil_height);
-			alt 	<- cells mean_of(each.soil_height);
+			alt 	<- cells max_of(each.soil_height) + height;
 		}
 		Coastal_Defense new_dike <- first (tmp_dike);
 		act.element_id 		<-  new_dike.coast_def_id;
@@ -1441,10 +1455,8 @@ species Coastal_Defense {
 	}
 	
 	action build_coast_def {
-		// a dike raises soil around the highest cell
-		//alt <- cells mean_of (each.soil_height);
 		ask cells  {
-			soil_height <- myself.alt;// + myself.height;
+			soil_height <- myself.alt;
 			soil_height_before_broken <- soil_height;
 			do init_cell_color();
 		}
@@ -1782,6 +1794,7 @@ species District {
 	float round_neutral_cost <- 0.0;
 	
 	// init water heights
+	float tot_0_5c	  <-0.0;		float tot_1c 	<-0.0;		float tot_maxc 	  <-0.0;
 	float U_0_5c  	  <-0.0;		float U_1c 		<-0.0;		float U_maxc 	  <-0.0;
 	float Us_0_5c 	  <-0.0;		float Us_1c 	<-0.0;		float Us_maxc 	  <-0.0;
 	float Udense_0_5c <-0.0;		float Udense_1c <-0.0;		float Udense_maxc <-0.0;
@@ -1789,12 +1802,13 @@ species District {
 	float A_0_5c 	  <-0.0;		float A_1c 		<-0.0;		float A_maxc      <-0.0;
 	float N_0_5c 	  <-0.0;		float N_1c 		<-0.0;		float N_maxc 	  <-0.0;
 	
-	float prev_U_0_5c  	  <-0.0;		float prev_U_1c 		<-0.0;		float prev_U_maxc 	  <-0.0;
+	float prev_tot_0_5c	  <-0.0;		float prev_tot_1c 	<-0.0;		float prev_tot_maxc 	  <-0.0;
+	float prev_U_0_5c  	  <-0.0;		float prev_U_1c 	<-0.0;		float prev_U_maxc 	  <-0.0;
 	float prev_Us_0_5c 	  <-0.0;		float prev_Us_1c 	<-0.0;		float prev_Us_maxc 	  <-0.0;
 	float prev_Udense_0_5c <-0.0;		float prev_Udense_1c <-0.0;		float prev_Udense_maxc <-0.0;
 	float prev_AU_0_5c 	  <-0.0; 		float prev_AU_1c 	<-0.0;		float prev_AU_maxc 	  <-0.0;
-	float prev_A_0_5c 	  <-0.0;		float prev_A_1c 		<-0.0;		float prev_A_maxc      <-0.0;
-	float prev_N_0_5c 	  <-0.0;		float prev_N_1c 		<-0.0;		float prev_N_maxc 	  <-0.0;
+	float prev_A_0_5c 	  <-0.0;		float prev_A_1c 	<-0.0;		float prev_A_maxc      <-0.0;
+	float prev_N_0_5c 	  <-0.0;		float prev_N_1c 	<-0.0;		float prev_N_maxc 	  <-0.0;
 	
 	float flooded_area <- 0.0;	list<float> data_flooded_area<- [];
 	float totU 		   <- 0.0;	list<float> data_totU 		 <- [];
@@ -1807,11 +1821,11 @@ species District {
 	list<int> population <- [];
 	list<float> surface_N <- [];
 	list<float> surface_U <- [];
-	list<float> surface_Ui <- [];
+	list<float> surface_Udense <- [];
 	list<float> surface_AU <- [];
 	list<float> surface_A <- [];
 	list<float> surface_Us <- [];
-	list<float> surface_Usi <- [];
+	list<float> surface_Usdense <- [];
 	list<float> surface_AUs <- [];
 				
 	float length_dikes_good <- 0.0;
@@ -1908,7 +1922,17 @@ species District {
 	}				
 }
 //------------------------------ End of District -------------------------------//
-	
+
+species Polycell{
+	point loc;
+	rgb col;
+	aspect base{
+		if show_max_water_height {
+			draw rectangle(cell_width,cell_height) color: col at: loc;	
+		}
+	}
+}
+//------------------------------ End of Polycell -------------------------------//	
 // generic buttons
 species Button{
 	int nb_button 	 <- 0;
@@ -2082,6 +2106,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Land_Use 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Road 	 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Water			aspect: base size: {0.48,0.48} position: {0.01,0.01};
+			species Polycell		aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Coastal_Defense aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Legend_Planning size: {0.48,0.48} position: {0.01,0.01};
 		
@@ -2089,6 +2114,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Land_Use aspect: population_density size: {0.48,0.48} position: {0.51,0.01};
 			species Road 	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
 			species Water	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
+			species Polycell aspect: base size: {0.48,0.48} position: {0.51,0.01};
 			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
 			
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] 
@@ -2266,7 +2292,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				position: {0.25, 0} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
 					data "" value: submersions color: #black style: bar;
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].surface_Ui color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_Udense color: dist_colors[i];
 				}			
 			}
 			chart world.get_message('MSG_AREA')+" Us" type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.50, 0} x_range:[0,15]
@@ -2280,7 +2306,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				position: {0.75, 0} x_range:[0,15] x_label: world.get_message('MSG_THE_ROUND'){
 					data "" value: submersions color: #black style: bar;
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].surface_Usi color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].surface_Usdense color: dist_colors[i];
 				}			
 			}
 			chart world.get_message('MSG_AREA')+" N" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,15]
@@ -2407,17 +2433,23 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data ">1" value:(districts_in_game collect each.AU_maxc) color: world.color_of_water_height(1.9); 
 			}
 			
-			chart world.get_message('MSG_AREA')+" A" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.165, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true {
+			chart world.get_message('MSG_AREA')+" A" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.01, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.A_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.A_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.A_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart world.get_message('MSG_AREA')+" N" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.495, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true{
+			chart world.get_message('MSG_AREA')+" N" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.34, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.N_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.N_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.N_maxc) color: world.color_of_water_height(1.9); 
+			}
+			chart world.get_message('LDR_TOTAL') type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.67, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value:(districts_in_game collect each.tot_0_5c) color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.tot_1c) color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.tot_maxc) color: world.color_of_water_height(1.9); 
 			}
 		}
 		
@@ -2447,17 +2479,23 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data ">1" value:(districts_in_game collect each.prev_AU_maxc) color: world.color_of_water_height(1.9); 
 			}
 			
-			chart world.get_message('MSG_AREA')+" A" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.165, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true {
+			chart world.get_message('MSG_AREA')+" A" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.01, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_A_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_A_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_A_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart world.get_message('MSG_AREA')+" N" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.495, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true{
+			chart world.get_message('MSG_AREA')+" N" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.34, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name{
 				data "0.5" value:(districts_in_game collect each.prev_N_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_N_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_N_maxc) color: world.color_of_water_height(1.9); 
+			}
+			chart world.get_message('LDR_TOTAL') type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.67, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value:(districts_in_game collect each.prev_tot_0_5c) color: world.color_of_water_height(0.5);
+				data "1" value:(districts_in_game collect each.prev_tot_1c) color: world.color_of_water_height(0.9); 
+				data ">1" value:(districts_in_game collect each.prev_tot_maxc) color: world.color_of_water_height(1.9); 
 			}
 		}
 		
