@@ -101,6 +101,9 @@ global{
 		if water_shape != nil {
 			create Water from: water_shape;
 		}
+		if isolines_shape != nil {
+			create Isoline from: isolines_shape;
+		}
 		create Flood_Risk_Area from: rpp_area_shape;
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::int(get("unit_pop"))]{
@@ -179,6 +182,7 @@ global{
 			match ACTION_DESTROY_DIKE			{return image_file("../images/ihm/S_suppression_digue.png");	}
 			match ACTION_INSTALL_GANIVELLE 		{return image_file("../images/ihm/S_ganivelle.png");			}
 			match ACTION_CREATE_DUNE 			{return image_file("../images/ihm/S_creation_digue.png");		}
+			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/ihm/S_ganivelle.png");			}
 		}
 		return nil;
 	}
@@ -439,12 +443,13 @@ global{
 	action modify_coast_def (Coastal_Defense codef, Button but){
 		if codef != nil{
 			ask my_basket { // an action on the same dike is already in the basket
-				if element_id = codef.coast_def_id {
+				if codef.type != COAST_DEF_TYPE_CORD and element_id = codef.coast_def_id {
 					return;
 				}
 			}
 			if codef.type = COAST_DEF_TYPE_DUNE and but.command != ACTION_INSTALL_GANIVELLE {return;} // nothing to do
-			if codef.type = COAST_DEF_TYPE_DIKE and but.command  = ACTION_INSTALL_GANIVELLE {return;} // nothing to do
+			if codef.type = COAST_DEF_TYPE_CORD and but.command != ACTION_LOAD_PEBBLES_CORD {return;} // nothing to do
+			if codef.type = COAST_DEF_TYPE_DIKE and but.command in [ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD] {return;} // nothing to do
 			
 			create Coastal_Defense_Action returns: action_list{
 				id 			<- world.get_action_id();
@@ -454,10 +459,10 @@ global{
 				self.coast_def_type <- codef.type;
 				self.initial_application_round <- game_round  + world.delay_of_action(self.command);
 				element_shape 	<- codef.shape;
-				shape 	 		<- element_shape + 20#m;
+				shape 	 		<- element_shape + 15#m;
 				cost 			<- but.action_cost * codef.length_coast_def;
 				if codef.type = COAST_DEF_TYPE_DUNE {
-					draw_around <- 50;
+					draw_around <- 30;
 				}
 			}
 			previous_clicked_point <- nil;
@@ -498,7 +503,7 @@ global{
 				shape 		 <- element_shape;
 				cost 		 <- but.action_cost * shape.perimeter;
 				if coast_def_type = COAST_DEF_TYPE_DUNE {
-					draw_around <- 50;
+					draw_around <- 30;
 				}
 				// requesting the altitude of this future dike
 				map<string,string> mp <- ["REQUEST"::NEW_DIKE_ALT];
@@ -1426,6 +1431,7 @@ species Network_Player skills:[network]{
 						status 		<- m_contents["status"];
 						type 		<- m_contents["type"];
 						height 		<- float(m_contents["height"]);
+						slices		<- int(m_contents["slices"]);
 					}
 				}
 				match ACTION_DIKE_DROPPED {
@@ -1681,7 +1687,7 @@ species Coastal_Defense_Action parent: Player_Action {
 	string action_type 	<- PLAYER_ACTION_TYPE_COAST_DEF;
 	string coast_def_type;
 	float altit <- 0.0;
-	int draw_around <- 20;
+	int draw_around <- 15;
 		
 	rgb define_color {
 		switch command {
@@ -1801,7 +1807,8 @@ species Land_Use {
 	rgb my_color 	<- cell_color() update: cell_color();
 	int population;
 	float mean_alt;
-	string density_class -> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	string density_class-> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_VERY_LOW_DENSITY : (population < POP_MEDIUM_NUMBER ? POP_LOW_DENSITY : 
+								(population < POP_HIGH_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE)))};
 	int expro_cost 		 -> {round (population *400* population ^ (-0.5))};
 	bool is_urban_type 	 -> {lu_name in ["U","Us","AU","AUs"]};
 	bool is_adapted_type -> {lu_name in ["Us","AUs"]};
@@ -1839,10 +1846,11 @@ species Land_Use {
 			match_one ["AU","AUs"]  		 {return #yellow;		} // to urbanize
 			match_one ["U","Us"] {									  // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 {return rgb(245,245,245);	}
-					match POP_LOW_DENSITY	 {return rgb(220,220,220);	}
-					match POP_MEDIUM_DENSITY {return rgb(192,192,192);	}
-					match POP_DENSE 		 {return rgb(169,169,169);	}
+					match POP_EMPTY 		 { return rgb(250,250,250);	}
+					match POP_VERY_LOW_DENSITY{ return rgb(225,225,225);}
+					match POP_LOW_DENSITY	 { return rgb(190,190,190);	}
+					match POP_MEDIUM_DENSITY { return rgb(150,150,150);	}
+					match POP_DENSE 		 { return rgb(120,120,120);	}
 					default 				 {write "Density class problem !";}
 				}
 			}			
@@ -1870,6 +1878,7 @@ species Coastal_Defense {
 	rgb color <- #pink;
 	float height;
 	bool ganivelle <- false;
+	int slices <- 10;
 	float alt <- 0.0;
 	string status;	
 	int length_coast_def;
@@ -1913,17 +1922,26 @@ species Coastal_Defense {
 				}
 			}
 			if type = COAST_DEF_TYPE_DIKE {
-				draw 20#m around shape color: color;
+				draw 15#m around shape color: color;
 				draw shape color: #black;
 			}
-			else{
-				draw 50#m around shape color: color;
+			else if type = COAST_DEF_TYPE_DUNE{
+				draw 30#m around shape color: color;
 				draw shape color: #black;
 				if ganivelle {
-					loop i over: points_on(shape, 40#m) {
-						draw circle(10,i) color: #black;
+					loop i over: points_on(shape, 15#m) {
+						draw circle(5,i) color: #black;
 					}
 				} 
+			}
+			else {
+				draw 15#m around shape color: color;
+				draw shape color: #black;
+				list<point> pebbles <- points_on(shape, 10#m);
+				float ix <- length(pebbles)/11;
+				loop i from: 1 to: slices {
+					draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
+				}
 			}
 		}
 	}
@@ -1975,6 +1993,14 @@ species Tab skills: [UI_location]{
 species Road {
 	aspect base {
 		draw shape color:#gray;
+	}
+}
+
+species Isoline {
+	aspect base {
+		if active_display = COAST_DEF_DISPLAY {
+			draw shape color: #gray;
+		}
 	}
 }
 
@@ -2065,7 +2091,7 @@ experiment District1 type: gui parent: LittoSIM_GEN_Player {
 
 experiment LittoSIM_GEN_Player type: gui{
 	font regular 			<- font("Helvetica", 14, # bold);
-	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'SHAPES_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
+	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'STUDY_AREA_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 
@@ -2077,8 +2103,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500])
-				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::7500,1::2500])::6500, vertical([2::5000,3::5000])::3500]);
+		//		tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {
@@ -2097,6 +2123,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: map;
 			species Road 					aspect:	base;
+			//species Isoline					aspect: base;
 			species Water					aspect: base;
 			species Protected_Area 			aspect: base;
 			species Flood_Risk_Area 		aspect: base;

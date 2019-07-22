@@ -9,7 +9,7 @@ import "params_all.gaml"
 
 global{
 	string my_language;
-	string DISTRICT_AT_TOP 	 <- shapes_def["DISTRICT_AT_TOP"];
+	string DISTRICT_AT_TOP 	 <- study_area_def["DISTRICT_AT_TOP"];
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
 	int DISPLAY_FONT_SIZE 	 <- 16;
 	
@@ -18,8 +18,6 @@ global{
 	int ACTION_DISPLAY_FLOODED_AREA 	<- int(data_action at 'ACTION_DISPLAY_FLOODED_AREA'   at 'action_code');
 	int ACTION_DISPLAY_FLOODING 		<- int(data_action at 'ACTION_DISPLAY_FLOODING' 	  at 'action_code');
 	int ACTION_INSPECT		  			<- int(data_action at 'ACTION_INSPECT' 		  		  at 'action_code');
-	
-	int STANDARD_LU_AREA <- int(shapes_def["STANDARD_LU_AREA"]);
 	
 	// map tab displays
 	string LU_DISPLAY 		 <- "LU_DISPLAY";

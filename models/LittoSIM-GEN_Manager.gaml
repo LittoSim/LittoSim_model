@@ -17,10 +17,10 @@ global {
 	
 	// sea heights file sent to Lisflood
 	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
-	string lisflood_start_file	<- shapes_def["LISFLOOD_START_FILE"];
-	string lisflood_bci_file	<- shapes_def["LISFLOOD_BCI_FILE"];
-	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING? shapes_def ["LISFLOOD_BDY_HIGH_FILENAME"] // scenario1 : HIGH 
-								:(floodEventType  = LOW_FLOODING ? shapes_def ["LISFLOOD_BDY_LOW_FILENAME" ] // scenario2 : LOW
+	string lisflood_start_file	<- study_area_def["LISFLOOD_START_FILE"];
+	string lisflood_bci_file	<- study_area_def["LISFLOOD_BCI_FILE"];
+	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING? study_area_def ["LISFLOOD_BDY_HIGH_FILENAME"] // scenario1 : HIGH 
+								:(floodEventType  = LOW_FLOODING ? study_area_def ["LISFLOOD_BDY_LOW_FILENAME" ] // scenario2 : LOW
 		  						:get_message('MSG_FLOODING_TYPE_PROBLEM'))};
 	// paths to Lisflood
 	string lisfloodPath 			<- configuration_file["LISFLOOD_PATH"];		// absolute path to Lisflood : "C:/littosim/lisflood"
@@ -74,7 +74,7 @@ global {
 	list<list<float>> districts_withdraw_costs<- [[0],[0],[0],[0]];
 	list<list<float>> districts_neutral_costs <- [[0],[0],[0],[0]];
 
-	int new_comers_still_to_dispatch <- 0;	// population dynamics
+	int population_still_to_dispatch <- 0;	// population dynamics
 	// other variables 
 	bool show_max_water_height	<- false;			// defines if the water_height displayed on the map should be the max one or the current one
 	string stateSimPhase 		<- SIM_NOT_STARTED; // state variable of current simulation state 
@@ -170,7 +170,8 @@ global {
  	} 
 	
 	int new_comers_to_dispatch 	 {
-		return round(sum(districts_in_game accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE);
+		return round(sum(districts_in_game accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE) +
+					(length(Land_Use where(each.is_in_densification)) * ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION);
 	}
 
 	action new_round {
@@ -184,7 +185,7 @@ global {
 			write stateSimPhase;
 		}
 		else {
-			new_comers_still_to_dispatch <- new_comers_to_dispatch();
+			population_still_to_dispatch <- new_comers_to_dispatch();
 			ask shuffle(Land_Use){ pop_updated <- false; do evolve_AU_to_U; }
 			ask shuffle(Land_Use){ do evolve_pop_U_densification; 			}
 			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				} 
@@ -192,6 +193,7 @@ global {
 				// each districts evolves its own coastal defenses
 				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
+		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status;  }
 				
 				do calculate_taxes;
 				add received_tax to: districts_taxes[dist_id-1];
@@ -523,7 +525,7 @@ global {
      		else {
      			stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
      			write stateSimPhase;
-     			sub_event <- max(districts_budgets accumulate each);
+     			sub_event <- 1;
      		}
      	}
 	}
@@ -1068,7 +1070,7 @@ species Network_Game_Manager skills: [network]{
 			p2 	<- last(self.shape.points);
 			msg <- ["TOPIC"::ACTION_DIKE_UPDATE, "coast_def_id"::coast_def_id,
 				 "p1.x"::p1.x, "p1.y"::p1.y, "p2.x"::p2.x, "p2.y"::p2.y,
-				 "height"::height, "type"::type, "status"::status,
+				 "height"::height, "type"::type, "status"::status, "slices"::slices,
 				 "ganivelle"::ganivelle, "alt"::alt];
 			not_updated <- false;
 			ask myself{
@@ -1408,7 +1410,7 @@ species Player_Action schedules:[]{
 species Coastal_Defense {	
 	int coast_def_id;
 	string district_code;
-	string type;     // DIKE or DUNE
+	string type;     // DIKE or DUNE ord CORD
 	string status;	//  "GOOD" "MEDIUM" "BAD"  
 	float height;
 	float alt; 
@@ -1417,7 +1419,8 @@ species Coastal_Defense {
 	int rupture			 <- 0;
 	geometry rupture_area<- nil;
 	bool not_updated 	 <- false;
-	bool ganivelle 		 <- false;
+	bool ganivelle 		 <- false; // if DUNE
+	int slices 			 <- 10;  // if CORD
 	float height_before_ganivelle;
 	list<Cell> cells;
 	
@@ -1446,7 +1449,7 @@ species Coastal_Defense {
 		if status = ""  { status <- STATUS_GOOD; } 
 		if type = '' 	{ type 	<- "Unknown"; }
 		if height = 0.0 { height <- MIN_HEIGHT_DIKE; }
-		counter_status 	<- type = COAST_DEF_TYPE_DUNE ? rnd (STEPS_DEGRAD_STATUS_DUNE - 1) : rnd (STEPS_DEGRAD_STATUS_DIKE - 1);
+		counter_status 	<- type = COAST_DEF_TYPE_DUNE ? rnd(STEPS_DEGRAD_STATUS_DUNE - 1) : rnd(STEPS_DEGRAD_STATUS_DIKE - 1);
 		cells 			<- Cell where (each overlaps self);
 		if type = COAST_DEF_TYPE_DUNE  {
 			height_before_ganivelle <- height;
@@ -1491,6 +1494,19 @@ species Coastal_Defense {
 			do init_cell_color();
 		}
 		do die;
+	}
+	
+	action degrade_cord_status {
+		if slices > 1 {
+			slices <- slices - 1;
+			if slices <= NB_SLICES_CORD_STATUS_BAD {
+				status <- STATUS_BAD;
+			}
+			else if slices <= NB_SLICES_CORD_STATUS_MEDIUM {
+				status <- STATUS_MEDIUM;
+			}
+			not_updated <- true;
+		}
 	}
 	
 	action degrade_dike_status {
@@ -1595,8 +1611,15 @@ species Coastal_Defense {
 					draw circle(10,i) color: #black;
 				}
 			} 
-		}else{
+		}else if type = COAST_DEF_TYPE_DIKE{
 			draw 20#m around shape color: color;// size: 300#m;
+		}else {
+			draw 20#m around shape color: color;
+			list<point> pebbles <- points_on(shape, 10#m);
+			float ix <- length(pebbles)/11;
+			loop i from: 1 to: slices {
+				draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
+			}
 		}
 		if(rupture = 1){
 			list<point> pts <- shape.points;
@@ -1615,7 +1638,6 @@ grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {
 	float rugosity					<- 0.0;
 	float soil_height_before_broken <- soil_height;
 	rgb soil_color <- rgb(255,255,255);
-	//int hillshade <- 0;
 	
 	action init_cell_color {		
 		if cell_type = 0 { // sea
@@ -1644,7 +1666,8 @@ species Land_Use {
 	string dist_code;
 	rgb my_color 		<- cell_color() update: cell_color();
 	int AU_to_U_counter <- 0;
-	string density_class-> {population = 0? POP_EMPTY :(population < POP_LOW_NUMBER ? POP_LOW_DENSITY: (population < POP_MEDIUM_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE))};
+	string density_class-> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_VERY_LOW_DENSITY : (population < POP_MEDIUM_NUMBER ? POP_LOW_DENSITY : 
+								(population < POP_HIGH_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE)))};
 	int exp_cost 		-> {round (population * 400 * population ^ (-0.5))};
 	bool isUrbanType 	-> {lu_name in ["U","Us","AU","AUs"]};
 	bool is_adapted 	-> {lu_name in ["Us","AUs"]};
@@ -1693,7 +1716,7 @@ species Land_Use {
 				lu_name <- lu_name = "AU" ? "U" : "Us";
 				lu_code <- lu_type_names index_of lu_name;
 				not_updated <- true;
-				do assign_population (POP_FOR_NEW_U);
+				do assign_population (int(POP_FOR_NEW_U * self.shape.area / STANDARD_LU_AREA));
 			}
 		}	
 	}
@@ -1701,7 +1724,7 @@ species Land_Use {
 	action evolve_pop_U_densification {
 		if !pop_updated and is_in_densification and lu_name in ["U","Us"]{
 			string previous_d_class <- density_class; 
-			do assign_population (POP_FOR_U_DENSIFICATION);
+			do assign_population (int(POP_FOR_U_DENSIFICATION * self.shape.area / STANDARD_LU_AREA));
 			if previous_d_class != density_class {
 				is_in_densification <- false;
 			}
@@ -1710,18 +1733,35 @@ species Land_Use {
 		
 	action evolve_pop_U_standard { 
 		if !pop_updated and !is_in_densification and lu_name in ["U","Us"]{
-			do assign_population (POP_FOR_U_STANDARD);
+			if population_still_to_dispatch > 0 {
+				do assign_population (int(POP_FOR_U_STANDARD * self.shape.area / STANDARD_LU_AREA));
+			}
+			if population_still_to_dispatch < 0 {
+				do withdraw_population (int(POP_FOR_U_STANDARD * self.shape.area / STANDARD_LU_AREA));
+			}
 		}
 	}
 	
-	action assign_population (int nbPop) {
-		if new_comers_still_to_dispatch > 0 {
-			population 					 <- population + nbPop;
-			new_comers_still_to_dispatch <- new_comers_still_to_dispatch - nbPop;
+	action assign_population(int nb_pop) {
+		if population_still_to_dispatch > 0 {
+			int pop_to_assign <- min (nb_pop, population_still_to_dispatch);
+			population 					 <- population + pop_to_assign;
+			population_still_to_dispatch <- population_still_to_dispatch - pop_to_assign;
 			not_updated 				 <- true;
 			pop_updated 				 <- true;
 		}
 	}
+	
+	action withdraw_population (int nb_pop) {
+		if population_still_to_dispatch < 0 {
+			int pop_to_withdraw <- min (nb_pop, abs(population_still_to_dispatch));
+			population 					 <- population - nb_pop;
+			population_still_to_dispatch <- population_still_to_dispatch + nb_pop;
+			not_updated 				 <- true;
+			pop_updated 				 <- true;
+		}
+	}
+	
 
 	aspect base {
 		draw shape color: my_color;
@@ -1732,10 +1772,11 @@ species Land_Use {
 	aspect population_density {
 		rgb acolor <- nil;
 		switch density_class {
-			match POP_EMPTY 		{acolor <- rgb(245,245,245); }
-			match POP_LOW_DENSITY 	{acolor <- rgb(220,220,220); } 
-			match POP_MEDIUM_DENSITY{acolor <- rgb(192,192,192); }
-			match POP_DENSE 		{acolor <- rgb(169,169,169); }
+			match POP_EMPTY 		 { return rgb(250,250,250);	}
+			match POP_VERY_LOW_DENSITY{ return rgb(225,225,225);}
+			match POP_LOW_DENSITY	 { return rgb(190,190,190);	}
+			match POP_MEDIUM_DENSITY { return rgb(150,150,150);	}
+			match POP_DENSE 		 { return rgb(120,120,120);	}
 			default 				{write "Density class problem !"; }
 		}
 		draw shape color: acolor;
@@ -1753,10 +1794,11 @@ species Land_Use {
 			match_one ["AU","AUs"]  		 {res <- #yellow;		 	} // to urbanize
 			match_one ["U","Us"] { 								 	    // urbanised
 				switch density_class 		 {
-					match POP_EMPTY 		 { return rgb(245,245,245);	}
-					match POP_LOW_DENSITY	 { return rgb(220,220,220);	}
-					match POP_MEDIUM_DENSITY { return rgb(192,192,192);	}
-					match POP_DENSE 		 { return rgb(169,169,169);	}
+					match POP_EMPTY 		 { return rgb(250,250,250);	}
+					match POP_VERY_LOW_DENSITY{ return rgb(225,225,225);}
+					match POP_LOW_DENSITY	 { return rgb(190,190,190);	}
+					match POP_MEDIUM_DENSITY { return rgb(150,150,150);	}
+					match POP_DENSE 		 { return rgb(120,120,120);	}
 				}
 			}			
 		}
@@ -2119,14 +2161,14 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] 
 					x_label: world.get_message('MSG_THE_ROUND') x_tick_line_visible: false{
-				data "" value: submersions color: #black style: bar;
+				data "" value: submersions collect (each * max(districts_budgets accumulate each)) color: #black style: bar;
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}			
 			chart world.get_message('MSG_POPULATION') type: series size: {0.48,0.48} position: {0.51,0.51} x_range:[0,15] 
 					x_label: world.get_message('MSG_THE_ROUND') x_tick_line_visible: false{
-				data "" value: submersions color: #black style: bar;
+				data "" value: submersions collect (each * max(districts_in_game accumulate each.population)) color: #black style: bar;
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].population color: dist_colors[i] marker_shape: marker_circle;
 				}

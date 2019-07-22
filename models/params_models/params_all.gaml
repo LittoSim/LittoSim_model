@@ -8,11 +8,11 @@ global{
 	// Configuration files
 	string config_file_name 				<- "../includes/config/littosim.conf"; 
 	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
-	map<string,string> shapes_def 			<- read_configuration_file(configuration_file["SHAPES_FILE"],";"); // Shapefiles data
+	map<string,string> study_area_def		<- read_configuration_file(configuration_file["STUDY_AREA_FILE"],";"); // Shapefiles data
 	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANGUAGES_FILE"],";"); // Languages
-	map<string,map> data_action 			<- store_csv_data_into_map_of_map(shapes_def["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
+	map<string,map> data_action 			<- store_csv_data_into_map_of_map(study_area_def["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
 	
-	string application_name <- shapes_def["APPLICATION_NAME"];
+	string application_name <- study_area_def["APPLICATION_NAME"];
 	// Network 
 	string SERVER 			<- configuration_file["SERVER_ADDRESS"]; 
 	string GAME_MANAGER 	<- "GAME_MANAGER";
@@ -70,7 +70,7 @@ global{
 	int REFRESH_ALL 			<- 20;
 	int CONNECTION_MESSAGE 		<- 23;
 	
-	int PLAYER_MINIMAL_BUDGET  <- int(shapes_def['PLAYER_MINIMAL_BUDGET']);
+	int PLAYER_MINIMAL_BUDGET  <- int(study_area_def['PLAYER_MINIMAL_BUDGET']);
 	
 	// strategies
 	string BUILDER 		<- "BUILDER";
@@ -84,66 +84,72 @@ global{
 							ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
 	
 	// List of actions with their parameters
-	int ACTION_REPAIR_DIKE 			 <- data_action at 'ACTION_REPAIR_DIKE' != nil ? int(data_action at 'ACTION_REPAIR_DIKE' at 'action_code') : 0;
-	int ACTION_CREATE_DIKE 			 <- data_action at 'ACTION_CREATE_DIKE' != nil ? int(data_action at 'ACTION_CREATE_DIKE' at 'action_code') : 0;
-	int ACTION_DESTROY_DIKE 		 <- data_action at 'ACTION_DESTROY_DIKE' != nil ?int(data_action at 'ACTION_DESTROY_DIKE' at 'action_code') : 0;
-	int ACTION_RAISE_DIKE 			 <- data_action at 'ACTION_RAISE_DIKE' != nil ? int(data_action at 'ACTION_RAISE_DIKE' at 'action_code') : 0;
-	int ACTION_INSTALL_GANIVELLE 	 <- data_action at 'ACTION_INSTALL_GANIVELLE' != nil ?int(data_action at 'ACTION_INSTALL_GANIVELLE' at 'action_code') : 0;
-	int ACTION_CREATE_DUNE 			 <- data_action at 'ACTION_CREATE_DUNE' != nil ? int(data_action at 'ACTION_CREATE_DUNE' at 'action_code') : 0;
+	int ACTION_REPAIR_DIKE 			 <- data_action at 'ACTION_REPAIR_DIKE' 		 != nil ? int(data_action at 'ACTION_REPAIR_DIKE' 			at 'action_code') : 0;
+	int ACTION_CREATE_DIKE 			 <- data_action at 'ACTION_CREATE_DIKE' 		 != nil ? int(data_action at 'ACTION_CREATE_DIKE' 			at 'action_code') : 0;
+	int ACTION_DESTROY_DIKE 		 <- data_action at 'ACTION_DESTROY_DIKE' 		 != nil ? int(data_action at 'ACTION_DESTROY_DIKE' 			at 'action_code') : 0;
+	int ACTION_RAISE_DIKE 			 <- data_action at 'ACTION_RAISE_DIKE' 			 != nil ? int(data_action at 'ACTION_RAISE_DIKE' 			at 'action_code') : 0;
+	int ACTION_INSTALL_GANIVELLE 	 <- data_action at 'ACTION_INSTALL_GANIVELLE' 	 != nil ? int(data_action at 'ACTION_INSTALL_GANIVELLE' 	at 'action_code') : 0;
+	int ACTION_ENHANCE_NATURAL_ACCR	 <- data_action at 'ACTION_ENHANCE_NATURAL_ACCR' != nil ? int(data_action at 'ACTION_ENHANCE_NATURAL_ACCR' 	at 'action_code') : 0;
+	int ACTION_LOAD_PEBBLES_CORD 	 <- data_action at 'ACTION_LOAD_PEBBLES_CORD' 	 != nil ? int(data_action at 'ACTION_LOAD_PEBBLES_CORD' 	at 'action_code') : 0;
+	int ACTION_CREATE_DUNE 			 <- data_action at 'ACTION_CREATE_DUNE' 		 != nil ? int(data_action at 'ACTION_CREATE_DUNE' 			at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_AU  <- data_action at 'ACTION_MODIFY_LAND_COVER_AU' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code') : 0;
-	int ACTION_MODIFY_LAND_COVER_A 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_A' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_A' at 'action_code') : 0;
-	int ACTION_MODIFY_LAND_COVER_U 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_U' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_U' at 'action_code') : 0;
-	int ACTION_MODIFY_LAND_COVER_N 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_N' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_N' at 'action_code') : 0;
-	int ACTION_MODIFY_LAND_COVER_AUs <- data_action at 'ACTION_MODIFY_LAND_COVER_AUs' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs' at 'action_code') : 0;	
+	int ACTION_MODIFY_LAND_COVER_A 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_A'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_A' 	at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_U 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_U'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_U' 	at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_N 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_N'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_N' 	at 'action_code') : 0;
+	int ACTION_MODIFY_LAND_COVER_AUs <- data_action at 'ACTION_MODIFY_LAND_COVER_AUs'!= nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs' at 'action_code') : 0;	
 	int ACTION_MODIFY_LAND_COVER_Us	 <- data_action at 'ACTION_MODIFY_LAND_COVER_Us' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_Ui  <- data_action at 'ACTION_MODIFY_LAND_COVER_Ui' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code') : 0;
-	int ACTION_EXPROPRIATION 		 <- data_action at 'ACTION_EXPROPRIATION'!= nil ? int(data_action at 'ACTION_EXPROPRIATION' at 'action_code') : 0;
+	int ACTION_EXPROPRIATION 		 <- data_action at 'ACTION_EXPROPRIATION'		 != nil ? int(data_action at 'ACTION_EXPROPRIATION' 		at 'action_code') : 0;
 	
 	// Constant vars
 	string PLAYER_ACTION_TYPE_LU		<- "PLAYER_ACTION_TYPE_LU";
 	string PLAYER_ACTION_TYPE_COAST_DEF	<- "PLAYER_ACTION_TYPE_COAST_DEF";
 	string COAST_DEF_TYPE_DIKE 			<- "DIKE";
 	string COAST_DEF_TYPE_DUNE 			<- "DUNE";
+	string COAST_DEF_TYPE_CORD 			<- "CORD";
 	string STATUS_GOOD 					<- "GOOD";
 	string STATUS_MEDIUM				<- "MEDIUM";
 	string STATUS_BAD 					<- "BAD";
 	
 	// Population density
 	string POP_EMPTY 		  <- "EMPTY";
+	string POP_VERY_LOW_DENSITY<- "POP_VERY_LOW_DENSITY";
 	string POP_LOW_DENSITY 	  <- "LOW_DENSITY";
 	string POP_MEDIUM_DENSITY <- "MEDIUM_DENSITY";
 	string POP_DENSE 		  <- "DENSE";
-	int    POP_LOW_NUMBER 	  <- int(eval_gaml(shapes_def["POP_LOW_NUMBER"]));
-	int    POP_MEDIUM_NUMBER  <- int(eval_gaml(shapes_def["POP_MEDIUM_NUMBER"]));
-	int    MIN_POP_AREA 	  <- int(eval_gaml(shapes_def["MIN_POPU_AREA"]));
+	int    POP_LOW_NUMBER 	  <- int(eval_gaml(study_area_def["POP_LOW_NUMBER"]));
+	int    POP_MEDIUM_NUMBER  <- int(eval_gaml(study_area_def["POP_MEDIUM_NUMBER"]));
+	int    POP_HIGH_NUMBER    <- int(eval_gaml(study_area_def["POP_HIGH_NUMBER"]));
+	int    MIN_POP_AREA 	  <- int(eval_gaml(study_area_def["MIN_POPU_AREA"]));
 	
 	// Building and raising dikes parameters
-	float BUILT_DIKE_HEIGHT <- float(shapes_def["BUILT_DIKE_HEIGHT"]);
-	float RAISE_DIKE_HEIGHT <- float(shapes_def["RAISE_DIKE_HEIGHT"]); // 1#m by default
-	string BUILT_DIKE_STATUS 	<- shapes_def["BUILT_DIKE_STATUS"];
-	float  MIN_HEIGHT_DIKE 		<- float (eval_gaml(shapes_def["MIN_HEIGHT_DIKE"]));
+	float BUILT_DIKE_HEIGHT <- float(study_area_def["BUILT_DIKE_HEIGHT"]);
+	float RAISE_DIKE_HEIGHT <- float(study_area_def["RAISE_DIKE_HEIGHT"]); // 1#m by default
+	string BUILT_DIKE_STATUS 	<- study_area_def["BUILT_DIKE_STATUS"];
+	float  MIN_HEIGHT_DIKE 		<- float (eval_gaml(study_area_def["MIN_HEIGHT_DIKE"]));
 	
 	// Loading GIS data
-	file districts_shape 		<- file(shapes_def["DISTRICTS_SHAPE"]);
-	file roads_shape 			<- file(shapes_def["ROADS_SHAPE"]);
-	file isolines_shape 		<- file(shapes_def["ISOLINES_SHAPE"]);
-	file protected_areas_shape 	<- file(shapes_def["SPA_SHAPE"]);
-	file water_shape 			<- file(shapes_def["WATER_SHAPE"]);
-	file rpp_area_shape 		<- file(shapes_def["RPP_SHAPE"]);
-	file coastline_shape 		<- file(shapes_def["COASTLINES_SHAPE"]);
-	file coastal_defenses_shape <- file(shapes_def["COASTAL_DEFENSES_SHAPE"]);
-	file land_use_shape 		<- file(shapes_def["LAND_USE_SHAPE"]);	
-	file convex_hull_shape 		<- file(shapes_def["CONVEX_HULL_SHAPE"]); 
-	file dem_file 				<- file(shapes_def["DEM_FILE"]);
-	file buffer_in_100m_shape 	<- file(shapes_def["BUFFER_IN100M_SHAPE"]);
-	map dist_code_lname_correspondance_table	<- eval_gaml(shapes_def["MAP_DIST_CODE_LONG_NAME"]);
-	map dist_code_sname_correspondance_table 	<- eval_gaml(shapes_def["MAP_DIST_CODE_SHORT_NAME"]);
+	file districts_shape 		<- file(study_area_def["DISTRICTS_SHAPE"]);
+	file roads_shape 			<- file(study_area_def["ROADS_SHAPE"]);
+	file isolines_shape 		<- file(study_area_def["ISOLINES_SHAPE"]);
+	file protected_areas_shape 	<- file(study_area_def["SPA_SHAPE"]);
+	file water_shape 			<- file(study_area_def["WATER_SHAPE"]);
+	file rpp_area_shape 		<- file(study_area_def["RPP_SHAPE"]);
+	file coastline_shape 		<- file(study_area_def["COASTLINES_SHAPE"]);
+	file coastal_defenses_shape <- file(study_area_def["COASTAL_DEFENSES_SHAPE"]);
+	file land_use_shape 		<- file(study_area_def["LAND_USE_SHAPE"]);	
+	file convex_hull_shape 		<- file(study_area_def["CONVEX_HULL_SHAPE"]); 
+	file dem_file 				<- file(study_area_def["DEM_FILE"]);
+	file buffer_in_100m_shape 	<- file(study_area_def["BUFFER_IN100M_SHAPE"]);
+	map dist_code_lname_correspondance_table	<- eval_gaml(study_area_def["MAP_DIST_CODE_LONG_NAME"]);
+	map dist_code_sname_correspondance_table 	<- eval_gaml(study_area_def["MAP_DIST_CODE_SHORT_NAME"]);
 	
-	bool AU_AND_AUs_TO_N				<- bool (shapes_def["AU_AND_AUs_TO_N"]);		    	// should we replace AU and AUs by N ?
-	
+	bool AU_AND_AUs_TO_N	<- bool (study_area_def["AU_AND_AUs_TO_N"]); // should we replace AU and AUs by N ?
+	int STANDARD_LU_AREA <- int(study_area_def["STANDARD_LU_AREA"]); // area of a standard cell to manage costs and populations
+		
 	// Taxes
-	map tax_unit_table 		<- eval_gaml(shapes_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
-	int initial_budget 		<- int(eval_gaml(shapes_def["INITIAL_BUDGET_BONUS"])); 			// at initialization, each district has a budget equal to an annual tax + %
+	map tax_unit_table 		<- eval_gaml(study_area_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
+	int initial_budget 		<- int(eval_gaml(study_area_def["INITIAL_BUDGET_BONUS"])); 			// at initialization, each district has a budget equal to an annual tax + %
 		
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){
