@@ -37,7 +37,8 @@ global{
 	int STEPS_DEGRAD_STATUS_DUNE 		<- int  (study_area_def["STEPS_DEGRAD_STATUS_DUNE"]); 		// Number of years for a dune to change status
 	int STEPS_REGAIN_STATUS_GANIVELLE   <- int  (study_area_def["STEPS_REGAIN_STATUS_GANIVELLE"]); 	// With a ganivelle, a dune regenerates 2 times fatser than it degrades
 	int NB_SLICES_CORD_STATUS_BAD 		<- int  (study_area_def["NB_SLICES_CORD_STATUS_BAD"]); 		// Number of slices for a cord to become bad
-	int NB_SLICES_CORD_STATUS_MEDIUM	<- int  (study_area_def["NB_SLICES_CORD_STATUS_MEDIUM"]); 	// Number of slices for a cord to become bad
+	int NB_SLICES_CORD_STATUS_MEDIUM	<- int  (study_area_def["NB_SLICES_CORD_STATUS_MEDIUM"]); 	// Number of slices for a cord to become medium
+	int NB_SLICES_LOST_PER_ROUND		<- int  (study_area_def["NB_SLICES_LOST_PER_ROUND"]); 		// Number of lost slices at each round 
 	int STEPS_FOR_AU_TO_U 				<- int  (study_area_def["STEPS_FOR_AU_TO_U"]);		    	// 2 years to change from AU to U)
 	
 	// Coastal defenses rupture parameters
@@ -77,10 +78,9 @@ global{
 	list<rgb> land_colors <- [rgb(255,255,212), rgb(254,217,142), rgb(254,153,41), rgb(217,95,14), rgb(153,52,4)];
 	float land_color_interval;
 	
-	float coastBorderBuffer <- float(eval_gaml(study_area_def["COAST_BORDER_BUFFER"])); 	// width of littoral area from the coast line (<400m)	
+	float coastBorderBuffer <- float(eval_gaml(study_area_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (<400m)	
 	// User interface params
 	string LEGEND_POSITION <- study_area_def["LEGEND_POSITION"];
-	float button_size 		<- float(configuration_file["BUTTON_SIZE"]); 				// 2000#m;
 	int font_size 			<- int(shape.height/30); 	
 	int font_interleave 	<- int(shape.width/60);
 	

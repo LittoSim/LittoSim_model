@@ -20,11 +20,11 @@ global{
 	Lever selected_lever;
 	Lever explored_lever;
 	list<species<Lever>> all_levers <- [];
-	
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
 								  'LEVER_GANIVELLE', 'LEVER_Us_COAST_BORDER_RISK_AREA', 'LEVER_Us_COAST_BORDER_AREA', 'LEVER_Us_RISK_AREA', 'LEVER_INLAND_DIKE',
 								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_N_COAST_BORDER_RISK_AREA',
 								  'LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE'];
+	bool save_data <- false; // whether save or not data logs 
 	
 	init{
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Border_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
@@ -288,8 +288,8 @@ species Player_Action schedules:[]{
 			else{
 				switch command {
 					match_one [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE, ACTION_REPAIR_DIKE] { return BUILDER; }
-					match_one [ACTION_CREATE_DUNE, ACTION_INSTALL_GANIVELLE] { return SOFT_DEFENSE; }
-					match ACTION_DESTROY_DIKE	{ return WITHDRAWAL;	}
+					match_one [ACTION_CREATE_DUNE, ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD] { return SOFT_DEFENSE; }
+					match ACTION_DESTROY_DIKE	{ return WITHDRAWAL; }
 				}
 			}
 		}else {
@@ -1267,7 +1267,9 @@ species Network_Leader skills:[network] {
 			map<string, string> m_contents 	<- msg.contents;
 			switch(m_contents[RESPONSE_TO_LEADER]) {
 				match NUM_ROUND	{
-					ask world { do save_leader_data; }
+					if save_data {
+						ask world { do save_leader_data; }
+					}
 					game_round <-int (m_contents[NUM_ROUND]);
 					write world.get_message("MSG_ROUND") + " " + game_round;
 					ask District{
@@ -1483,6 +1485,7 @@ experiment LittoSIM_GEN_Leader {
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
+	parameter "Save data : " var: save_data <- false;
 	
 	output{
 		display levers{

@@ -39,8 +39,6 @@ global {
 	list<int> submersions;
 	int sub_event <- 0;
 	int flooded_cells <- 0;
-	float cell_width;
-	float cell_height;
 	
 	// parameters for saving submersion results
 	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; 	// folder to save main model results
@@ -84,6 +82,8 @@ global {
 	point pause_b;
 	list<District> districts_in_game;
 	bool submersion_is_running <- false;
+	bool save_data <- false; // whether save or not data logs
+	point button_size;
 	
 	init{
 		// Create GIS agents
@@ -107,7 +107,10 @@ global {
 			create Water from: water_shape;
 		}
 		
-		create Coastal_Border_Area from: coastline_shape { shape <-  shape + coastBorderBuffer#m; }
+		create Coastal_Border_Area from: coastline_shape {
+			line_shape <- shape;
+			shape <-  shape + coastBorderBuffer#m;
+		}
 		all_coastal_border_area <- union(Coastal_Border_Area);
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::int(get("unit_pop"))]{
@@ -169,7 +172,7 @@ global {
  		return messageID;
  	} 
 	
-	int new_comers_to_dispatch 	 {
+	int population_to_dispatch 	 {
 		return round(sum(districts_in_game accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE) +
 					(length(Land_Use where(each.is_in_densification)) * ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION);
 	}
@@ -185,7 +188,8 @@ global {
 			write stateSimPhase;
 		}
 		else {
-			population_still_to_dispatch <- new_comers_to_dispatch();
+			population_still_to_dispatch <- population_to_dispatch();
+			write "population_still_to_dispatch " + population_still_to_dispatch;
 			ask shuffle(Land_Use){ pop_updated <- false; do evolve_AU_to_U; }
 			ask shuffle(Land_Use){ do evolve_pop_U_densification; 			}
 			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				} 
@@ -193,7 +197,8 @@ global {
 				// each districts evolves its own coastal defenses
 				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
-		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status;  }
+		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status; }
+				ask Coastal_Defense where (each.rupture = 1){ do remove_rupture; }
 				
 				do calculate_taxes;
 				add received_tax to: districts_taxes[dist_id-1];
@@ -231,7 +236,9 @@ global {
 			}
 		}
 		do calculate_lu_coast_def_data;
-		do save_round_data;
+		if save_data {
+			do save_round_data;	
+		}
 		game_round <- game_round + 1;
 		ask Network_Listener_To_Leader {
 			do inform_leader_round_number;
@@ -292,16 +299,24 @@ global {
 
 	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
 		write flood_results;
-		save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";
+		if save_data {
+			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";	
+		}
 		
-		ask Cell {
+		ask Cell where (each.cell_type = 1){
 			water_height <- 0.0; // reset water heights
-		} 				
-		ask Coastal_Defense {
-			if rupture = 1 {
-				do remove_rupture; // when want we show ruptures ? (when to remove) !
+		}
+		ask Polycell { do die; }
+		ask districts_in_game{
+			ask cells where(each.max_water_height > 0){
+				create Polycell{
+					loc <- myself.shape.location;
+					col <- world.color_of_water_height (myself.max_water_height);
+				}
 			}
 		}
+	
+		
 		do send_flooding_results (nil); // to districts
 		stateSimPhase <- SIM_GAME;
 		write stateSimPhase + " - " + get_message('MSG_ROUND') + " " + game_round;
@@ -340,9 +355,9 @@ global {
 		}
 		else{	// excuting Lisflood
 			do new_round;
-			ask Cell {
-				max_water_height <- 0.0;
-			} // reset of max_water_height
+			ask Cell where (each.cell_type = 1) {
+				max_water_height <- 0.0; // reset of max_water_height
+			} 
 			ask Coastal_Defense {
 				do calculate_rupture;
 			}
@@ -394,7 +409,7 @@ global {
 				+ my_flooding_path + lisflood_bdy_file + "\nstartfile       ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_start_file + 
 				"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
 		
-		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file /* + "\nexit"*/) rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 	}
 	
 	action load_dem_and_rugosity {
@@ -545,31 +560,15 @@ global {
 	
 	action send_flooding_results_to_district (District d){
 		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT"];
-		map<string,string> mp <- ["TOPIC"::"NEW_FLOODED_CELLS"];
 		string my_district <- d.district_code;
-		
-		list<Cell> my_flooded_cells <- d.cells where(each.max_water_height > 0);
-		cell_width <- Cell[0].shape.width;
-		cell_height <- Cell[0].shape.height;
-		add string(length(my_flooded_cells)) at: "flooded_cells" to: nmap;
-		add string(cell_width) at: "cell_width" to: nmap;
- 		add string(cell_height) at: "cell_height" to: nmap;
- 		ask Network_Game_Manager{
-			do send to: my_district contents: nmap;
-		}
-		int i <- 0;
- 		ask my_flooded_cells {
-			add string(shape.location.x) at: "cell_location_x"+i to: mp;
-			add string(shape.location.y) at: "cell_location_y"+i to: mp;
-			add string(max_water_height) at: "water_height"+i to: mp;
+ 		int i <- 0;
+ 		ask 5 among (d.LUs where (each.nb_watered_cells > 0)) {
+ 			add string(self.id) at: "lu_id"+i to: nmap;
+			add string(cells max_of(each.max_water_height)) at: "max_w_h"+i to: nmap;
 			i <- i + 1;
-			create Polycell{
-				loc <- myself.shape.location;
-				col <- world.color_of_water_height (myself.max_water_height);
-			}
  		}
  		ask Network_Game_Manager{
-			do send to: my_district contents: mp;
+			do send to: my_district contents: nmap;
 		}
 	}
 	
@@ -586,6 +585,7 @@ global {
 				int N_0_5 <-0;		int N_1 <-0;		int N_max <-0;
 				
 				ask LUs{
+					nb_watered_cells <- 0;
 					ask cells where (each.max_water_height > 0) {
 						switch myself.lu_name{ //"U","Us","AU","N","A"    -> but not  "AUs"
 							match "AUs" {
@@ -626,6 +626,7 @@ global {
 								else { A_max <- A_max +1; }
 							}
 						}
+						myself.nb_watered_cells <- myself.nb_watered_cells + 1;
 					}
 				}
 				
@@ -651,35 +652,36 @@ global {
 				prev_tot_1c <- tot_1c;
 				prev_tot_maxc <- tot_maxc;
 				
-				U_0_5c <- U_0_5 * 0.04;
-				U_1c <- U_1 * 0.04;
-				U_maxc <- U_max * 0.04;
-				Us_0_5c <- Us_0_5 * 0.04;
-				Us_1c <- Us_1 * 0.04;
-				Us_maxc <- Us_max * 0.04;
-				Udense_0_5c <- Udense_0_5 * 0.04;
-				Udense_1c <- Udense_1 * 0.04;
-				Udense_maxc <- Udense_max * 0.04;
-				AU_0_5c <- AU_0_5 * 0.04;
-				AU_1c <- AU_1 * 0.04;
-				AU_maxc <- AU_max * 0.04;
-				A_0_5c <- A_0_5 * 0.04;
-				A_1c <- A_1 * 0.04;
-				A_maxc <- A_max * 0.04;
-				N_0_5c <- N_0_5 * 0.04;
-				N_1c <- N_1 * 0.04;
-				N_maxc <- N_max * 0.04;
+				float to_hectar <- DEM_CELL_SIZE * DEM_CELL_SIZE / 10000; // transform m2 to hectar
+				U_0_5c <- U_0_5 * to_hectar; 
+				U_1c <- U_1 * to_hectar;
+				U_maxc <- U_max * to_hectar;
+				Us_0_5c <- Us_0_5 * to_hectar;
+				Us_1c <- Us_1 * to_hectar;
+				Us_maxc <- Us_max * to_hectar;
+				Udense_0_5c <- Udense_0_5 * to_hectar;
+				Udense_1c <- Udense_1 * to_hectar;
+				Udense_maxc <- Udense_max * to_hectar;
+				AU_0_5c <- AU_0_5 * to_hectar;
+				AU_1c <- AU_1 * to_hectar;
+				AU_maxc <- AU_max * to_hectar;
+				A_0_5c <- A_0_5 * to_hectar;
+				A_1c <- A_1 * to_hectar;
+				A_maxc <- A_max * to_hectar;
+				N_0_5c <- N_0_5 * to_hectar;
+				N_1c <- N_1 * to_hectar;
+				N_maxc <- N_max * to_hectar;
 				tot_0_5c <- U_0_5c + Us_0_5c + AU_0_5c + A_0_5c + N_0_5c;
 				tot_1c <- U_1c + Us_1c + AU_1c + A_1c + N_1c;
 				tot_maxc <- U_maxc + Us_maxc + AU_maxc + A_maxc + N_maxc;
 				
 				text <- text + "Results for district : " + district_name +"
-Flooded U : < 50cm " + ((U_0_5c) with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((U_1c) with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((U_maxc) with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
-Flooded Us : < 50cm " + ((Us_0_5c) with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((Us_1c) with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((Us_maxc) with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
-Flooded Udense : < 50cm " + ((Udense_0_5c) with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((Udense_1 * 0.04) with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((Udense_max * 0.04) with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
-Flooded AU : < 50cm " + ((AU_0_5c) with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((AU_1c) with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((AU_maxc) with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
-Flooded A : < 50cm " + ((A_0_5c) with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((A_1c) with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((A_maxc) with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
-Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + ((N_1c) with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + ((N_maxc) with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
+Flooded U : < 50cm " + (U_0_5c with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (U_1c with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + (U_maxc with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
+Flooded Us : < 50cm " + (Us_0_5c with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (Us_1c with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + (Us_maxc with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
+Flooded Udense : < 50cm " + (Udense_0_5c with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (Udense_1 with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | > 1m " + (Udense_max with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
+Flooded AU : < 50cm " + (AU_0_5c with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (AU_1c with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | > 1m " + (AU_maxc with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
+Flooded A : < 50cm " + (A_0_5c with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (A_1c with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | > 1m " + (A_maxc with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
+Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (N_1c with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + (N_maxc with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
 --------------------------------------------------------------------------------------------------------------------
 ";	
 			}
@@ -712,17 +714,18 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 	
 	// creating buttons
  	action init_buttons{
+ 		button_size <- {world.shape.width/7.75,world.shape.height/6.5};
 		create Button{
 			nb_button 	<- 0;
 			command  	<- ONE_STEP;
-			location 	<- {1000, 1000};
+			location 	<- {button_size.x*0.75, button_size.y*0.75};
 			my_icon 	<- image_file("../images/icons/one_step.png");
 			display_text <- world.get_message('MSG_NEW_ROUND');
 		}
 		create Button{
 			nb_button 	<- 1;
 			command  	<- LOCK_USERS;
-			location 	<- {1000, 3000};
+			location 	<- {button_size.x*0.75, button_size.y*2};
 			my_icon 	<- image_file("../images/icons/pause.png");
 			display_text <- world.get_message('MSG_PAUSE_GAME');
 			pause_b <- self.location;
@@ -730,7 +733,7 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 		create Button{
 			nb_button 	<- 2;
 			command  	<- UNLOCK_USERS;
-			location 	<- { 1000, 5000 };
+			location 	<- {button_size.x*0.75, button_size.y*3.25};
 			my_icon 	<- image_file("../images/icons/play.png");
 			display_text <- world.get_message('MSG_RESUME_GAME');
 			play_b <- self.location;
@@ -738,45 +741,45 @@ Flooded N : < 50cm " + ((N_0_5c) with_precision 1) +" ha ("+ ((N_0_5 / tot * 100
 		create Button{
 			nb_button 	<- 3;
 			command	 	<- HIGH_FLOODING;
-			location 	<- {4500, 1000};
+			location 	<- {button_size.x*3, button_size.y*0.75};
 			my_icon 	<- image_file("../images/icons/launch_lisflood.png");
 			display_text <- world.get_message('MSG_HIGH_FLOODING');
 		}
 		create Button{
 			nb_button 	<- 5;
 			command	 	<- LOW_FLOODING;
-			location 	<- {7500, 1000};
+			location 	<- {button_size.x*4.55, button_size.y*0.75};
 			my_icon 	<- image_file("../images/icons/launch_lisflood_small.png");
 			display_text <- world.get_message('MSG_LOW_FLOODING');
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "0";
-			location 	<- {11000, 1000};
+			location 	<- {button_size.x*7, button_size.y*0.75};
 			my_icon 	<- image_file("../images/icons/0.png");
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "1";
-			location 	<- {11000, 3000};
+			location 	<- {button_size.x*7, button_size.y*2};
 			my_icon 	<- image_file("../images/icons/1.png");
 		}
 		create Button {
 			nb_button 	<- 6;
 			command  	<- "2";
-			location 	<- {11000, 5000};
+			location 	<- {button_size.x*7, button_size.y*3.25};
 			my_icon 	<- image_file("../images/icons/2.png");
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "3";
-			location 	<- {11000, 7000};
+			location 	<- {button_size.x*7, button_size.y*4.5};
 			my_icon 	<- image_file("../images/icons/3.png");
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "4";
-			location 	<- {11000, 9000};
+			location 	<- {button_size.x*7, button_size.y*5.75};
 			my_icon 	<- image_file("../images/icons/4.png");
 		}
 		
@@ -1006,6 +1009,17 @@ species Network_Game_Manager skills: [network]{
 						if cd != nil {
 							ask cd {
 								do install_ganivelle;
+								not_updated <- true;
+								acknowledge <- true;
+								
+							}
+						}
+					}
+					match ACTION_LOAD_PEBBLES_CORD {
+					 	Coastal_Defense cd <- Coastal_Defense first_with(each.coast_def_id = element_id);
+						if cd != nil {
+							ask cd {
+								do install_new_slice;
 								not_updated <- true;
 								acknowledge <- true;
 								
@@ -1420,7 +1434,7 @@ species Coastal_Defense {
 	geometry rupture_area<- nil;
 	bool not_updated 	 <- false;
 	bool ganivelle 		 <- false; // if DUNE
-	int slices 			 <- 10;  // if CORD
+	int slices 			 <- 4;  // if CORD
 	float height_before_ganivelle;
 	list<Cell> cells;
 	
@@ -1498,7 +1512,7 @@ species Coastal_Defense {
 	
 	action degrade_cord_status {
 		if slices > 1 {
-			slices <- slices - 1;
+			slices <- slices - NB_SLICES_LOST_PER_ROUND;
 			if slices <= NB_SLICES_CORD_STATUS_BAD {
 				status <- STATUS_BAD;
 			}
@@ -1594,6 +1608,16 @@ species Coastal_Defense {
 		write "" + world.get_message('MSG_INSTALL_GANIVELLE');
 	}
 	
+	action install_new_slice{
+		slices <- slices + 1;
+		if slices > NB_SLICES_CORD_STATUS_MEDIUM {
+			status <- STATUS_GOOD;
+		}
+		else if slices > NB_SLICES_CORD_STATUS_BAD {
+			status <- STATUS_MEDIUM;
+		}
+	}
+	
 	aspect base {
 		switch status {
 			match STATUS_GOOD	{ color <- #green;  }
@@ -1637,7 +1661,7 @@ grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {
 	float soil_height 				<- 0.0;
 	float rugosity					<- 0.0;
 	float soil_height_before_broken <- soil_height;
-	rgb soil_color <- rgb(255,255,255);
+	rgb soil_color;
 	
 	action init_cell_color {		
 		if cell_type = 0 { // sea
@@ -1677,6 +1701,7 @@ species Land_Use {
 	int population;
 	list<Cell> cells;
 	float mean_alt <- 0.0;
+	int nb_watered_cells;
 	
 	map<string,unknown> build_map_from_lu_attributes {
 		map<string,string> res <- [
@@ -1716,15 +1741,16 @@ species Land_Use {
 				lu_name <- lu_name = "AU" ? "U" : "Us";
 				lu_code <- lu_type_names index_of lu_name;
 				not_updated <- true;
-				do assign_population (int(POP_FOR_NEW_U * self.shape.area / STANDARD_LU_AREA));
+				do assign_population (int(POP_FOR_NEW_U * self.shape.area / STANDARD_LU_AREA), true);
 			}
 		}	
 	}
 	
 	action evolve_pop_U_densification {
 		if !pop_updated and is_in_densification and lu_name in ["U","Us"]{
-			string previous_d_class <- density_class; 
-			do assign_population (int(POP_FOR_U_DENSIFICATION * self.shape.area / STANDARD_LU_AREA));
+			string previous_d_class <- density_class;
+			do assign_population (int(POP_FOR_U_DENSIFICATION * self.shape.area / STANDARD_LU_AREA), true);
+			write "new pop after dens : " + population;
 			if previous_d_class != density_class {
 				is_in_densification <- false;
 			}
@@ -1734,7 +1760,7 @@ species Land_Use {
 	action evolve_pop_U_standard { 
 		if !pop_updated and !is_in_densification and lu_name in ["U","Us"]{
 			if population_still_to_dispatch > 0 {
-				do assign_population (int(POP_FOR_U_STANDARD * self.shape.area / STANDARD_LU_AREA));
+				do assign_population (int(POP_FOR_U_STANDARD * self.shape.area / STANDARD_LU_AREA), false);
 			}
 			if population_still_to_dispatch < 0 {
 				do withdraw_population (int(POP_FOR_U_STANDARD * self.shape.area / STANDARD_LU_AREA));
@@ -1742,13 +1768,19 @@ species Land_Use {
 		}
 	}
 	
-	action assign_population(int nb_pop) {
+	action assign_population(int nb_pop, bool assign_anyway) {
 		if population_still_to_dispatch > 0 {
 			int pop_to_assign <- min (nb_pop, population_still_to_dispatch);
-			population 					 <- population + pop_to_assign;
+			population <- population + pop_to_assign;
 			population_still_to_dispatch <- population_still_to_dispatch - pop_to_assign;
-			not_updated 				 <- true;
-			pop_updated 				 <- true;
+			not_updated <- true;
+			pop_updated <- true;
+		}else{
+			if assign_anyway{
+				population <- population + nb_pop;
+				not_updated <- true;
+				pop_updated <- true;
+			}
 		}
 	}
 	
@@ -1765,25 +1797,26 @@ species Land_Use {
 
 	aspect base {
 		draw shape color: my_color;
-		if is_adapted		  {	draw "A" color:#black;	}
-		if is_in_densification{	draw "D" color:#black;	}
+		if is_adapted		  {	draw "A" color:#black anchor: #center;	}
+		if is_in_densification{	draw "D" color:#black anchor: #center;  }
 	}
 
 	aspect population_density {
-		rgb acolor <- nil;
-		switch density_class {
-			match POP_EMPTY 		 { return rgb(250,250,250);	}
-			match POP_VERY_LOW_DENSITY{ return rgb(225,225,225);}
-			match POP_LOW_DENSITY	 { return rgb(190,190,190);	}
-			match POP_MEDIUM_DENSITY { return rgb(150,150,150);	}
-			match POP_DENSE 		 { return rgb(120,120,120);	}
-			default 				{write "Density class problem !"; }
-		}
-		draw shape color: acolor;
+		draw shape color: get_color_density();
 	}
 	
 	aspect conditional_outline {
 		if (Button first_with (each.nb_button = 4)).is_selected {	draw shape empty: true border:#black;	}
+	}
+	
+	rgb get_color_density {
+		switch density_class 		  {
+			match POP_EMPTY 		  { return rgb(250,250,250);	}
+			match POP_VERY_LOW_DENSITY{ return rgb(225,225,225);}
+			match POP_LOW_DENSITY	  { return rgb(190,190,190);	}
+			match POP_MEDIUM_DENSITY  { return rgb(150,150,150);	}
+			match POP_DENSE 		  { return rgb(120,120,120);	}
+		}
 	}
 	
 	rgb cell_color{
@@ -1793,13 +1826,7 @@ species Land_Use {
 			match	  	"A" 				 {res <- rgb(225, 165, 0);	} // agricultural
 			match_one ["AU","AUs"]  		 {res <- #yellow;		 	} // to urbanize
 			match_one ["U","Us"] { 								 	    // urbanised
-				switch density_class 		 {
-					match POP_EMPTY 		 { return rgb(250,250,250);	}
-					match POP_VERY_LOW_DENSITY{ return rgb(225,225,225);}
-					match POP_LOW_DENSITY	 { return rgb(190,190,190);	}
-					match POP_MEDIUM_DENSITY { return rgb(150,150,150);	}
-					match POP_DENSE 		 { return rgb(120,120,120);	}
-				}
+				return get_color_density();
 			}			
 		}
 		return res;
@@ -1970,7 +1997,7 @@ species Polycell{
 	rgb col;
 	aspect base{
 		if show_max_water_height {
-			draw rectangle(cell_width,cell_height) color: col at: loc;	
+			draw rectangle(DEM_CELL_SIZE,DEM_CELL_SIZE) color: col at: loc;	
 		}
 	}
 }
@@ -1981,25 +2008,25 @@ species Button{
 	string command 	 <- "";
 	string display_text;
 	bool is_selected <- false;
-	geometry shape 	 <- square(button_size);
+	geometry shape 	 <- square(min(button_size.x,button_size.y));
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if(nb_button in [0,1,2,3,5]){
-			if(nb_button in [0,3,5]){
+		if nb_button in [0,1,2,3,5] {
+			if nb_button in [0,3,5] {
 				draw shape color: #white border: is_selected ? #red : #white;
-			}else if(nb_button = 1) {
+			}else if nb_button = 1 {
 				draw shape color: #white border: game_paused ? #white : #blue;
-			}else if (nb_button = 2){
+			}else if nb_button = 2 {
 				draw shape color: #white border: game_paused ? #blue : #white;	
 			}
-			draw display_text color: #black at: location + {0,shape.height*0.66} anchor: #center;
-			draw my_icon size: button_size-50#m;
+			draw display_text color: #black at: location + {0,shape.height*0.54} anchor: #center;
+			draw my_icon size: shape.width-50#m;
 		} else if(nb_button = 6){
 			if (int(command) < length(list_flooding_events)){
 				draw shape color: #white border: is_selected ? #red : #white;
-				draw display_text color: #black at: location + {0, shape.height*0.66} anchor: #center;
-				draw my_icon size: button_size-50#m;
+				draw display_text color: #black at: location + {0, shape.height*0.54} anchor: #center;
+				draw my_icon size: shape.width-50#m;
 			}
 		}	
 	}
@@ -2080,7 +2107,10 @@ species Protected_Area { aspect base { draw shape color: rgb (185, 255, 185,120)
 
 species Flood_Risk_Area { aspect base { draw shape color: rgb (20, 200, 255,120) border:#black; } }
 // 400 m littoral area
-species Coastal_Border_Area { aspect base { draw shape color: rgb (20, 100, 205,120) border:#black; } }
+species Coastal_Border_Area {
+	geometry line_shape;
+	aspect base { draw shape color: rgb (20, 100, 205,120) border:#black; }
+}
 //100 m coastline inland area to identify retro dikes
 species Inland_Dike_Area { aspect base { draw shape color: rgb (100, 100, 205,120) border:#black;} }
 
@@ -2099,6 +2129,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
+	parameter "Save data : " var: save_data <- false;
 	
 	output {
 		display "Flooding" background: #black{
@@ -2122,15 +2153,16 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 			species Button  aspect: buttons_master;
 			
+			graphics "Play_pause" transparency: 0.5{
+				draw square(min(button_size.x, button_size.y)) at: game_paused ? pause_b : play_b color: #gray ;
+			}
+			
 			graphics "Control Panel"{
 				point loc 	<- {world.shape.width/2, world.shape.height/2};
-				float msize <- min([loc.x, loc.y]);
+				float msize <- min([loc.x*2/3, loc.y*2/3]);
 				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
 				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #black anchor:#center;
 				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #blue font: font('Helvetica Neue', 20, #bold) at: loc + {0,msize*0.66} anchor:#center;
-			}
-			graphics "Play_pause" transparency: 0.5{
-				draw square(button_size) at: game_paused ? pause_b : play_b color: #gray ;
 			}
 			graphics "A submersion is running" {
 				if submersion_is_running {

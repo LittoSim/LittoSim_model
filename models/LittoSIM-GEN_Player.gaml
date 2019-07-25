@@ -39,7 +39,6 @@ global{
 	int current_population -> {Land_Use sum_of (each.population)};
 	list<Player_Action> my_basket <-[];
 	
-	
 	Button explored_button <- nil;
 	geometry population_area <- nil;
 	Coastal_Defense explored_coast_def <- nil;
@@ -47,6 +46,7 @@ global{
 	Land_Use hovered_lu <- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	Coastal_Defense_Action explored_coast_def_action<- nil;
+	Flood_Mark explored_mark <- nil;
 	
 	list<Player_Action> ordered_action 	<- nil;
 	list<Player_Action> my_history	 	<- [] update: ordered_action where(each.is_sent);
@@ -59,10 +59,6 @@ global{
 	
 	font f0 <- font('Helvetica Neue', DISPLAY_FONT_SIZE - 4, #plain);
 	font f1 <- font('Helvetica Neue', DISPLAY_FONT_SIZE, #bold);
-	
-	int flooded_cells <- 0;
-	int cell_width;
-	int cell_height;
 	
 	bool validate_clicked <- false;
 	
@@ -128,7 +124,7 @@ global{
 		MSG_WARNING <- get_message('MSG_WARNING');
 		create Network_Player;
 		create Network_Listener_To_Leader;
-		create Legend_Flood;
+		//create Legend_Flood;
 	}
 	//------------------------------ End of init -------------------------------//
 	
@@ -181,8 +177,8 @@ global{
 			match ACTION_RAISE_DIKE 			{return image_file("../images/ihm/S_elevation_digue.png");		}
 			match ACTION_DESTROY_DIKE			{return image_file("../images/ihm/S_suppression_digue.png");	}
 			match ACTION_INSTALL_GANIVELLE 		{return image_file("../images/ihm/S_ganivelle.png");			}
-			match ACTION_CREATE_DUNE 			{return image_file("../images/ihm/S_creation_digue.png");		}
-			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/ihm/S_ganivelle.png");			}
+			match ACTION_CREATE_DUNE 			{return image_file("../images/ihm/S_dune.png");		}
+			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/ihm/S_pebbles.png");			}
 		}
 		return nil;
 	}
@@ -299,6 +295,7 @@ global{
 			explored_land_use_action <- nil;
 			explored_coast_def_action<- nil;
 			current_action 	 		 <- nil;
+			explored_mark			 <- nil;
 		}
 		else{
 			if(active_display = LU_DISPLAY){do button_click_lu; 	  }
@@ -400,10 +397,12 @@ global{
 			if current_active_button.command = ACTION_INSPECT {
 				explored_land_use_action <- first(Land_Use_Action overlapping loc);
 				explored_lu <- first(Land_Use overlapping loc);
+				explored_mark <- first(Flood_Mark overlapping loc);
 			}
 			else{
 				explored_land_use_action <- nil;
 				explored_lu <- nil;
+				explored_mark <- nil;
 			}
 		}
 	}
@@ -443,9 +442,15 @@ global{
 	action modify_coast_def (Coastal_Defense codef, Button but){
 		if codef != nil{
 			ask my_basket { // an action on the same dike is already in the basket
-				if codef.type != COAST_DEF_TYPE_CORD and element_id = codef.coast_def_id {
+				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DIKE] and element_id = codef.coast_def_id {
 					return;
 				}
+			}
+			if codef.type = COAST_DEF_TYPE_CORD and (codef.slices + length(my_basket where
+						(each.action_type = PLAYER_ACTION_TYPE_COAST_DEF and each.element_id = codef.coast_def_id)) + length(my_history where
+						(each.action_type = PLAYER_ACTION_TYPE_COAST_DEF and each.element_id = codef.coast_def_id and !each.is_applied))) = 10{
+				map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_PEBBLES_CORD')::true);							
+				return;	
 			}
 			if codef.type = COAST_DEF_TYPE_DUNE and but.command != ACTION_INSTALL_GANIVELLE {return;} // nothing to do
 			if codef.type = COAST_DEF_TYPE_CORD and but.command != ACTION_LOAD_PEBBLES_CORD {return;} // nothing to do
@@ -467,7 +472,7 @@ global{
 			}
 			previous_clicked_point <- nil;
 			current_action <- first(action_list);
-			if but.command = ACTION_RAISE_DIKE {
+			if but.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD] {
 				if !empty(Protected_Area where (each intersects current_action.shape)){
 					current_action.is_in_protected_area <- true;
 					map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
@@ -1494,25 +1499,11 @@ species Network_Player skills:[network]{
 					}
 				}
 				match "NEW_SUBMERSION_EVENT" {
-					ask world{
-						do user_msg(get_message("PLY_SUBMERSION_RESULTS"),INFORMATION_MESSAGE);
-					}
-					is_active_gui <- false;
-					flooded_cells <- int(m_contents["flooded_cells"]);
-					cell_width <- int(m_contents["cell_width"]);
-					cell_height <- int(m_contents["cell_height"]);
-					ask Cell { do die; }
-				}
-				match "NEW_FLOODED_CELLS" {
-					loop i from: 0 to: flooded_cells - 1{
-						create Cell{
-							loc <- point(float(m_contents["cell_location_x"+i]), float(m_contents["cell_location_y"+i]));
-							col <- world.color_of_water_height (float(m_contents["water_height"+i]));
+					loop i from: 0 to: 4 {
+						create Flood_Mark {
+							loc <- first(Land_Use where (each.id = int(m_contents["lu_id"+i]))).location - {0,200#m};
+							max_w_h	<- float(m_contents["max_w_h"+i]);
 						}
-					}
-					is_active_gui <- true;
-					ask world{
-						do user_msg(get_message("PLY_SUBMERSION_RES_OK"),INFORMATION_MESSAGE);
 					}
 				}
 			}
@@ -1878,7 +1869,7 @@ species Coastal_Defense {
 	rgb color <- #pink;
 	float height;
 	bool ganivelle <- false;
-	int slices <- 10;
+	int slices <- 4;
 	float alt <- 0.0;
 	string status;	
 	int length_coast_def;
@@ -2010,16 +2001,6 @@ species Water {
 	}
 }
 
-species Cell{
-	point loc;
-	rgb col;
-	aspect base{
-		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			draw rectangle(cell_width,cell_height) color: col at: loc;	
-		}
-	}
-}
-
 species Protected_Area {
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_PROTECTED_AREA)).is_selected {
@@ -2036,30 +2017,16 @@ species Flood_Risk_Area{
 	}
 }
 
-species Legend_Flood{
-	list<rgb> colors <- [];
-	list<string> texts <- [];
-	point start_location;
-	point rect_size <- {300, 300};
-	rgb text_color  <- #yellow;
-	
-	init{
-		texts <- ["<0.5","",">1.0"];
-		colors<- [rgb(200,200,255),rgb(115,115,255),rgb(65,65,255)];
-	}
-	
-	aspect {
+species Flood_Mark {
+	point loc;
+	float max_w_h;
+	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			int py <- active_district_name = DISTRICT_AT_TOP ? -525 : 500 ;
-			start_location <- (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).location + {-300, py};
-
-			loop i from: 0 to: length(texts) -1 {
-				draw rectangle(rect_size) at: start_location + {i * rect_size.x,0} color: colors[i] border: #black;
-				draw texts[i] at: start_location + {(i * rect_size.x) - 120, 50} color: text_color size: rect_size.y;
-			}
+			draw file("../images/ihm/flag.png") size: 400#m at: loc;
 		}
 	}
 }
+
 //---------------------------- Experiment definiton -----------------------------//
 experiment District4 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
@@ -2118,7 +2085,7 @@ experiment LittoSIM_GEN_Player type: gui{
 				draw population_area color: rgb(105,105,105) ;
 			}
 			species Land_Use 				aspect: map;
-			species Cell					aspect: base;
+			//species Cell					aspect: base;
 			species Land_Use_Action 		aspect: map;
 			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: map;
@@ -2127,11 +2094,12 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Water					aspect: base;
 			species Protected_Area 			aspect: base;
 			species Flood_Risk_Area 		aspect: base;
+			species Flood_Mark				aspect: base;
 			species Tab_Background 			aspect: base;
 			species Tab 					aspect: base;
 			species Button 					aspect: map;
 			species Button_Map				aspect: map;
-			species Legend_Flood;
+			//species Legend_Flood;
 			
 			graphics "Coast Def Info" transparency: 0.3 {
 				if explored_coast_def != nil {
@@ -2216,7 +2184,6 @@ experiment LittoSIM_GEN_Player type: gui{
 					}
 				}
 			}
-			
 			// Inspect LU info
 			graphics "LU Info" transparency: 0.5 {
 				if explored_lu != nil and (explored_land_use_action = nil or explored_land_use_action.is_applied) {
