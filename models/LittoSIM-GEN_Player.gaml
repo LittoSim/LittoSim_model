@@ -46,7 +46,6 @@ global{
 	Land_Use hovered_lu <- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	Coastal_Defense_Action explored_coast_def_action<- nil;
-	Flood_Mark explored_mark <- nil;
 	
 	list<Player_Action> ordered_action 	<- nil;
 	list<Player_Action> my_history	 	<- [] update: ordered_action where(each.is_sent);
@@ -59,6 +58,7 @@ global{
 	
 	font f0 <- font('Helvetica Neue', DISPLAY_FONT_SIZE - 4, #plain);
 	font f1 <- font('Helvetica Neue', DISPLAY_FONT_SIZE, #bold);
+	font regular <- font("Helvetica", 14, # bold);
 	
 	bool validate_clicked <- false;
 	
@@ -295,7 +295,6 @@ global{
 			explored_land_use_action <- nil;
 			explored_coast_def_action<- nil;
 			current_action 	 		 <- nil;
-			explored_mark			 <- nil;
 		}
 		else{
 			if(active_display = LU_DISPLAY){do button_click_lu; 	  }
@@ -397,12 +396,10 @@ global{
 			if current_active_button.command = ACTION_INSPECT {
 				explored_land_use_action <- first(Land_Use_Action overlapping loc);
 				explored_lu <- first(Land_Use overlapping loc);
-				explored_mark <- first(Flood_Mark overlapping loc);
 			}
 			else{
 				explored_land_use_action <- nil;
 				explored_lu <- nil;
-				explored_mark <- nil;
 			}
 		}
 	}
@@ -1499,10 +1496,18 @@ species Network_Player skills:[network]{
 					}
 				}
 				match "NEW_SUBMERSION_EVENT" {
+					ask Flood_Mark {
+						do die;
+					}
 					loop i from: 0 to: 4 {
-						create Flood_Mark {
-							loc <- first(Land_Use where (each.id = int(m_contents["lu_id"+i]))).location - {0,200#m};
-							max_w_h	<- float(m_contents["max_w_h"+i]);
+						Land_Use lu <- first(Land_Use where (each.id = int(m_contents["lu_id"+i])));
+						if lu != nil {
+							create Flood_Mark {
+								loc <- lu.location - {0,200#m};
+								max_w_h	<- float(m_contents["max_w_h"+i]) with_precision 2;
+								floo <- world.get_message('PLY_MSG_WATER_H') + " : " + string(max_w_h) + "m";
+								lu.mark <- self;
+							}
 						}
 					}
 				}
@@ -1805,6 +1810,7 @@ species Land_Use {
 	bool is_adapted_type -> {lu_name in ["Us","AUs"]};
 	bool is_in_densification <- false;
 	bool focus_on_me <- false;
+	Flood_Mark mark <- nil;
 
 	action init_lu_from_map(map<string, unknown> a ){
 		self.id 				 <- int   (a at "id");
@@ -2020,9 +2026,13 @@ species Flood_Risk_Area{
 species Flood_Mark {
 	point loc;
 	float max_w_h;
+	string floo <- "";
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
 			draw file("../images/ihm/flag.png") size: 400#m at: loc;
+			if active_display = COAST_DEF_DISPLAY{
+				draw floo at: loc font: regular color: #black;
+			}
 		}
 	}
 }
@@ -2057,7 +2067,7 @@ experiment District1 type: gui parent: LittoSIM_GEN_Player {
 }
 
 experiment LittoSIM_GEN_Player type: gui{
-	font regular 			<- font("Helvetica", 14, # bold);
+	
 	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'STUDY_AREA_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
@@ -2085,7 +2095,6 @@ experiment LittoSIM_GEN_Player type: gui{
 				draw population_area color: rgb(105,105,105) ;
 			}
 			species Land_Use 				aspect: map;
-			//species Cell					aspect: base;
 			species Land_Use_Action 		aspect: map;
 			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: map;
@@ -2099,13 +2108,13 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Tab 					aspect: base;
 			species Button 					aspect: map;
 			species Button_Map				aspect: map;
-			//species Legend_Flood;
 			
 			graphics "Coast Def Info" transparency: 0.3 {
 				if explored_coast_def != nil {
 					Coastal_Defense my_codef <- explored_coast_def;
+					int xxsize <- my_codef.type = COAST_DEF_TYPE_CORD ? 60 : 40;
 					point target <- {my_codef.location.x  ,my_codef.location.y};
-					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
+					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px + xxsize#px)};
 					draw rectangle(target,target2) border: false color: #black ;
 					
 					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + my_codef.type) at: target + {5#px, 15#px} font: regular color: #white;
@@ -2118,7 +2127,10 @@ experiment LittoSIM_GEN_Player type: gui{
 					xpx <- xpx+20;
 					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_' + my_codef.status) at: target + {30#px, xpx#px + 35#px} font: regular color: # white;
 					draw "ID : "+ string(my_codef.coast_def_id) at: target + {30#px, xpx#px + 55#px} font: regular color: # white;
-					
+					if my_codef.type = COAST_DEF_TYPE_CORD {
+						xpx <- xpx+20;
+						draw world.get_message('PLY_MSG_SLICES') + " : " + string(my_codef.slices) at: target + {30#px, xpx#px + 55#px} font: regular color: # white;
+					} 
 					if my_codef.status != STATUS_GOOD {
 						point image_loc <- {my_codef.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 40#px, my_codef.location.y + 80#px};
 						switch(my_codef.status){
@@ -2188,8 +2200,13 @@ experiment LittoSIM_GEN_Player type: gui{
 			graphics "LU Info" transparency: 0.5 {
 				if explored_lu != nil and (explored_land_use_action = nil or explored_land_use_action.is_applied) {
 					Land_Use my_lu <- explored_lu;
+					int xxsize <- my_lu.lu_name in ["U","Us"] ? 40 : 0;
+					bool marked <- (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected and my_lu.mark != nil;
+					if marked {
+						xxsize <- xxsize + 20;
+					}
 					point target  <- {my_lu.location.x, my_lu.location.y};
-					point target2 <- {my_lu.location.x + 1 * (INFORMATION_BOX_SIZE.x#px), my_lu.location.y + 1 * (INFORMATION_BOX_SIZE.y#px + 40#px)};
+					point target2 <- {my_lu.location.x + 1 * (INFORMATION_BOX_SIZE.x#px), my_lu.location.y + 1 * (INFORMATION_BOX_SIZE.y#px + xxsize#px)};
 					int xpx <- 15;
 					draw rectangle(target,target2)  color: #black ;
 					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('PLY_MSG_LAND_USE') at: target + {0#px, xpx#px}  font: regular color: # white;
@@ -2205,6 +2222,10 @@ experiment LittoSIM_GEN_Player type: gui{
 						xpx <- xpx + 20;
 					}
 					draw "ID : "+ string(my_lu.id) at: target + {30#px, xpx#px} font: regular color: # white;
+					if marked {
+						xpx <- xpx + 20;
+						draw my_lu.mark.floo at: target + {30#px, xpx#px} font: regular color: # white;
+					}
 				}
 			}
 			

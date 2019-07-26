@@ -755,31 +755,31 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "0";
-			location 	<- {button_size.x*7, button_size.y*0.75};
+			location 	<- {button_size.x*6.75, button_size.y*0.75};
 			my_icon 	<- image_file("../images/icons/0.png");
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "1";
-			location 	<- {button_size.x*7, button_size.y*2};
+			location 	<- {button_size.x*6.75, button_size.y*2};
 			my_icon 	<- image_file("../images/icons/1.png");
 		}
 		create Button {
 			nb_button 	<- 6;
 			command  	<- "2";
-			location 	<- {button_size.x*7, button_size.y*3.25};
+			location 	<- {button_size.x*6.75, button_size.y*3.25};
 			my_icon 	<- image_file("../images/icons/2.png");
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "3";
-			location 	<- {button_size.x*7, button_size.y*4.5};
+			location 	<- {button_size.x*6.75, button_size.y*4.5};
 			my_icon 	<- image_file("../images/icons/3.png");
 		}
 		create Button{
 			nb_button 	<- 6;
 			command  	<- "4";
-			location 	<- {button_size.x*7, button_size.y*5.75};
+			location 	<- {button_size.x*6.75, button_size.y*5.75};
 			my_icon 	<- image_file("../images/icons/4.png");
 		}
 		
@@ -950,7 +950,9 @@ species Network_Game_Manager skills: [network]{
 								round_actions_cost <- round_actions_cost - myself.cost;
 							}
 							// saving data
-							save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";
+							if save_data {
+								save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";	
+							}
 						} // end of create Player_Action
 					}
 				}
