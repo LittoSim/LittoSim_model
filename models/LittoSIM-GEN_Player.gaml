@@ -1330,31 +1330,31 @@ species Network_Listener_To_Leader skills: [network] {
 								do init_activ_lever_from_map (m_contents);
 								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"]);
 								if ply_act = nil {
-									do die;
-									return;
-								}
-								ask world {
-									do user_msg (myself. my_map["lever_explanation"], INFORMATION_MESSAGE);
-								}
-								int added_cost <- int(my_map["added_cost"]);
-								if added_cost != 0 {
-									budget <- budget - added_cost;
-									ask world{
-										do user_msg (world.get_message('PLY_MSG_BEEN')+" " + (added_cost > 0 ? world.get_message('LDR_TAKEN'):world.get_message('LDR_GIVEN')) + " " +
-											abs(added_cost)+ " By "+world.get_message('PLY_MSG_DOSSIER')+" '" + myself.ply_act.label + "'", BUDGET_MESSAGE);
-									}	
-								}
-								int added_delay <- int(my_map["added_delay"]);
-								if  added_delay != 0{
-									ask world{
-										do user_msg (world.get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + 
-											(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : '(' + myself.ply_act.element_id + ")")+"' " +
-											world.get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? world.get_message('PLY_DELAYED'):world.get_message('PLY_ADVANCED')) +
-											" " + world.get_message("PLY_BY") + " " + abs(added_delay) + " " + world.get_message('MSG_THE_ROUND') + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
+									do die; // TODO modified not tested
+								}else {
+									ask world {
+										do user_msg (myself. my_map["lever_explanation"], INFORMATION_MESSAGE);
 									}
-									ply_act.should_wait_lever_to_activate <- false;
+									int added_cost <- int(my_map["added_cost"]);
+									if added_cost != 0 {
+										budget <- budget - added_cost;
+										ask world{
+											do user_msg (world.get_message('PLY_MSG_BEEN')+" " + (added_cost > 0 ? world.get_message('LDR_TAKEN'):world.get_message('LDR_GIVEN')) + " " +
+												abs(added_cost)+ " By "+world.get_message('PLY_MSG_DOSSIER')+" '" + myself.ply_act.label + "'", BUDGET_MESSAGE);
+										}	
+									}
+									int added_delay <- int(my_map["added_delay"]);
+									if  added_delay != 0{
+										ask world{
+											do user_msg (world.get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + 
+												(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : '(' + myself.ply_act.element_id + ")")+"' " +
+												world.get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? world.get_message('PLY_DELAYED'):world.get_message('PLY_ADVANCED')) +
+												" " + world.get_message("PLY_BY") + " " + abs(added_delay) + " " + world.get_message('MSG_THE_ROUND') + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
+										}
+										ply_act.should_wait_lever_to_activate <- false;
+									}
+									add self to: ply_act.activated_levers;	
 								}
-								add self to: ply_act.activated_levers;
 							}
 						}
 					}
