@@ -84,6 +84,7 @@ global {
 	bool submersion_is_running <- false;
 	bool save_data <- false; // whether save or not data logs
 	point button_size;
+	bool display_water_gate <- false;
 	
 	init{
 		// Create GIS agents
@@ -91,8 +92,16 @@ global {
 		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
 		
 		create Coastal_Defense from: coastal_defenses_shape with: [
-									coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
-									alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))];
+			coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
+			alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))] {
+				if type = WATER_GATE {
+					create Water_Gate {
+						shape <- myself.shape;
+						alt <- myself.alt;
+					}
+					do die;	
+				}							
+		}
 		
 		create Protected_Area from: protected_areas_shape;
 		all_protected_area <- union(Protected_Area);
@@ -2120,6 +2129,13 @@ species Coastal_Border_Area {
 //100 m coastline inland area to identify retro dikes
 species Inland_Dike_Area { aspect base { draw shape color: rgb (100, 100, 205,120) border:#black;} }
 
+species Water_Gate { // a water gate for the case of Dieppe
+	float alt;
+	aspect base {
+		if display_water_gate { draw 10#m around shape color: #black; }
+	}
+}
+
 //---------------------------- Experiment definiton -----------------------------//
 
 experiment LittoSIM_GEN_Manager type: gui schedules:[]{
@@ -2146,6 +2162,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Road 			aspect: base;
 			species Water			aspect: base;
 			species Coastal_Defense aspect: base;
+			species Water_Gate		aspect: base;
 			species Land_Use 		aspect: conditional_outline;
 			species Button 			aspect: buttons_map;
 			species Legend_Map;
@@ -2188,6 +2205,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Water			aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Polycell		aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Coastal_Defense aspect: base size: {0.48,0.48} position: {0.01,0.01};
+			species Water_Gate		aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Legend_Planning size: {0.48,0.48} position: {0.01,0.01};
 		
 			species District aspect: population size: {0.48,0.48} position: {0.51,0.01};

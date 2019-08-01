@@ -107,6 +107,7 @@ global{
 	string COAST_DEF_TYPE_DIKE 			<- "DIKE";
 	string COAST_DEF_TYPE_DUNE 			<- "DUNE";
 	string COAST_DEF_TYPE_CORD 			<- "CORD";
+	string WATER_GATE 					<- "GATE";
 	string STATUS_GOOD 					<- "GOOD";
 	string STATUS_MEDIUM				<- "MEDIUM";
 	string STATUS_BAD 					<- "BAD";

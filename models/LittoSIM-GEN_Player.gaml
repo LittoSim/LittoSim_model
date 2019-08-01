@@ -62,6 +62,7 @@ global{
 	
 	bool validate_clicked <- false;
 	bool validate_allow_click <- true;
+	bool display_water_gate <- false;
 	
 	init{
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
@@ -88,7 +89,14 @@ global{
 		create Coastal_Defense from: coastal_defenses_shape with: [coast_def_id::int(read("ID")),type::string(read("type")),
 			status::string(read("status")), alt::float(read("alt")), height::float(get("height")), district_code::string(read("dist_code"))]{
 			if district_code = active_district_code {
-				do init_coastal_def;
+				if type in [COAST_DEF_TYPE_DIKE, COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CORD] {
+					do init_coastal_def;
+				} else if type = WATER_GATE {
+					create Water_Gate {
+						shape <- myself.shape;
+					}
+					do die;
+				}
 			} else {
 				do die;
 			}
@@ -132,6 +140,12 @@ global{
 	user_command "Refresh all the map" {
 		write "Refresh all";
 		do refresh_all;
+	}
+	
+	user_command "Fermer la porte de Dieppe" when: !display_water_gate{
+		display_water_gate <- true;
+		// TODO send or der to manager to display the water gate
+		// when the manager receives the order, it should modify corresponding cells to send the new altitudes to LISFLOOD
 	}
 	
 	action refresh_all{
@@ -1966,7 +1980,7 @@ species Coastal_Defense {
 					}
 				} 
 			}
-			else {
+			else if type = COAST_DEF_TYPE_CORD {
 				draw 15#m around shape color: color;
 				draw shape color: #black;
 				list<point> pebbles <- points_on(shape, 10#m);
@@ -2092,6 +2106,14 @@ species Flood_Mark {
 	}
 }
 
+species Water_Gate {
+	aspect base {
+		if display_water_gate {
+			draw 10#m around shape color: #black;	
+		}
+	}
+}
+
 //---------------------------- Experiment definiton -----------------------------//
 experiment District4 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
@@ -2155,6 +2177,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: map;
 			species Coastal_Defense 		aspect: historical;
+			species Water_Gate				aspect: base;
 			species Road 					aspect:	base;
 			//species Isoline					aspect: base;
 			species Water					aspect: base;
