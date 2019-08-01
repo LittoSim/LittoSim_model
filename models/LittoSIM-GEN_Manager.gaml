@@ -1656,6 +1656,10 @@ species Coastal_Defense {
 }
 //------------------------------ End of Coastal defense -------------------------------//
 
+grid petite_grille {
+	
+}
+
 grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {	
 	int cell_type 					<- 0; // 0 = sea
 	float water_height  			<- 0.0;

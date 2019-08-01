@@ -42,7 +42,7 @@ global{
 		sim_id <- machine_time;
 
 		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))] {
-			if(dist_id = 0) {
+			if dist_id = 0 {
 				do die;
 			}
 			district_name <- world.dist_code_sname_correspondance_table at district_code;

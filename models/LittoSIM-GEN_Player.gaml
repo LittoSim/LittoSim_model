@@ -61,6 +61,7 @@ global{
 	font regular <- font("Helvetica", 14, # bold);
 	
 	bool validate_clicked <- false;
+	bool validate_allow_click <- true;
 	
 	init{
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
@@ -718,13 +719,11 @@ species Displayed_List_Element skills: [UI_location] {//schedules: [] {
 		}
 	}
 	
-	bool move_down_event{
+	action move_down_event{
 		point loc <- #user_location;
 		if self overlaps loc and is_displayed {
 			do on_mouse_down;
-			return true;
 		}
-		return false;
 	}
 	
 	action on_mouse_down;
@@ -817,7 +816,7 @@ species Displayed_List skills: [UI_location] {
 			ask down_item {do move_down_event;}
 		}
 		ask elements where (each.is_displayed){
-			if(move_down_event()){return;}
+			do move_down_event;
 		}
 		do on_mouse_down;
 	}
@@ -1031,6 +1030,10 @@ species Basket parent: Displayed_List {
 	}
 	
 	action on_mouse_down {
+		if !validate_allow_click {
+			validate_allow_click <- true;
+			return;
+		}
 		if !validate_clicked and validation_button_location(validation_button_size.x) distance_to #user_location < validation_button_size.x {
 			validate_clicked <- true;
 			if game_round = 0 {
@@ -1227,7 +1230,6 @@ species Basket_Element parent: Displayed_List_Element {
 			remove current_action from: ordered_action;
 			do remove_action;
 			remove current_action from: my_basket;
-			
 			ask current_action {
 				do die;
 			}
@@ -1236,6 +1238,7 @@ species Basket_Element parent: Displayed_List_Element {
 					do go_up;	
 				}
 			}
+			validate_allow_click <- false;
 			do die;
 		} else {
 			highlighted_action <-  highlighted_action = current_action  ? nil : current_action;
@@ -1330,7 +1333,7 @@ species Network_Listener_To_Leader skills: [network] {
 								do init_activ_lever_from_map (m_contents);
 								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"]);
 								if ply_act = nil {
-									do die; // TODO modified not tested
+									do die;
 								}else {
 									ask world {
 										do user_msg (myself. my_map["lever_explanation"], INFORMATION_MESSAGE);
@@ -1890,7 +1893,7 @@ species Land_Use {
 				draw shape color: #lightgray;
 				int acts <- length(actions_on_me);
 				if acts > 0 {
-					draw shape color: #yellow border: #darkblue;
+					draw shape color: #yellow border: #blue;
 					draw ""+acts font: f1 color: #black anchor:#center;
 				}
 			}
@@ -1982,11 +1985,15 @@ species Coastal_Defense {
 				int acts <- length(actions_on_me);
 				if acts > 0 {
 					draw wid#m around shape color: #yellow;
-					draw ""+acts font: f1 color: #black anchor:#center;
 				} else{
 					draw wid#m around shape color: #lightgray;
 				}
-				draw shape color: #black;	
+				draw shape color: #black;
+				if acts > 0 {
+					draw circle (50) color: #yellow border: #blue;
+					draw circle (40) empty: true color: #blue;
+					draw ""+acts font: f1 color: #black anchor:#center;
+				}
 			}
 		}
 	}
