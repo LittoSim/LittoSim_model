@@ -427,15 +427,15 @@ global {
 		file dem_grid <- text_file(dem_file);
 		file rug_grid <- text_file(RUGOSITY_DEFAULT);
 		
-		DEM_XLLCORNER <- float((dem_grid[2] split_with " ")[1]);
-		DEM_YLLCORNER <- float((dem_grid[3] split_with " ")[1]);
-		DEM_CELL_SIZE <- int((dem_grid[4] split_with " ")[1]);
+		GRID_XLLCORNER <- float((dem_grid[2] split_with " ")[1]);
+		GRID_YLLCORNER <- float((dem_grid[3] split_with " ")[1]);
+		GRID_CELL_SIZE <- int((dem_grid[4] split_with " ")[1]);
 		float no_data_value <- float((dem_grid [5] split_with " ")[1]);
 		
-		loop rw from: 0 to: DEM_NB_ROWS - 1 {
+		loop rw from: 0 to: GRID_NB_ROWS - 1 {
 			dem_data <- dem_grid [rw+6] split_with " ";
 			rug_data <- rug_grid [rw+6] split_with " ";
-			loop cl from: 0 to: DEM_NB_COLS - 1 {
+			loop cl from: 0 to: GRID_NB_COLS - 1 {
 				Cell[cl, rw].soil_height <- float(dem_data[cl]);
 				Cell[cl, rw].rugosity <- float(rug_data[cl]);
 			}
@@ -459,20 +459,20 @@ global {
 	action save_dem_and_rugosity {
 		string dem_filename <- "../"+lisflood_DEM_file;
 		string rug_filename <- "../"+lisflood_rugosity_file;
-		
-		string h_txt <- 'ncols         ' + DEM_NB_COLS + '\nnrows         ' + DEM_NB_ROWS + '\nxllcorner     ' + DEM_XLLCORNER +
-						'\nyllcorner     ' + DEM_YLLCORNER + '\ncellsize      ' + DEM_CELL_SIZE + '\nNODATA_value  -9999';
+		string h_txt <- 'ncols         ' + MINI_GRID_NB_COLS + '\nnrows         ' + MINI_GRID_NB_ROWS + '\nxllcorner     ' +
+						(GRID_XLLCORNER + (GRID_CELL_SIZE * OFFSET_GRID_COLS)) + '\nyllcorner     ' + 
+						(GRID_YLLCORNER + (GRID_CELL_SIZE * OFFSET_GRID_ROWS)) + '\ncellsize      ' + GRID_CELL_SIZE + '\nNODATA_value  -9999';
 		
 		save h_txt rewrite: true to: dem_filename type: "text";
 		save h_txt rewrite: true to: rug_filename type: "text";
 		string dem_data;
 		string rug_data;
-		loop rw from: 0 to: DEM_NB_ROWS - 1 {
+		loop rw from: 0 to: MINI_GRID_NB_ROWS - 1 {
 			dem_data <- "";
 			rug_data <- "";
-			loop cl from: 0 to: DEM_NB_COLS - 1 {
-				dem_data <- dem_data + " " + Cell[cl,rw].soil_height;
-				rug_data <- rug_data + " " + Cell[cl,rw].rugosity;
+			loop cl from: 0 to: MINI_GRID_NB_COLS - 1 {
+				dem_data <- dem_data + " " + Cell[cl + OFFSET_GRID_COLS, rw + OFFSET_GRID_ROWS].soil_height;
+				rug_data <- rug_data + " " + Cell[cl + OFFSET_GRID_COLS, rw + OFFSET_GRID_ROWS].rugosity;
 			}
 			save dem_data to: dem_filename rewrite: false;
 			save rug_data to: rug_filename rewrite: false;
@@ -527,14 +527,14 @@ global {
 		if file_exists (fileName){
 			write fileName;
 			file lfdata <- text_file(fileName);
-			loop r from: 0 to: DEM_NB_ROWS - 1 {
+			loop r from: 0 to: MINI_GRID_NB_ROWS - 1 {
 				list<string> res <- lfdata[r+6] split_with "\t";
-				loop c from: 0 to: DEM_NB_COLS - 1 {
+				loop c from: 0 to: MINI_GRID_NB_COLS - 1 {
 					float w <- float(res[c]);
-					if Cell[c, r].max_water_height < w {
-						Cell[c, r].max_water_height <- w;
+					if Cell[c + OFFSET_GRID_COLS, r + OFFSET_GRID_ROWS].max_water_height < w {
+						Cell[c + OFFSET_GRID_COLS, r + OFFSET_GRID_ROWS].max_water_height <- w;
 					}
-					Cell[c, r].water_height <- w;
+					Cell[c + OFFSET_GRID_COLS, r + OFFSET_GRID_ROWS].water_height <- w;
 				}
 			}	
 	        lisfloodReadingStep <- lisfloodReadingStep + 1;
@@ -661,7 +661,7 @@ global {
 				prev_tot_1c <- tot_1c;
 				prev_tot_maxc <- tot_maxc;
 				
-				float to_hectar <- DEM_CELL_SIZE * DEM_CELL_SIZE / 10000; // transform m2 to hectar
+				float to_hectar <- GRID_CELL_SIZE * GRID_CELL_SIZE / 10000; // transform m2 to hectar
 				U_0_5c <- U_0_5 * to_hectar; 
 				U_1c <- U_1 * to_hectar;
 				U_maxc <- U_max * to_hectar;
@@ -1665,11 +1665,7 @@ species Coastal_Defense {
 }
 //------------------------------ End of Coastal defense -------------------------------//
 
-grid petite_grille {
-	
-}
-
-grid Cell width: DEM_NB_COLS height: DEM_NB_ROWS schedules:[] neighbors: 8 {	
+grid Cell width: GRID_NB_COLS height: GRID_NB_ROWS schedules:[] neighbors: 8 {	
 	int cell_type 					<- 0; // 0 = sea
 	float water_height  			<- 0.0;
 	float max_water_height  		<- 0.0;
@@ -2012,7 +2008,7 @@ species Polycell{
 	rgb col;
 	aspect base{
 		if show_max_water_height {
-			draw rectangle(DEM_CELL_SIZE,DEM_CELL_SIZE) color: col at: loc;	
+			draw rectangle(GRID_CELL_SIZE,GRID_CELL_SIZE) color: col at: loc;	
 		}
 	}
 }

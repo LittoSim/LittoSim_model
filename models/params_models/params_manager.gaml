@@ -67,11 +67,15 @@ global{
 	string RUGOSITY_DEFAULT  	<- study_area_def["RUGOSITY_FILE"];
 	
 	// DEM and cells parameters
-	int DEM_NB_COLS <- int(study_area_def["DEM_NB_COLS"]);
-	int DEM_NB_ROWS <- int(study_area_def["DEM_NB_ROWS"]);
-	int DEM_CELL_SIZE;
-	float DEM_XLLCORNER;
-	float DEM_YLLCORNER;
+	int GRID_NB_COLS 	  <- int(study_area_def["GRID_NB_COLS"]);
+	int GRID_NB_ROWS 	  <- int(study_area_def["GRID_NB_ROWS"]);
+	int MINI_GRID_NB_COLS <- int(study_area_def["MINI_GRID_NB_COLS"]);
+	int MINI_GRID_NB_ROWS <- int(study_area_def["MINI_GRID_NB_ROWS"]);
+	int OFFSET_GRID_COLS  <- int(study_area_def["OFFSET_GRID_COLS"]);
+	int OFFSET_GRID_ROWS  <- int(study_area_def["OFFSET_GRID_ROWS"]);
+	int GRID_CELL_SIZE;
+	float GRID_XLLCORNER;
+	float GRID_YLLCORNER;
 
 	float land_max_height;
 	float cells_max_depth;

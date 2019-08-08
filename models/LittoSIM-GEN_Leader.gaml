@@ -1,6 +1,6 @@
 /**
 * Name: leader
-* Author: nicolas
+* Author: 
 * Description: 
 * Tags: Tag1, Tag2, TagN
 */
