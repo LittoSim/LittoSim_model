@@ -142,10 +142,12 @@ global{
 		do refresh_all;
 	}
 	
-	user_command "Fermer la porte de Dieppe" when: !display_water_gate{
+	user_command "Fermer la porte de Dieppe" when: !display_water_gate and active_district_code = "76217"{ // Dieppe only
 		display_water_gate <- true;
-		// TODO send or der to manager to display the water gate
-		// when the manager receives the order, it should modify corresponding cells to send the new altitudes to LISFLOOD
+		map<string, string> mp <- ["REQUEST"::"WATER_GATE"];
+		ask Network_Player {
+			do send to: GAME_MANAGER contents: mp;
+		}
 	}
 	
 	action refresh_all{

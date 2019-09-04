@@ -172,7 +172,7 @@ global {
 		create Legend_Flood;
 		create Network_Game_Manager;
 		create Network_Listener_To_Leader;
-		create Network_Control_Manager;
+		create Network_Control_Manager;		
 	}
 	//------------------------------ End of init -------------------------------//
 	 	
@@ -893,6 +893,13 @@ species Network_Game_Manager skills: [network]{
 					write "Refreshing ALL ! " + id_dist + " " + m_sender;
 					do send_data_to_district(first(District where(each.dist_id = id_dist)));
 				}
+				match "WATER_GATE" {
+					display_water_gate <- true;
+					ask first(Water_Gate) {
+						do close;
+						write "Dieppe water gate is closed!";
+					}
+				}
 				match string(CONNECTION_MESSAGE) { // a client district wants to connect
 					ask(District where(each.dist_id = id_dist)){
 						do inform_current_round;
@@ -1579,7 +1586,16 @@ species Coastal_Defense {
 		if type = COAST_DEF_TYPE_DIKE {
 			if 		 status = STATUS_BAD	{ p <- PROBA_RUPTURE_DIKE_STATUS_BAD;	 }
 			else if  status = STATUS_MEDIUM	{ p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM; }
-			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }	
+			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
+			if !empty(Coastal_Defense at_distance 30 where (each.type=COAST_DEF_TYPE_CORD)) { // there is a pebble cord protecting the dike
+				write "there is a pebble cord on dike " + self.coast_def_id;
+				ask Coastal_Defense where (each.type=COAST_DEF_TYPE_CORD) closest_to self {
+					if 		 status = STATUS_BAD	{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_BAD / 100);	}
+					else if  status = STATUS_MEDIUM	{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_MEDIUM / 100); }
+					else 							{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_GOOD / 100);   }
+				}
+
+			}
 		}
 		else if type = COAST_DEF_TYPE_DUNE  {
 			if      status = STATUS_BAD 	{ p <- PROBA_RUPTURE_DUNE_STATUS_BAD;	 }
@@ -2129,6 +2145,12 @@ species Water_Gate { // a water gate for the case of Dieppe
 	float alt;
 	aspect base {
 		if display_water_gate { draw 10#m around shape color: #black; }
+	}
+	
+	action close {
+		ask Cell where (each overlaps self) {
+			soil_height <- myself.alt;
+		}
 	}
 }
 
