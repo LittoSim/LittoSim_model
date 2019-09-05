@@ -31,11 +31,12 @@ global {
 	string lisflood_bat_file 		<- "LittoSIM_GEN_Lisflood.bat";												       		  // Lisflood executable
 	
 	// variables for Lisflood calculs 
-	map<string,string> list_flooding_events;  			// list of submersions of a round
+	map<string,string> list_flooding_events;  // list of submersions of a round
 	string floodEventType;
-	int lisfloodReadingStep <- 9999999; 				// to indicate to which step of Lisflood results, the current cycle corresponds // lisfloodReadingStep = 9999999 it means that there is no Lisflood result corresponding to the current cycle 
-	string timestamp 		<- ""; 						// used to specify a unique name to the folder of flooding results
-	string flood_results 	<- "";   					// text of flood results per district // saved as a txt file
+	int lisfloodReadingStep <- 9999; 		// to indicate to which step of Lisflood results, the current cycle corresponds 
+	int last_played_event <- -1;
+	string timestamp 		<- ""; 			// used to specify a unique name to the folder of flooding results
+	string flood_results 	<- "";   		// text of flood results per district // saved as a txt file
 	list<int> submersions;
 	int sub_event <- 0;
 	int flooded_cells <- 0;
@@ -165,6 +166,8 @@ global {
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
+		do read_lisflood_files;
+		last_played_event <- 0;
 
 		create Legend_Planning;
 		create Legend_Population;
@@ -312,8 +315,8 @@ global {
 			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";	
 		}
 		
-		ask Cell where (each.cell_type = 1){
-			water_height <- 0.0; // reset water heights
+		ask Cell where (each.cell_type = 1){ // reset water heights
+			water_height <- 0.0; 
 		}
 		ask Polycell { do die; }
 		ask districts_in_game{
@@ -324,7 +327,6 @@ global {
 				}
 			}
 		}
-	
 		
 		do send_flooding_results (nil); // to districts
 		stateSimPhase <- SIM_GAME;
@@ -337,8 +339,19 @@ global {
 		write stateSimPhase;
 	}
 	
-	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD{
-		do read_lisflood_step_file;  // reading flooding files
+	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD {
+		ask Cell where (each.cell_type = 1){
+			water_height <- water_heights[lisfloodReadingStep];
+		}
+		write "Step " + lisfloodReadingStep;
+		if lisfloodReadingStep < 14 {
+			lisfloodReadingStep <- lisfloodReadingStep + 1;
+		}
+		else{
+     		stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
+     		write stateSimPhase;
+     		sub_event <- 1;
+     	}
 	} 
 	
 	action replay_flood_event (int fe) {
@@ -346,13 +359,15 @@ global {
 			write "trying to replay a non existing event";
 			return;
 		}
-		string replayed_flooding_event  <- (list_flooding_events.keys)[fe];
-		write replayed_flooding_event;
-		ask Cell {
-			max_water_height <- 0.0;
-		} // reset of max_water_height
+		if last_played_event != fe {
+			last_played_event <- fe;
+			results_lisflood_rep <- list_flooding_events at list_flooding_events.keys[fe];
+			ask Cell {
+				max_water_height <- 0.0;
+			} // reset of max_water_height
+			do read_lisflood_files;
+		}
 		lisfloodReadingStep <- 0;
-		results_lisflood_rep <- list_flooding_events at replayed_flooding_event;
 		stateSimPhase <- SIM_SHOWING_LISFLOOD;
 		write stateSimPhase;
 	}
@@ -373,8 +388,10 @@ global {
 			stateSimPhase <- SIM_EXEC_LISFLOOD;
 			write stateSimPhase;
 			do execute_lisflood;
+			do read_lisflood_files;
 			lisfloodReadingStep <- 0;
-			stateSimPhase 		<- SIM_SHOWING_LISFLOOD;
+			last_played_event <- length(list_flooding_events.keys) - 1;
+			stateSimPhase <- SIM_SHOWING_LISFLOOD;
 			write stateSimPhase;
 		}
 	}
@@ -517,41 +534,31 @@ global {
 		}
 	}
 	   
-	action read_lisflood_step_file {
-	 	string nb <- string(lisfloodReadingStep);
-		loop i from: 0 to: 3 - length(nb) {
-			nb <- "0" + nb;
+	action read_lisflood_files {
+		ask Cell where (each.cell_type = 1){ // reset water heights
+			water_heights <- [];
 		}
-		string fileName <- "../" + results_lisflood_rep + "/res-" + nb + ".wd";
-		write "nb " + nb;
-		if file_exists (fileName){
-			write fileName;
-			file lfdata <- text_file(fileName);
-			loop r from: 0 to: MINI_GRID_NB_ROWS - 1 {
-				list<string> res <- lfdata[r+6] split_with "\t";
-				loop c from: 0 to: MINI_GRID_NB_COLS - 1 {
-					float w <- float(res[c]);
-					if Cell[c + OFFSET_GRID_COLS, r + OFFSET_GRID_ROWS].max_water_height < w {
-						Cell[c + OFFSET_GRID_COLS, r + OFFSET_GRID_ROWS].max_water_height <- w;
+		
+		string nb <- "";
+		loop i from: 0 to: 14 {
+			nb <- "0000" + i;
+			nb <- copy_between (nb, length(nb)-4, length(nb));
+			string fileName <- "../" + results_lisflood_rep + "/res-" + nb + ".wd";
+			
+			if file_exists (fileName){
+				file lfdata <- text_file(fileName);
+				loop r from: 0 to: MINI_GRID_NB_ROWS - 1 {
+					list<string> res <- lfdata[r+6] split_with "\t";
+					loop c from: 0 to: MINI_GRID_NB_COLS - 1 {
+						float w <- float(res[c]);
+						add w to: Cell[c + OFFSET_GRID_COLS, r + OFFSET_GRID_ROWS].water_heights;
 					}
-					Cell[c + OFFSET_GRID_COLS, r + OFFSET_GRID_ROWS].water_height <- w;
 				}
-			}	
-	        lisfloodReadingStep <- lisfloodReadingStep + 1;
-	     }
-	     else{ // end of flooding
-     		lisfloodReadingStep <-  9999999;
-     		if nb = "0000" {
-     			map values <- user_input([(get_message('MSG_NO_FLOOD_FILE_EVENT')) :: ""]);
-     			stateSimPhase <- SIM_GAME;
-     			write stateSimPhase + " - "+ get_message('MSG_ROUND') +" "+ game_round;
-     		}
-     		else {
-     			stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
-     			write stateSimPhase;
-     			sub_event <- 1;
-     		}
-     	}
+	     	}
+		}
+		ask Cell where (each.cell_type = 1){
+			max_water_height <- max (water_heights);
+		}
 	}
 	
 	// sending flood results to players
@@ -1689,6 +1696,7 @@ grid Cell width: GRID_NB_COLS height: GRID_NB_ROWS schedules:[] neighbors: 8 {
 	float rugosity					<- 0.0;
 	float soil_height_before_broken <- soil_height;
 	rgb soil_color;
+	list<float> water_heights <- [];
 	
 	action init_cell_color {		
 		if cell_type = 0 { // sea
