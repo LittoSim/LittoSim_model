@@ -84,6 +84,7 @@ global {
 	list<District> districts_in_game;
 	bool submersion_is_running <- false;
 	bool save_data <- false; // whether save or not data logs
+	bool display_rupture <- false;
 	point button_size;
 	bool display_water_gate <- false;
 	
@@ -100,7 +101,7 @@ global {
 						shape <- myself.shape;
 						alt <- myself.alt;
 					}
-					do die;	
+					do die;
 				}							
 		}
 		
@@ -318,15 +319,6 @@ global {
 		ask Cell where (each.cell_type = 1){ // reset water heights
 			water_height <- 0.0; 
 		}
-		ask Polycell { do die; }
-		ask districts_in_game{
-			ask cells where(each.max_water_height > 0){
-				create Polycell{
-					loc <- myself.shape.location;
-					col <- world.color_of_water_height (myself.max_water_height);
-				}
-			}
-		}
 		
 		do send_flooding_results (nil); // to districts
 		stateSimPhase <- SIM_GAME;
@@ -374,14 +366,15 @@ global {
 		
 	action launchFlood_event{
 		if game_round = 0 {
-			map values <- user_input([(get_message('MSG_SIM_NOT_STARTED'))::true]);
+			map values <- user_input(get_message('MSG_WARNING'), get_message('MSG_SIM_NOT_STARTED')::true);
 	     	write stateSimPhase;
 		}
 		else{	// excuting Lisflood
 			do new_round;
 			ask Cell where (each.cell_type = 1) {
 				max_water_height <- 0.0; // reset of max_water_height
-			} 
+			}
+			display_rupture <- true;
 			ask Coastal_Defense {
 				do calculate_rupture;
 			}
@@ -391,8 +384,14 @@ global {
 			do read_lisflood_files;
 			lisfloodReadingStep <- 0;
 			last_played_event <- length(list_flooding_events.keys) - 1;
+			map<string,unknown> vmap <- user_input("OK", world.get_message('MSG_SIM_FINISHED')::true);
 			stateSimPhase <- SIM_SHOWING_LISFLOOD;
 			write stateSimPhase;
+			submersion_is_running <- false;
+			display_rupture <- false;
+			ask districts_in_game{
+				ask Network_Game_Manager { do lock_user (myself, false); }
+			}
 		}
 	}
 
@@ -422,10 +421,6 @@ global {
 		ask Network_Game_Manager {
 			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
 		}
-		submersion_is_running <- false;
-		ask districts_in_game{
-			ask Network_Game_Manager { do lock_user (myself, false); }
-		}
  	}
  		
 	action save_lf_launch_files {
@@ -435,7 +430,7 @@ global {
 				+ my_flooding_path + lisflood_bdy_file + "\nstartfile       ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_start_file + 
 				"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
 		
-		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file /* + "\nexit"*/) rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 	}
 	
 	action load_dem_and_rugosity {
@@ -544,7 +539,6 @@ global {
 			nb <- "0000" + i;
 			nb <- copy_between (nb, length(nb)-4, length(nb));
 			string fileName <- "../" + results_lisflood_rep + "/res-" + nb + ".wd";
-			
 			if file_exists (fileName){
 				file lfdata <- text_file(fileName);
 				loop r from: 0 to: MINI_GRID_NB_ROWS - 1 {
@@ -558,6 +552,15 @@ global {
 		}
 		ask Cell where (each.cell_type = 1){
 			max_water_height <- max (water_heights);
+		}
+		ask Polycell { do die; }
+		ask districts_in_game{
+			ask cells where(each.max_water_height > 0){
+				create Polycell{
+					loc <- myself.shape.location;
+					col <- world.color_of_water_height (myself.max_water_height);
+				}
+			}
 		}
 	}
 	
@@ -815,6 +818,14 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			is_selected <- false;
 			location 	<- LEGEND_POSITION = 'topleft' ? {1800, 800} : {1800, 13800};
 		}
+		create Button{
+			nb_button 	<- 8;
+			command	 	<- SHOW_RUPTURE;
+			shape 		<- square(800);
+			my_icon 	<- image_file("../images/icons/rupture.png");
+			is_selected <- false;
+			location 	<- LEGEND_POSITION = 'topleft' ? {2800, 800} : {2800, 13800};
+		}
 	}
 	
 	// the four buttons of game master control display 
@@ -865,14 +876,16 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 	// the two buttons of the first map display
 	action button_click_map {
 		point loc <- #user_location;
-		Button a_button <- first((Button where (each.nb_button in [4,7] and each overlaps loc)));
+		Button a_button <- first((Button where (each.nb_button in [4,7,8] and each overlaps loc)));
 		if a_button != nil{
 			ask a_button {
 				is_selected <- !is_selected;
-				if(a_button.nb_button = 4){
+				if a_button.nb_button = 4 {
 					my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
-				}else if(a_button.nb_button = 7){
+				}else if a_button.nb_button = 7 {
 					show_max_water_height <- is_selected;
+				}else if a_button.nb_button = 8 {
+					display_rupture <- is_selected;
 				}
 			}
 		}
@@ -1461,6 +1474,7 @@ species Coastal_Defense {
 	bool ganivelle 		 <- false; // if DUNE
 	int slices 			 <- 4;  // if CORD
 	float height_before_ganivelle;
+	bool is_protected_by_cord <- false;
 	list<Cell> cells;
 	
 	map<string,unknown> build_map_from_coast_def_attributes{
@@ -1493,7 +1507,12 @@ species Coastal_Defense {
 		if type = COAST_DEF_TYPE_DUNE  {
 			height_before_ganivelle <- height;
 		}
-		do build_coast_def;
+		if !empty(Coastal_Defense at_distance 30 where (each.type=COAST_DEF_TYPE_CORD)) {
+			is_protected_by_cord <- true;
+		}
+		if type != COAST_DEF_TYPE_CORD {
+			do build_coast_def;
+		}
 	}
 	
 	action build_coast_def {
@@ -1594,8 +1613,7 @@ species Coastal_Defense {
 			if 		 status = STATUS_BAD	{ p <- PROBA_RUPTURE_DIKE_STATUS_BAD;	 }
 			else if  status = STATUS_MEDIUM	{ p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM; }
 			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
-			if !empty(Coastal_Defense at_distance 30 where (each.type=COAST_DEF_TYPE_CORD)) { // there is a pebble cord protecting the dike
-				write "there is a pebble cord on dike " + self.coast_def_id;
+			if is_protected_by_cord { // there is a pebble cord protecting the dike
 				ask Coastal_Defense where (each.type=COAST_DEF_TYPE_CORD) closest_to self {
 					if 		 status = STATUS_BAD	{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_BAD / 100);	}
 					else if  status = STATUS_MEDIUM	{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_MEDIUM / 100); }
@@ -1613,13 +1631,14 @@ species Coastal_Defense {
 			rupture <- 1;
 			// the rupture is applied in the middle
 			int cIndex <- int(length(cells) / 2);
-			// rupture area is about RADIUS_RUPTURE m arount rupture point 
-			rupture_area <- circle(RADIUS_RUPTURE#m,(cells[cIndex]).location);
-			// rupture is applied on relevant area cells
-			ask cells overlapping rupture_area {
-				if soil_height >= 0 {
-					soil_height <- max([0, soil_height - myself.height]);
-				}
+			// rupture area is about RADIUS_RUPTURE m arount rupture point.
+			// if the dike is protected by a pebble cord, the radius is multiplied by 2
+			int rupture_radius <- is_protected_by_cord ? RADIUS_RUPTURE * 2 : RADIUS_RUPTURE; 
+			rupture_area <- circle(rupture_radius#m,(cells[cIndex]).location);
+			// rupture is applied on relevant area cells : circle of radius_rupture
+			float soil_height_after_rupture <- max([0, self.alt - self.height]);
+			ask Cell where(each.soil_height > 0) overlapping rupture_area {
+				soil_height <- min([soil_height, soil_height_after_rupture]);
 			}
 			write "rupture " + type + " n°" + coast_def_id + "(" + world.dist_code_sname_correspondance_table at district_code + ", status " + status + ", height " + height + ", alt " + alt + ")";
 		}
@@ -1679,9 +1698,9 @@ species Coastal_Defense {
 				draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
 			}
 		}
-		if(rupture = 1){
+		if display_rupture and rupture = 1 {
 			list<point> pts <- shape.points;
-			point tmp <- length(pts) > 2? pts[int(length(pts)/2)] : shape.centroid;
+			point tmp <- length(pts) > 2 ? pts[int(length(pts)/2)] : shape.centroid;
 			draw image_file("../images/icons/rupture.png") at: tmp size: 30#px;
 		}	
 	}
@@ -1710,9 +1729,9 @@ grid Cell width: GRID_NB_COLS height: GRID_NB_ROWS schedules:[] neighbors: 8 {
 	aspect water_or_max_water_height {
 		if cell_type = 0 or (show_max_water_height? max_water_height = 0 : water_height = 0){ // if sea and water level = 0
 			color <- soil_color;
-		}else if cell_type = 1{ // if land 
-			if show_max_water_height {	color <- world.color_of_water_height(max_water_height);	}
-			else					 {	color <- world.color_of_water_height(water_height);		}
+		}else {
+			if show_max_water_height { color <- world.color_of_water_height(max_water_height);	}
+			else					 { color <- world.color_of_water_height(water_height);		}
 		}
 	}
 }
@@ -2067,9 +2086,9 @@ species Button{
 	}
 	
 	aspect buttons_map {
-		if(nb_button in [4,7]){
+		if(nb_button in [4,7,8]){
 			draw shape color: #white border: is_selected? # red : # white;
-			draw my_icon size:  800#m;
+			draw my_icon size: 800#m;
 		}
 	}
 }
