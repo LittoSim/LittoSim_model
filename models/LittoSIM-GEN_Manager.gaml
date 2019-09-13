@@ -124,12 +124,9 @@ global {
 		}
 		all_coastal_border_area <- union(Coastal_Border_Area);
 		
-		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::int(get("unit_pop"))]{
+		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
 			lu_name <- lu_type_names[lu_code];
-			if lu_name = "U" and population < MIN_POP_AREA {
-				population <- MIN_POP_AREA;
-			}
-			if lu_name in ["AU","AUs"] { // if true, convert all AU and AUs to N
+			if lu_name in ["AU","AUs"] { // if true, convert all AU and AUs to N (AU should not be imposed to players !)
 				if AU_AND_AUs_TO_N {
 					lu_name <- "N";
 					lu_code <- lu_type_names index_of lu_name;
@@ -140,11 +137,22 @@ global {
 					}
 				}
 			}
-			if lu_name in ['N','A'] { // delete populations of Natural and Agricultural cells
-				population <- 0;
-			}
 			my_color <- cell_color();
 		}
+		
+		// fix populations issues
+		ask Land_Use where (each.lu_name in ['N','A'] and each.population > 0) { // move populations of Natural and Agricultural cells
+			loop i from: 1 to: population {
+				ask one_of(Land_Use where (each.dist_code = self.dist_code and each.lu_name = "U")){
+					population <- population + 1;
+				}
+			}
+			population <- 0;
+		}
+		ask Land_Use where (each.lu_name = "U" and each.population < MIN_POP_AREA) { // each U should have a min pop
+			population <- MIN_POP_AREA;
+		}
+		//*****
 		do load_dem_and_rugosity;
 		ask Coastal_Defense {
 			do init_coastal_def;
@@ -160,7 +168,7 @@ global {
 			cells 	<- LUs accumulate (each.cells);
 			tax_unit  <- float(tax_unit_table at district_name);
 			budget 	<- int(self.current_population() * tax_unit * (1 + initial_budget));
-			write world.get_message('MSG_COMMUNE') + " " + district_name + " (" + district_code + ") " + dist_id + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
+			write world.get_message('MSG_COMMUNE') + " " + district_name + " (" + district_code + ") " + world.get_message('MSG_POPULATION') + ": " + current_population() + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
 			do calculate_indicators_t0;
 		}
 		
@@ -185,7 +193,7 @@ global {
  		return messageID;
  	} 
 	
-	int population_to_dispatch 	 {
+	int population_to_dispatch {
 		return round(sum(districts_in_game accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE) +
 					(length(Land_Use where(each.is_in_densification)) * ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION);
 	}
@@ -205,13 +213,15 @@ global {
 			write "population_still_to_dispatch " + population_still_to_dispatch;
 			ask shuffle(Land_Use){ pop_updated <- false; do evolve_AU_to_U; }
 			ask shuffle(Land_Use){ do evolve_pop_U_densification; 			}
-			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				} 
+			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				}
+			ask Coastal_Defense where (each.rupture){
+				do remove_rupture;
+			}
 			ask districts_in_game{
 				// each districts evolves its own coastal defenses
 				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
-		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status; }
-				ask Coastal_Defense where (each.rupture = 1){ do remove_rupture; }
+		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status; }				
 				
 				do calculate_taxes;
 				add received_tax to: districts_taxes[dist_id-1];
@@ -267,7 +277,7 @@ global {
 	
 	action calculate_lu_coast_def_data{
 		ask districts_in_game{
-			add current_population() to: population;
+			add current_population() to: round_population;
 			add sum(LUs where(each.lu_code = 1) accumulate each.shape.area) /10000 to: surface_N;
 			add sum(LUs where(each.lu_code = 2) accumulate each.shape.area) /10000 to: surface_U;
 			add sum(LUs where(each.lu_code = 2 and each.density_class = POP_DENSE) accumulate each.shape.area)/10000 to: surface_Udense;
@@ -499,7 +509,7 @@ global {
 				attributes: ['id'::coast_def_id, 'dist_code'::district_code, 'type'::type, 'status'::status, 'height'::height, 'alt'::alt];
 
 		ask districts_in_game {
-			int popul <- population[num_round];
+			int popul <- round_population[num_round];
 			float N_area <- surface_N[num_round];
 			float U_area <- surface_U[num_round];
 			float Udense_area <- surface_Udense[num_round];
@@ -587,6 +597,13 @@ global {
 			i <- i + 1;
  		}
  		ask Network_Game_Manager{
+			do send to: my_district contents: nmap;
+		}
+		nmap <- ["TOPIC"::"NEW_RUPTURES"];
+		ask Coastal_Defense where (each.district_code = my_district) {
+			add string(rupture) at: string(coast_def_id) to: nmap;
+		}
+		ask Network_Game_Manager{
 			do send to: my_district contents: nmap;
 		}
 	}
@@ -1468,7 +1485,7 @@ species Coastal_Defense {
 	float alt; 
 	rgb color 			 <- #pink;
 	int counter_status	 <- 0;
-	int rupture			 <- 0;
+	bool rupture		 <- false;
 	geometry rupture_area<- nil;
 	bool not_updated 	 <- false;
 	bool ganivelle 		 <- false; // if DUNE
@@ -1486,6 +1503,7 @@ species Coastal_Defense {
 			"height"::string(height),
 			"alt"::string(alt),
 			"ganivelle"::string(ganivelle),
+			"rupture"::string(rupture),
 			"locationx"::string(location.x),
 			"locationy"::string(location.y)];
 		int i <- 0;
@@ -1628,7 +1646,7 @@ species Coastal_Defense {
 			else 						 	{ p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }	
 		}
 		if rnd (100) <= p {
-			rupture <- 1;
+			rupture <- true;
 			// the rupture is applied in the middle
 			int cIndex <- int(length(cells) / 2);
 			// rupture area is about RADIUS_RUPTURE m arount rupture point.
@@ -1645,7 +1663,7 @@ species Coastal_Defense {
 	}
 	
 	action remove_rupture {
-		rupture <- 0;
+		rupture <- false;
 		ask cells overlapping rupture_area {
 			if soil_height >= 0 {
 				soil_height <- soil_height_before_broken;
@@ -1941,7 +1959,7 @@ species District {
 	float totN 		   <- 0.0;	list<float> data_totN 		 <- [];
 	float totA 		   <- 0.0;	list<float> data_totA 		 <- [];
 	
-	list<int> population <- [];
+	list<int> round_population <- [];
 	list<float> surface_N <- [];
 	list<float> surface_U <- [];
 	list<float> surface_Udense <- [];
@@ -1981,10 +1999,12 @@ species District {
 
 	// Indicators calculated at initialization, and sent to Leader when he connects
 	map<string,string> my_indicators_t0 <- [];
+	// My dikes ruptures during last submersion
+	list<int> ruptures <- [];
 	
 	aspect flooding { draw shape color: rgb (0,0,0,0) border:#black; }
 	aspect planning { draw shape color:#whitesmoke border: #black; }
-	aspect population { draw shape color: rgb(240,186,112) border:#black; }
+	aspect population_aspect { draw shape color: rgb(240,186,112) border:#black; }
 	
 	int current_population {  return sum(LUs accumulate (each.population));	}
 	
@@ -2253,7 +2273,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Water_Gate		aspect: base size: {0.48,0.48} position: {0.01,0.01};
 			species Legend_Planning size: {0.48,0.48} position: {0.01,0.01};
 		
-			species District aspect: population size: {0.48,0.48} position: {0.51,0.01};
+			species District aspect: population_aspect size: {0.48,0.48} position: {0.51,0.01};
 			species Land_Use aspect: population_density size: {0.48,0.48} position: {0.51,0.01};
 			species Road 	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
 			species Water	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
@@ -2269,9 +2289,9 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}			
 			chart world.get_message('MSG_POPULATION') type: series size: {0.48,0.48} position: {0.51,0.51} x_range:[0,15] 
 					x_label: world.get_message('MSG_THE_ROUND') x_tick_line_visible: false{
-				data "" value: submersions collect (each * max(districts_in_game accumulate each.population)) color: #black style: bar;
+				data "" value: submersions collect (each * max(districts_in_game accumulate each.round_population)) color: #black style: bar;
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].population color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_name value: districts_in_game[i].round_population color: dist_colors[i] marker_shape: marker_circle;
 				}
 			}
 		}

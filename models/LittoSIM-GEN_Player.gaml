@@ -1547,6 +1547,11 @@ species Network_Player skills:[network]{
 						}
 					}
 				}
+				match "NEW_RUPTURES" {
+					ask Coastal_Defense where (each.district_code = active_district_code) {
+						rupture <- bool (m_contents[string(coast_def_id)]);
+					}
+				}
 			}
 		}
 	}
@@ -1929,6 +1934,7 @@ species Coastal_Defense {
 	float alt <- 0.0;
 	string status;	
 	int length_coast_def;
+	bool rupture <- false;
 	list<Player_Action> actions_on_me <- [];
 	
 	action init_coastal_def_from_map(map<string, unknown> a ){
@@ -1937,7 +1943,8 @@ species Coastal_Defense {
 		self.status 	<- string(a at "status");
 		self.height 	<- float(a at "height");
 		self.alt 		<- float(a at "alt");
-		self.ganivelle 	<- bool(a at "ganivelle");		
+		self.ganivelle 	<- bool(a at "ganivelle");
+		self.rupture	<- bool(a at "rupture");	
 		self.location	<- {float(a at "locationx"), float(a at "locationy")};
 		
 		int tot_points	<- int(a at "tot_points");
@@ -2194,9 +2201,8 @@ experiment LittoSIM_GEN_Player type: gui{
 			graphics "Coast Def Info" transparency: 0.3 {
 				if explored_coast_def != nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected {
 					Coastal_Defense my_codef <- explored_coast_def;
-					int xxsize <- my_codef.type = COAST_DEF_TYPE_CORD ? 60 : 40;
 					point target <- {my_codef.location.x  ,my_codef.location.y};
-					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px + xxsize#px)};
+					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px + 60#px)};
 					draw rectangle(target,target2) border: false color: #black ;
 					
 					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + my_codef.type) at: target + {5#px, 15#px} font: regular color: #white;
@@ -2209,10 +2215,12 @@ experiment LittoSIM_GEN_Player type: gui{
 					xpx <- xpx+20;
 					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_' + my_codef.status) at: target + {10#px, xpx#px + 35#px} font: regular color: # white;
 					draw "ID : "+ string(my_codef.coast_def_id) at: target + {10#px, xpx#px + 55#px} font: regular color: # white;
+					xpx <- xpx+20;
 					if my_codef.type = COAST_DEF_TYPE_CORD {
-						xpx <- xpx+20;
 						draw world.get_message('PLY_MSG_SLICES') + " : " + string(my_codef.slices) at: target + {10#px, xpx#px + 55#px} font: regular color: # white;
-					} 
+					} else {
+						draw world.get_message('MSG_RUPTURE') + " : " + (my_codef.rupture ? world.get_message('MSG_YES') : world.get_message('MSG_NO'))  at: target + {10#px, xpx#px + 55#px} font: regular color: # white;
+					}
 					if my_codef.status != STATUS_GOOD {
 						point image_loc <- {my_codef.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 40#px, my_codef.location.y + 80#px};
 						switch(my_codef.status){
