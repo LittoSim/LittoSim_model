@@ -44,6 +44,7 @@ global{
 	
 	string AMOUNT 				<- "AMOUNT";
 	string BUDGET 				<- "BUDGET";
+	string POPULATION			<- "POPULATION";
 	string DISTRICT_CODE 		<- "DISTRICT_CODE";
 	
 	string PLAYER_ACTION_ID 	<- "PLAYER_ACTION_ID";
@@ -53,20 +54,18 @@ global{
 	string ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE <- "ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE";
 	
 	// Manager-Player network communication
-	string PLAYER_ACTION			<- "PLAYER_ACTION";
-	string NEW_DIKE_ALT				<- "NEW_DIKE_ALT";
-	string MSG_TO_PLAYER 			<- "MSG_TO_PLAYER";
-	string PLAYER_ACTION_IS_APPLIED <- 'PLAYER_ACTION_IS_APPLIED';
-	string DISTRICT_BUDGET_UPDATE 	<- 'DISTRICT_BUDGET_UPDATE';
-	string INFORM_NEW_ROUND 		<- 'INFORM_NEW_ROUND';
-	string INFORM_LU_ALTS			<- 'INFORM_LU_ALTS';
-	string INFORM_CURRENT_ROUND		<- 'INFORM_CURRENT_ROUND';
-	string DATA_RETRIEVE 			<- 'DATA_RETRIEVE';
+	string PLAYER_ACTION			 <- "PLAYER_ACTION";
+	string NEW_DIKE_ALT				 <- "NEW_DIKE_ALT";
+	string MSG_TO_PLAYER 			 <- "MSG_TO_PLAYER";
+	string PLAYER_ACTION_IS_APPLIED  <- 'PLAYER_ACTION_IS_APPLIED';
+	string INFORM_NEW_ROUND 		 <- 'INFORM_NEW_ROUND';
+	string INFORM_CURRENT_ROUND		 <- 'INFORM_CURRENT_ROUND';
+	string DATA_RETRIEVE 			 <- 'DATA_RETRIEVE';
 	// Actions to acknowledge client requests
-	string ACTION_DIKE_UPDATE   <- "ACTION_DIKE_UPDATE";
-	string ACTION_DIKE_CREATED 	<- "ACTION_DIKE_CREATED";
-	string ACTION_DIKE_DROPPED 	<- "ACTION_DIKE_DROPPED";
-	string ACTION_LAND_COVER_UPDATE <- "ACTION_LAND_COVER_UPDATE";
+	string ACTION_COAST_DEF_UPDATED   <- "ACTION_COAST_DEF_UPDATED";
+	string ACTION_COAST_DEF_CREATED  <- "ACTION_COAST_DEF_CREATED";
+	string ACTION_COAST_DEF_DROPPED  <- "ACTION_COAST_DEF_DROPPED";
+	string ACTION_LAND_COVER_UPDATED <- "ACTION_LAND_COVER_UPDATED";
 	int REFRESH_ALL 			<- 20;
 	int CONNECTION_MESSAGE 		<- 23;
 	
@@ -80,8 +79,9 @@ global{
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE, ACTION_CREATE_DUNE,
-							ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,
-							ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
+							ACTION_INSTALL_GANIVELLE, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE, ACTION_LOAD_PEBBLES_CORD, ACTION_MODIFY_LAND_COVER_AU,
+							ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, 
+							ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
 	
 	// List of actions with their parameters
 	int ACTION_REPAIR_DIKE 			 <- data_action at 'ACTION_REPAIR_DIKE' 		 != nil ? int(data_action at 'ACTION_REPAIR_DIKE' 			at 'action_code') : 0;
@@ -92,6 +92,7 @@ global{
 	int ACTION_ENHANCE_NATURAL_ACCR	 <- data_action at 'ACTION_ENHANCE_NATURAL_ACCR' != nil ? int(data_action at 'ACTION_ENHANCE_NATURAL_ACCR' 	at 'action_code') : 0;
 	int ACTION_LOAD_PEBBLES_CORD 	 <- data_action at 'ACTION_LOAD_PEBBLES_CORD' 	 != nil ? int(data_action at 'ACTION_LOAD_PEBBLES_CORD' 	at 'action_code') : 0;
 	int ACTION_CREATE_DUNE 			 <- data_action at 'ACTION_CREATE_DUNE' 		 != nil ? int(data_action at 'ACTION_CREATE_DUNE' 			at 'action_code') : 0;
+	int ACTION_MAINTAIN_DUNE 		 <- data_action at 'ACTION_MAINTAIN_DUNE' 		 != nil ? int(data_action at 'ACTION_MAINTAIN_DUNE' 		at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_AU  <- data_action at 'ACTION_MODIFY_LAND_COVER_AU' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_A 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_A'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_A' 	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_U 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_U'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_U' 	at 'action_code') : 0;
@@ -125,9 +126,13 @@ global{
 	
 	// Building and raising dikes parameters
 	float BUILT_DIKE_HEIGHT <- float(study_area_def["BUILT_DIKE_HEIGHT"]);
-	float RAISE_DIKE_HEIGHT <- float(study_area_def["RAISE_DIKE_HEIGHT"]); // 1#m by default
-	string BUILT_DIKE_STATUS 	<- study_area_def["BUILT_DIKE_STATUS"];
-	float  MIN_HEIGHT_DIKE 		<- float (eval_gaml(study_area_def["MIN_HEIGHT_DIKE"]));
+	float RAISE_DIKE_HEIGHT <- float(study_area_def["RAISE_DIKE_HEIGHT"]);
+	string BUILT_DIKE_STATUS<- study_area_def["BUILT_DIKE_STATUS"];
+	float  MIN_HEIGHT_DIKE 	<- float (eval_gaml(study_area_def["MIN_HEIGHT_DIKE"]));
+	float DUNE_TYPE_DISTANCE_COAST  <- float(study_area_def["DUNE_TYPE_DISTANCE_COAST"]);
+	float BUILT_DUNE_TYPE1_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE1_HEIGHT"]);
+	float BUILT_DUNE_TYPE2_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE2_HEIGHT"]);
+	int MAINTAIN_DUNE_STEPS	<- int(study_area_def["MAINTAIN_DUNE_STEPS"]);
 	
 	// Loading GIS data
 	file districts_shape 		<- file(study_area_def["DISTRICTS_SHAPE"]);

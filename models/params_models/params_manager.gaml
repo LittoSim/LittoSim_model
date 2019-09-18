@@ -73,10 +73,6 @@ global{
 	// DEM and cells parameters
 	int GRID_NB_COLS 	  <- int(study_area_def["GRID_NB_COLS"]);
 	int GRID_NB_ROWS 	  <- int(study_area_def["GRID_NB_ROWS"]);
-	int MINI_GRID_NB_COLS <- int(study_area_def["MINI_GRID_NB_COLS"]);
-	int MINI_GRID_NB_ROWS <- int(study_area_def["MINI_GRID_NB_ROWS"]);
-	int OFFSET_GRID_COLS  <- int(study_area_def["OFFSET_GRID_COLS"]);
-	int OFFSET_GRID_ROWS  <- int(study_area_def["OFFSET_GRID_ROWS"]);
 	int GRID_CELL_SIZE;
 	float GRID_XLLCORNER;
 	float GRID_YLLCORNER;
@@ -89,8 +85,9 @@ global{
 	float coastBorderBuffer <- float(eval_gaml(study_area_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (<400m)	
 	// User interface params
 	string LEGEND_POSITION <- study_area_def["LEGEND_POSITION"];
-	int font_size 			<- int(shape.height/30); 	
-	int font_interleave 	<- int(shape.width/60);
+	int LEGEND_SIZE 	   <- int(study_area_def["LEGEND_SIZE"]);
+	int font_size 		   <- int(shape.height/30); 	
+	int font_interleave    <- int(shape.width/60);
 	
 	string get_message(string code_msg){
 		return langs_def at code_msg at my_language;
