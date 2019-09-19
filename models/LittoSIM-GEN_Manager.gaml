@@ -87,6 +87,7 @@ global {
 	bool save_data <- false; // whether save or not data logs
 	bool display_rupture <- false;
 	bool submersion_ok <- false;
+	bool send_flood_results <- true;
 	point button_size;
 	
 	init{
@@ -184,7 +185,6 @@ global {
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		do read_lisflood_files;
-		do calculate_districts_results;
 		last_played_event <- 0;
 
 		create Legend_Planning;
@@ -337,8 +337,10 @@ global {
 		ask Cell where (each.cell_type = 1){ // reset water heights
 			water_height <- 0.0; 
 		}
-		
-		do send_flooding_results (nil); // to districts
+		if send_flood_results {
+			do send_flooding_results (nil); // to districts
+			send_flood_results <- false;
+		}
 		stateSimPhase <- SIM_GAME;
 		write stateSimPhase + " - " + get_message('MSG_ROUND') + " " + game_round;
 	}
@@ -378,9 +380,10 @@ global {
 			last_played_event <- fe;
 			results_lisflood_rep <- list_flooding_events at list_flooding_events.keys[fe];
 			ask Cell {
-				max_water_height <- 0.0;
-			} // reset of max_water_height
+				max_water_height <- 0.0; // reset of max_water_height
+			} 
 			do read_lisflood_files;
+			send_flood_results <- true;
 		}
 		lisfloodReadingStep <- 0;
 		stateSimPhase <- SIM_SHOWING_LISFLOOD;
@@ -2309,20 +2312,20 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		
 		display "Game control"{	
 			graphics "Master" {
-				draw shape color: #gray border: #gold;
+				draw shape color: #lightgray border: #black;
 			}
 			species Button  aspect: buttons_master;
 			
 			graphics "Play_pause" transparency: 0.5{
-				draw square(min(button_size.x, button_size.y)) at: game_paused ? pause_b : play_b color: #gray ;
+				draw square(min(button_size.x, button_size.y)) at: game_paused ? pause_b : play_b color: #lightgray ;
 			}
 			
 			graphics "Control Panel"{
 				point loc 	<- {world.shape.width/2, world.shape.height/2};
 				float msize <- min([loc.x*2/3, loc.y*2/3]);
 				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
-				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #gray border: #gold anchor:#center;
-				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #white font: font('Helvetica Neue', 20, #bold) at: loc + {0,msize*0.66} anchor:#center;
+				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #gray anchor:#center;
+				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #black font: font('Helvetica Neue', 20, #bold) at: loc + {0,msize*0.66} anchor:#center;
 			}
 			graphics "A submersion is running" {
 				if submersion_is_running {

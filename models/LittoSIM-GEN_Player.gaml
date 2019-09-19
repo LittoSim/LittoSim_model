@@ -2077,7 +2077,7 @@ species Coastal_Defense {
 	aspect historical {
 		if (Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			if(active_display = COAST_DEF_DISPLAY) {
-				int wid <- type = COAST_DEF_TYPE_DUNE ? 30 : 15;
+				int wid <- type = COAST_DEF_TYPE_DIKE ? 15 : (dune_type = 1 ? 45 : 30);
 				int acts <- length(actions_on_me);
 				if acts > 0 {
 					draw wid#m around shape color: #yellow;
@@ -2185,7 +2185,7 @@ species Flood_Mark {
 	string floo2 <- "";
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			draw file("../images/ihm/I_flag.png") size: 400#m at: loc;
+			draw file("../images/ihm/S_flag.png") size: 400#m at: loc;
 			if active_display = COAST_DEF_DISPLAY{
 				draw floo1 at: loc font: f0 color: #blue;
 				draw floo2 at: loc+{0,100#m} font: f0 color: #blue;
