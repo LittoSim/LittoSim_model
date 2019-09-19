@@ -1003,11 +1003,12 @@ species Network_Game_Manager skills: [network]{
 							self.district_code 				<- m_sender;
 							self.element_id 				<- int(m_contents["element_id"]);
 							self.action_type 				<- m_contents["action_type"];
-							self.is_in_protected_area 		<- bool(m_contents["is_in_protected_area"]);
 							self.previous_lu_name 			<- m_contents["previous_lu_name"];
 							self.is_expropriation 			<- bool(m_contents["is_expropriation"]);
 							self.cost 						<- float(m_contents["cost"]);
-							if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] { 
+							self.draw_around				<- int (m_contents["draw_around"]);
+							if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
+								self.altit	<- int (m_contents["altit"]);
 								element_shape 	 <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
 								shape 			 <- element_shape;
@@ -1428,7 +1429,7 @@ species Player_Action schedules:[]{
 	int initial_application_round <- -1;
 	int round_delay 			  -> {activated_levers sum_of int (each.my_map["added_delay"])};
 	int actual_application_round  -> {initial_application_round + round_delay};
-	bool is_delayed 			  -> { round_delay >0 };
+	bool is_delayed 			  -> { round_delay > 0 };
 	float cost 			<- 0.0;
 	int added_cost  	-> {activated_levers sum_of int(each.my_map["added_cost"])};
 	float actual_cost 	-> {cost + added_cost};
@@ -1448,6 +1449,8 @@ species Player_Action schedules:[]{
 	bool should_wait_lever_to_activate  <- false;
 	bool a_lever_has_been_applied		<- false;
 	list<Activated_Lever> activated_levers <-[];
+	int draw_around;
+	float altit;
 
 	map<string,string> build_map_from_action_attributes{
 		map<string,string> res <- [
@@ -1470,8 +1473,9 @@ species Player_Action schedules:[]{
 			"locationy"::string(location.y),
 			"command_round"::string(command_round),
 			"length_coast_def"::string(length_coast_def),
-			"a_lever_has_been_applied"::string(a_lever_has_been_applied)];
-			
+			"a_lever_has_been_applied"::string(a_lever_has_been_applied),
+			"draw_around"::string(draw_around),
+			"altit"::string(altit)];
 			put district_code at: DISTRICT_CODE in: res;
 			int i <- 0;
 			loop pp over: element_shape.points {
@@ -2150,7 +2154,7 @@ species Button{
 	aspect buttons_master {
 		if nb_button in [0,1,2,3,5] {
 			//if nb_button in [0,3,5] {
-				draw shape color: #white border: is_selected ? #red : #white;
+				draw shape color: #white border: is_selected ? #red : #black;
 			/* }else if nb_button = 1 {
 				draw shape color: #white border: game_paused ? #white : #blue;
 			}else if nb_button = 2 {
@@ -2160,7 +2164,7 @@ species Button{
 			draw my_icon size: shape.width-50#m;
 		} else if(nb_button = 6){
 			if (int(command) < length(list_flooding_events)){
-				draw shape color: #white border: is_selected ? #red : #white;
+				draw shape color: #white border: is_selected ? #red : #black;
 				draw display_text color: #black at: location + {0, shape.height*0.54} anchor: #center;
 				draw my_icon size: shape.width-50#m;
 			}
@@ -2169,7 +2173,7 @@ species Button{
 	
 	aspect buttons_map {
 		if(nb_button in [4,7,8]){
-			draw shape color: #white border: is_selected? # red : # white;
+			draw shape color: #white border: is_selected? # red : # black;
 			draw my_icon size: 800#m;
 		}
 	}
