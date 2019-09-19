@@ -122,11 +122,15 @@ global {
 		
 		create Coastal_Border_Area from: coastline_shape {
 			line_shape <- shape;
-			dunes_buffer <- (shape + (DUNE_TYPE_DISTANCE_COAST*2)#m) inter union(District);
+			if application_name = "camargue" {
+				dunes_buffer <- (shape + (DUNE_TYPE_DISTANCE_COAST*2)#m) inter union(District);	
+			}
 			shape <-  shape + coastBorderBuffer#m;
 		}
 		all_coastal_border_area <- union(Coastal_Border_Area);
-		all_dunes_buffer_area <- union(Coastal_Border_Area collect(each.dunes_buffer));
+		if application_name = "camargue" {
+			all_dunes_buffer_area <- union(Coastal_Border_Area collect(each.dunes_buffer));
+		}
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
 			lu_name <- lu_type_names[lu_code];
@@ -180,6 +184,7 @@ global {
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		do read_lisflood_files;
+		do calculate_districts_results;
 		last_played_event <- 0;
 
 		create Legend_Planning;
@@ -624,108 +629,108 @@ global {
 	
 	action calculate_districts_results {
 		string text <- "";
-			ask districts_in_game {
-				int tot <- length(cells);
-				int myid <-  self.dist_id; 
-				int U_0_5 <-0;		int U_1 <-0;		int U_max <-0;
-				int Us_0_5 <-0;		int Us_1 <-0;		int Us_max <-0;
-				int Udense_0_5 <-0;	int Udense_1 <-0;	int Udense_max <-0;
-				int AU_0_5 <-0;		int AU_1 <-0;		int AU_max <-0;
-				int A_0_5 <-0;		int A_1 <-0;		int A_max <-0;
-				int N_0_5 <-0;		int N_1 <-0;		int N_max <-0;
-				
-				ask LUs{
-					nb_watered_cells <- 0;
-					ask cells where (each.max_water_height > 0) {
-						switch myself.lu_name{ //"U","Us","AU","N","A"    -> but not  "AUs"
-							match "AUs" {
-								write "STOP :  AUs " + world.get_message('MSG_IMPOSSIBLE_NORMALLY');
+		ask districts_in_game {
+			int tot <- length(cells);
+			int myid <-  self.dist_id; 
+			int U_0_5 <-0;		int U_1 <-0;		int U_max <-0;
+			int Us_0_5 <-0;		int Us_1 <-0;		int Us_max <-0;
+			int Udense_0_5 <-0;	int Udense_1 <-0;	int Udense_max <-0;
+			int AU_0_5 <-0;		int AU_1 <-0;		int AU_max <-0;
+			int A_0_5 <-0;		int A_1 <-0;		int A_max <-0;
+			int N_0_5 <-0;		int N_1 <-0;		int N_max <-0;
+			
+			ask LUs{
+				nb_watered_cells <- 0;
+				ask cells where (each.max_water_height > 0) {
+					switch myself.lu_name{ //"U","Us","AU","N","A"    -> but not  "AUs"
+						match "AUs" {
+							write "STOP :  AUs " + world.get_message('MSG_IMPOSSIBLE_NORMALLY');
+						}
+						match "U" {
+							if max_water_height <= 0.5 {
+								U_0_5 <- U_0_5 +1;
+								if myself.density_class = POP_DENSE { Udense_0_5 <- Udense_0_5 +1; }
 							}
-							match "U" {
-								if max_water_height <= 0.5 {
-									U_0_5 <- U_0_5 +1;
-									if myself.density_class = POP_DENSE { Udense_0_5 <- Udense_0_5 +1; }
-								}
-								else if between (max_water_height ,0.5, 1.0) {
-									U_1 <- U_1 +1;
-									if myself.density_class = POP_DENSE { Udense_1 <- Udense_1 +1; }
-								}
-								else{
-									U_max <- U_max +1;
-									if myself.density_class = POP_DENSE { Udense_0_5 <- Udense_0_5 +1; }
-								}
+							else if between (max_water_height ,0.5, 1.0) {
+								U_1 <- U_1 +1;
+								if myself.density_class = POP_DENSE { Udense_1 <- Udense_1 +1; }
 							}
-							match "Us" {
-								if max_water_height <= 0.5 { Us_0_5 <- Us_0_5 +1; }
-								else if between (max_water_height ,0.5, 1.0) { Us_1 <- Us_1 +1; }
-								else { Us_max <- Us_max +1; }
-							}
-							match "AU" {
-								if max_water_height <= 0.5 { AU_0_5 <- AU_0_5 +1; }
-								else if between (max_water_height ,0.5, 1.0) { AU_1 <- AU_1 +1; }
-								else { AU_max <- AU_max +1; }
-							}
-							match "N"  {
-								if max_water_height <= 0.5 { N_0_5 <- N_0_5 +1; }
-								else if between (max_water_height ,0.5, 1.0) { N_1 <- N_1 +1; }
-								else { N_max <- N_max +1; }
-							}
-							match "A" {
-								if max_water_height <= 0.5 { A_0_5 <- A_0_5 +1; }
-								else if between (max_water_height ,0.5, 1.0) { A_1 <- A_1 +1; }
-								else { A_max <- A_max +1; }
+							else{
+								U_max <- U_max +1;
+								if myself.density_class = POP_DENSE { Udense_0_5 <- Udense_0_5 +1; }
 							}
 						}
-						myself.nb_watered_cells <- myself.nb_watered_cells + 1;
+						match "Us" {
+							if max_water_height <= 0.5 { Us_0_5 <- Us_0_5 +1; }
+							else if between (max_water_height ,0.5, 1.0) { Us_1 <- Us_1 +1; }
+							else { Us_max <- Us_max +1; }
+						}
+						match "AU" {
+							if max_water_height <= 0.5 { AU_0_5 <- AU_0_5 +1; }
+							else if between (max_water_height ,0.5, 1.0) { AU_1 <- AU_1 +1; }
+							else { AU_max <- AU_max +1; }
+						}
+						match "N"  {
+							if max_water_height <= 0.5 { N_0_5 <- N_0_5 +1; }
+							else if between (max_water_height ,0.5, 1.0) { N_1 <- N_1 +1; }
+							else { N_max <- N_max +1; }
+						}
+						match "A" {
+							if max_water_height <= 0.5 { A_0_5 <- A_0_5 +1; }
+							else if between (max_water_height ,0.5, 1.0) { A_1 <- A_1 +1; }
+							else { A_max <- A_max +1; }
+						}
 					}
+					myself.nb_watered_cells <- myself.nb_watered_cells + 1;
 				}
-				
-				prev_U_0_5c <- U_0_5c;
-				prev_U_1c <- U_1c;
-				prev_U_maxc <- U_maxc;
-				prev_Us_0_5c <- Us_0_5c;
-				prev_Us_1c <- Us_1c;
-				prev_Us_maxc <- Us_maxc;
-				prev_Udense_0_5c <- Udense_0_5c;
-				prev_Udense_1c <- Udense_1c;
-				prev_Udense_maxc <- Udense_maxc;
-				prev_AU_0_5c <- AU_0_5c;
-				prev_AU_1c <- AU_1c;
-				prev_AU_maxc <- AU_maxc;
-				prev_A_0_5c <- A_0_5c;
-				prev_A_1c <- A_1c;
-				prev_A_maxc <- A_maxc;
-				prev_N_0_5c <- N_0_5c;
-				prev_N_1c <- N_1c;
-				prev_N_maxc <- N_maxc;
-				prev_tot_0_5c <- tot_0_5c;
-				prev_tot_1c <- tot_1c;
-				prev_tot_maxc <- tot_maxc;
-				
-				float to_hectar <- GRID_CELL_SIZE * GRID_CELL_SIZE / 10000; // transform m2 to hectar
-				U_0_5c <- U_0_5 * to_hectar; 
-				U_1c <- U_1 * to_hectar;
-				U_maxc <- U_max * to_hectar;
-				Us_0_5c <- Us_0_5 * to_hectar;
-				Us_1c <- Us_1 * to_hectar;
-				Us_maxc <- Us_max * to_hectar;
-				Udense_0_5c <- Udense_0_5 * to_hectar;
-				Udense_1c <- Udense_1 * to_hectar;
-				Udense_maxc <- Udense_max * to_hectar;
-				AU_0_5c <- AU_0_5 * to_hectar;
-				AU_1c <- AU_1 * to_hectar;
-				AU_maxc <- AU_max * to_hectar;
-				A_0_5c <- A_0_5 * to_hectar;
-				A_1c <- A_1 * to_hectar;
-				A_maxc <- A_max * to_hectar;
-				N_0_5c <- N_0_5 * to_hectar;
-				N_1c <- N_1 * to_hectar;
-				N_maxc <- N_max * to_hectar;
-				tot_0_5c <- U_0_5c + Us_0_5c + AU_0_5c + A_0_5c + N_0_5c;
-				tot_1c <- U_1c + Us_1c + AU_1c + A_1c + N_1c;
-				tot_maxc <- U_maxc + Us_maxc + AU_maxc + A_maxc + N_maxc;
-				
-				text <- text + "Results for district : " + district_name +"
+			}
+			
+			prev_U_0_5c <- U_0_5c;
+			prev_U_1c <- U_1c;
+			prev_U_maxc <- U_maxc;
+			prev_Us_0_5c <- Us_0_5c;
+			prev_Us_1c <- Us_1c;
+			prev_Us_maxc <- Us_maxc;
+			prev_Udense_0_5c <- Udense_0_5c;
+			prev_Udense_1c <- Udense_1c;
+			prev_Udense_maxc <- Udense_maxc;
+			prev_AU_0_5c <- AU_0_5c;
+			prev_AU_1c <- AU_1c;
+			prev_AU_maxc <- AU_maxc;
+			prev_A_0_5c <- A_0_5c;
+			prev_A_1c <- A_1c;
+			prev_A_maxc <- A_maxc;
+			prev_N_0_5c <- N_0_5c;
+			prev_N_1c <- N_1c;
+			prev_N_maxc <- N_maxc;
+			prev_tot_0_5c <- tot_0_5c;
+			prev_tot_1c <- tot_1c;
+			prev_tot_maxc <- tot_maxc;
+			
+			float to_hectar <- GRID_CELL_SIZE * GRID_CELL_SIZE / 10000; // transform m2 to hectar
+			U_0_5c <- U_0_5 * to_hectar; 
+			U_1c <- U_1 * to_hectar;
+			U_maxc <- U_max * to_hectar;
+			Us_0_5c <- Us_0_5 * to_hectar;
+			Us_1c <- Us_1 * to_hectar;
+			Us_maxc <- Us_max * to_hectar;
+			Udense_0_5c <- Udense_0_5 * to_hectar;
+			Udense_1c <- Udense_1 * to_hectar;
+			Udense_maxc <- Udense_max * to_hectar;
+			AU_0_5c <- AU_0_5 * to_hectar;
+			AU_1c <- AU_1 * to_hectar;
+			AU_maxc <- AU_max * to_hectar;
+			A_0_5c <- A_0_5 * to_hectar;
+			A_1c <- A_1 * to_hectar;
+			A_maxc <- A_max * to_hectar;
+			N_0_5c <- N_0_5 * to_hectar;
+			N_1c <- N_1 * to_hectar;
+			N_maxc <- N_max * to_hectar;
+			tot_0_5c <- U_0_5c + Us_0_5c + AU_0_5c + A_0_5c + N_0_5c;
+			tot_1c <- U_1c + Us_1c + AU_1c + A_1c + N_1c;
+			tot_maxc <- U_maxc + Us_maxc + AU_maxc + A_maxc + N_maxc;
+			
+			text <- text + "Results for district : " + district_name +"
 Flooded U : < 50cm " + (U_0_5c with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (U_1c with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + (U_maxc with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
 Flooded Us : < 50cm " + (Us_0_5c with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (Us_1c with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + (Us_maxc with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
 Flooded Udense : < 50cm " + (Udense_0_5c with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (Udense_1 with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | > 1m " + (Udense_max with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
@@ -734,32 +739,32 @@ Flooded A : < 50cm " + (A_0_5c with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) 
 Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (N_1c with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + (N_maxc with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
 --------------------------------------------------------------------------------------------------------------------
 ";	
-			}
-			flood_results <-  text;
-				
-			write get_message('MSG_FLOODED_AREA_DISTRICT');
-			ask districts_in_game {
-				flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1;  
-				write ""+ district_name + " : " + flooded_area +" ha";
+		}
+		flood_results <-  text;
+			
+		write get_message('MSG_FLOODED_AREA_DISTRICT');
+		ask districts_in_game {
+			flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1;  
+			write ""+ district_name + " : " + flooded_area +" ha";
 
-				totU <- (U_0_5c + U_1c + U_maxc) with_precision 1;
-				totUs <- (Us_0_5c + Us_1c + Us_maxc ) with_precision 1;
-				totUdense <- (Udense_0_5c + Udense_1c + Udense_maxc) with_precision 1;
-				totAU <- (AU_0_5c + AU_1c + AU_maxc) with_precision 1;
-				totN <- (N_0_5c + N_1c + N_maxc) with_precision 1;
-				totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1;
-				
-				
-				if length(data_flooded_area) < length (list_flooding_events) {
-					add flooded_area to: data_flooded_area;
-					add totU to: data_totU;
-					add totUs to: data_totUs;
-					add totUdense to: data_totUdense;
-					add totAU to: data_totAU;
-					add totN to: data_totN;
-					add totA to: data_totA;
-				}
+			totU <- (U_0_5c + U_1c + U_maxc) with_precision 1;
+			totUs <- (Us_0_5c + Us_1c + Us_maxc ) with_precision 1;
+			totUdense <- (Udense_0_5c + Udense_1c + Udense_maxc) with_precision 1;
+			totAU <- (AU_0_5c + AU_1c + AU_maxc) with_precision 1;
+			totN <- (N_0_5c + N_1c + N_maxc) with_precision 1;
+			totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1;
+			
+			
+			if length(data_flooded_area) < length (list_flooding_events) {
+				add flooded_area to: data_flooded_area;
+				add totU to: data_totU;
+				add totUs to: data_totUs;
+				add totUdense to: data_totUdense;
+				add totAU to: data_totAU;
+				add totN to: data_totN;
+				add totA to: data_totA;
 			}
+		}
 	}
 	
 	// creating buttons
@@ -1084,7 +1089,7 @@ species Network_Game_Manager skills: [network]{
 							}
 						}
 					}
-					match ACTION_INSTALL_GANIVELLE {
+					match_one [ACTION_INSTALL_GANIVELLE, ACTION_ENHANCE_NATURAL_ACCR] {
 					 	Coastal_Defense cd <- Coastal_Defense first_with(each.coast_def_id = element_id);
 						if cd != nil {
 							ask cd {
@@ -1486,7 +1491,7 @@ species Player_Action schedules:[]{
 			height 	<- type = COAST_DEF_TYPE_DIKE ? BUILT_DIKE_HEIGHT : BUILT_DUNE_TYPE1_HEIGHT;	
 			cells 	<- Cell overlapping self;
 			alt 	<- cells max_of(each.soil_height) + height;
-			if self.type = COAST_DEF_TYPE_DUNE and !(self intersects all_dunes_buffer_area) {
+			if application_name = "camargue" and self.type = COAST_DEF_TYPE_DUNE and !(self intersects all_dunes_buffer_area) {
 				dune_type <- 2;
 				height <- BUILT_DUNE_TYPE2_HEIGHT;
 				draw_around <- 35;
@@ -1570,7 +1575,7 @@ species Coastal_Defense {
 		}
 		if type != COAST_DEF_TYPE_CORD {
 			do build_coast_def;
-			if self.type = COAST_DEF_TYPE_DUNE and !(self intersects all_dunes_buffer_area) {
+			if application_name = "camargue" and self.type = COAST_DEF_TYPE_DUNE and !(self intersects all_dunes_buffer_area) {
 				dune_type <- 2;
 				draw_around <- 35;
 			} 
@@ -1655,7 +1660,7 @@ species Coastal_Defense {
 					soil_height_before_broken <- soil_height;
 					do init_cell_color();
 				}
-			} else { ganivelle <- false;	} // if the dune covers all the ganivelle we reset the ganivelle
+			} else { ganivelle <- false; } // if the dune covers all the ganivelle we reset the ganivelle
 			not_updated<- true;
 		}
 		else { // a dune without a ganivelle
@@ -1689,15 +1694,21 @@ species Coastal_Defense {
 					else if  status = STATUS_MEDIUM	{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_MEDIUM / 100); }
 					else 							{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_GOOD / 100);   }
 				}
-
 			}
 		}
 		else if type = COAST_DEF_TYPE_DUNE  {
-			if      status = STATUS_BAD 	{ p <- PROBA_RUPTURE_DUNE_STATUS_BAD;	 }
-			else if status = STATUS_MEDIUM 	{ p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM; }
-			else 						 	{ p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }	
+			if status = STATUS_BAD 	{
+				p <- PROBA_RUPTURE_DUNE_STATUS_BAD;
+				if dune_type = 2 { p <- p*2; }	
+			}
+			else if status = STATUS_MEDIUM 	{
+				p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM;
+				if dune_type = 2 { p <- int(p*1.5); }	
+			}
+			else { p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }
 		}
-		if rnd (100) <= p {
+		
+		if flip(p/100) {
 			rupture <- true;
 			// the rupture is applied in the middle
 			int cIndex <- int(length(cells) / 2);
@@ -1725,15 +1736,14 @@ species Coastal_Defense {
 	}
 	
 	action install_ganivelle {
-		if status = STATUS_BAD {	counter_status <- 2;	}
-		else				   {	counter_status <- 0; 	}		
+		if status = STATUS_BAD { counter_status <- STEPS_REGAIN_STATUS_GANIVELLE - 1; }
+		else				   { counter_status <- 0; 	}		
 		ganivelle <- true;
-		write "" + world.get_message('MSG_INSTALL_GANIVELLE');
 	}
 	
 	action maintain_dune {
 		self.maintained <- true;
-		maintain_status <- MAINTAIN_DUNE_STEPS;
+		maintain_status <- MAINTAIN_STATUS_DUNE_STEPS;
 	}
 	
 	action install_new_slice{
@@ -2136,13 +2146,13 @@ species Button{
 	
 	aspect buttons_master {
 		if nb_button in [0,1,2,3,5] {
-			if nb_button in [0,3,5] {
+			//if nb_button in [0,3,5] {
 				draw shape color: #white border: is_selected ? #red : #white;
-			}else if nb_button = 1 {
+			/* }else if nb_button = 1 {
 				draw shape color: #white border: game_paused ? #white : #blue;
 			}else if nb_button = 2 {
 				draw shape color: #white border: game_paused ? #blue : #white;	
-			}
+			}*/
 			draw display_text color: #black at: location + {0,shape.height*0.54} anchor: #center;
 			draw my_icon size: shape.width-50#m;
 		} else if(nb_button = 6){
@@ -2299,7 +2309,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		
 		display "Game control"{	
 			graphics "Master" {
-				draw shape color: #lightgray;
+				draw shape color: #gray border: #gold;
 			}
 			species Button  aspect: buttons_master;
 			
@@ -2311,8 +2321,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				point loc 	<- {world.shape.width/2, world.shape.height/2};
 				float msize <- min([loc.x*2/3, loc.y*2/3]);
 				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
-				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #black anchor:#center;
-				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #blue font: font('Helvetica Neue', 20, #bold) at: loc + {0,msize*0.66} anchor:#center;
+				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #gray border: #gold anchor:#center;
+				draw world.get_message("MSG_THE_ROUND") + " : " + game_round color: #white font: font('Helvetica Neue', 20, #bold) at: loc + {0,msize*0.66} anchor:#center;
 			}
 			graphics "A submersion is running" {
 				if submersion_is_running {

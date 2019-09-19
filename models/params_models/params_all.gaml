@@ -132,7 +132,7 @@ global{
 	float DUNE_TYPE_DISTANCE_COAST  <- float(study_area_def["DUNE_TYPE_DISTANCE_COAST"]);
 	float BUILT_DUNE_TYPE1_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE1_HEIGHT"]);
 	float BUILT_DUNE_TYPE2_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE2_HEIGHT"]);
-	int MAINTAIN_DUNE_STEPS	<- int(study_area_def["MAINTAIN_DUNE_STEPS"]);
+	int MAINTAIN_STATUS_DUNE_STEPS	<- int(study_area_def["MAINTAIN_STATUS_DUNE_STEPS"]);
 	
 	// Loading GIS data
 	file districts_shape 		<- file(study_area_def["DISTRICTS_SHAPE"]);

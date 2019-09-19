@@ -123,11 +123,12 @@ global{
 				my_color <- cell_color();
 			} else {do die;}
 		}
-		
-		create Dunes_Area from: coastline_shape {
-			shape <- (shape + (DUNE_TYPE_DISTANCE_COAST*2)#m) inter union(District);
+		if application_name = "camargue" {
+			create Dunes_Area from: coastline_shape {
+				shape <- (shape + (DUNE_TYPE_DISTANCE_COAST*2)#m) inter union(District);
+			}
+			all_dunes_area <- union (Dunes_Area);	
 		}
-		all_dunes_area <- union (Dunes_Area); 
 
 		population_area <- union(Land_Use where(each.lu_name = "U" or each.lu_name = "AU"));
 		MSG_WARNING <- get_message('MSG_WARNING');
@@ -184,8 +185,8 @@ global{
 	}
 	
 	point button_box_location (point my_button, int box_width){
-		if(world.shape.width * 0.6 > my_button.x){
-			return {min([my_button.x + box_width, world.shape.width - 10#px]), my_button.y};
+		if my_button.x < first(Tab_Background).location.x + (first(Tab_Background).ui_width*0.55)  {
+			return {my_button.x + box_width, my_button.y};
 		}
 		return my_button;
 	}
@@ -260,10 +261,11 @@ global{
 	}
 	
 	action lock_window {
-		point loc 	<- {world.shape.width/2, world.shape.height/2};
-		geometry rec<- rectangle(world.shape.width, world.shape.height);
+		geometry geom <- world.shape;
+		point loc 	<- {geom.width/2, geom.height/2};
+		geometry rec<- rectangle(geom.width, geom.height);
 		draw rec at: loc color: #black;
-		float msize <- min([world.shape.width/2, world.shape.height/2]);
+		float msize <- min([geom.width/2, geom.height/2]);
 		draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
 	}
 	
@@ -327,6 +329,9 @@ global{
 	}
 	
 	action button_click_general {
+		if !is_active_gui {
+			return;
+		}
 		point loc <- #user_location;
 		list<Tab> clicked_tab_button <- (Tab overlapping loc);
 		if(length(clicked_tab_button) > 0){							// changing tab
@@ -416,6 +421,9 @@ global{
 	}
 
 	action mouse_move_general {
+		if !is_active_gui {
+			return;
+		}
 		switch(active_display){
 			match LU_DISPLAY  		{do mouse_move_lu;}
 			match COAST_DEF_DISPLAY {do mouse_move_coast_def;}
@@ -501,24 +509,27 @@ global{
 			if codef.type = COAST_DEF_TYPE_CORD and but.command != ACTION_LOAD_PEBBLES_CORD {return;} // nothing to do
 			if codef.type = COAST_DEF_TYPE_DIKE and but.command in
 							[ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD,ACTION_ENHANCE_NATURAL_ACCR,ACTION_MAINTAIN_DUNE] {return;} // nothing to do
-			
+			int action_delay;
 			create Coastal_Defense_Action returns: action_list{
 				id 			<- world.get_action_id();
 				self.label 	<- but.label;
 				element_id 	<- codef.coast_def_id;
 				self.command<- but.command;
 				self.coast_def_type <- codef.type;
-				self.initial_application_round <- game_round  + world.delay_of_action(self.command);
 				element_shape <- codef.shape;
 				shape <- element_shape + 15#m;
 				cost <- but.action_cost * codef.length_coast_def;
 				draw_around <- codef.type != COAST_DEF_TYPE_DUNE ? 15 : (codef.dune_type = 1 ? 45 : 30);
+				action_delay <- world.delay_of_action(self.command);
 			}
 			previous_clicked_point <- nil;
 			current_action <- first(action_list);
-			if but.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD] {
+			if but.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR] {
 				if !empty(Protected_Area where (each intersects current_action.shape)){
 					current_action.is_in_protected_area <- true;
+					if application_name = "camargue" and current_action.command = ACTION_ENHANCE_NATURAL_ACCR {
+						action_delay <- action_delay * 2;
+					}
 					map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
 					if (!(vmap at vmap.keys[0])) {
 						ask current_action {
@@ -528,6 +539,7 @@ global{
 					}
 				}
 			}
+			current_action.initial_application_round <- game_round  + action_delay;
 			my_basket <- my_basket + current_action; 
 			ordered_action <- ordered_action + current_action;
 			ask(game_basket) {
@@ -723,18 +735,27 @@ global{
 	}
 	
 	action move_down_event_basket{
+		if !is_active_gui {
+			return;
+		}
 		ask Basket {
 			do move_down_event;
 		}
 	}
 	
 	action move_down_event_dossier{
+		if !is_active_gui {
+			return;
+		}
 		ask History {
 			do move_down_event;
 		}
 	}
 	
 	action move_down_event_console{
+		if !is_active_gui {
+			return;
+		}
 		ask Message_Console {
 			do move_down_event;
 		}
@@ -1299,7 +1320,7 @@ species Basket_Element parent: Displayed_List_Element {
 		
 		draw "" + world.thousands_separator(int(current_action.cost))  at: {round(button_location.x) - 50#px, round(button_location.y) + (font_size/ 2)#px}  color: #black font: font1;
 		draw circle(bullet_size.x / 2) at: round_apply_location color: rgb(87,87,87);
-		draw "" + world.delay_of_action(current_action.command) at: {round(round_apply_location.x) - (font_size / 6)#px , round(round_apply_location.y) + (font_size / 3)#px} color: #white font: font1;
+		draw "" + (current_action.initial_application_round - game_round) at: {round(round_apply_location.x) - (font_size / 6)#px , round(round_apply_location.y) + (font_size / 3)#px} color: #white font: font1;
 	
 		if location != nil and highlighted_action = current_action {
 			geometry recx <- polygon([{0, 0}, {0, ui_height}, {ui_width, ui_height}, {ui_width, 0},{0, 0}]);
@@ -1863,7 +1884,7 @@ species Button_Map parent: Button {
 	geometry shape <- square(850#m);
 	
 	aspect base{
-		draw shape color: #white border: is_selected ? # red : # white;
+		draw shape color: #white border: is_selected ? # red : #white;
 		draw my_icon size: 800#m ;
 	}
 }
@@ -1956,8 +1977,8 @@ species Land_Use {
 				draw shape color: #lightgray;
 				int acts <- length(actions_on_me);
 				if acts > 0 {
-					draw shape color: #yellow border: #blue;
-					draw ""+acts font: f1 color: #black anchor:#center;
+					draw shape color: #gray border: #gold;
+					draw ""+acts font: f1 color: #yellow anchor:#center;
 				}
 			}
 		}
@@ -2034,11 +2055,11 @@ species Coastal_Defense {
 				draw shape color: #black;
 				if ganivelle {
 					loop i over: points_on(shape, 15#m) {
-						draw circle(5,i) color: #black;
+						draw circle(10,i) color: #black;
 					}
 				}
 				if maintained {
-					draw shape+5#m color: #whitesmoke;
+					draw shape+10#m color: #whitesmoke;
 				}
 			}
 			else if type = COAST_DEF_TYPE_CORD {
@@ -2065,9 +2086,9 @@ species Coastal_Defense {
 				}
 				draw shape color: #black;
 				if acts > 0 {
-					draw circle (50) color: #yellow border: #blue;
-					draw circle (40) empty: true color: #blue;
-					draw ""+acts font: f1 color: #black anchor:#center;
+					draw circle (50) color: #gray border: #gold;
+					draw circle (40) empty: true color: #black;
+					draw ""+acts font: f1 color: #yellow anchor:#center;
 				}
 			}
 		}
@@ -2224,8 +2245,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500]);
-				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500])//;
+				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {
@@ -2255,28 +2276,28 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Button 					aspect: map;
 			species Button_Map				aspect: map;
 			
-			graphics "Coast Def Info" transparency: 0.3 {
+			graphics "Coast Def Info" {
 				if explored_coast_def != nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected {
 					Coastal_Defense my_codef <- explored_coast_def;
 					point target <- {my_codef.location.x  ,my_codef.location.y};
 					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px + 60#px)};
-					draw rectangle(target,target2) border: false color: #black ;
+					draw rectangle(target,target2) border: #gold color: #gray ;
 					
-					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + my_codef.type) at: target + {5#px, 15#px} font: regular color: #white;
+					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + my_codef.type) at: target + {3#px, 15#px} font: regular color: #yellow;
 					int xpx <-0;
-					draw world.get_message('PLY_MSG_LENGTH') + " : " + string(round(100*my_codef.length_coast_def)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_LENGTH') + " : " + string(round(100*my_codef.length_coast_def)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: #white;
 					xpx <- xpx+20;
-					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*my_codef.alt)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*my_codef.alt)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: #white;
 					xpx <- xpx+20;
-					draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*my_codef.height)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*my_codef.height)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: #white;
 					xpx <- xpx+20;
-					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_' + my_codef.status) at: target + {10#px, xpx#px + 35#px} font: regular color: # white;
-					draw "ID : "+ string(my_codef.coast_def_id) at: target + {10#px, xpx#px + 55#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_' + my_codef.status) at: target + {10#px, xpx#px + 35#px} font: regular color: #white;
+					draw "ID : "+ string(my_codef.coast_def_id) at: target + {10#px, xpx#px + 55#px} font: regular color: #white;
 					xpx <- xpx+20;
 					if my_codef.type = COAST_DEF_TYPE_CORD {
-						draw world.get_message('PLY_MSG_SLICES') + " : " + string(my_codef.slices) at: target + {10#px, xpx#px + 55#px} font: regular color: # white;
+						draw world.get_message('PLY_MSG_SLICES') + " : " + string(my_codef.slices) at: target + {10#px, xpx#px + 55#px} font: regular color: #white;
 					} else {
-						draw world.get_message('MSG_RUPTURE') + " : " + (my_codef.rupture ? world.get_message('MSG_YES') : world.get_message('MSG_NO'))  at: target + {10#px, xpx#px + 55#px} font: regular color: # white;
+						draw world.get_message('MSG_RUPTURE') + " : " + (my_codef.rupture ? world.get_message('MSG_YES') : world.get_message('MSG_NO'))  at: target + {10#px, xpx#px + 55#px} font: regular color: #white;
 					}
 					if my_codef.status != STATUS_GOOD {
 						point image_loc <- {my_codef.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 40#px, my_codef.location.y + 80#px};
@@ -2288,7 +2309,7 @@ experiment LittoSIM_GEN_Player type: gui{
 				}
 			}
 			// Display Coast Def History
-			graphics "Coast Def History" transparency: 0.5 {
+			graphics "Coast Def History" {
 				if explored_coast_def != nil and (Button first_with (each.command = ACTION_HISTORY)).is_selected {
 					Coastal_Defense my_codef <- explored_coast_def;
 					int xxsize <- length(my_codef.actions_on_me);
@@ -2296,37 +2317,37 @@ experiment LittoSIM_GEN_Player type: gui{
 						point target  <- {my_codef.location.x, my_codef.location.y};
 						point target2 <- {my_codef.location.x + 1 * (INFORMATION_BOX_SIZE.x#px + 20#px), my_codef.location.y + 1 * (INFORMATION_BOX_SIZE.y#px -60#px + (xxsize*20)#px)};
 						int xpx <- 15;
-						draw rectangle(target,target2)  color: #black ;
-						draw world.get_message('PLY_MSG_HIST_AB') + " : " + world.get_message('MSG_' + my_codef.type) + " ("+string(my_codef.coast_def_id)+")" at: target + {0#px, xpx#px} font: regular color: # white;
+						draw rectangle(target,target2) border: #gold color: #gray ;
+						draw world.get_message('PLY_MSG_HIST_AB') + " : " + world.get_message('MSG_' + my_codef.type) + " ("+string(my_codef.coast_def_id)+")" at: target + {0#px, xpx#px} font: regular color: #white;
 						loop acta over: my_codef.actions_on_me {
 							xpx <- xpx + 20;
-							draw string(acta.effective_application_round) + " : " +	world.label_of_action(acta.command) at: target + {5#px, xpx#px} font: regular color: # white;
+							draw string(acta.effective_application_round) + " : " +	world.label_of_action(acta.command) at: target + {5#px, xpx#px} font: regular color: #white;
 						}
 					}
 				}
 			}
 		
-			graphics "Coast Def Action" transparency: 0.3 {// explore coast def action 
+			graphics "Coast Def Action" {// explore coast def action 
 				if explored_coast_def_action != nil and !explored_coast_def_action.is_applied and explored_coast_def_action.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
 					Coastal_Defense_Action my_codef_action <- explored_coast_def_action;
 					point target <- {my_codef_action.location.x  ,my_codef_action.location.y};
 					point target2 <- {my_codef_action.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef_action.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
-					draw rectangle(target,target2) border: false color: #black ;
+					draw rectangle(target,target2) border: #gold color: #gray ;
 					
-					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + my_codef_action.coast_def_type)  at: target + {5#px, 15#px} font: regular color: #white;
+					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('MSG_' + my_codef_action.coast_def_type)  at: target + {5#px, 15#px} font: regular color: #yellow;
 					int xpx <-0;
-					draw world.get_message('PLY_MSG_LENGTH') + " : " + string(round(100*my_codef_action.shape.perimeter)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_LENGTH') + " : " + string(round(100*my_codef_action.shape.perimeter)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: #white;
 					xpx <- xpx+20;
-					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*my_codef_action.altit)/100) + "m" at: target + {10#px, xpx#px +35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*my_codef_action.altit)/100) + "m" at: target + {10#px, xpx#px +35#px} font: regular color: #white;
 					xpx <- xpx+20;
-					draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*BUILT_DIKE_HEIGHT)/100.0) + "m" at: target + {10#px, xpx#px +35#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_HEIGHT') + " : " + string(round(100*BUILT_DIKE_HEIGHT)/100.0) + "m" at: target + {10#px, xpx#px +35#px} font: regular color: #white;
 					xpx <- xpx+20;
-					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_GOOD') at: target + {10#px, xpx#px +35#px} font: regular color: # white;
-					draw world.get_message('PLY_MSG_APP_ROUND') + " : " + string(my_codef_action.initial_application_round) at: target + {10#px, xpx#px +55#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_STATE') + " : " + world.get_message('PLY_MSG_GOOD') at: target + {10#px, xpx#px +35#px} font: regular color: #white;
+					draw world.get_message('PLY_MSG_APP_ROUND') + " : " + string(my_codef_action.initial_application_round) at: target + {10#px, xpx#px +55#px} font: regular color: #white;
 				}
 			}
 			
-			graphics "Button Info" transparency: 0.5 {
+			graphics "Button Info" {
 				if explored_button != nil {
 					Button my_button <- explored_button;
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-INFORMATION_BOX_SIZE.y #px) : 0.0;
@@ -2335,34 +2356,34 @@ experiment LittoSIM_GEN_Player type: gui{
 					float xxx <- active_display = COAST_DEF_DISPLAY ? 1.0 : 1.25; 
 					point target3 <- {target.x , target.y + xxx * (INFORMATION_BOX_SIZE.y #px) + increment};
 					
-					draw rectangle(target2,target3) border: false color: #black ;
-					draw my_button.label    at: target2 + {5#px, 15#px} font: regular color: # white;
-					draw my_button.help_msg at: target2 + {10#px, 35#px} font: regular color: # white;
+					draw rectangle(target2,target3) border: #gold color: #gray ;
+					draw my_button.label    at: target2 + {5#px, 15#px} font: regular color: #yellow;
+					draw my_button.help_msg at: target2 + {10#px, 35#px} font: regular color: #whitesmoke;
 
 					if !(my_button.command in [ACTION_INSPECT, ACTION_HISTORY,ACTION_DISPLAY_PROTECTED_AREA, ACTION_DISPLAY_FLOODED_AREA, ACTION_DISPLAY_FLOODING]) {
 						string txtt;
 						if active_display = LU_DISPLAY { txtt <- world.get_message('MSG_COST_APPLIED_PARCEL'); }
 						switch my_button.command {	
 							match ACTION_MODIFY_LAND_COVER_N {
-								draw txtt + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + {10#px, 55#px} font: regular color: # white; 
-								draw txtt + " AU : " + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N') at: target2 + {10#px, 75#px} font: regular color: # white; 
-								draw txtt + " U : "  + world.get_message('MSG_COST_EXPROPRIATION') at: target2 + {10#px, 95#px} font: regular color: # white;
+								draw txtt + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + {10#px, 55#px} font: regular color: #white; 
+								draw txtt + " AU : " + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N') at: target2 + {10#px, 75#px} font: regular color: #white; 
+								draw txtt + " U : "  + world.get_message('MSG_COST_EXPROPRIATION') at: target2 + {10#px, 95#px} font: regular color: #white;
 							}
 							match ACTION_MODIFY_LAND_COVER_AUs{
-								draw txtt + " AU : " + my_button.action_cost  at: target2 + {10#px, 55#px} font: regular color: # white;
+								draw txtt + " AU : " + my_button.action_cost  at: target2 + {10#px, 55#px} font: regular color: #white;
 								draw txtt + " U : "  + (subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : 
-											world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us')) at: target2 + {10#px, 75#px} font: regular color: # white; 
+											world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us')) at: target2 + {10#px, 75#px} font: regular color: #white; 
 							}
 							default {
 								txtt <- active_display = COAST_DEF_DISPLAY ? "/m" : ""; 
-								draw world.get_message('MSG_COST_ACTION') + " : " + my_button.action_cost + txtt at: target2 + {10#px, 55#px} font: regular color: # white;
+								draw world.get_message('MSG_COST_ACTION') + " : " + my_button.action_cost + txtt at: target2 + {10#px, 55#px} font: regular color: #white;
 							}
 						}
 					}
 				}
 			}
 			// Inspect LU info
-			graphics "LU Info" transparency: 0.5 {
+			graphics "LU Info" {
 				if explored_lu != nil and (explored_land_use_action = nil or explored_land_use_action.is_applied) and (Button first_with (each.command = ACTION_INSPECT)).is_selected {
 					Land_Use my_lu <- explored_lu;
 					int xxsize <- my_lu.lu_name in ["U","Us"] ? 40 : 0;
@@ -2373,39 +2394,39 @@ experiment LittoSIM_GEN_Player type: gui{
 					point target  <- {my_lu.location.x, my_lu.location.y};
 					point target2 <- {my_lu.location.x + 1 * (INFORMATION_BOX_SIZE.x#px), my_lu.location.y + 1 * (INFORMATION_BOX_SIZE.y#px + xxsize#px)};
 					int xpx <- 15;
-					draw rectangle(target,target2)  color: #black ;
-					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('PLY_MSG_LAND_USE') at: target + {0#px, xpx#px}  font: regular color: # white;
+					draw rectangle(target,target2) border: #gold color: #gray ;
+					draw world.get_message('PLY_MSG_INFO_AB') + " : " + world.get_message('PLY_MSG_LAND_USE') at: target + {3#px, xpx#px}  font: regular color: #yellow;
 					xpx <- xpx + 20;
-					draw world.get_message('MSG_TYPE_' + my_lu.lu_name) at: target + {10#px, xpx#px} font: regular color: # white;
+					draw world.get_message('MSG_TYPE_' + my_lu.lu_name) at: target + {10#px, xpx#px} font: regular color: #white;
 					xpx <- xpx + 20;
-					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*my_lu.mean_alt)/100) + "m" at: target + {10#px, xpx#px} font: regular color: # white;
+					draw world.get_message('PLY_MSG_ALTITUDE') + " : " + string(round(100*my_lu.mean_alt)/100) + "m" at: target + {10#px, xpx#px} font: regular color: #white;
 					xpx <- xpx + 20;
 					if my_lu.lu_name in ["U","Us"]{
-						draw world.get_message('MSG_POPULATION') + " : " + my_lu.population at: target + {10#px, xpx#px} font: regular color: # white;
+						draw world.get_message('MSG_POPULATION') + " : " + my_lu.population at: target + {10#px, xpx#px} font: regular color: #white;
 						xpx <- xpx + 20;
-						draw world.get_message('MSG_EXPROPRIATION') + " : " + my_lu.expro_cost at: target + {10#px, xpx#px} font: regular color: # white;
+						draw world.get_message('MSG_EXPROPRIATION') + " : " + my_lu.expro_cost at: target + {10#px, xpx#px} font: regular color: #white;
 						xpx <- xpx + 20;
 					}
-					draw "ID : "+ string(my_lu.id) at: target + {10#px, xpx#px} font: regular color: # white;
+					draw "ID : "+ string(my_lu.id) at: target + {10#px, xpx#px} font: regular color: #white;
 					if marked {
 						xpx <- xpx + 20;
-						draw my_lu.mark.floo1 at: target + {10#px, xpx#px} font: regular color: # white;
+						draw my_lu.mark.floo1 at: target + {10#px, xpx#px} font: regular color: #white;
 						xpx <- xpx + 20;
-						draw my_lu.mark.floo2 at: target + {10#px, xpx#px} font: regular color: # white;
+						draw my_lu.mark.floo2 at: target + {10#px, xpx#px} font: regular color: #white;
 					}
 				}
 			}
 			
 			// Inspect LU info when the action is not applied yet
-			graphics "LU Action Info" transparency: 0.3 {
+			graphics "LU Action Info" {
 				if explored_land_use_action !=nil and !explored_land_use_action.is_applied {
 					Land_Use_Action my_lu_action <- explored_land_use_action;
 					Land_Use mcell 	<- Land_Use first_with(each.id = my_lu_action.element_id);
 					point target 	<- {mcell.location.x , mcell.location.y};
 					point target2 	<- {mcell.location.x + 1 * (INFORMATION_BOX_SIZE.x#px), mcell.location.y + 1 * (INFORMATION_BOX_SIZE.y#px)};
 					
-					draw rectangle(target, target2) border: false color: #black;
-					draw world.get_message('PLY_MSG_STATE_CHANGE') at: target + {0#px, 15#px} font: regular color: #white;
+					draw rectangle(target, target2) border: #gold color: #gray;
+					draw world.get_message('PLY_MSG_STATE_CHANGE') at: target + {3#px, 15#px} font: regular color: #yellow;
 					draw file("../images/icons/fleche.png") at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x #px), target.y + 50#px} size:50#px;
 					draw "" + (my_lu_action.effective_application_round) at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x#px), target.y + 50#px} size: 20#px;
 					draw world.get_action_icon(my_lu_action.command) at: {target2.x - 50#px, target.y +50#px} size: 50#px;
@@ -2414,7 +2435,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			// Display LU history 
-			graphics "LU History" transparency: 0.5 {
+			graphics "LU History" {
 				if explored_lu != nil and (Button first_with (each.command = ACTION_HISTORY)).is_selected {
 					Land_Use my_lu <- explored_lu;
 					int xxsize <- length(my_lu.actions_on_me);
@@ -2422,11 +2443,11 @@ experiment LittoSIM_GEN_Player type: gui{
 						point target  <- {my_lu.location.x, my_lu.location.y};
 						point target2 <- {my_lu.location.x + 1 * (INFORMATION_BOX_SIZE.x#px + 80#px), my_lu.location.y + 1 * (INFORMATION_BOX_SIZE.y#px -60#px + (xxsize*20)#px)};
 						int xpx <- 15;
-						draw rectangle(target,target2)  color: #black ;
-						draw world.get_message('PLY_MSG_HIST_AB') + " : " + world.get_message('PLY_MSG_LAND_USE') + " ("+string(my_lu.id)+")" at: target + {0#px, xpx#px} font: regular color: # white;
+						draw rectangle(target,target2) border: #gold color: #gray ;
+						draw world.get_message('PLY_MSG_HIST_AB') + " : " + world.get_message('PLY_MSG_LAND_USE') + " ("+string(my_lu.id)+")" at: target + {0#px, xpx#px} font: regular color: #yellow;
 						loop acta over: my_lu.actions_on_me {
 							xpx <- xpx + 20;
-							draw string(acta.effective_application_round) + " : " +	world.label_of_action(acta.command) at: target + {5#px, xpx#px} font: regular color: # white;
+							draw string(acta.effective_application_round) + " : " +	world.label_of_action(acta.command) at: target + {5#px, xpx#px} font: regular color: #white;
 						}
 					}
 				}
