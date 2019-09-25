@@ -19,9 +19,10 @@ global {
 	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
 	string lisflood_start_file	<- study_area_def["LISFLOOD_START_FILE"];
 	string lisflood_bci_file	<- study_area_def["LISFLOOD_BCI_FILE"];
-	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING? study_area_def ["LISFLOOD_BDY_HIGH_FILENAME"] // scenario1 : HIGH 
-								:(floodEventType  = LOW_FLOODING ? study_area_def ["LISFLOOD_BDY_LOW_FILENAME" ] // scenario2 : LOW
-		  						:get_message('MSG_FLOODING_TYPE_PROBLEM'))};
+	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING   ? study_area_def ["LISFLOOD_BDY_HIGH_FILENAME"]   // scenario1 : HIGH 
+								 :(floodEventType = LOW_FLOODING    ? study_area_def ["LISFLOOD_BDY_LOW_FILENAME"]    // scenario2 : LOW
+		  						 :(floodEventType = MEDIUM_FLOODING ? study_area_def ["LISFLOOD_BDY_MEDIUM_FILENAME"] // scenario3 : MEDIUM
+		  						 :get_message('MSG_FLOODING_TYPE_PROBLEM')))};
 	// paths to Lisflood
 	string lisfloodPath 			<- configuration_file["LISFLOOD_PATH"];		// absolute path to Lisflood : "C:/littosim/lisflood"
 	string results_lisflood_rep 	<- my_flooding_path + "results"; 			// Lisflood results folder
@@ -54,7 +55,6 @@ global {
 	geometry all_flood_risk_area; 					// geometry agrregating risked area polygons
 	geometry all_protected_area; 					// geometry agrregating protected area polygons	
 	geometry all_coastal_border_area;				// geometry aggregating coastal border areas
-	geometry all_dunes_buffer_area;					// geometry aggregating dunes buffer areas
 	// budget tables to draw evolution graphs
 	list<list<int>> districts_budgets <- [[],[],[],[]];	
 	list<list<int>> districts_taxes <- [[],[],[],[]];
@@ -91,6 +91,14 @@ global {
 	point button_size;
 	
 	init{
+		MSG_SUBMERSION 	<- get_message('MSG_SUBMERSION');
+		MSG_THE_ROUND 	<- get_message('MSG_THE_ROUND');
+		MSG_BUILDER		<- get_message('MSG_BUILDER');
+		MSG_SOFT_DEF	<- get_message('MSG_SOFT_DEF');
+		MSG_WITHDRAWAL	<- get_message('MSG_WITHDRAWAL');
+		MSG_NEW_ROUND	<- get_message('MSG_NEW_ROUND');
+		MSG_GAME_DONE	<- get_message('MSG_GAME_DONE');
+		
 		// Create GIS agents
 		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))]; 
 		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
@@ -124,15 +132,9 @@ global {
 		
 		create Coastal_Border_Area from: coastline_shape {
 			line_shape <- shape;
-			if application_name = "camargue" {
-				dunes_buffer <- (shape + (DUNE_TYPE_DISTANCE_COAST*2)#m) inter union(District);	
-			}
 			shape <-  shape + coastBorderBuffer#m;
 		}
 		all_coastal_border_area <- union(Coastal_Border_Area);
-		if application_name = "camargue" {
-			all_dunes_buffer_area <- union(Coastal_Border_Area collect(each.dunes_buffer));
-		}
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
 			lu_name <- lu_type_names[lu_code];
@@ -195,14 +197,6 @@ global {
 		create Network_Game_Manager;
 		create Network_Listener_To_Leader;
 		create Network_Control_Manager;
-		
-		MSG_SUBMERSION 	<- get_message('MSG_SUBMERSION');
-		MSG_THE_ROUND 	<- get_message('MSG_THE_ROUND');
-		MSG_BUILDER		<- get_message('MSG_BUILDER');
-		MSG_SOFT_DEF	<- get_message('MSG_SOFT_DEF');
-		MSG_WITHDRAWAL	<- get_message('MSG_WITHDRAWAL');
-		MSG_NEW_ROUND	<- get_message('MSG_NEW_ROUND');
-		MSG_GAME_DONE	<- get_message('MSG_GAME_DONE');
 	}
 	//------------------------------ End of init -------------------------------//
 	 	
@@ -377,6 +371,8 @@ global {
      		stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
      		write stateSimPhase;
      		sub_event <- 1;
+     		display_rupture <- true;
+     		first(Button where (each.nb_button = 8)).is_selected <- true;
      	}
 	} 
 	
@@ -410,7 +406,6 @@ global {
 				max_water_height <- 0.0; // reset of max_water_height
 			}
 			submersion_is_running <- true;
-			display_rupture <- true;
 			ask Coastal_Defense {
 				do calculate_rupture;
 			}
@@ -424,7 +419,6 @@ global {
 			stateSimPhase <- SIM_SHOWING_LISFLOOD;
 			write stateSimPhase;
 			submersion_is_running <- false;
-			display_rupture <- false;
 			ask districts_in_game{
 				ask Network_Game_Manager { do lock_user (myself, false); }
 			}
@@ -617,13 +611,15 @@ global {
 		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT"];
 		string my_district <- d.district_code;
  		int i <- 0;
- 		ask 5 among (d.LUs where ( each.nb_watered_cells >= length(each.cells)/2 )) {
- 			if flip(0.5) {
+ 		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0);
+ 		int n_cells <- max([5, length(luss)]);
+ 		ask n_cells among (shuffle(luss)) {
+ 			if flip(nb_watered_cells/length(cells)) {
 	 			add string(self.id) at: "lu_id"+i to: nmap;
-	 			float max_w_h <- cells max_of(each.max_water_height);
+	 			float max_w_h <- int(cells max_of(each.max_water_height) * 10)/10;
 				add string(max_w_h) at: "max_w_h"+i to: nmap;
-				add string(length(cells where (each.max_water_height = max_w_h)) / length(cells)) at: "max_w_h_per_cent"+i to: nmap;
-				add string(cells mean_of(each.max_water_height)) at: "mean_w_h"+i to: nmap;
+				add string(((length(cells where (each.max_water_height >= max_w_h)) / length(cells)) * 100) with_precision 2) at: "max_w_h_per_cent"+i to: nmap;
+				add string(cells mean_of(each.max_water_height) with_precision 1) at: "mean_w_h"+i to: nmap;
 				i <- i + 1;
 			}
  		}
@@ -650,6 +646,12 @@ global {
 			int AU_0_5 <-0;		int AU_1 <-0;		int AU_max <-0;
 			int A_0_5 <-0;		int A_1 <-0;		int A_max <-0;
 			int N_0_5 <-0;		int N_1 <-0;		int N_max <-0;
+			
+			ask Coastal_Defense where (each.district_code = self.district_code) {
+				if length(cells where (each.max_water_height > 0)) > 0 {
+					flooded <- true;
+				}
+			}
 			
 			ask LUs{
 				nb_watered_cells <- 0;
@@ -806,18 +808,43 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			play_b <- self.location;
 		}
 		create Button{
-			nb_button 	<- 3;
-			command	 	<- HIGH_FLOODING;
-			location 	<- {button_size.x*3, button_size.y*0.75};
-			my_icon 	<- image_file("../images/icons/launch_lisflood.png");
-			display_text <- world.get_message('MSG_HIGH_FLOODING');
-		}
-		create Button{
 			nb_button 	<- 5;
 			command	 	<- LOW_FLOODING;
-			location 	<- {button_size.x*4.55, button_size.y*0.75};
-			my_icon 	<- image_file("../images/icons/launch_lisflood_small.png");
-			display_text <- world.get_message('MSG_LOW_FLOODING');
+			location 	<- {button_size.x*2.55, button_size.y*0.75};
+			my_icon 	<- image_file("../images/icons/low_event.png");
+			string text_label <- world.get_message('MSG_LOW_FLOODING');
+			display_text <- text_label split_with ' ' at 0;
+			display_text2 <- text_label split_with ' ' at 1;
+		}
+		if application_name = "camargue" {
+			create Button{
+				nb_button 	<- 55;
+				command	 	<- MEDIUM_FLOODING;
+				location 	<- {button_size.x*3.75, button_size.y*0.75};
+				my_icon 	<- image_file("../images/icons/medium_event.png");
+				string text_label <- world.get_message('MSG_MEDIUM_FLOODING');
+				display_text <- text_label split_with ' ' at 0;
+				display_text2 <- text_label split_with ' ' at 1;
+			}	
+		} else if application_name = "caen" {
+			create Button{
+				nb_button 	<- 57;
+				command	 	<- "OPEN_DIEPPE_GATES";
+				location 	<- {button_size.x*3.75, button_size.y*0.75};
+				my_icon 	<- image_file("../images/icons/open_gates.png");
+				string text_label <- "Ouvrir les#portes de Dieppe";
+				display_text <- text_label split_with '#' at 0;
+				display_text2 <- text_label split_with '#' at 1;
+			}
+		}
+		create Button{
+			nb_button 	<- 3;
+			command	 	<- HIGH_FLOODING;
+			location 	<- {button_size.x*5, button_size.y*0.75};
+			my_icon 	<- image_file("../images/icons/high_event.png");
+			string text_label <- world.get_message('MSG_HIGH_FLOODING');
+			display_text <- text_label split_with ' ' at 0;
+			display_text2 <- text_label split_with ' ' at 1;
 		}
 		create Button{
 			nb_button 	<- 6;
@@ -879,7 +906,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		list<Button> buttonsMaster <- (Button where (each.nb_button in [0,1,2,3,5,6] and each overlaps loc));
+		list<Button> buttonsMaster <- (Button where (each.nb_button in [0,1,2,3,5,6,55,57] and each overlaps loc));
 		if(length(buttonsMaster) > 0){
 			ask Button { self.is_selected <- false;	}
 			ask(buttonsMaster){
@@ -905,10 +932,22 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 							is_selected <- true;
 						}
 					}
-					match_one [3, 5]{
+					match_one [3, 5, 55]{
 						is_selected <- true;
 						floodEventType <- command;
 						ask world   { do launchFlood_event; }
+					}
+					match 57	{
+						ask Water_Gate {
+							display_me <- false;
+							do close_open;
+						}
+						write "Les portes de Dieppe ont été ouvertes!";
+						
+						map<string, string> mp <- ["TOPIC"::"OPEN_DIEPPE_GATES"];
+						ask Network_Game_Manager {
+							do send to: "76217" contents: mp;
+						}
 					}
 					match 6			{
 						if int(command) < length(list_flooding_events) {
@@ -989,12 +1028,12 @@ species Network_Game_Manager skills: [network]{
 						write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + district_name + " (" + id_dist + ")";
 					}
 				}
-				match NEW_DIKE_ALT {
+				match NEW_COAST_DEF_ALT {
 					geometry new_tmp_dike <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
-					float altit <- (Cell overlapping new_tmp_dike) max_of(each.soil_height) + BUILT_DIKE_HEIGHT;
+					float altit <- (Cell overlapping new_tmp_dike) max_of(each.soil_height) + float(m_contents["height"]);
 					ask Network_Game_Manager{
-						map<string,string> mpp <- ["TOPIC"::NEW_DIKE_ALT];
+						map<string,string> mpp <- ["TOPIC"::NEW_COAST_DEF_ALT];
 						put string(altit)  		at: "altit" 	in: mpp;
 						put m_contents["act_id"] at: "act_id" in: mpp;
 						do send to: m_sender contents: mpp;
@@ -1017,7 +1056,7 @@ species Network_Game_Manager skills: [network]{
 							self.cost 						<- float(m_contents["cost"]);
 							self.draw_around				<- int (m_contents["draw_around"]);
 							if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
-								self.altit	<- int (m_contents["altit"]);
+								self.altit	<- float (m_contents["altit"]);
 								element_shape 	 <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
 								shape 			 <- element_shape;
@@ -1216,10 +1255,12 @@ species Network_Game_Manager skills: [network]{
 			do send to: d.district_code contents: mp;
 		}
 		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
+			write "retrieve lever " + tmp;
 			map<string, string> mp <- tmp.my_map;
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
 		}
+		
 		if flood_results != "" {
 			ask world{
 				do send_flooding_results (d);	
@@ -1339,22 +1380,39 @@ species Network_Listener_To_Leader skills:[network]{
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
-					if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
-						create Activated_Lever{
-							do init_activ_lever_from_map (m_contents);
-							int money <- int(my_map["added_cost"]);
-							ask districts_in_game first_with (each.district_code = my_map[DISTRICT_CODE]) {
-								budget <- budget - money;
-								round_levers_cost <- round_levers_cost - money;
+					if int(m_contents["manual"]) = 1 { // manual
+						string lever_nature <- string(m_contents["name"]);
+						if lever_nature = 'Give_Pebbles_Lever' {
+							if empty(Activated_Lever where (lever_nature = 'Give_Pebbles_Lever')){
+								create Activated_Lever {
+									do init_activ_lever_from_map (m_contents);
+								}
+							} else {
+								ask Activated_Lever where (lever_nature = 'Give_Pebbles_Lever'){
+									do die;
+								}
 							}
-							ply_action <- Player_Action first_with (each.act_id = my_map["p_action_id"]);
-							if ply_action != nil {
-								add self to: ply_action.activated_levers;
-								ply_action.a_lever_has_been_applied <- true;
+						}
+						
+					}else {
+						if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
+							create Activated_Lever{
+								do init_activ_lever_from_map (m_contents);
+								int money <- int(my_map["added_cost"]);
+								ask districts_in_game first_with (each.district_code = my_map[DISTRICT_CODE]) {
+									budget <- budget - money;
+									round_levers_cost <- round_levers_cost - money;
+								}
+								ply_action <- Player_Action first_with (each.act_id = my_map["p_action_id"]);
+								if ply_action != nil {
+									add self to: ply_action.activated_levers;
+									ply_action.a_lever_has_been_applied <- true;
+								}
 							}
 						}
 					}
 				}
+				
 				match NEW_REQUESTED_ACTION {
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]){
 						float money <- float(m_contents["cost"]);
@@ -1506,12 +1564,15 @@ species Player_Action schedules:[]{
 			status 	<- BUILT_DIKE_STATUS;
 			height 	<- type = COAST_DEF_TYPE_DIKE ? BUILT_DIKE_HEIGHT : BUILT_DUNE_TYPE1_HEIGHT;	
 			cells 	<- Cell overlapping self;
-			alt 	<- cells max_of(each.soil_height) + height;
-			if application_name = "camargue" and self.type = COAST_DEF_TYPE_DUNE and !(self intersects all_dunes_buffer_area) {
+			if act.draw_around = 30 {
 				dune_type <- 2;
 				height <- BUILT_DUNE_TYPE2_HEIGHT;
 				draw_around <- 35;
 			} 
+			alt <- cells max_of(each.soil_height) + height;
+			if type = COAST_DEF_TYPE_DUNE  {
+				height_before_ganivelle <- height;
+			}
 		}
 		Coastal_Defense new_coast_def <- first (tmp_coast_def);
 		act.element_id 		<-  new_coast_def.coast_def_id;
@@ -1552,6 +1613,7 @@ species Coastal_Defense {
 	bool is_protected_by_cord <- false;
 	list<Cell> cells;
 	int draw_around <- 50;
+	bool flooded <- false;
 	
 	map<string,unknown> build_map_from_coast_def_attributes{
 		map<string,unknown> res <- [
@@ -1591,10 +1653,6 @@ species Coastal_Defense {
 		}
 		if type != COAST_DEF_TYPE_CORD {
 			do build_coast_def;
-			if application_name = "camargue" and self.type = COAST_DEF_TYPE_DUNE and !(self intersects all_dunes_buffer_area) {
-				dune_type <- 2;
-				draw_around <- 35;
-			} 
 		}
 	}
 	
@@ -1687,7 +1745,7 @@ species Coastal_Defense {
 					not_updated <- true;
 				}
 			} else {
-				counter_status <- counter_status +1;
+				counter_status <- counter_status + 1;
 				if counter_status > (dune_type = 1 ? STEPS_DEGRAD_STATUS_DUNE : STEPS_DEGRAD_STATUS_DUNE + 2) {
 					counter_status   <- 0;
 					if status = STATUS_MEDIUM { status <- STATUS_BAD;   }
@@ -1743,6 +1801,7 @@ species Coastal_Defense {
 	
 	action remove_rupture {
 		rupture <- false;
+		flooded <- false;
 		ask cells overlapping rupture_area {
 			if soil_height >= 0 {
 				soil_height <- soil_height_before_broken;
@@ -1799,7 +1858,7 @@ species Coastal_Defense {
 				draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
 			}
 		}
-		if display_rupture and rupture {
+		if display_rupture and rupture and flooded {
 			list<point> pts <- shape.points;
 			point tmp <- length(pts) > 2 ? pts[int(length(pts)/2)] : shape.centroid;
 			draw image_file("../images/icons/rupture.png") at: tmp size: 30#px;
@@ -2151,25 +2210,21 @@ species Button{
 	int nb_button 	 <- 0;
 	string command 	 <- "";
 	string display_text;
+	string display_text2 <- '';
 	bool is_selected <- false;
 	geometry shape 	 <- square(min(button_size.x,button_size.y));
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if nb_button in [0,1,2,3,5] {
-			//if nb_button in [0,3,5] {
-				draw shape color: #white border: is_selected ? #red : #black;
-			/* }else if nb_button = 1 {
-				draw shape color: #white border: game_paused ? #white : #blue;
-			}else if nb_button = 2 {
-				draw shape color: #white border: game_paused ? #blue : #white;	
-			}*/
-			draw display_text color: #black at: location + {0,shape.height*0.54} anchor: #center;
+		if nb_button in [0,1,2,3,5,55,57] {
+			draw shape color: #white border: is_selected ? #red : #black;
+			draw display_text color: #black at: location + {0,shape.height*0.55} anchor: #center;
+			draw display_text2 color: #black at: location + {0,shape.height*0.75} anchor: #center;
 			draw my_icon size: shape.width-50#m;
 		} else if(nb_button = 6){
 			if (int(command) < length(list_flooding_events)){
 				draw shape color: #white border: is_selected ? #red : #black;
-				draw display_text color: #black at: location + {0, shape.height*0.54} anchor: #center;
+				draw display_text color: #black at: location + {0, shape.height*0.55} anchor: #center;
 				draw my_icon size: shape.width-50#m;
 			}
 		}	
@@ -2261,7 +2316,6 @@ species Flood_Risk_Area { aspect base { draw shape color: rgb (20, 200, 255,120)
 // 400 m littoral area
 species Coastal_Border_Area {
 	geometry line_shape;
-	geometry dunes_buffer;
 }
 //100 m coastline inland area to identify retro dikes
 species Inland_Dike_Area { aspect base { draw shape color: rgb (100, 100, 205,120) border:#black;} }

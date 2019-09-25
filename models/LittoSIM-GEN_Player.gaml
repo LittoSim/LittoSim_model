@@ -42,6 +42,7 @@ global{
 	Coastal_Defense explored_coast_def <- nil;
 	Land_Use explored_lu <- nil;
 	Land_Use hovered_lu <- nil;
+	Flood_Mark explored_flood_mark <- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	Coastal_Defense_Action explored_coast_def_action<- nil;
 	
@@ -51,7 +52,7 @@ global{
 	Basket game_basket 			<-nil;
 	Message_Console game_console<-nil;
 	History game_history 		<- nil; 
-	Player_Action highlighted_action;
+	Player_Action highlighted_action<- nil;
 	Player_Action current_action 	<- nil;
 	
 	font f0 <- font('Helvetica Neue', DISPLAY_FONT_SIZE - 4, #plain);
@@ -60,12 +61,45 @@ global{
 	
 	bool validate_clicked <- false;
 	bool validate_allow_click <- true;
-	bool display_water_gate <- false;
-	bool display_flood_gates <- false;
-	
-	geometry all_dunes_area;
+	bool dieppe_pebbles_allowed <- false;
+	float dieppe_pebbles_discount <- 1.0;
 	
 	init{
+		MSG_WARNING 	<- get_message('MSG_WARNING');
+		PLY_MSG_INFO_AB <- get_message('PLY_MSG_INFO_AB');
+		PLY_MSG_LENGTH 	<- get_message('PLY_MSG_LENGTH');
+		PLY_MSG_ALTITUDE<- get_message('PLY_MSG_ALTITUDE');
+		PLY_MSG_HEIGHT 	<- get_message('PLY_MSG_HEIGHT');
+		PLY_MSG_STATE 	<- get_message('PLY_MSG_STATE');
+		PLY_MSG_SLICES 	<- get_message('PLY_MSG_SLICES');
+		MSG_RUPTURE 	<- get_message('MSG_RUPTURE');
+		MSG_BREACH	 	<- get_message('MSG_BREACH');
+		MSG_NO 			<- get_message('MSG_NO');
+		MSG_YES 		<- get_message('MSG_YES');
+		MSG_DIKE 		<- get_message('MSG_DIKE');
+		MSG_DUNE 		<- get_message('MSG_DUNE');
+		MSG_CORD 		<- get_message('MSG_CORD');
+		PLY_MSG_HIST_AB <- get_message('PLY_MSG_HIST_AB');
+		PLY_MSG_LAND_USE<- get_message('PLY_MSG_LAND_USE');
+		PLY_MSG_STATE_CHANGE <- get_message('PLY_MSG_STATE_CHANGE');
+		MSG_POPULATION  <- get_message('MSG_POPULATION');
+		MSG_EXPROPRIATION	 <- get_message('MSG_EXPROPRIATION');
+		MSG_TYPE_N 		<- get_message('MSG_TYPE_N');
+		MSG_TYPE_U 		<- get_message('MSG_TYPE_U');
+		MSG_TYPE_AU 	<- get_message('MSG_TYPE_AU');
+		MSG_TYPE_A 		<- get_message('MSG_TYPE_A');
+		MSG_TYPE_Us 	<- get_message('MSG_TYPE_Us');
+		MSG_TYPE_AUs 	<- get_message('MSG_TYPE_AUs');
+		PLY_MSG_APP_ROUND<- get_message('PLY_MSG_APP_ROUND');
+		MSG_COST_EXPROPRIATION <- get_message('MSG_COST_EXPROPRIATION');
+		MSG_COST_ACTION <- get_message('MSG_COST_ACTION');
+		PLY_MSG_GOOD <- get_message('PLY_MSG_GOOD');
+		PLY_MSG_BAD <- get_message('PLY_MSG_BAD');
+		PLY_MSG_MEDIUM <- get_message('PLY_MSG_MEDIUM');
+		MSG_COST_APPLIED_PARCEL <- get_message('MSG_COST_APPLIED_PARCEL');
+		PLY_MSG_WATER_H <- get_message('PLY_MSG_WATER_H');
+		PLY_MSG_WATER_M <- get_message('PLY_MSG_WATER_M');
+		
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
 		}
@@ -103,6 +137,9 @@ global{
 				do die;
 			}
 		}
+		create Sea from: convex_hull_shape {
+			shape <- shape - (union(District) + 200#m);
+		}
 		create Protected_Area from: protected_areas_shape;
 		create Road from: roads_shape;
 		if water_shape != nil {
@@ -123,48 +160,10 @@ global{
 				my_color <- cell_color();
 			} else {do die;}
 		}
-		if application_name = "camargue" {
-			create Dunes_Area from: coastline_shape {
-				shape <- (shape + (DUNE_TYPE_DISTANCE_COAST*2)#m) inter union(District);
-			}
-			all_dunes_area <- union (Dunes_Area);	
-		}
 
 		population_area <- union(Land_Use where(each.lu_name = "U" or each.lu_name = "AU"));
 		create Network_Player;
 		create Network_Listener_To_Leader;
-		
-		MSG_WARNING 	<- get_message('MSG_WARNING');
-		PLY_MSG_INFO_AB <- get_message('PLY_MSG_INFO_AB');
-		PLY_MSG_LENGTH 	<- get_message('PLY_MSG_LENGTH');
-		PLY_MSG_ALTITUDE<- get_message('PLY_MSG_ALTITUDE');
-		PLY_MSG_HEIGHT 	<- get_message('PLY_MSG_HEIGHT');
-		PLY_MSG_STATE 	<- get_message('PLY_MSG_STATE');
-		PLY_MSG_SLICES 	<- get_message('PLY_MSG_SLICES');
-		MSG_RUPTURE 	<- get_message('MSG_RUPTURE');
-		MSG_NO 			<- get_message('MSG_NO');
-		MSG_YES 		<- get_message('MSG_YES');
-		MSG_DIKE 		<- get_message('MSG_DIKE');
-		MSG_DUNE 		<- get_message('MSG_DUNE');
-		MSG_CORD 		<- get_message('MSG_CORD');
-		PLY_MSG_HIST_AB <- get_message('PLY_MSG_HIST_AB');
-		PLY_MSG_LAND_USE<- get_message('PLY_MSG_LAND_USE');
-		PLY_MSG_STATE_CHANGE <- get_message('PLY_MSG_STATE_CHANGE');
-		MSG_POPULATION  <- get_message('MSG_POPULATION');
-		MSG_EXPROPRIATION	 <- get_message('MSG_EXPROPRIATION');
-		MSG_TYPE_N 		<- get_message('MSG_TYPE_N');
-		MSG_TYPE_U 		<- get_message('MSG_TYPE_U');
-		MSG_TYPE_AU 	<- get_message('MSG_TYPE_AU');
-		MSG_TYPE_A 		<- get_message('MSG_TYPE_A');
-		MSG_TYPE_Us 	<- get_message('MSG_TYPE_Us');
-		MSG_TYPE_AUs 	<- get_message('MSG_TYPE_AUs');
-		PLY_MSG_APP_ROUND<- get_message('PLY_MSG_APP_ROUND');
-		MSG_COST_EXPROPRIATION <- get_message('MSG_COST_EXPROPRIATION');
-		MSG_COST_ACTION <- get_message('MSG_COST_ACTION');
-		PLY_MSG_GOOD <- get_message('PLY_MSG_GOOD');
-		PLY_MSG_BAD <- get_message('PLY_MSG_BAD');
-		PLY_MSG_MEDIUM <- get_message('PLY_MSG_MEDIUM');
-		MSG_COST_APPLIED_PARCEL <- get_message('MSG_COST_APPLIED_PARCEL');
 	}
 	//------------------------------ End of init -------------------------------//
 	
@@ -173,16 +172,15 @@ global{
 		do refresh_all;
 	}
 	
-	user_command "Fermer la porte de Dieppe" when: !display_water_gate and active_district_code = "76217"{ // Dieppe only
+	user_command "Fermer la porte de Dieppe" when: active_district_code = "76217"{ // Dieppe only
 		do close_or_open_dieppe_water_gate (true);
 	}
 	
-	user_command "Ouvrir la porte de Dieppe" when: display_water_gate and active_district_code = "76217"{ // Dieppe only
+	user_command "Ouvrir la porte de Dieppe" when: active_district_code = "76217"{ // Dieppe only
 		do close_or_open_dieppe_water_gate (false);
 	}
 	
 	action close_or_open_dieppe_water_gate (bool close){
-		display_water_gate <- close;
 		ask first(Water_Gate where (each.id = 9999)) {
 			display_me <- close;
 		}
@@ -192,16 +190,15 @@ global{
 		}
 	}
 	
-	user_command "Fermer les portes-à-flot du bassin de Dieppe" when: !display_flood_gates and active_district_code = "76217"{ // Dieppe only
+	user_command "Fermer les portes-à-flot du bassin de Dieppe" when: active_district_code = "76217"{ // Dieppe only
 		do close_or_open_dieppe_flood_gates (true);
 	}
 	
-	user_command "Ouvrir les portes-à-flot du bassin de Dieppe" when: display_flood_gates and active_district_code = "76217"{ // Dieppe only
+	user_command "Ouvrir les portes-à-flot du bassin de Dieppe" when: active_district_code = "76217"{ // Dieppe only
 		do close_or_open_dieppe_flood_gates (false);
 	}
 	
 	action close_or_open_dieppe_flood_gates (bool close){
-		display_flood_gates <- close;
 		ask Water_Gate where (each.id != 9999) {
 			display_me <- close;
 		}
@@ -382,6 +379,7 @@ global{
 			explored_land_use_action <- nil;
 			explored_coast_def_action<- nil;
 			current_action 	 		 <- nil;
+			explored_flood_mark		 <- nil;
 		}
 		else{
 			if(active_display = LU_DISPLAY){do button_click_lu; 	  }
@@ -501,14 +499,16 @@ global{
 		explored_button <- (Button + Button_Map) first_with (each overlaps loc and each.display_name != LU_DISPLAY); // for inspect
 		Button current_active_button <- first(Button where (each.is_selected));
 		if current_active_button != nil and current_active_button.command in [ACTION_INSPECT, ACTION_HISTORY] {
-			explored_coast_def <- first(Coastal_Defense overlapping (loc buffer(10#m)));
+			explored_coast_def <- first(Coastal_Defense overlapping (loc buffer(15#m)));
 			if current_active_button.command = ACTION_INSPECT {
-				explored_coast_def_action <- first(Coastal_Defense_Action overlapping (loc buffer(20#m)));	
+				explored_coast_def_action <- first(Coastal_Defense_Action overlapping (loc buffer(20#m)));
+				explored_flood_mark <- first(Flood_Mark overlapping (loc buffer(20#m)));
 			}
 		}
 		else{
 			explored_coast_def_action <- nil;
 			explored_coast_def <- nil;
+			explored_flood_mark <- nil;
 		}
 	}
 	
@@ -547,7 +547,7 @@ global{
 							[ACTION_INSTALL_GANIVELLE,ACTION_ENHANCE_NATURAL_ACCR,ACTION_MAINTAIN_DUNE]) {return;} // nothing to do
 			if codef.type = COAST_DEF_TYPE_CORD and but.command != ACTION_LOAD_PEBBLES_CORD {return;} // nothing to do
 			if codef.type = COAST_DEF_TYPE_DIKE and but.command in
-							[ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD,ACTION_ENHANCE_NATURAL_ACCR,ACTION_MAINTAIN_DUNE] {return;} // nothing to do
+							[ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE] {return;} // nothing to do
 			int action_delay;
 			create Coastal_Defense_Action returns: action_list{
 				id 	<- world.get_action_id();
@@ -558,7 +558,11 @@ global{
 				element_shape <- codef.shape;
 				shape <- element_shape + 15#m;
 				draw_around <- codef.draw_around;
-				cost <- but.action_cost * codef.length_coast_def;
+				float price <- but.action_cost;
+				if command = ACTION_LOAD_PEBBLES_CORD and dieppe_pebbles_allowed {
+					price <- price * dieppe_pebbles_discount;
+				}
+				cost <- price * codef.length_coast_def;
 				action_delay <- world.delay_of_action(self.command);
 			}
 			previous_clicked_point <- nil;
@@ -605,16 +609,21 @@ global{
 				draw_around <- 15;
 				if coast_def_type = COAST_DEF_TYPE_DUNE {
 					draw_around <- 45;
-					if application_name = "camargue" and !(element_shape intersects all_dunes_area) {
-						draw_around <- 30;
-						price <- price / 2;
+					if application_name = "camargue" {// if it's a dune of 2nd range (camargue only)
+						geometry my_line <- line (centroid(element_shape), (first(Sea).shape.points) closest_to (self));
+						ask Coastal_Defense {
+							if self overlaps my_line {
+								myself.draw_around <- 30;
+								price <- price / 2;
+							}
+						}
 					}
 				}
 				self.cost <- price * shape.perimeter;
 				self.height <- coast_def_type = COAST_DEF_TYPE_DIKE ? BUILT_DIKE_HEIGHT : (draw_around = 45 ? BUILT_DUNE_TYPE1_HEIGHT : BUILT_DUNE_TYPE2_HEIGHT);
 				action_delay <- world.delay_of_action(self.command);
 				// requesting the altitude of this future dike
-				map<string,string> mp <- ["REQUEST"::NEW_DIKE_ALT];
+				map<string,string> mp <- ["REQUEST"::NEW_COAST_DEF_ALT];
 				point end <- last (element_shape.points);
 				point origin <- first(element_shape.points);
 				put string(origin.x) at: "origin.x" in: mp;
@@ -622,6 +631,7 @@ global{
 				put string(end.x) 	 at: "end.x" in: mp;
 				put string(end.y) 	 at: "end.y" in: mp;	
 				put id at: "act_id" in: mp;
+				put string(height) at: "height" in: mp;
 				ask Network_Player{
 					do send to: GAME_MANAGER contents: mp;
 				}
@@ -630,7 +640,7 @@ global{
 			current_action<- first(action_list);
 			if !empty(Protected_Area overlapping (current_action.shape)){
 				current_action.is_in_protected_area <- true;
-				if application_name = "camargue" and current_action.command = ACTION_CREATE_DUNE {
+				if application_name = "camargue" and current_action.command = ACTION_CREATE_DUNE { // if in protected area for camargue, we double the delay
 					action_delay <- action_delay * 2;
 				}
 				map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
@@ -1091,6 +1101,9 @@ species Basket parent: Displayed_List {
 			if act.is_applied or !(act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]) {
 				label <- label + " (" + act.element_id +")";	
 			}
+			if act.command = ACTION_CREATE_DUNE and act.draw_around = 30{
+				label <- label + " " + world.get_message('MSG_2ND_RANG');
+			}
 			icon <- world.get_action_icon (act.command);
 			current_action <- act;
 		}
@@ -1271,19 +1284,16 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 	int delay -> {current_action.added_delay};
 	float final_price   -> {current_action.actual_cost};
 	float initial_price -> {current_action.cost};
-	point bullet_size   <- point(0,0)	update: {ui_height*0.6, ui_height*0.6};
+	point bullet_size   <- point(0,0) update: {ui_height*0.6, ui_height*0.6};
 
-	point delay_location <- point(0,0)		update: {location.x + ui_width / 4 + 350#px, location.y};
-	point round_apply_location<- point(0,0) 	update: {location.x + ui_width / 5 + 200#px, location.y};
-	point price_location <- point(0,0)  update: {location.x + ui_width / 3 + 400#px, location.y};
+	point delay_location <- point(0,0) update: {location.x + ui_width / 4 + 350#px, location.y};
+	point round_apply_location<- point(0,0)	update: {location.x + ui_width / 5 + 200#px, location.y};
+	point price_location <- point(0,0) update: {location.x + ui_width / 3 + 400#px, location.y};
 	
 	Player_Action current_action;
 	
 	action on_mouse_down{
-		if(highlighted_action = current_action){
-			highlighted_action <- nil;
-		}
-		else {highlighted_action <- current_action;}
+		highlighted_action <-  highlighted_action = current_action  ? nil : (current_action.is_applied ? nil : current_action);
 	}
 	
 	action draw_element{
@@ -1382,7 +1392,7 @@ species Network_Listener_To_Leader skills: [network] {
 	init{do connect to: SERVER with_name: LISTENER_TO_LEADER;}
 	
 	reflex wait_message {
-		loop while:has_more_message(){
+		loop while: has_more_message(){
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
 			if m_contents['TARGET_DIST'] = active_district_code { // I am a target of money transfer
@@ -1466,6 +1476,18 @@ species Network_Listener_To_Leader skills: [network] {
 							}
 						}
 					}
+					match 'DIEPPE_CRIEL_PEBBLES' {
+						write m_contents;
+						dieppe_pebbles_allowed <- bool(m_contents['ALLOWED']);
+						ask world {
+							if dieppe_pebbles_allowed {
+								do user_msg (get_message("LEV_PEBBLES_GIVEN"), INFORMATION_MESSAGE);
+								dieppe_pebbles_discount <- float (m_contents['DISCOUNT']);
+							} else {
+								do user_msg ("L'authorisation à Criel de charger les galets de Dieppe est terminée", INFORMATION_MESSAGE);
+							}	
+						}
+					}
 				}
 			}
 		}
@@ -1543,7 +1565,7 @@ species Network_Player skills:[network]{
 				match ACTION_COAST_DEF_CREATED {
 					do coast_def_create_action(m_contents);
 				}
-				match NEW_DIKE_ALT {
+				match NEW_COAST_DEF_ALT {
 					ask Coastal_Defense_Action where (each.id = m_contents["act_id"]){
 						altit <- float(m_contents["altit"]);
 					}
@@ -1612,9 +1634,16 @@ species Network_Player skills:[network]{
 						match OBJECT_TYPE_ACTIVATED_LEVER{
 							create Activated_Lever {
 								do init_activ_lever_from_map(m_contents);
-								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"] );
-								if ply_act != nil {
-									add self to: ply_act.activated_levers;	
+								if int(my_map["manual"]) = 1 {
+									if my_map["name"] = 'Give_Pebbles_Lever' {
+										dieppe_pebbles_allowed <- true;
+										dieppe_pebbles_discount <- float (m_contents['added_cost']);
+									}
+								} else {
+									ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"] );
+									if ply_act != nil {
+										add self to: ply_act.activated_levers;	
+									}	
 								}
 							}				
 						}
@@ -1628,12 +1657,12 @@ species Network_Player skills:[network]{
 						Land_Use lu <- first(Land_Use where (each.id = int(m_contents["lu_id"+i])));
 						if lu != nil {
 							create Flood_Mark {
-								loc <- lu.location - {0,200#m};
-								max_w_h	<- float(m_contents["max_w_h"+i]) with_precision 2;
-								max_w_h_per_cent <- float(m_contents["max_w_h_per_cent"+i]) with_precision 2;
-								mean_w_h <- float(m_contents["mean_w_h"+i]) with_precision 2;
-								floo1 <- world.get_message('PLY_MSG_WATER_H') + " : " + string(max_w_h) + "m ("+ max_w_h_per_cent + "%)";
-								floo2 <- world.get_message('PLY_MSG_WATER_M') + " : " + string(mean_w_h) + "m";
+								location <- lu.location - {0,200#m};
+								max_w_h	<- float(m_contents["max_w_h"+i]);
+								max_w_h_per_cent <- float(m_contents["max_w_h_per_cent"+i]);
+								mean_w_h <- float(m_contents["mean_w_h"+i]);
+								floo1 <- PLY_MSG_WATER_H + " : " + string(max_w_h) + "m ("+ max_w_h_per_cent + "%)";
+								floo2 <- PLY_MSG_WATER_M + " : " + string(mean_w_h) + "m";
 								lu.mark <- self;
 							}
 						}
@@ -1641,8 +1670,15 @@ species Network_Player skills:[network]{
 				}
 				match "NEW_RUPTURES" {
 					ask Coastal_Defense where (each.district_code = active_district_code) {
-						rupture <- bool (m_contents[string(coast_def_id)]);
+						bool is_ruptured <- bool (m_contents[string(coast_def_id)]);
+						rupture <- is_ruptured != nil ? is_ruptured : rupture;
 					}
+				}
+				match 'OPEN_DIEPPE_GATES' {
+					ask Water_Gate {
+						display_me <- false;
+					}
+					write "Les portes de Dieppe ont été ouvertes!";	
 				}
 			}
 		}
@@ -1944,6 +1980,7 @@ species Land_Use {
 	action init_lu_from_map(map<string, unknown> a ){
 		self.id 				 <- int   (a at "id");
 		self.lu_code 			 <- int   (a at "lu_code");
+		self.dist_code	 		 <- active_district_code;
 		self.lu_name 			 <- lu_type_names[lu_code];
 		self.population 		 <- int   (a at "population");
 		self.mean_alt			 <- float (a at "mean_alt");
@@ -2038,6 +2075,7 @@ species Coastal_Defense {
 		self.dune_type  <- int(a at "dune_type");
 		self.rupture	<- bool(a at "rupture");	
 		self.location	<- {float(a at "locationx"), float(a at "locationy")};
+		self.district_code <- active_district_code;
 		
 		int tot_points	<- int(a at "tot_points");
 		point pp;
@@ -2177,6 +2215,8 @@ species Water {
 	}
 }
 
+species Sea {}
+
 species Protected_Area {
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_PROTECTED_AREA)).is_selected {
@@ -2193,22 +2233,16 @@ species Flood_Risk_Area{
 	}
 }
 
-species Dunes_Area {}
-
 species Flood_Mark {
-	point loc;
 	float max_w_h;
 	float max_w_h_per_cent;
 	float mean_w_h;
 	string floo1 <- "";
 	string floo2 <- "";
+	geometry shape <- rectangle(200#m,400#m);
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			draw file("../images/ihm/S_flag.png") size: 400#m at: loc;
-			if active_display = COAST_DEF_DISPLAY{
-				draw floo1 at: loc font: f0 color: #blue;
-				draw floo2 at: loc+{0,100#m} font: f0 color: #blue;
-			}
+			draw file("../images/ihm/S_flag.png") size: 400#m at: location;
 		}
 	}
 }
@@ -2217,7 +2251,7 @@ species Water_Gate {
 	int id;
 	bool display_me <- false;
 	aspect base {
-		if display_me and (display_water_gate or display_flood_gates) {
+		if display_me {
 			draw 15#m around shape color: #black;
 			draw shape color: #white;
 		}
@@ -2267,8 +2301,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500]);
-				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500])//;
+				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {
@@ -2297,9 +2331,10 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Tab 					aspect: base;
 			species Button 					aspect: map;
 			species Button_Map				aspect: map;
-			
+
 			graphics "Coast Def Info" {
-				if explored_coast_def != nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected {
+				if explored_coast_def != nil and explored_flood_mark = nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected
+							 and explored_button = nil {
 					Coastal_Defense my_codef <- explored_coast_def;
 					point target <- {my_codef.location.x , my_codef.location.y};
 					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px + 60#px)};
@@ -2319,7 +2354,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					if my_codef.type = COAST_DEF_TYPE_CORD {
 						draw PLY_MSG_SLICES + " : " + string(my_codef.slices) at: target + {10#px, xpx#px + 55#px} font: regular color: #white;
 					} else {
-						draw MSG_RUPTURE + " : " + (my_codef.rupture ? MSG_YES : MSG_NO)  at: target + {10#px, xpx#px + 55#px} font: regular color: #white;
+						draw (my_codef.type = COAST_DEF_TYPE_DIKE ? MSG_RUPTURE : MSG_BREACH) + " : " + (my_codef.rupture ? MSG_YES : MSG_NO)  at: target + {10#px, xpx#px + 55#px} font: regular color: #white;
 					}
 					if my_codef.status != STATUS_GOOD {
 						point image_loc <- {my_codef.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 40#px, my_codef.location.y + 80#px};
@@ -2356,7 +2391,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					point target2 <- {my_codef_action.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef_action.location.y + 1*(INFORMATION_BOX_SIZE.y#px+40#px)};
 					draw rectangle(target,target2) border: #gold color: #gray ;
 					
-					draw PLY_MSG_INFO_AB + " : " + eval_gaml('MSG_' + my_codef_action.coast_def_type)  at: target + {5#px, 15#px} font: regular color: #yellow;
+					draw PLY_MSG_INFO_AB + " : " + eval_gaml('MSG_' + my_codef_action.coast_def_type) at: target + {5#px, 15#px} font: regular color: #yellow;
 					int xpx <-0;
 					draw PLY_MSG_LENGTH + " : " + string(round(100*my_codef_action.shape.perimeter)/100) + "m" at: target + {10#px, xpx#px + 35#px} font: regular color: #white;
 					xpx <- xpx+20;
@@ -2366,6 +2401,17 @@ experiment LittoSIM_GEN_Player type: gui{
 					xpx <- xpx+20;
 					draw PLY_MSG_STATE + " : " + PLY_MSG_GOOD at: target + {10#px, xpx#px +35#px} font: regular color: #white;
 					draw PLY_MSG_APP_ROUND + " : " + string(my_codef_action.initial_application_round) at: target + {10#px, xpx#px +55#px} font: regular color: #white;
+				}
+			}
+			
+			graphics "Flood Mark Info" {// flooding mark info
+				if explored_flood_mark != nil {
+					Flood_Mark fm <- explored_flood_mark;
+					point target <- {fm.location.x  ,fm.location.y};
+					point target2 <- {fm.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),fm.location.y + 1*(INFORMATION_BOX_SIZE.y#px-40#px)};
+					draw rectangle(target,target2) border: #gold color: #lightblue ;
+					draw fm.floo1 at: target + {10#px, 15#px} font: regular color: #black;
+					draw fm.floo2 at: target + {10#px, 35#px} font: regular color: #black;
 				}
 			}
 			
@@ -2406,7 +2452,8 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			// Inspect LU info
 			graphics "LU Info" {
-				if explored_lu != nil and (explored_land_use_action = nil or explored_land_use_action.is_applied) and (Button first_with (each.command = ACTION_INSPECT)).is_selected {
+				if explored_lu != nil and (explored_land_use_action = nil or explored_land_use_action.is_applied) and
+						(Button first_with (each.command = ACTION_INSPECT)).is_selected and explored_button = nil{
 					Land_Use my_lu <- explored_lu;
 					int xxsize <- my_lu.lu_name in ["U","Us"] ? 40 : 0;
 					bool marked <- (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected and my_lu.mark != nil;
@@ -2432,9 +2479,9 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw "ID : "+ string(my_lu.id) at: target + {10#px, xpx#px} font: regular color: #white;
 					if marked {
 						xpx <- xpx + 20;
-						draw my_lu.mark.floo1 at: target + {10#px, xpx#px} font: regular color: #white;
+						draw my_lu.mark.floo1 at: target + {10#px, xpx#px} font: regular color: #lightblue;
 						xpx <- xpx + 20;
-						draw my_lu.mark.floo2 at: target + {10#px, xpx#px} font: regular color: #white;
+						draw my_lu.mark.floo2 at: target + {10#px, xpx#px} font: regular color: #lightblue;
 					}
 				}
 			}
@@ -2448,7 +2495,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					point target2 	<- {mcell.location.x + 1 * (INFORMATION_BOX_SIZE.x#px), mcell.location.y + 1 * (INFORMATION_BOX_SIZE.y#px)};
 					
 					draw rectangle(target, target2) border: #gold color: #gray;
-					draw PLY_MSG_STATE_CHANGE at: target + {3#px, 15#px} font: regular color: #yellow;
+					draw PLY_MSG_STATE_CHANGE + " (" + mcell.id + ")" at: target + {3#px, 15#px} font: regular color: #yellow;
 					draw file("../images/icons/fleche.png") at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x #px), target.y + 50#px} size:50#px;
 					draw "" + (my_lu_action.effective_application_round) at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x#px), target.y + 55#px} font: regular;
 					draw world.get_action_icon(my_lu_action.command) at: {target2.x - 50#px, target.y +50#px} size: 50#px;

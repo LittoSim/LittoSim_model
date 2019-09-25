@@ -55,7 +55,7 @@ global{
 	
 	// Manager-Player network communication
 	string PLAYER_ACTION			 <- "PLAYER_ACTION";
-	string NEW_DIKE_ALT				 <- "NEW_DIKE_ALT";
+	string NEW_COAST_DEF_ALT		 <- "NEW_COAST_DEF_ALT";
 	string MSG_TO_PLAYER 			 <- "MSG_TO_PLAYER";
 	string PLAYER_ACTION_IS_APPLIED  <- 'PLAYER_ACTION_IS_APPLIED';
 	string INFORM_NEW_ROUND 		 <- 'INFORM_NEW_ROUND';
@@ -241,7 +241,7 @@ global{
 	}
 	
 	string get_message(string code_msg){
-		return langs_def at code_msg at configuration_file["LANGUAGE"]; // getting the right message from languages file
+		return code_msg = nil or code_msg = 'na' ? "" : (langs_def at code_msg != nil ? langs_def at code_msg at configuration_file["LANGUAGE"] : ''); // getting the right message from languages file
 	}
 	
 	string replace_strings(string s, list<string> lisa){

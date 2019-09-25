@@ -20,7 +20,15 @@ global{
 	string MSG_TO_CANCEL; 			
 	string MSG_AMOUNT;			
 	string MSG_123_OR_CUSTOMIZED;
-	string BTN_GET_REVENUE_MSG2;
+	string MSG_EXPROPRIATION;
+	string LEV_MAX;
+	string LEV_AT;
+	string LEV_MSG_ACTIONS;
+	string LDR_MSG_ROUNDS;
+	string LEV_DIKES;
+	string LEV_DUNES;
+	string MSG_ROUND;
+	string LEV_MSG_LEVER_HELP;
 	
 	string records_folder <- "../includes/"+ application_name +"/";
 	
@@ -33,7 +41,7 @@ global{
 	}
 	
 	string get_message(string code_msg){
-		return langs_def at code_msg at my_language;
+		return code_msg = 'na' ? "" : langs_def at code_msg at my_language;
 	}
 }
 

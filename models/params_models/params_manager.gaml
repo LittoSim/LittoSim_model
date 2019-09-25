@@ -23,6 +23,7 @@ global{
 	string LOCK_USERS 				<- "LOCK_USERS";
 	string UNLOCK_USERS 			<- "UNLOCK_USERS";
 	string HIGH_FLOODING 			<- "HIGH_FLOODING";
+	string MEDIUM_FLOODING 			<- "MEDIUM_FLOODING";
 	string LOW_FLOODING 			<- "LOW_FLOODING";
 	string REPLAY_FLOODING			<- "REPLAY_FLOODING";
 	string SHOW_LU_GRID				<- "SHOW_LU_GRID";
@@ -89,7 +90,15 @@ global{
 	int font_size 		   <- int(shape.height/30); 	
 	int font_interleave    <- int(shape.width/60);
 	
+	string MSG_SUBMERSION;
+	string MSG_THE_ROUND;
+	string MSG_BUILDER;
+	string MSG_SOFT_DEF;
+	string MSG_WITHDRAWAL;
+	string MSG_NEW_ROUND;
+	string MSG_GAME_DONE;
+	
 	string get_message(string code_msg){
-		return langs_def at code_msg at my_language;
+		return code_msg = 'na' ? "" : langs_def at code_msg at my_language;
 	}	
 }
