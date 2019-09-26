@@ -18,7 +18,8 @@ global{
 	string MSG_CHOOSE_MSG_TO_SEND;	
 	string MSG_TYPE_CUSTOMIZED_MSG;
 	string MSG_TO_CANCEL; 			
-	string MSG_AMOUNT;			
+	string MSG_AMOUNT;
+	string MSG_COMMUNE;		
 	string MSG_123_OR_CUSTOMIZED;
 	string MSG_EXPROPRIATION;
 	string LEV_MAX;

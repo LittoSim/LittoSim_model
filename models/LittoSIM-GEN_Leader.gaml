@@ -15,6 +15,7 @@ global{
 	list<Player_Action> player_actions <- [];
 	list<Activated_Lever> activated_levers <- [];	
 	District selected_district <- nil;
+	list<District> districts <- nil;
 	geometry shape <- square(100#m);
 	Lever selected_lever;
 	Lever explored_lever;
@@ -30,6 +31,7 @@ global{
 		MSG_TYPE_CUSTOMIZED_MSG <- get_message('MSG_TYPE_CUSTOMIZED_MSG');
 		MSG_TO_CANCEL 			<- get_message('MSG_TO_CANCEL');
 		MSG_AMOUNT 				<- get_message('MSG_AMOUNT');
+		MSG_COMMUNE				<- world.get_message('MSG_COMMUNE');
 		MSG_123_OR_CUSTOMIZED 	<- get_message('MSG_123_OR_CUSTOMIZED');
 		MSG_EXPROPRIATION		<- get_message('MSG_EXPROPRIATION');
 		LEV_MAX					<- get_message('LEV_MAX');
@@ -51,10 +53,13 @@ global{
 			if dist_id = 0 {
 				do die;
 			}
-			district_name <- world.dist_code_sname_correspondance_table at district_code;
-			district_long_name <- world.dist_code_lname_correspondance_table at district_code;
+			district_name <- dist_code_sname_correspondance_table at district_code;
+			district_long_name <- dist_code_lname_correspondance_table at district_code;
 		}
-		
+		loop kk over: dist_code_sname_correspondance_table.keys {
+			add first(District where (each.district_code = kk)) to: districts;
+		}
+		 
 		do create_district_buttons_names;
 		do create_levers;
 		create Network_Leader;
@@ -66,32 +71,32 @@ global{
 	action create_district_buttons_names{
 		loop i from: 0 to: 3 {
 			create District_Name {
-				display_name <- District[i].district_long_name;
+				display_name <- districts[i].district_long_name;
 				location	 <- (Grille grid_at {i,0}).location;
 			}
 			create District_Action_Button {
 				command 	 <- EXCHANGE_MONEY;
 				display_name <- world.get_message("LDR_EXCHANGE_MONEY");
 				location	 <- (Grille[i,1]).location - {0,6.5};
-				my_district  <- District[i];
+				my_district  <- districts[i];
 			}
 			create District_Action_Button {
 				command 	 <- GIVE_MONEY_TO;
 				display_name <- world.get_message("LDR_MSG_SEND_MONEY");
 				location	 <- (Grille[i,1]).location - {0,3.5};
-				my_district  <- District[i];
+				my_district  <- districts[i];
 			}
 			create District_Action_Button {
 				command 	 <- TAKE_MONEY_FROM;
 				display_name <- world.get_message("LDR_MSG_WITHDRAW_MONEY");
 				location	 <- (Grille[i,1]).location - {0,0.5};
-				my_district  <- District[i];
+				my_district  <- districts[i];
 			}
 			create District_Action_Button {
 				command 	 <- SEND_MESSAGE_TO;
 				display_name <- world.get_message("LDR_MSG_SEND_MSG");
 				location	 <- (Grille[i,1]).location + {0,2.5};
-				my_district  <- District[i];
+				my_district  <- districts[i];
 			}
 		}
 	}
@@ -104,7 +109,7 @@ global{
 				}
 				if (string(levers_def at levers_names[j] at 'active') at i) = '1'{ // the lever is activated on this district
 					create all_levers[j]{
-						my_district <- District[i];
+						my_district <- districts[i];
 						col_index <- i;
 						row_index <- int(j/2 + 2);
 						location	<- (Grille[col_index, row_index]).location - {0, 3 + (-4.5 * j mod 2)};
@@ -1377,7 +1382,7 @@ species Network_Leader skills:[network] {
 					}
 					game_round <-int (m_contents[NUM_ROUND]);
 					write world.get_message("MSG_ROUND") + " " + game_round;
-					ask District{
+					ask districts {
 						string bud <- m_contents[district_code];
 						if bud != nil {
 							budget <- float(bud);
@@ -1391,7 +1396,7 @@ species Network_Leader skills:[network] {
 					do update_action (m_contents);
 				}
 				match INDICATORS_T0 		{
-					ask District where (each.district_code = m_contents[DISTRICT_CODE]) {
+					ask districts where (each.district_code = m_contents[DISTRICT_CODE]) {
 						length_dikes_t0 								<- int (m_contents['length_dikes_t0']);
 						length_dunes_t0 								<- int (m_contents['length_dunes_t0']);
 						count_LU_urban_t0 								<- int (m_contents['count_LU_urban_t0']);
@@ -1414,7 +1419,7 @@ species Network_Leader skills:[network] {
 		if(p_act = nil){ // new action commanded by a player : indicators are updated and levers triggering tresholds are tested
 			create Player_Action{
 				do init_from_map(msg);
-				ask District first_with (each.district_code = district_code) {
+				ask districts first_with (each.district_code = district_code) {
 					do update_indicators_and_register_player_action (myself);
 				}
 				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
@@ -1458,16 +1463,16 @@ species District_Action_Button parent: District_Name{
 		map<string, unknown> msg 	<-[];
 		put my_district.district_code	key: DISTRICT_CODE in: msg;
 		
-		switch(command){
+		switch command {
 			match EXCHANGE_MONEY {
-				list<District> dists <- District - my_district;
+				list<District> dists <- districts - my_district;
 				map values 	<- user_input(world.get_message("LDR_TRANSFERT1") + " : \n(0 " + MSG_TO_CANCEL+")\n"
 						 + "1 : " + dists[0].district_long_name +
 						 "\n2 : " + dists[1].district_long_name +
 						 "\n3 : " + dists[2].district_long_name,
-										[MSG_AMOUNT + " :" :: "2000", world.get_message('MSG_COMMUNE') :: "0"]);
-				int amount_value <- int(values at values.keys[0]);
-				int ddist <- int(values at values.keys[1]);
+										[MSG_AMOUNT :: "2000", MSG_COMMUNE :: "0"]);
+				int amount_value <- int(values at MSG_AMOUNT);
+				int ddist <- int(values at MSG_COMMUNE);
 				if amount_value != 0 and ddist in [1,2,3] {
 					if my_district.budget - amount_value < PLAYER_MINIMAL_BUDGET {
 						map vimp <- user_input(world.get_message('MSG_WARNING'), world.get_message('LDR_TRANSFERT2')::true);
@@ -1481,7 +1486,7 @@ species District_Action_Button parent: District_Name{
 						put msg_player 			key: MSG_TO_PLAYER 	in: msg;
 						
 						msg_activity[0] <- world.get_message('LDR_EXCHANGE_MONEY');
-						msg_activity[1] <- msg_player + " : " + dists[ddist-1].district_name + " (" + amount_value + "By)";
+						msg_activity[1] <- msg_player + " : " + dists[ddist-1].district_name + " (" + amount_value + " By)";
 					}
 				}
 			}
@@ -1492,15 +1497,14 @@ species District_Action_Button parent: District_Name{
 				string msg4 <- world.get_message('BTN_TAKE_MONEY_MSG4');
 				map values  <- user_input(msg4 + " " + my_district.district_long_name + "\n(0 "+ MSG_TO_CANCEL+ ")\n" + MSG_CHOOSE_MSG_TO_SEND +
 										"\n1 : " + msg1 + "\n2 : " + msg2 + "\n3 : " + msg3 + "\n" + MSG_TYPE_CUSTOMIZED_MSG,
-										[MSG_AMOUNT + " :" :: "2000", (MSG_123_OR_CUSTOMIZED) :: "1"]);
-				int amount_value <- int(values at values.keys[0]);
+										[MSG_AMOUNT :: "2000", (MSG_123_OR_CUSTOMIZED) :: "1"]);
+				int amount_value <- int(values at MSG_AMOUNT);
 				if  amount_value != 0 {
-					
-					switch int(values at values.keys[1]) {
+					switch int(values at MSG_123_OR_CUSTOMIZED) {
 						match 1 { msg_player <- msg1; }
 						match 2 { msg_player <- msg2; }
 						match 3 { msg_player <- msg3; }
-						default { msg_player <- values at values.keys[1]; }
+						default { msg_player <- values at MSG_123_OR_CUSTOMIZED; }
 					}
 					put TAKE_MONEY_FROM 			key: LEADER_COMMAND 	in: msg;
 					put amount_value			 	key: AMOUNT 			in: msg;
@@ -1517,14 +1521,14 @@ species District_Action_Button parent: District_Name{
 				string msg4 <- world.get_message('BTN_GIVE_MONEY_MSG4');
 				map values 	<- user_input(msg4 + " " + my_district.district_long_name + "\n(0 " + MSG_TO_CANCEL+")\n" + MSG_CHOOSE_MSG_TO_SEND +
 										"\n1 : " + msg1 + "\n2 : " + msg2 + "\n3 : " + msg3 + "\n" + MSG_TYPE_CUSTOMIZED_MSG,
-										[MSG_AMOUNT + " :" :: "2000", (MSG_123_OR_CUSTOMIZED) :: "1"]);
-				int amount_value <- int(values at values.keys[0]);			
+										[MSG_AMOUNT :: "2000", (MSG_123_OR_CUSTOMIZED) :: "1"]);
+				int amount_value <- int(values at MSG_AMOUNT);			
 				if amount_value != 0 {
-					switch int(values at values.keys[1]) {
+					switch int(values at MSG_123_OR_CUSTOMIZED) {
 						match 1 { msg_player <- msg1; }
 						match 2 { msg_player <- msg2; }
 						match 3 { msg_player <- msg3; }
-						default { msg_player <- values at values.keys[1]; }
+						default { msg_player <- values at MSG_123_OR_CUSTOMIZED; }
 					}
 					put GIVE_MONEY_TO 			 	key: LEADER_COMMAND in: msg;
 					put amount_value 				key: AMOUNT 		in: msg;
@@ -1544,7 +1548,7 @@ species District_Action_Button parent: District_Name{
 				map values <- user_input(msg0 + " " + my_district.district_long_name + "\n(" + msg5 + ")\n" + MSG_CHOOSE_MSG_TO_SEND +
 										"\n1 : " + msg1 + "\n2 : " + msg2 + "\n3 : " + msg3 + "\n4 : " + msg4 + "\n" + MSG_TYPE_CUSTOMIZED_MSG,
 										[(MSG_123_OR_CUSTOMIZED) :: "1"]);
-				string custom_msg <- values at values.keys[0];
+				string custom_msg <- values at MSG_123_OR_CUSTOMIZED;
 				if (custom_msg !="") {
 					switch int(custom_msg) {
 						match 1 { msg_player <- msg1; 		}
@@ -1590,7 +1594,7 @@ experiment LittoSIM_GEN_Leader {
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- false;
+	parameter "Save data : " var: save_data <- true;
 	
 	output{
 		display levers{

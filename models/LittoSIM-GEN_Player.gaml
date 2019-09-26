@@ -26,6 +26,7 @@ global{
 	float button_size 			<- 500#m;
 	float widX;
 	float widY;
+	bool cursor_taken <- false;
 		
 	// tax attributes
 	int budget 			<- 0;
@@ -365,9 +366,9 @@ global{
 	}
 	
 	action button_click_general {
-		if !is_active_gui {
-			return;
-		}
+		if cursor_taken   { return; }
+		if !is_active_gui { return; }
+		
 		point loc <- #user_location;
 		list<Tab> clicked_tab_button <- (Tab overlapping loc);
 		if(length(clicked_tab_button) > 0){							// changing tab
@@ -540,7 +541,9 @@ global{
 			if codef.type = COAST_DEF_TYPE_CORD and (codef.slices + length(my_basket where
 						(each.action_type = PLAYER_ACTION_TYPE_COAST_DEF and each.element_id = codef.coast_def_id)) + length(my_history where
 						(each.action_type = PLAYER_ACTION_TYPE_COAST_DEF and each.element_id = codef.coast_def_id and !each.is_applied))) = 10{
-				map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_PEBBLES_CORD')::true);							
+				cursor_taken <- true;
+				map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_PEBBLES_CORD')::true);
+				cursor_taken <- false;						
 				return;	
 			}
 			if codef.type = COAST_DEF_TYPE_DUNE and !(but.command in
@@ -573,7 +576,9 @@ global{
 					if application_name = "camargue" and current_action.command = ACTION_ENHANCE_NATURAL_ACCR {
 						action_delay <- action_delay * 2;
 					}
+					cursor_taken <- true;
 					map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
+					cursor_taken <- false;
 					if (!(vmap at vmap.keys[0])) {
 						ask current_action {
 							do die;
@@ -643,7 +648,9 @@ global{
 				if application_name = "camargue" and current_action.command = ACTION_CREATE_DUNE { // if in protected area for camargue, we double the delay
 					action_delay <- action_delay * 2;
 				}
+				cursor_taken <- true;
 				map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true));
+				cursor_taken <- false;
 				if (!(vmap at vmap.keys[0])) {
 					ask current_action {
 						do die;
@@ -687,37 +694,51 @@ global{
 				if(lu_name in ["U","Us"]){
 					switch selected_button.command {
 						match ACTION_MODIFY_LAND_COVER_A {
-							map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_U_N')::true);							
+							cursor_taken <- true;
+							map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_U_N')::true);
+							cursor_taken <- false;					
 							return;	
 						}
 						match ACTION_MODIFY_LAND_COVER_N {
-							map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('MSG_EXPROPRIATION_PROCEDURE')::false);		
-							if(vmap at vmap.keys[0] = false) {return;}
+							cursor_taken <- true;
+							map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('MSG_EXPROPRIATION_PROCEDURE')::false);
+							cursor_taken <- false;
+							if vmap at vmap.keys[0] = false {return;}
 						}
 						match ACTION_MODIFY_LAND_COVER_Ui {
 							if density_class = POP_DENSE {
+								cursor_taken <- true;
 								map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_DENSE')::true);
+								cursor_taken <- false;
 								return;	
 							}
 						}
 					}
 				}
 				if(lu_name in ["AUs","Us"] and selected_button.command = ACTION_MODIFY_LAND_COVER_AU){
-					map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('MSG_IMPOSSIBLE_DELETE_ADAPTED')::true);		
+					cursor_taken <- true;
+					map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('MSG_IMPOSSIBLE_DELETE_ADAPTED')::true);
+					cursor_taken <- false;		
 					return;
 				}
 				if(lu_name in ["A","N"] and selected_button.command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs]){
-					if empty(Land_Use at_distance 100 where (each.is_urban_type)){	
+					if empty(Land_Use at_distance 100 where (each.is_urban_type)){
+						cursor_taken <- true;
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_OUTSIDE_U')::true);
+						cursor_taken <- false;
 						return;
 					}					
-					if (!empty(Protected_Area where (each intersects (circle(10, shape.centroid))))){	
+					if (!empty(Protected_Area where (each intersects (circle(10, shape.centroid))))){
+						cursor_taken <- true;
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_PROTECTED_U')::true);
+						cursor_taken <- false;
 						return;
 					}
 					if(lu_name = "N"){
-						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_N_TO_URBANIZED')::false);		
-						if(vmap at vmap.keys[0] = false) {return;}
+						cursor_taken <- true;
+						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_N_TO_URBANIZED')::false);
+						cursor_taken <- false;		
+						if vmap at vmap.keys[0] = false {return;}
 					}
 				}
 				
@@ -777,7 +798,9 @@ global{
 	
 	bool basket_overflow {
 		if(length(my_basket) = BASKET_MAX_SIZE){
+			cursor_taken <- true;
 			map vmap <- user_input(MSG_WARNING, world.get_message('PLR_OVERFLOW_WARNING')::true);
+			cursor_taken <- false;
 			return true;
 		}
 		return false;
@@ -1157,13 +1180,17 @@ species Basket parent: Displayed_List {
 		if !validate_clicked and validation_button_location(validation_button_size.x) distance_to #user_location < validation_button_size.x +100#px {
 			validate_clicked <- true;
 			if game_round = 0 {
+				cursor_taken <- true;
 				map<string,unknown> res <- user_input(MSG_WARNING, world.get_message('MSG_SIM_NOT_STARTED')::true);
+				cursor_taken <- false;
 				validate_clicked <- false;
 				return;
 			}
 			if empty(game_basket.elements){
 				string msg <- world.get_message('PLR_EMPTY_BASKET');
+				cursor_taken <- true;
 				map<string,unknown> res <- user_input(MSG_WARNING, msg::true);
+				cursor_taken <- false;
 				validate_clicked <- false;
 				return;
 			}
@@ -1172,12 +1199,16 @@ species Basket parent: Displayed_List {
 				ask world {
 					do user_msg (budget_display,INFORMATION_MESSAGE);
 				}
+				cursor_taken <- true;
 				map<string,unknown> res <- user_input(MSG_WARNING, budget_display::true);
+				cursor_taken <- false;
 				validate_clicked <- false;
 				return;
 			}
+			cursor_taken <- true;
 			map<string,bool> vmap <- map<string,bool>(user_input(MSG_WARNING, world.get_message('PLR_VALIDATE_BASKET') +
 									"\n" + world.get_message('PLR_CHECK_BOX_VALIDATE')::false));
+			cursor_taken <- false;
 			validate_clicked <- false;
 			if(vmap at vmap.keys[0]){
 				ask Network_Player{
@@ -1211,6 +1242,9 @@ species History parent: Displayed_List { //schedules:[]{
 			if act.is_applied or !(act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]) {
 				label <- label + " (" + act.element_id +")";	
 			}
+			if act.command = ACTION_CREATE_DUNE and act.draw_around = 30{
+				label <- label + " " + world.get_message('MSG_2ND_RANG');
+			}
 			icon <- world.get_action_icon(act.command);
 			act.my_hist_elem <- self;
 			current_action <- act;
@@ -1220,9 +1254,14 @@ species History parent: Displayed_List { //schedules:[]{
 			Coastal_Defense cd <- first(Coastal_Defense where (each.coast_def_id = act.element_id));
 			if cd != nil {
 				add act to: cd.actions_on_me;
+				cd.actions_on_me <- cd.actions_on_me sort_by (each.initial_application_round);
 			}
 		} else {
-			add act to: first(Land_Use where (each.id = act.element_id)).actions_on_me;
+			ask first(Land_Use where (each.id = act.element_id)) {
+				add act to: actions_on_me;
+				actions_on_me <- actions_on_me sort_by (each.initial_application_round);
+			}
+			
 		}
 	}
 } 
@@ -1418,14 +1457,14 @@ species Network_Listener_To_Leader skills: [network] {
 						int amount 	<- int(m_contents[AMOUNT]);
 						budget 		<- budget + amount;
 						ask world {
-							do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE);
+							do user_msg(string(m_contents[MSG_TO_PLAYER]) + " : " + amount + ' By', BUDGET_MESSAGE);
 						}
 					}
 					match TAKE_MONEY_FROM {
 						int amount 	<- int(m_contents[AMOUNT]);
 						budget 		<- budget - amount;
 						ask world {
-							do user_msg(string(m_contents[MSG_TO_PLAYER]) + " " + amount + ' By', BUDGET_MESSAGE);
+							do user_msg(string(m_contents[MSG_TO_PLAYER]) + " : " + amount + ' By', BUDGET_MESSAGE);
 						}
 					}
 					match SEND_MESSAGE_TO {
@@ -1653,6 +1692,9 @@ species Network_Player skills:[network]{
 					ask Flood_Mark {
 						do die;
 					}
+					ask Coastal_Defense where (each.district_code = active_district_code) {
+						rupture <- false;
+					}
 					loop i from: 0 to: 4 {
 						Land_Use lu <- first(Land_Use where (each.id = int(m_contents["lu_id"+i])));
 						if lu != nil {
@@ -1699,6 +1741,7 @@ species Network_Player skills:[network]{
 			ask Coastal_Defense_Action first_with(each.id = msg at "action_id") {
 				element_id <- myself.coast_def_id;
 				add self to: myself.actions_on_me;
+				myself.actions_on_me <- myself.actions_on_me sort_by (each.initial_application_round);
 			}
 		}			
 	}
@@ -2112,13 +2155,13 @@ species Coastal_Defense {
 			draw shape color: #black;
 			
 			if type = COAST_DEF_TYPE_DUNE{
+				if maintained {
+					draw shape+15#m color: #whitesmoke;
+				}
 				if ganivelle {
 					loop i over: points_on(shape, 30#m) {
 						draw circle(10,i) color: #black;
 					}
-				}
-				if maintained {
-					draw shape+10#m color: #whitesmoke;
 				}
 			}
 			else if type = COAST_DEF_TYPE_CORD {
@@ -2259,16 +2302,9 @@ species Water_Gate {
 }
 
 //---------------------------- Experiment definiton -----------------------------//
-experiment District4 type: gui parent: LittoSIM_GEN_Player {
+experiment District1 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[3], my_language::default_language];
-		minimum_cycle_duration <- 0.5;	
-	}
-}
-
-experiment District3 type: gui parent: LittoSIM_GEN_Player {
-	action _init_ {
-		create simulation with:[active_district_name::districts[2], my_language::default_language];
+		create simulation with:[active_district_name::districts[0], my_language::default_language];
 		minimum_cycle_duration <- 0.5;
 	}
 }
@@ -2280,10 +2316,17 @@ experiment District2 type: gui parent: LittoSIM_GEN_Player {
 	}
 }
 
-experiment District1 type: gui parent: LittoSIM_GEN_Player {
+experiment District3 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[0], my_language::default_language];
+		create simulation with:[active_district_name::districts[2], my_language::default_language];
 		minimum_cycle_duration <- 0.5;
+	}
+}
+
+experiment District4 type: gui parent: LittoSIM_GEN_Player {
+	action _init_ {
+		create simulation with:[active_district_name::districts[3], my_language::default_language];
+		minimum_cycle_duration <- 0.5;	
 	}
 }
 
@@ -2293,7 +2336,7 @@ experiment LittoSIM_GEN_Player type: gui{
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 
-	parameter "District choice : " var: active_district_name <- districts[1] among: districts;
+	parameter "District choice : " var: active_district_name <- districts[2] among: districts;
 	parameter "Language choice : " var: my_language	<- default_language  among: languages_list;
 	
 	init {
@@ -2333,8 +2376,8 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Button_Map				aspect: map;
 
 			graphics "Coast Def Info" {
-				if explored_coast_def != nil and explored_flood_mark = nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected
-							 and explored_button = nil {
+				if explored_coast_def != nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected and explored_button = nil
+							and explored_flood_mark = nil {
 					Coastal_Defense my_codef <- explored_coast_def;
 					point target <- {my_codef.location.x , my_codef.location.y};
 					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px + 60#px)};
@@ -2405,7 +2448,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			graphics "Flood Mark Info" {// flooding mark info
-				if explored_flood_mark != nil {
+				if explored_flood_mark != nil and (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected and explored_button = nil{
 					Flood_Mark fm <- explored_flood_mark;
 					point target <- {fm.location.x  ,fm.location.y};
 					point target2 <- {fm.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),fm.location.y + 1*(INFORMATION_BOX_SIZE.y#px-40#px)};

@@ -85,7 +85,9 @@ global {
 	list<District> districts_in_game;
 	bool submersion_is_running <- false;
 	bool save_data <- false; // whether save or not data logs
-	bool display_rupture <- false;
+	bool display_ruptures <- false; // display or not ruptures
+	bool ok_to_display_ruptures <- true; // this variable allows to prevent displaying ruptures of an event while replaying another event
+	int event_ruptures <- 0;
 	bool submersion_ok <- false;
 	bool send_flood_results <- true;
 	point button_size;
@@ -100,9 +102,11 @@ global {
 		MSG_GAME_DONE	<- get_message('MSG_GAME_DONE');
 		
 		// Create GIS agents
-		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))]; 
-		districts_in_game <- (District where (each.dist_id > 0)) sort_by (each.dist_id);
-		
+		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))];
+		loop kk over: dist_code_sname_correspondance_table.keys {
+			add first(District where (each.district_code = kk)) to: districts_in_game;
+		}
+				
 		create Coastal_Defense from: coastal_defenses_shape with: [
 			coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
 			alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))] {
@@ -191,7 +195,7 @@ global {
 		last_played_event <- 0;
 
 		create Legend_Planning;
-		create Legend_Population;
+		//create Legend_Population;
 		create Legend_Map;
 		create Legend_Flood;
 		create Network_Game_Manager;
@@ -212,7 +216,7 @@ global {
 
 	action new_round {
 		write MSG_NEW_ROUND + " : " + (game_round + 1);
-		
+		do clear_map;
 		if game_round = 0 { // round 0
 			ask districts_in_game{
 				add budget to: districts_taxes[dist_id-1];
@@ -286,6 +290,14 @@ global {
 		write MSG_GAME_DONE + " !";
 	}
 	
+	action clear_map {
+		show_max_water_height <- false;
+		display_ruptures <- false;
+		ask Cell where (each.cell_type = 1){ // reset water heights
+			water_height <- 0.0; 
+		}
+	}
+	
 	action calculate_lu_coast_def_data{
 		ask districts_in_game{
 			add current_population() to: round_population;
@@ -336,10 +348,6 @@ global {
 		if save_data {
 			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";	
 		}
-		
-		ask Cell where (each.cell_type = 1){ // reset water heights
-			water_height <- 0.0; 
-		}
 		if send_flood_results {
 			do send_flooding_results (nil); // to districts
 			send_flood_results <- false;
@@ -370,8 +378,7 @@ global {
 		else{
      		stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
      		write stateSimPhase;
-     		sub_event <- 1;
-     		display_rupture <- true;
+     		display_ruptures <- true;
      		first(Button where (each.nb_button = 8)).is_selected <- true;
      	}
 	} 
@@ -381,6 +388,8 @@ global {
 			write "trying to replay a non existing event";
 			return;
 		}
+		do clear_map;
+		ok_to_display_ruptures <- event_ruptures = fe; // we display ruptures only if this event is the event that caused ruptures. To overcome this problem, we should have a history of ruptures for each played event
 		if last_played_event != fe {
 			last_played_event <- fe;
 			results_lisflood_rep <- list_flooding_events at list_flooding_events.keys[fe];
@@ -415,7 +424,10 @@ global {
 			do read_lisflood_files;
 			lisfloodReadingStep <- 0;
 			last_played_event <- length(list_flooding_events.keys) - 1;
+			event_ruptures <- last_played_event;
+			send_flood_results <- true;
 			map<string,unknown> vmap <- user_input("OK", world.get_message('MSG_SIM_FINISHED')::true);
+			sub_event <- 1;
 			stateSimPhase <- SIM_SHOWING_LISFLOOD;
 			write stateSimPhase;
 			submersion_is_running <- false;
@@ -626,12 +638,14 @@ global {
  		ask Network_Game_Manager{
 			do send to: my_district contents: nmap;
 		}
-		nmap <- ["TOPIC"::"NEW_RUPTURES"];
-		ask Coastal_Defense where (each.district_code = my_district) {
-			add string(rupture) at: string(coast_def_id) to: nmap;
-		}
-		ask Network_Game_Manager{
-			do send to: my_district contents: nmap;
+		if ok_to_display_ruptures {
+			nmap <- ["TOPIC"::"NEW_RUPTURES"];
+			ask Coastal_Defense where (each.district_code = my_district) {
+				add string(rupture) at: string(coast_def_id) to: nmap;
+			}
+			ask Network_Game_Manager{
+				do send to: my_district contents: nmap;
+			}
 		}
 	}
 	
@@ -971,8 +985,11 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 					my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
 				}else if a_button.nb_button = 7 {
 					show_max_water_height <- is_selected;
+					ask Cell where (each.cell_type = 1){ // reset water heights
+						water_height <- 0.0; 
+					}
 				}else if a_button.nb_button = 8 {
-					display_rupture <- is_selected;
+					display_ruptures <- is_selected;
 				}
 			}
 		}
@@ -1843,6 +1860,9 @@ species Coastal_Defense {
 		}
 		if type = COAST_DEF_TYPE_DUNE {
 			draw draw_around#m around shape color: color;
+			if maintained {
+					draw shape+10#m color: #whitesmoke;
+				}
 			if ganivelle {
 				loop i over: points_on (shape, 40#m) {
 					draw circle(10,i) color: #black;
@@ -1858,7 +1878,7 @@ species Coastal_Defense {
 				draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
 			}
 		}
-		if display_rupture and rupture and flooded {
+		if ok_to_display_ruptures and display_ruptures and rupture and flooded {
 			list<point> pts <- shape.points;
 			point tmp <- length(pts) > 2 ? pts[int(length(pts)/2)] : shape.centroid;
 			draw image_file("../images/icons/rupture.png") at: tmp size: 30#px;
@@ -2148,7 +2168,7 @@ species District {
 	
 	aspect flooding { draw shape color: rgb (0,0,0,0) border:#black; }
 	aspect planning { draw shape color: rgb(255,255,212) border: #black; }
-	aspect population_aspect { draw shape color: rgb(255,255,212) border:#black; }
+	//aspect population_aspect { draw shape color: rgb(255,255,212) border:#black; }
 	
 	int current_population {  return sum(LUs accumulate (each.population));	}
 	
@@ -2259,12 +2279,12 @@ species Legend_Planning{
 	}
 }
 
-species Legend_Population parent: Legend_Planning {
+/*species Legend_Population parent: Legend_Planning {
 	init{
 		texts <- ["High density","Medium density","Low density","Empty"];
 		colors<- [rgb(169,169,169),rgb(192,192,192),rgb(220,220,220),rgb(245,245,245)];
 	}
-}
+}*/
 
 species Legend_Map parent: Legend_Planning {
 	init {
@@ -2360,7 +2380,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- false;
+	parameter "Save data : " var: save_data <- true;
 	
 	output {
 		
@@ -2404,23 +2424,23 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			event mouse_down 		action: button_click_map;
 		}
 		
-		display "Planning and population" background: #black{
+		display "Planning" background: #black{
 			graphics "World" { draw shape color: rgb(230,251,255); }
-			species District 		aspect: planning size: {0.48,0.48} position: {0.01,0.01};
-			species Land_Use 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Road 	 		aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Water			aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Polycell		aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Coastal_Defense aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Water_Gate		aspect: base size: {0.48,0.48} position: {0.01,0.01};
-			species Legend_Planning size: {0.48,0.48} position: {0.01,0.01};
+			species District 		aspect: planning size: {0.6,0.6} position: {0.2,0.01};
+			species Land_Use 		aspect: base size: {0.6,0.6} position: {0.2,0.01};
+			species Road 	 		aspect: base size: {0.6,0.6} position: {0.2,0.01};
+			species Water			aspect: base size: {0.6,0.6} position: {0.2,0.01};
+			species Polycell		aspect: base size: {0.6,0.6} position: {0.2,0.01};
+			species Coastal_Defense aspect: base size: {0.6,0.6} position: {0.2,0.01};
+			species Water_Gate		aspect: base size: {0.6,0.6} position: {0.2,0.01};
+			species Legend_Planning size: {0.6,0.6} position: {0.2,0.01};
 		
-			species District aspect: population_aspect size: {0.48,0.48} position: {0.51,0.01};
+			/*species District aspect: population_aspect size: {0.48,0.48} position: {0.51,0.01};
 			species Land_Use aspect: population_density size: {0.48,0.48} position: {0.51,0.01};
 			species Road 	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
 			species Water	 aspect: base size: {0.48,0.48} position: {0.51,0.01};
 			species Polycell aspect: base size: {0.48,0.48} position: {0.51,0.01};
-			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};
+			species Legend_Population size: {0.48,0.48} position: {0.51,0.01};*/
 			
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,15] 
 					x_label: MSG_THE_ROUND x_tick_line_visible: false{
@@ -2585,7 +2605,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 		}
 				
-		display "Land Use" {
+		/*display "Land Use" {
 			chart world.get_message('MSG_AREA')+" U" type: series x_tick_line_visible: false size: {0.24,0.45} position: {0, 0} x_range:[0,15]
 				 x_label: MSG_THE_ROUND{
 				 	data "" value: submersions color: #black style: bar;
@@ -2642,9 +2662,9 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data districts_in_game[i].district_name value: districts_in_game[i].surface_AUs color: dist_colors[i];
 				}			
 			}
-		}
+		}*/
 		
-		display "Coastal defenses" {
+		/*display "Coastal defenses" {
 			chart world.get_message('LEV_DIKES') + '(' + world.get_message('MSG_MIN_ALT')+')' type: series size: {0.24,0.45} position: {0, 0}
 				x_tick_line_visible: false x_range:[0,15] x_label: MSG_THE_ROUND{
 					data "" value: submersions color: #black style: bar;
@@ -2710,7 +2730,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data world.get_message('PLY_MSG_MEDIUM') value: districts_in_game collect each.mean_alt_dunes_medium color: #orange; 
 				data world.get_message('PLY_MSG_BAD') value: districts_in_game collect each.mean_alt_dunes_bad color: #red;			
 			}
-		}
+		}*/
 		
 		display "Flooded depth per area"{
 			chart world.get_message('MSG_AREA')+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
