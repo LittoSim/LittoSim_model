@@ -19,7 +19,7 @@ global{
 	geometry shape <- square(100#m);
 	Lever selected_lever;
 	Lever explored_lever;
-	list<species<Lever>> all_levers <- [];
+	list<species<Lever>> all_levers <- []; // levers in all_levers and levers_names should be in the same order
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
 								  'LEVER_GANIVELLE', 'LEVER_Us_COAST_BORDER_RISK_AREA', 'LEVER_Us_COAST_BORDER_AREA', 'LEVER_Us_RISK_AREA', 'LEVER_INLAND_DIKE',
 								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_N_COAST_BORDER_RISK_AREA',
@@ -103,16 +103,13 @@ global{
 	
 	action create_levers {
 		loop i from: 0 to: 3{
-			loop j from: 0 to: length(all_levers) - 1{
-				if all_levers[j] = Give_Pebbles_Lever and application_name != "caen" {
-					break;	
-				}
-				if (string(levers_def at levers_names[j] at 'active') at i) = '1'{ // the lever is activated on this district
-					create all_levers[j]{
+			loop j from: 0 to: length(levers_def) - 1{
+				if (string((levers_def.values[j]) at 'active') at i) = '1'{ // the lever is activated on this district
+					create all_levers at (levers_names index_of levers_def.keys[j]){
 						my_district <- districts[i];
 						col_index <- i;
 						row_index <- int(j/2 + 2);
-						location	<- (Grille[col_index, row_index]).location - {0, 3 + (-4.5 * j mod 2)};
+						location <- (Grille[col_index, row_index]).location - {0, 3 + (-4.5 * j mod 2)};
 						add self to: my_district.levers;
 					}
 				}
@@ -1597,11 +1594,10 @@ experiment LittoSIM_GEN_Leader {
 	parameter "Save data : " var: save_data <- false;
 	
 	output{
-		display levers{
+		display Levers{
 			graphics "Round" {
 				draw  (MSG_ROUND + " : " + game_round)  at: {world.shape.width/2,2} font: font("Arial", 20 , #bold) color: #red anchor: #center;
 			}
-			
 			species District_Name;
 			species District_Action_Button;
 			species Create_Dike_Lever;
