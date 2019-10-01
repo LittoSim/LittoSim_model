@@ -97,6 +97,20 @@ global{
 	string MSG_WITHDRAWAL;
 	string MSG_NEW_ROUND;
 	string MSG_GAME_DONE;
+	string MSG_LENGTH;
+	string MSG_MEAN_ALT;
+	string MSG_GOOD;
+	string MSG_MEDIUM;
+	string MSG_BAD;
+	string MSG_DENSE;
+	string MSG_AREA;
+	string MSG_NEUTRAL;
+	string MSG_TAXES;
+	string LDR_GIVEN;
+	string LDR_TAKEN;
+	string LDR_TRANSFERRED;
+	string LEV_MSG_ACTIONS;
+	string MSG_LEVERS;
 	
 	string get_message(string code_msg){
 		return code_msg = 'na' ? "" : langs_def at code_msg at my_language;
