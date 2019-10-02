@@ -497,6 +497,7 @@ global {
 			ask districts_in_game{
 				ask Network_Game_Manager { do lock_user (myself, false); }
 			}
+			game_paused <- false;
 		}
 	}
 
@@ -516,6 +517,7 @@ global {
 		ask districts_in_game{
 			ask Network_Game_Manager { do lock_user (myself, true); }
 		}
+		game_paused <- true;
 		timestamp <- "_R" + game_round + "_t" + machine_time;
 		results_lisflood_rep <- "includes/" + application_name + "/floodfiles/results" + timestamp;
 		do save_dem_and_rugosity;
@@ -3031,39 +3033,39 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		display "Flooded area per district"{
 			chart world.get_message("MSG_ALL_AREAS") type: series size: {0.48,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" U" type: series size: {0.24,0.45} position: {0.5, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" U "+ MSG_DENSE type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.75, 0} 
 					x_label: MSG_SUBMERSION x_range:[0,5]{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" Us" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
 			chart MSG_AREA+" AU" type: series size: {0.24,0.45} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			
 			chart MSG_AREA+" N" type: series size: {0.24,0.45} position: {0.50, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
 			chart MSG_AREA+" A" type: series size: {0.24,0.45} position: {0.75, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i];
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 		}

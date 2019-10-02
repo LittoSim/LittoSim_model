@@ -494,7 +494,11 @@ species District{
 	}
 	
 	list<Player_Action> actions_install_ganivelle {
-		return ((Ganivelle_Lever first_with (each.my_district = self)).associated_actions sort_by (-each.command_round));
+		Lever lv <- Ganivelle_Lever first_with (each.my_district = self);
+		if lv = nil {
+			return [];
+		}
+		return lv.associated_actions sort_by (-each.command_round);
 	}
 	
 	list<Player_Action> actions_densification_out_coast_border_and_risk_area{
@@ -708,6 +712,9 @@ species Lever {
 	}	
 	
 	action check_activation_and_impact_on_first_element_of (list<Player_Action> list_p_action){
+		if list_p_action = nil {
+			return;
+		}
 		if !empty(list_p_action){
 			do check_activation_and_impact_on (list_p_action[0]);
 		}
