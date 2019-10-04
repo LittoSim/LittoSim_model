@@ -44,12 +44,12 @@ global{
 	int STEPS_FOR_AU_TO_U 				<- int  (study_area_def["STEPS_FOR_AU_TO_U"]);		    	// 2 years to change from AU to U)
 	
 	// Coastal defenses rupture parameters
-	int PROBA_RUPTURE_DIKE_STATUS_BAD 		<- int(study_area_def["PROBA_RUPTURE_DIGUE_ETAT_BAD"]);
-	int PROBA_RUPTURE_DIKE_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_DIGUE_ETAT_MEDIUM"]);
-	int PROBA_RUPTURE_DIKE_STATUS_GOOD 		<- int(study_area_def["PROBA_RUPTURE_DIGUE_ETAT_GOOD"]); 		// -1 = never
-	int PROBA_RUPTURE_DUNE_STATUS_BAD 		<- int(study_area_def["PROBA_RUPTURE_DUNE_ETAT_BAD"]);
-	int PROBA_RUPTURE_DUNE_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_DUNE_ETAT_MEDIUM"]);
-	int PROBA_RUPTURE_DUNE_STATUS_GOOD 		<- int(study_area_def["PROBA_RUPTURE_DUNE_ETAT_GOOD"]); 			// -1 = never
+	int PROBA_RUPTURE_DIKE_STATUS_BAD 		<- int(study_area_def["PROBA_RUPTURE_DIKE_STATUS_BAD"]);
+	int PROBA_RUPTURE_DIKE_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_DIKE_STATUS_MEDIUM"]);
+	int PROBA_RUPTURE_DIKE_STATUS_GOOD 		<- int(study_area_def["PROBA_RUPTURE_DIKE_STATUS_GOOD"]); 		// -1 = never
+	int PROBA_RUPTURE_DUNE_STATUS_BAD 		<- int(study_area_def["PROBA_RUPTURE_DUNE_STATUS_BAD"]);
+	int PROBA_RUPTURE_DUNE_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_DUNE_STATUS_MEDIUM"]);
+	int PROBA_RUPTURE_DUNE_STATUS_GOOD 		<- int(study_area_def["PROBA_RUPTURE_DUNE_STATUS_GOOD"]); 			// -1 = never
 	int RADIUS_RUPTURE 						<- int(study_area_def["RADIUS_RUPTURE"]); 						// the extent of rupture in #m
 	int PROBA_RUPTURE_CORD_STATUS_BAD 		<- int(study_area_def["PROBA_RUPTURE_CORD_STATUS_BAD"]);
 	int PROBA_RUPTURE_CORD_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_CORD_STATUS_MEDIUM"]);

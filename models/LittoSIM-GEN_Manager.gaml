@@ -333,6 +333,9 @@ global {
 	}
 	
 	action clear_map {
+		ask Button where (each.nb_button in [7,8]) {
+			self.is_selected <- false;
+		}
 		show_max_water_height <- false;
 		display_ruptures <- false;
 		ask Cell where (each.cell_type = 1){ // reset water heights
@@ -424,7 +427,7 @@ global {
 			send_flood_results <- false;
 		}
 		stateSimPhase <- SIM_GAME;
-		write stateSimPhase + " - " + get_message('MSG_ROUND') + " " + game_round;
+		write stateSimPhase + " - " + MSG_ROUND + " " + game_round;
 	}
 	
 	reflex calculate_flood_stats when: stateSimPhase = SIM_CALCULATING_FLOOD_STATS{			// end of a flooding event
@@ -434,9 +437,11 @@ global {
 	}
 	
 	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD {
-		if !submersion_ok {
+		if !submersion_ok or length(one_of(Cell where (each.cell_type = 1)).water_heights) < 14 {
 			write "Error in submersion process!";
+			remove key: ""+game_round from: list_flooding_events;
 			stateSimPhase <- SIM_GAME;
+			write stateSimPhase;
 			return;
 		}
 		ask Cell where (each.cell_type = 1){
@@ -456,7 +461,7 @@ global {
 	
 	action replay_flood_event (int fe) {
 		if fe >= length(list_flooding_events) {
-			write "trying to replay a non existing event";
+			write "Trying to replay a non existing event!";
 			return;
 		}
 		do clear_map;
@@ -644,6 +649,7 @@ global {
 	}
 	   
 	action read_lisflood_files {
+		write "reading flood files ...";
 		ask Cell where (each.cell_type = 1){ // reset water heights
 			water_heights <- [];
 		}
@@ -970,35 +976,31 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			command  	<- SHOW_LU_GRID;
 			shape 		<- square(800);
 			my_icon 	<- image_file("../images/icons/avec_quadrillage.png");
-			is_selected <- false;
 			location <- LEGEND_POSITION = 'topleft' ? {800, 800} : {800, 13800};
 		}
 		create Button{
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
-			shape 		<- square(800);
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
-			is_selected <- false;
-			location 	<- LEGEND_POSITION = 'topleft' ? {1800, 800} : {1800, 13800};
+			location 	<- {world.shape.width/2 - button_size.x*0.66,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 8;
 			command	 	<- SHOW_RUPTURE;
-			shape 		<- square(800);
-			my_icon 	<- image_file("../images/icons/rupture.png");
-			is_selected <- false;
-			location 	<- LEGEND_POSITION = 'topleft' ? {2800, 800} : {2800, 13800};
+			my_icon 	<- image_file("../images/icons/rupture2.png");
+			location 	<-  {world.shape.width/2 + button_size.x*0.66,  world.shape.height - button_size.y*0.75};
 		}
 	}
 	
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		list<Button> buttonsMaster <- (Button where (each.nb_button in [0,1,2,3,5,6,55,57] and each overlaps loc));
-		if(length(buttonsMaster) > 0){
-			ask Button { self.is_selected <- false;	}
-			ask(buttonsMaster){
-				is_selected <- true;
+		Button button_master <- first(Button where (each.nb_button in [0,1,2,3,5,6,7,8,55,57] and each overlaps loc));
+		if button_master != nil {
+			ask Button where !(each.nb_button in [4,7,8]) {
+				self.is_selected <- false;
+			}
+			ask button_master {
 				switch nb_button 	{
 					match 0   		{
 						is_selected <- true;
@@ -1025,13 +1027,13 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 						floodEventType <- command;
 						ask world   { do launchFlood_event; }
 					}
-					match 57	{
+					match 57 {
+						is_selected <- true;
 						ask Water_Gate {
 							display_me <- false;
 							do close_open;
 						}
 						write "Les portes de Dieppe ont été ouvertes!";
-						
 						map<string, string> mp <- ["TOPIC"::"OPEN_DIEPPE_GATES"];
 						ask Network_Game_Manager {
 							do send to: "76217" contents: mp;
@@ -1043,6 +1045,17 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 							ask world { do replay_flood_event(int(myself.command));}
 						}
 					}
+					match 7 {
+						is_selected <- !is_selected;
+						show_max_water_height <- is_selected;
+						ask Cell where (each.cell_type = 1){ // reset water heights
+							water_height <- 0.0; 
+						}
+					}
+					match 8 {
+						is_selected <- !is_selected;
+						display_ruptures <- is_selected;
+					}
 				}
 			}
 		}
@@ -1051,20 +1064,11 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 	// the two buttons of the first map display
 	action button_click_map {
 		point loc <- #user_location;
-		Button a_button <- first((Button where (each.nb_button in [4,7,8] and each overlaps loc)));
+		Button a_button <- first((Button where (each.nb_button = 4 and each overlaps loc)));
 		if a_button != nil{
 			ask a_button {
 				is_selected <- !is_selected;
-				if a_button.nb_button = 4 {
-					my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
-				}else if a_button.nb_button = 7 {
-					show_max_water_height <- is_selected;
-					ask Cell where (each.cell_type = 1){ // reset water heights
-						water_height <- 0.0; 
-					}
-				}else if a_button.nb_button = 8 {
-					display_ruptures <- is_selected;
-				}
+				my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
 			}
 		}
 	}
@@ -1132,7 +1136,6 @@ species Network_Game_Manager skills: [network]{
 				}
 				match PLAYER_ACTION {  // another player action
 				if(game_round > 0) {
-					write "action : " + m_contents;
 					if(int(m_contents["command"]) in ACTION_LIST) {
 						create Player_Action {
 							self.command 					<- int(m_contents["command"]);
@@ -1177,6 +1180,7 @@ species Network_Game_Manager skills: [network]{
 								budget <- int(budget - myself.cost);	// updating players payment (server side)
 								round_actions_cost <- int(round_actions_cost - myself.cost);
 							}
+							write "action : " + world.label_of_action(command);
 							// saving data
 							if save_data {
 								save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";	
@@ -1346,7 +1350,6 @@ species Network_Game_Manager skills: [network]{
 			do send to: d.district_code contents: mp;
 		}
 		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
-			write "retrieve lever " + tmp;
 			map<string, string> mp <- tmp.my_map;
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
@@ -1464,10 +1467,9 @@ species Network_Listener_To_Leader skills:[network]{
 				}
 				match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
 					Player_Action act <- Player_Action first_with (each.act_id = string(m_contents[PLAYER_ACTION_ID]));
-					write "Action : " + act;
 					if act!= nil {
 						act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-						write "Waiting for a lever : " + act.should_wait_lever_to_activate;	
+						write "waiting for a lever : " + world.label_of_action(act.command);	
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
@@ -1537,7 +1539,7 @@ species Network_Listener_To_Leader skills:[network]{
 			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg;
 			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
-			write "sending to leader : " + msg;
+			write "sending to leader : " + world.label_of_action(act.command);
 		}
 	}
 	
@@ -1875,11 +1877,19 @@ species Coastal_Defense {
 			if 		 status = STATUS_BAD	{ p <- PROBA_RUPTURE_DIKE_STATUS_BAD;	 }
 			else if  status = STATUS_MEDIUM	{ p <- PROBA_RUPTURE_DIKE_STATUS_MEDIUM; }
 			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
+			
 			if is_protected_by_cord { // there is a pebble cord protecting the dike
+				map<string, int> probas_med <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_MEDIUM, STATUS_MEDIUM::PROBA_RUPTURE_DIKE_STATUS_BAD,
+									STATUS_BAD::PROBA_RUPTURE_DIKE_STATUS_BAD * 2];
+				map<string, int> probas_bad <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD, STATUS_MEDIUM::PROBA_RUPTURE_DIKE_STATUS_BAD * 2,
+									STATUS_BAD::PROBA_RUPTURE_DIKE_STATUS_BAD * 3];
 				ask Coastal_Defense where (each.type=COAST_DEF_TYPE_CORD) closest_to self {
-					if 		 status = STATUS_BAD	{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_BAD / 100);	}
-					else if  status = STATUS_MEDIUM	{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_MEDIUM / 100); }
-					else 							{ p <- int(p * PROBA_RUPTURE_CORD_STATUS_GOOD / 100);   }
+					if status = STATUS_BAD {
+						p <- probas_bad at myself.status;
+					}
+					else if  status = STATUS_MEDIUM	{
+						p <- probas_med at myself.status;
+					}
 				}
 			}
 		}
@@ -1894,8 +1904,7 @@ species Coastal_Defense {
 			}
 			else { p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }
 		}
-		
-		if flip(p/100) {
+		if flip(p / 100) {
 			rupture <- true;
 			// the rupture is applied in the middle
 			int cIndex <- int(length(cells) / 2);
@@ -1951,7 +1960,7 @@ species Coastal_Defense {
 			match STATUS_BAD 	{ color <- #red;	}
 			default				{
 				color <- #black;
-				write "Coast Def status problem !";
+				write "coast def status problem !";
 			}
 		}
 		if type = COAST_DEF_TYPE_DUNE {
@@ -2343,7 +2352,7 @@ species Polycell{
 	rgb col;
 	aspect base{
 		if show_max_water_height {
-			draw rectangle(GRID_CELL_SIZE,GRID_CELL_SIZE) color: col at: loc;	
+			draw rectangle(GRID_CELL_SIZE, GRID_CELL_SIZE) color: col at: loc;	
 		}
 	}
 }
@@ -2359,13 +2368,13 @@ species Button{
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if nb_button in [0,1,2,3,5,55,57] {
+		if nb_button in [0,1,2,3,5,7,8,55,57] {
 			draw shape color: #white border: is_selected ? #red : #black;
 			draw display_text color: #black at: location + {0,shape.height*0.55} anchor: #center;
 			draw display_text2 color: #black at: location + {0,shape.height*0.75} anchor: #center;
 			draw my_icon size: shape.width-50#m;
-		} else if(nb_button = 6){
-			if (int(command) < length(list_flooding_events)){
+		} else if nb_button = 6 {
+			if int(command) < length(list_flooding_events) {
 				draw shape color: #white border: is_selected ? #red : #black;
 				draw display_text color: #black at: location + {0, shape.height*0.55} anchor: #center;
 				draw my_icon size: shape.width-50#m;
@@ -2374,7 +2383,7 @@ species Button{
 	}
 	
 	aspect buttons_map {
-		if(nb_button in [4,7,8]){
+		if(nb_button = 4){
 			draw shape color: #white border: is_selected? # red : # black;
 			draw my_icon size: 800#m;
 		}
@@ -2900,7 +2909,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 		}
 		
-		display "Dunes" {
+		/*display "Dunes" {
 			chart districts_in_game[0].district_name type: series size: {0.24,0.32} position: {0.0,0.01}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[0].length_dunes_good_diff color: #green marker_shape: marker_circle;
@@ -2925,7 +2934,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data MSG_MEDIUM value: districts_in_game[3].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			/***************************************/
+			//***************************************
 			chart districts_in_game[0].district_name type: series size: {0.24,0.32} position: {0.0,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[0].mean_alt_dunes_good_diff color: #green marker_shape: marker_circle;
@@ -2950,7 +2959,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data MSG_MEDIUM value: districts_in_game[3].mean_alt_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].mean_alt_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			/*********************************/
+			//*********************************
 			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.0,0.67} style: stack background: #lightgray
 				x_serie_labels: districts_in_game collect each.district_name {
 			 	data MSG_GOOD value: districts_in_game collect first(each.length_dunes_good) color: #green;
@@ -2973,7 +2982,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data MSG_MEDIUM value: districts_in_game collect last(each.mean_alt_dunes_medium) color: #orange; 
 				data MSG_BAD value: districts_in_game collect last(each.mean_alt_dunes_bad) color: #red; 	
 			}
-		}
+		}*/
 		
 		display "Flooded depth per area"{
 			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
