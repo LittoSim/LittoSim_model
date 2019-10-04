@@ -75,7 +75,7 @@ global{
 	string BUILDER 		<- "BUILDER";
 	string SOFT_DEFENSE <- "SOFT_DEFENSE";
 	string WITHDRAWAL 	<- "WITHDRAWAL";
-	string NEUTRAL 	<- "NEUTRAL";
+	string NEUTRAL 		<- "NEUTRAL";
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE, ACTION_CREATE_DUNE,
@@ -252,4 +252,19 @@ global{
 		return s;
 	}
 	//------------------------------ End of methods -------------------------------//
+	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen,#darkblue];
+	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
+	
+	string MSG_ROUND;
+	string LDR_TOTAL;
+	string LEV_MSG_ACTIONS;
+	string MSG_TAXES;
+	string LDR_GIVEN;
+	string LDR_TAKEN;
+	string LDR_TRANSFERRED;
+	string MSG_LEVERS;
+	string MSG_BUILDER;
+	string MSG_SOFT_DEF;
+	string MSG_WITHDRAWAL;
+	string MSG_NEUTRAL;
 }

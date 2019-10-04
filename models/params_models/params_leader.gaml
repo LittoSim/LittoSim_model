@@ -24,11 +24,9 @@ global{
 	string MSG_EXPROPRIATION;
 	string LEV_MAX;
 	string LEV_AT;
-	string LEV_MSG_ACTIONS;
 	string LDR_MSG_ROUNDS;
 	string LEV_DIKES;
 	string LEV_DUNES;
-	string MSG_ROUND;
 	string LEV_MSG_LEVER_HELP;
 	
 	string records_folder <- "../includes/"+ application_name +"/";
