@@ -32,6 +32,8 @@ global{
 	string ONE_STEP					<- "ONE_STEP";
 	string SHOW_PREVIOUS_FLOODING	<- "SHOW_PREVIOUS_FLOODING";
 	
+	map<string, string> flooding_icons <- [HIGH_FLOODING::"high_event.png", MEDIUM_FLOODING::"medium_event.png", LOW_FLOODING::"low_event.png"];
+	
 	// Coastal defenses (dikes and dunes) evolution parameters
 	float H_MAX_GANIVELLE 				<- float(study_area_def["H_MAX_GANIVELLE"]); 				// A dune cannot exceed this height
 	float H_DELTA_GANIVELLE 			<- float(study_area_def["H_DELTA_GANIVELLE"]); 				// The height by which a ganivelle can raise a dune

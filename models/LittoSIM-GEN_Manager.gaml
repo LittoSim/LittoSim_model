@@ -33,7 +33,7 @@ global {
 	
 	// variables for Lisflood calculs 
 	map<string,string> list_flooding_events;  // list of submersions of a round
-	string floodEventType;
+	string floodEventType <- LOW_FLOODING;
 	int lisfloodReadingStep <- 9999; 		// to indicate to which step of Lisflood results, the current cycle corresponds 
 	int last_played_event <- -1;
 	string timestamp 		<- ""; 			// used to specify a unique name to the folder of flooding results
@@ -91,6 +91,8 @@ global {
 	bool submersion_ok <- false;
 	bool send_flood_results <- true;
 	point button_size;
+	font bold20 <- font('Helvetica Neue', 20, #bold);
+	font bold40 <- font('Helvetica Neue', 40, #bold);
 	
 	init{
 		MSG_SUBMERSION 	<- get_message('MSG_SUBMERSION');
@@ -417,7 +419,7 @@ global {
 		return d != nil ? d.dist_id : 0;
 	}
 
-	reflex show_flood_stats when: stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
+	reflex show_flood_stats when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
 		write flood_results;
 		if save_data {
 			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";	
@@ -430,13 +432,13 @@ global {
 		write stateSimPhase + " - " + MSG_ROUND + " " + game_round;
 	}
 	
-	reflex calculate_flood_stats when: stateSimPhase = SIM_CALCULATING_FLOOD_STATS{			// end of a flooding event
+	reflex calculate_flood_stats when: stateSimPhase != nil and stateSimPhase = SIM_CALCULATING_FLOOD_STATS{			// end of a flooding event
 		do calculate_districts_results; 													// calculating results
 		stateSimPhase <- SIM_SHOWING_FLOOD_STATS;
 		write stateSimPhase;
 	}
 	
-	reflex show_lisflood when: stateSimPhase = SIM_SHOWING_LISFLOOD {
+	reflex show_lisflood when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_LISFLOOD {
 		if !submersion_ok or length(one_of(Cell where (each.cell_type = 1)).water_heights) < 14 {
 			write "Error in submersion process!";
 			remove key: ""+game_round from: list_flooding_events;
@@ -518,6 +520,7 @@ global {
 		put sub_rep key: sub_name in: list_flooding_events;
 		// updating the button that displays this submersion
 		ask Button where (each.nb_button = 6 and int(each.command) = length(list_flooding_events)-1){
+			my_icon <- image_file("../images/icons/" + flooding_icons at floodEventType);
 			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " (" + sub_name + ")";
 		}
 
@@ -940,35 +943,13 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			display_text <- text_label split_with ' ' at 0;
 			display_text2 <- text_label split_with ' ' at 1;
 		}
-		create Button{
-			nb_button 	<- 6;
-			command  	<- "0";
-			location 	<- {button_size.x*6.75, button_size.y*0.75};
-			my_icon 	<- image_file("../images/icons/0.png");
-		}
-		create Button{
-			nb_button 	<- 6;
-			command  	<- "1";
-			location 	<- {button_size.x*6.75, button_size.y*2};
-			my_icon 	<- image_file("../images/icons/1.png");
-		}
-		create Button {
-			nb_button 	<- 6;
-			command  	<- "2";
-			location 	<- {button_size.x*6.75, button_size.y*3.25};
-			my_icon 	<- image_file("../images/icons/2.png");
-		}
-		create Button{
-			nb_button 	<- 6;
-			command  	<- "3";
-			location 	<- {button_size.x*6.75, button_size.y*4.5};
-			my_icon 	<- image_file("../images/icons/3.png");
-		}
-		create Button{
-			nb_button 	<- 6;
-			command  	<- "4";
-			location 	<- {button_size.x*6.75, button_size.y*5.75};
-			my_icon 	<- image_file("../images/icons/4.png");
+		
+		loop i from: 0 to: 4 {
+			create Button{
+				nb_button 	<- 6;
+				command  	<- ""+i;
+				location 	<- {button_size.x*6.75, button_size.y*(0.75 + (i*1.25))};
+			}
 		}
 		
 		create Button{
@@ -2378,6 +2359,7 @@ species Button{
 				draw shape color: #white border: is_selected ? #red : #black;
 				draw display_text color: #black at: location + {0, shape.height*0.55} anchor: #center;
 				draw my_icon size: shape.width-50#m;
+				draw ""+command color: #black font: bold40 at: location - {40,40} anchor: #center;
 			}
 		}	
 	}
@@ -2519,7 +2501,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				float msize <- min([loc.x*2/3, loc.y*2/3]);
 				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
 				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #gray anchor:#center;
-				draw MSG_ROUND + " : " + game_round color: #black font: font('Helvetica Neue', 20, #bold) at: loc + {0,msize*0.66} anchor:#center;
+				draw MSG_ROUND + " : " + game_round color: #black font: bold20 at: loc + {0,msize*0.66} anchor:#center;
 			}
 			graphics "A submersion is running" {
 				if submersion_is_running {
@@ -2723,7 +2705,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				
 		display "Land Use" {
 			chart districts_in_game[0].district_name type: pie size: {0.24,0.32} position: {0.0,0.01}
-				style: stack x_range:[0,16] x_label: MSG_ROUND{
+				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[0].surface_N) color: #green;
 					data "U" value: first(districts_in_game[0].surface_U) color: #gray;
 					data "U"+MSG_DENSE value: first(districts_in_game[0].surface_Udense) color: #black;
@@ -2732,7 +2714,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us"+MSG_DENSE value: first(districts_in_game[0].surface_Usdense) color: #darkblue;
 			}
 			chart districts_in_game[1].district_name type: pie size: {0.24,0.32} position: {0.25,0.01}
-				style: stack x_range:[0,16] x_label: MSG_ROUND{
+				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[1].surface_N) color: #green;
 					data "U" value: first(districts_in_game[1].surface_U) color: #gray;
 					data "U"+MSG_DENSE value: first(districts_in_game[1].surface_Udense) color: #black;
@@ -2741,7 +2723,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us"+MSG_DENSE value: first(districts_in_game[1].surface_Usdense) color: #darkblue;
 			}
 			chart districts_in_game[2].district_name type: pie size: {0.24,0.32} position: {0.50,0.01}
-				style: stack x_range:[0,16] x_label: MSG_ROUND{
+				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[2].surface_N) color: #green;
 					data "U" value: first(districts_in_game[2].surface_U) color: #gray;
 					data "U"+MSG_DENSE value: first(districts_in_game[2].surface_Udense) color: #black;
@@ -2750,7 +2732,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us"+MSG_DENSE value: first(districts_in_game[2].surface_Usdense) color: #darkblue;
 			}
 			chart districts_in_game[3].district_name type: pie size: {0.24,0.32} position: {0.75,0.01}
-				style: stack x_range:[0,16] x_label: MSG_ROUND{
+				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[3].surface_N) color: #green;
 					data "U" value: first(districts_in_game[3].surface_U) color: #gray;
 					data "U"+MSG_DENSE value: first(districts_in_game[3].surface_Udense) color: #black;
@@ -2885,19 +2867,20 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data MSG_BAD value: districts_in_game[3].mean_alt_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
 			/*********************************/
-			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.0,0.67} style: stack background: #lightgray
-				x_serie_labels: districts_in_game collect each.district_name {
+			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.0,0.67} style: stack background: #whitesmoke
+				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true {
 			 	data MSG_GOOD value: districts_in_game collect first(each.length_dikes_good) color: #green;
 				data MSG_MEDIUM value: districts_in_game collect first(each.length_dikes_medium) color: #orange; 
 				data MSG_BAD value: districts_in_game collect first(each.length_dikes_bad) color: #red; 	
 			}
-			chart MSG_MEAN_ALT type: histogram size: {0.24,0.32} position: {0.25,0.67} style: stack background: #lightgray 
+			chart MSG_MEAN_ALT type: histogram size: {0.24,0.32} position: {0.25,0.67} style: stack background: #whitesmoke 
 				x_serie_labels: districts_in_game collect each.district_name {
 			 	data MSG_GOOD value: districts_in_game collect first(each.mean_alt_dikes_good) color: #green;
 				data MSG_MEDIUM value: districts_in_game collect first(each.mean_alt_dikes_medium) color: #orange; 
 				data MSG_BAD value: districts_in_game collect first(each.mean_alt_dikes_bad) color: #red; 	
 			}
-			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.50,0.67} style: stack x_serie_labels: districts_in_game collect each.district_name {
+			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.50,0.67} style: stack
+				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true{
 			 	data MSG_GOOD value: districts_in_game collect last(each.length_dikes_good) color: #green;
 				data MSG_MEDIUM value: districts_in_game collect last(each.length_dikes_medium) color: #orange; 
 				data MSG_BAD value: districts_in_game collect last(each.length_dikes_bad) color: #red; 	
@@ -2961,7 +2944,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 			//*********************************
 			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.0,0.67} style: stack background: #lightgray
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_name reverse_axes: true{
 			 	data MSG_GOOD value: districts_in_game collect first(each.length_dunes_good) color: #green;
 				data MSG_MEDIUM value: districts_in_game collect first(each.length_dunes_medium) color: #orange; 
 				data MSG_BAD value: districts_in_game collect first(each.length_dunes_bad) color: #red; 	
@@ -2972,7 +2955,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data MSG_MEDIUM value: districts_in_game collect first(each.mean_alt_dunes_medium) color: #orange; 
 				data MSG_BAD value: districts_in_game collect first(each.mean_alt_dunes_bad) color: #red; 	
 			}
-			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.50,0.67} style: stack x_serie_labels: districts_in_game collect each.district_name {
+			chart MSG_LENGTH type: histogram size: {0.24,0.32} position: {0.50,0.67} style: stack
+				reverse_axes: true x_serie_labels: districts_in_game collect each.district_name {
 			 	data MSG_GOOD value: districts_in_game collect last(each.length_dunes_good) color: #green;
 				data MSG_MEDIUM value: districts_in_game collect last(each.length_dunes_medium) color: #orange; 
 				data MSG_BAD value: districts_in_game collect last(each.length_dunes_bad) color: #red; 	
@@ -3031,44 +3015,44 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Previous flooded depth per area"{
-			chart MSG_AREA+" U" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0, 0}
+			chart MSG_AREA+" U" type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect each.prev_U_0_5c color: world.color_of_water_height(0.5);
 				data "1" value: districts_in_game collect each.prev_U_1c color: world.color_of_water_height(0.9); 
 				data ">1" value: districts_in_game collect each.prev_U_maxc color: world.color_of_water_height(1.9); 
 			}
-			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.25, 0}
+			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0.25, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_Udense_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_Udense_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_Udense_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart MSG_AREA+" Us" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.51, 0}
+			chart MSG_AREA+" Us" type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0.51, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_Us_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_Us_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_Us_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart MSG_AREA+" AU" type: histogram style: stack background: rgb("lightgray") size: {0.24,0.48} position: {0.76, 0}
+			chart MSG_AREA+" AU" type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0.76, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_AU_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_AU_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_AU_maxc) color: world.color_of_water_height(1.9); 
 			}
 			
-			chart MSG_AREA+" A" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.01, 0.5}
+			chart MSG_AREA+" A" type: histogram style: stack background: #whitesmoke size: {0.33,0.48} position: {0.01, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_A_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_A_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_A_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart MSG_AREA+" N" type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.34, 0.5}
+			chart MSG_AREA+" N" type: histogram style: stack background: #whitesmoke size: {0.33,0.48} position: {0.34, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name{
 				data "0.5" value:(districts_in_game collect each.prev_N_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_N_1c) color: world.color_of_water_height(0.9); 
 				data ">1" value:(districts_in_game collect each.prev_N_maxc) color: world.color_of_water_height(1.9); 
 			}
-			chart LDR_TOTAL type: histogram style: stack background: rgb("lightgray") size: {0.33,0.48} position: {0.67, 0.5}
+			chart LDR_TOTAL type: histogram style: stack background: #whitesmoke size: {0.33,0.48} position: {0.67, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value:(districts_in_game collect each.prev_tot_0_5c) color: world.color_of_water_height(0.5);
 				data "1" value:(districts_in_game collect each.prev_tot_1c) color: world.color_of_water_height(0.9); 
