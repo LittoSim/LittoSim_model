@@ -9,7 +9,7 @@ import "params_all.gaml"
 
 global{
 	string my_language;
-	map<string,map> levers_def <- store_csv_data_into_map_of_map(configuration_file["LEVERS_FILE"], ";");	// levers configuration file
+	map<string,map> levers_def <- store_csv_data_into_map_of_map(study_area_def["LEVERS_FILE"], ";");	// levers configuration file
 
 	int game_round <- 0;
 	point MOUSE_LOC;
@@ -24,11 +24,9 @@ global{
 	string MSG_EXPROPRIATION;
 	string LEV_MAX;
 	string LEV_AT;
-	string LEV_MSG_ACTIONS;
 	string LDR_MSG_ROUNDS;
 	string LEV_DIKES;
 	string LEV_DUNES;
-	string MSG_ROUND;
 	string LEV_MSG_LEVER_HELP;
 	
 	string records_folder <- "../includes/"+ application_name +"/";

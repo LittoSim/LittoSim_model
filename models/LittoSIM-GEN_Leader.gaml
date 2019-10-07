@@ -19,19 +19,21 @@ global{
 	geometry shape <- square(100#m);
 	Lever selected_lever;
 	Lever explored_lever;
-	list<species<Lever>> all_levers <- [];
+	list<species<Lever>> all_levers <- []; // levers in all_levers and levers_names should be in the same order
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
 								  'LEVER_GANIVELLE', 'LEVER_Us_COAST_BORDER_RISK_AREA', 'LEVER_Us_COAST_BORDER_AREA', 'LEVER_Us_RISK_AREA', 'LEVER_INLAND_DIKE',
 								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_N_COAST_BORDER_RISK_AREA',
 								  'LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE','LEVER_GIVE_PEBBLES'];
 	bool save_data <- false; // whether save or not data logs 
 	
+	list<list<int>> districts_budgets <- [[],[],[],[]];
+	
 	init{
 		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
 		MSG_TYPE_CUSTOMIZED_MSG <- get_message('MSG_TYPE_CUSTOMIZED_MSG');
 		MSG_TO_CANCEL 			<- get_message('MSG_TO_CANCEL');
 		MSG_AMOUNT 				<- get_message('MSG_AMOUNT');
-		MSG_COMMUNE				<- world.get_message('MSG_COMMUNE');
+		MSG_COMMUNE				<- get_message('MSG_COMMUNE');
 		MSG_123_OR_CUSTOMIZED 	<- get_message('MSG_123_OR_CUSTOMIZED');
 		MSG_EXPROPRIATION		<- get_message('MSG_EXPROPRIATION');
 		LEV_MAX					<- get_message('LEV_MAX');
@@ -42,6 +44,17 @@ global{
 		LEV_DIKES				<- get_message('LEV_DIKES');
 		MSG_ROUND				<- get_message('MSG_ROUND');
 		LEV_MSG_LEVER_HELP 		<- get_message('LEV_MSG_LEVER_HELP');
+		LDR_TOTAL				<- get_message('LDR_TOTAL');
+		MSG_TAXES				<- get_message("MSG_TAXES");
+		LDR_GIVEN				<- get_message("LDR_GIVEN");
+		LDR_TAKEN				<- get_message("LDR_TAKEN");
+		LDR_TRANSFERRED			<- get_message("LDR_TRANSFERRED");
+		LEV_MSG_ACTIONS			<- get_message("LEV_MSG_ACTIONS");
+		MSG_LEVERS				<- get_message("MSG_LEVERS");
+		MSG_BUILDER				<- get_message('MSG_BUILDER');
+		MSG_SOFT_DEF			<- get_message('MSG_SOFT_DEF');
+		MSG_WITHDRAWAL			<- get_message('MSG_WITHDRAWAL');
+		MSG_NEUTRAL				<- get_message("MSG_NEUTRAL");
 		
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Border_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
 				Ganivelle_Lever, Us_out_Coast_Border_or_Risk_Area_Lever, Us_in_Coast_Border_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
@@ -56,8 +69,11 @@ global{
 			district_name <- dist_code_sname_correspondance_table at district_code;
 			district_long_name <- dist_code_lname_correspondance_table at district_code;
 		}
+		int idx <- 1;
 		loop kk over: dist_code_sname_correspondance_table.keys {
 			add first(District where (each.district_code = kk)) to: districts;
+			last(districts).dist_id <- idx;
+			idx <- idx + 1;
 		}
 		 
 		do create_district_buttons_names;
@@ -103,16 +119,13 @@ global{
 	
 	action create_levers {
 		loop i from: 0 to: 3{
-			loop j from: 0 to: length(all_levers) - 1{
-				if all_levers[j] = Give_Pebbles_Lever and application_name != "caen" {
-					break;	
-				}
-				if (string(levers_def at levers_names[j] at 'active') at i) = '1'{ // the lever is activated on this district
-					create all_levers[j]{
+			loop j from: 0 to: length(levers_def) - 1{
+				if (string((levers_def.values[j]) at 'active') at i) = '1'{ // the lever is activated on this district
+					create all_levers at (levers_names index_of levers_def.keys[j]){
 						my_district <- districts[i];
 						col_index <- i;
 						row_index <- int(j/2 + 2);
-						location	<- (Grille[col_index, row_index]).location - {0, 3 + (-4.5 * j mod 2)};
+						location <- (Grille[col_index, row_index]).location - {0, 3 + (-4.5 * j mod 2)};
 						add self to: my_district.levers;
 					}
 				}
@@ -379,7 +392,7 @@ species District{
 	string district_code;
 	string district_name;
 	string district_long_name;
-	float budget;
+	int budget <- -1;
 	bool not_updated <- false;
 	bool is_selected -> {selected_district = self};
 	list<Lever> levers ;
@@ -413,6 +426,24 @@ species District{
 	int count_Us_in_coast_border_area						<- 0;					
 	int count_A_to_N_in_coast_border_or_risk_area			<- 0;
 	int count_densification_out_coast_border_and_risk_area	<- 0;
+	
+	int received_tax <- 0;
+	int actions_cost <- 0;
+	int given_money  <- 0;
+	int taken_money  <- 0;
+	int levers_cost  <- 0;
+	int transferred_money <- 0;
+	
+	int build_actions 	<- 0;
+	int soft_actions  	<- 0;
+	int withdraw_actions<- 0;
+	int neutral_actions <- 0;
+	int sum_buil_sof_wit_actions <- 1;
+	
+	int build_cost 	<- 0;
+	int soft_cost 	<- 0;
+	int withdraw_cost <- 0;
+	int neutral_cost  <- 0;
 	
 	action update_indicators_and_register_player_action (Player_Action act){
 		if act.is_applied {
@@ -497,7 +528,11 @@ species District{
 	}
 	
 	list<Player_Action> actions_install_ganivelle {
-		return ((Ganivelle_Lever first_with (each.my_district = self)).associated_actions sort_by (-each.command_round));
+		Lever lv <- Ganivelle_Lever first_with (each.my_district = self);
+		if lv = nil {
+			return [];
+		}
+		return lv.associated_actions sort_by (-each.command_round);
 	}
 	
 	list<Player_Action> actions_densification_out_coast_border_and_risk_area{
@@ -711,6 +746,9 @@ species Lever {
 	}	
 	
 	action check_activation_and_impact_on_first_element_of (list<Player_Action> list_p_action){
+		if list_p_action = nil {
+			return;
+		}
 		if !empty(list_p_action){
 			do check_activation_and_impact_on (list_p_action[0]);
 		}
@@ -848,6 +886,10 @@ species Lever {
 		map<string, unknown> msg <- lev.build_map_from_attributes();
 		put NEW_ACTIVATED_LEVER 	key: LEADER_COMMAND in: msg;
 		ask world { do send_message_from_leader(msg); }
+		int money <- int(msg["added_cost"]);
+		ask districts first_with (each.district_code = msg[DISTRICT_CODE]) {
+			levers_cost <- levers_cost - money;
+		}
 	}
 	
 	rgb color_profile {
@@ -1381,11 +1423,18 @@ species Network_Leader skills:[network] {
 						ask world { do save_leader_data; }
 					}
 					game_round <-int (m_contents[NUM_ROUND]);
-					write world.get_message("MSG_ROUND") + " " + game_round;
+					write MSG_ROUND + " " + game_round;
 					ask districts {
 						string bud <- m_contents[district_code];
 						if bud != nil {
-							budget <- float(bud);
+							budget <- int(bud);
+							if game_round = 0{
+								received_tax <- budget;
+								add budget to: districts_budgets[dist_id-1];
+							}
+							else if game_round > 1{
+								add budget to: districts_budgets[dist_id-1]; 
+							}
 						}
 					}
 					loop lev over: all_levers{
@@ -1407,7 +1456,37 @@ species Network_Leader skills:[network] {
 						count_LU_A_t0 									<- int (m_contents['count_LU_A_t0']);
 						count_LU_N_t0 									<- int (m_contents['count_LU_N_t0']);
 						count_LU_AU_t0 									<- int (m_contents['count_LU_AU_t0']);
-						count_LU_U_t0									<- int (m_contents['count_LU_U_t0']);		
+						count_LU_U_t0									<- int (m_contents['count_LU_U_t0']);
+						if game_round > 1 {
+							districts_budgets[dist_id-1] <- [];
+							loop i from: 0 to: game_round - 2 {
+								add int(m_contents ["budget_round"+i]) to: districts_budgets[dist_id-1];
+							}
+							add budget to: districts_budgets[dist_id-1];
+							received_tax <- int(m_contents ["TAXES"]);
+							actions_cost <- int(m_contents ["ACTIONS"]);
+							given_money <- int(m_contents ["GIVEN"]);
+							taken_money <- int(m_contents ["TAKEN"]);
+							levers_cost <- int(m_contents ["LEVERS"]);
+							transferred_money <- int(m_contents ["TRANSFER"]);
+							
+							build_actions <- int(m_contents ["BUILD_ACTIONS"]);
+							soft_actions <- int(m_contents ["SOFT_ACTIONS"]);
+							withdraw_actions <- int(m_contents ["WITHDRAW_ACTIONS"]);
+							neutral_actions <- int(m_contents ["NEUTRAL_ACTIONS"]);
+							sum_buil_sof_wit_actions <- build_actions + soft_actions + withdraw_actions;
+							
+							build_cost <- int(m_contents ["BUILD_COST"]);
+							soft_cost <- int(m_contents ["SOFT_COST"]);
+							withdraw_cost <- int(m_contents ["WITHDRAW_COST"]);
+							neutral_cost <- int(m_contents ["NEUTRAL_COST"]);
+						}	
+					}
+				}
+				match "STATS" {
+					ask districts where (each.district_code = m_contents[DISTRICT_CODE]) {
+						received_tax <- received_tax + int(m_contents['TAX']);
+						actions_cost <- actions_cost + int(m_contents['ACTIONS']); 					
 					}
 				}
 			}
@@ -1421,7 +1500,29 @@ species Network_Leader skills:[network] {
 				do init_from_map(msg);
 				ask districts first_with (each.district_code = district_code) {
 					do update_indicators_and_register_player_action (myself);
+					switch myself.strategy_profile{
+						match BUILDER 		{
+							build_actions <- build_actions + 1;
+							build_cost <- build_cost + myself.cost;
+							sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + 1;
+						}
+						match SOFT_DEFENSE 	{
+							soft_actions <- soft_actions + 1;
+							soft_cost <- soft_cost + myself.cost;
+							sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + 1;
+						}
+						match WITHDRAWAL 	{
+							withdraw_actions <- withdraw_actions + 1;
+							withdraw_cost <- withdraw_cost + myself.cost;
+							sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + 1;
+						}
+						match NEUTRAL 		{
+							neutral_actions <- neutral_actions + 1;
+							neutral_cost <- neutral_cost + myself.cost;
+						}
+					}
 				}
+				
 				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
 					(STRATEGY_PROFILE)::strategy_profile,"cost"::cost];
 				ask world { do send_message_from_leader(mpp); }
@@ -1487,6 +1588,9 @@ species District_Action_Button parent: District_Name{
 						
 						msg_activity[0] <- world.get_message('LDR_EXCHANGE_MONEY');
 						msg_activity[1] <- msg_player + " : " + dists[ddist-1].district_name + " (" + amount_value + " By)";
+						
+						my_district.transferred_money <- my_district.transferred_money - amount_value;
+						dists[ddist-1].transferred_money <- dists[ddist-1].transferred_money + amount_value;
 					}
 				}
 			}
@@ -1512,6 +1616,8 @@ species District_Action_Button parent: District_Name{
 					
 					msg_activity[0] <- world.get_message('LDR_MSG_TAKE_MONEY_FROM');
 					msg_activity[1] <- msg_player + " : " + amount_value + "By";
+					
+					my_district.taken_money <- my_district.taken_money - amount_value;
 				}
 			}
 			match GIVE_MONEY_TO {
@@ -1536,6 +1642,8 @@ species District_Action_Button parent: District_Name{
 					
 					msg_activity[0] <- world.get_message('LDR_MSG_SEND_MONEY_TO');
 					msg_activity[1] <- msg_player + " : " + amount_value + "By";
+					
+					my_district.given_money <- my_district.given_money + amount_value;
 				}						
 			}
 			match SEND_MESSAGE_TO {
@@ -1594,14 +1702,13 @@ experiment LittoSIM_GEN_Leader {
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- true;
+	parameter "Save data : " var: save_data <- false;
 	
 	output{
-		display levers{
+		display Levers{
 			graphics "Round" {
 				draw  (MSG_ROUND + " : " + game_round)  at: {world.shape.width/2,2} font: font("Arial", 20 , #bold) color: #red anchor: #center;
 			}
-			
 			species District_Name;
 			species District_Action_Button;
 			species Create_Dike_Lever;
@@ -1628,6 +1735,55 @@ experiment LittoSIM_GEN_Leader {
 			
 			event [mouse_down] action: user_click;
 			event [mouse_move] action: user_move;
+		}
+		
+		display Statistics {
+			chart world.get_message('MSG_BUDGETS') type: series size: {0.33,0.48} position: {0.0,0.01} x_range:[0,16] 
+					x_label: MSG_ROUND x_tick_line_visible: false{
+				loop i from: 0 to: 3{
+					data districts[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
+				}		
+			}
+			
+			chart LDR_TOTAL type: histogram size: {0.33,0.48} position: {0.34,0.01}  {
+				loop i from: 0 to: 3{
+					data districts[i].district_name value: last(districts_budgets[i]) color: dist_colors[i];
+				}			
+			}
+			
+			chart LDR_TOTAL type: histogram size: {0.33,0.48} position: {0.67,0.01} style:stack
+				x_serie_labels: districts collect each.district_name series_label_position: xaxis x_tick_line_visible: false {
+			 	data MSG_TAXES value: districts collect each.received_tax collect sum(each) color: color_lbls[0];
+			 	data LDR_GIVEN value: districts collect each.given_money collect sum(each) color: color_lbls[1];
+			 	data LDR_TAKEN value: districts collect each.taken_money collect sum(each) color: color_lbls[2];
+				data LDR_TRANSFERRED value: districts collect each.transferred_money collect sum(each) color: color_lbls[5];
+			 	data LEV_MSG_ACTIONS value: districts collect each.actions_cost collect sum(each) color: color_lbls[3];
+			 	data MSG_LEVERS value: districts collect each.levers_cost collect sum(each) color: color_lbls[4];		
+			}
+			
+			chart world.get_message('MSG_NUMBER_ACTIONS') type: histogram size: {0.33,0.48} position: {0.01,0.51}
+				x_serie_labels: districts collect (each.district_name) style:stack {
+			 	data MSG_BUILDER value: districts collect (each.build_actions) color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: districts collect (each.soft_actions) color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_actions) color: color_lbls[0];
+			 	data MSG_NEUTRAL value: districts collect (each.neutral_actions) color: color_lbls[3];
+			}
+			chart world.get_message('MSG_COST_ACTIONS') type: histogram size: {0.33,0.48} position: {0.34,0.51}
+				x_serie_labels: districts collect (each.district_name) style:stack {
+			 	data MSG_BUILDER value: districts collect (each.build_cost) color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: districts collect (each.soft_cost) color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_cost) color: color_lbls[0];
+			 	data MSG_NEUTRAL value: districts collect (each.neutral_cost) color: color_lbls[3];
+			}
+			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.51} 
+					x_serie_labels: [MSG_BUILDER,MSG_SOFT_DEF, MSG_WITHDRAWAL] {
+				loop i from: 0 to: 3{
+					data districts[i].district_name value: game_round = 0? [0.75,0.75,0.75] : [
+						districts[i].build_actions/districts[i].sum_buil_sof_wit_actions,
+						districts[i].soft_actions/districts[i].sum_buil_sof_wit_actions,
+						districts[i].withdraw_actions/districts[i].sum_buil_sof_wit_actions] color: dist_colors[i];
+				}		
+			}
 		}
 	}
 }
