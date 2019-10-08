@@ -91,8 +91,11 @@ global {
 	bool submersion_ok <- false;
 	bool send_flood_results <- true;
 	point button_size;
+
 	font bold20 <- font('Helvetica Neue', 20, #bold);
 	font bold40 <- font('Helvetica Neue', 40, #bold);
+
+	bool IS_OSX <- true;
 	
 	init{
 		MSG_SUBMERSION 	<- get_message('MSG_SUBMERSION');
@@ -541,7 +544,17 @@ global {
 		do add_element_in_list_flooding_events("" + game_round , results_lisflood_rep);
 		save "Directory created by LittoSIM GAMA model" to: "../"+results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
 		ask Network_Game_Manager {
-			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
+			
+			if(IS_OSX)
+			{
+				write "sh " + lisfloodPath + lisflood_bat_file;
+				do execute command: "sh " + lisfloodPath + lisflood_bat_file;
+			}
+			else
+			{
+				do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
+			}
+//			do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
 		}
  	}
  		
@@ -551,8 +564,18 @@ global {
 				+ lisflood_rugosity_file + "\nbcifile         ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_bci_file + "\nbdyfile         ../workspace/LittoSIM-GEN/"
 				+ my_flooding_path + lisflood_bdy_file + "\nstartfile       ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_start_file + 
 				"\nstartelev\nelevoff\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
-		
-		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+
+		if(IS_OSX)
+		{
+			string ff <-""+	"cd " + lisfloodPath + ";\n./lisflood -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + ";\nexit";
+			write ff;
+			save ff rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+		}
+		else
+		{
+			save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+		}		
+//		save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 	}
 	
 	action load_dem_and_rugosity {
