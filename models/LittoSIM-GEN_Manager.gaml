@@ -1161,7 +1161,7 @@ species Network_Game_Manager skills: [network]{
 								budget <- int(budget - myself.cost);	// updating players payment (server side)
 								round_actions_cost <- int(round_actions_cost - myself.cost);
 							}
-							write "action : " + world.label_of_action(command);
+							write "received action : " + world.label_of_action(command);
 							// saving data
 							if save_data {
 								save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";	
@@ -1331,6 +1331,7 @@ species Network_Game_Manager skills: [network]{
 			do send to: d.district_code contents: mp;
 		}
 		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
+			write "***********loop tmp "+tmp.my_map;
 			map<string, string> mp <- tmp.my_map;
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
@@ -1460,9 +1461,16 @@ species Network_Listener_To_Leader skills:[network]{
 							if empty(Activated_Lever where (lever_nature = 'Give_Pebbles_Lever')){
 								create Activated_Lever {
 									do init_activ_lever_from_map (m_contents);
+									create Player_Action {
+										is_alive <- false;
+										is_sent_to_leader <- true;
+										add myself to: self.activated_levers;
+										myself.ply_action <- self;
+									}
 								}
 							} else {
 								ask Activated_Lever where (lever_nature = 'Give_Pebbles_Lever'){
+									ask ply_action { do die;}
 									do die;
 								}
 							}
@@ -1520,7 +1528,7 @@ species Network_Listener_To_Leader skills:[network]{
 			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg;
 			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
-			write "sending to leader : " + world.label_of_action(act.command);
+			write "sending action to leader : " + world.label_of_action(act.command);
 		}
 	}
 	
@@ -1641,10 +1649,12 @@ species Player_Action schedules:[]{
 			"altit"::string(altit)];
 			put district_code at: DISTRICT_CODE in: res;
 			int i <- 0;
-			loop pp over: element_shape.points {
-				put string(pp.x) key: "locationx"+i in: res;
-				put string(pp.y) key: "locationy"+i in: res;
-				i <- i + 1;
+			if element_shape != nil {
+				loop pp over: element_shape.points {
+					put string(pp.x) key: "locationx"+i in: res;
+					put string(pp.y) key: "locationy"+i in: res;
+					i <- i + 1;
+				}
 			}
 		return res;
 	}

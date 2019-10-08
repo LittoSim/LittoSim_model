@@ -74,6 +74,15 @@ global{
 	string MSG_COST_APPLIED_PARCEL;
 	string PLY_MSG_WATER_H;
 	string PLY_MSG_WATER_M;
+	string MSG_YOUR_BUDGET;
+	string PLR_VALIDATE_BASKET;
+	string PLR_CHECK_BOX_VALIDATE;
+	string MSG_HAS_STARTED;
+	string MSG_DISTRICT_RECEIVE;
+	string MSG_DISTRICT_LOSE;
+	string MSG_NEW_COMERS;
+	string MSG_DISTRICT_POPULATION;
+	string MSG_INHABITANTS;
 	
 	string get_message(string code_msg){
 		return code_msg = nil or code_msg = 'na'? "" : (langs_def at code_msg != nil ? langs_def at code_msg at my_language : '');

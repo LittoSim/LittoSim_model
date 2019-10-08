@@ -649,8 +649,9 @@ species Lever_Window_Actions {
 	
 	aspect {
 		if selected_lever != nil {
+			Lever selev <- selected_lever;
 			draw shape color: #white border: #black at: loca;
-			draw selected_lever.box_title at: loca - {0,27.5} anchor: #center font: font("Arial", 13 , #bold) color: #darkblue;
+			draw selev.box_title at: loca - {0,27.5} anchor: #center font: font("Arial", 13 , #bold) color: #darkblue;
 		}
 	}
 }
@@ -664,10 +665,11 @@ species Lever_Window_Button {
 	
 	aspect {
 		if selected_lever != nil {
+			Lever selev <- selected_lever;
 			draw shape color: col border: #black at: loca;
 			draw text font: font("Arial", 12 , #bold) color: #darkblue at: loca anchor: #center;
-			if (command in [3,4,5,6] and (!selected_lever.status_on or !selected_lever.timer_activated)) or
-			   (species(selected_lever) = Give_Pebbles_Lever and command in [1,3,4,5,6])
+			if (command in [3,4,5,6] and (!selev.status_on or !selev.timer_activated)) or
+			   (species(selev) = Give_Pebbles_Lever and command in [1,3,4,5,6])
 			{
 				draw shape+0.1#m color: rgb(200,200,200,160);
 			}
@@ -1474,7 +1476,7 @@ species Network_Leader skills:[network] {
 							soft_actions <- int(m_contents ["SOFT_ACTIONS"]);
 							withdraw_actions <- int(m_contents ["WITHDRAW_ACTIONS"]);
 							neutral_actions <- int(m_contents ["NEUTRAL_ACTIONS"]);
-							sum_buil_sof_wit_actions <- build_actions + soft_actions + withdraw_actions;
+							sum_buil_sof_wit_actions <- max(1,build_actions + soft_actions + withdraw_actions);
 							
 							build_cost <- int(m_contents ["BUILD_COST"]);
 							soft_cost <- int(m_contents ["SOFT_COST"]);

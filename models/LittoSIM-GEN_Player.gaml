@@ -67,6 +67,7 @@ global{
 	
 	init{
 		MSG_WARNING 	<- get_message('MSG_WARNING');
+		MSG_ROUND		<- get_message('MSG_ROUND');
 		PLY_MSG_INFO_AB <- get_message('PLY_MSG_INFO_AB');
 		PLY_MSG_LENGTH 	<- get_message('PLY_MSG_LENGTH');
 		PLY_MSG_ALTITUDE<- get_message('PLY_MSG_ALTITUDE');
@@ -100,6 +101,15 @@ global{
 		MSG_COST_APPLIED_PARCEL <- get_message('MSG_COST_APPLIED_PARCEL');
 		PLY_MSG_WATER_H <- get_message('PLY_MSG_WATER_H');
 		PLY_MSG_WATER_M <- get_message('PLY_MSG_WATER_M');
+		MSG_YOUR_BUDGET <- get_message('MSG_YOUR_BUDGET');
+		PLR_VALIDATE_BASKET <- get_message('PLR_VALIDATE_BASKET');
+		PLR_CHECK_BOX_VALIDATE <- get_message('PLR_CHECK_BOX_VALIDATE');
+		MSG_HAS_STARTED <- get_message('MSG_HAS_STARTED');
+		MSG_DISTRICT_RECEIVE <- get_message('MSG_DISTRICT_RECEIVE');
+		MSG_DISTRICT_LOSE <- get_message('MSG_DISTRICT_LOSE');
+		MSG_NEW_COMERS <- get_message('MSG_NEW_COMERS');
+		MSG_DISTRICT_POPULATION <- get_message('MSG_DISTRICT_POPULATION');
+		MSG_INHABITANTS <- get_message('MSG_INHABITANTS');
 		
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
@@ -1206,8 +1216,7 @@ species Basket parent: Displayed_List {
 				return;
 			}
 			cursor_taken <- true;
-			map<string,bool> vmap <- map<string,bool>(user_input(MSG_WARNING, world.get_message('PLR_VALIDATE_BASKET') +
-									"\n" + world.get_message('PLR_CHECK_BOX_VALIDATE')::false));
+			map<string,bool> vmap <- map<string,bool>(user_input(MSG_WARNING, PLR_VALIDATE_BASKET + "\n" + PLR_CHECK_BOX_VALIDATE::false));
 			cursor_taken <- false;
 			validate_clicked <- false;
 			if(vmap at vmap.keys[0]){
@@ -1490,7 +1499,7 @@ species Network_Listener_To_Leader skills: [network] {
 									do die;
 								}else {
 									ask world {
-										do user_msg (myself. my_map["lever_explanation"], INFORMATION_MESSAGE);
+										do user_msg (myself.my_map["lever_explanation"], INFORMATION_MESSAGE);
 									}
 									int added_cost <- int(my_map["added_cost"]);
 									if added_cost != 0 {
@@ -1506,7 +1515,7 @@ species Network_Listener_To_Leader skills: [network] {
 											do user_msg (get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + 
 												(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : '(' + myself.ply_act.element_id + ")")+"' " +
 												get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? get_message('PLY_DELAYED'): get_message('PLY_ADVANCED')) +
-												" " + get_message("PLY_BY") + " " + abs(added_delay) + " " + get_message('MSG_THE_ROUND') + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
+												" " + get_message("PLY_BY") + " " + abs(added_delay) + " " + MSG_ROUND + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
 										}
 										ply_act.should_wait_lever_to_activate <- false;
 									}
@@ -1566,23 +1575,23 @@ species Network_Player skills:[network]{
 						match 1 {
 							ask world {
 								do user_msg (get_message('MSG_SIM_STARTED_ROUND1'), INFORMATION_MESSAGE);
-								do user_msg (get_message('MSG_DISTRICT_POPULATION') + " " + current_population, INFORMATION_MESSAGE);
-								do user_msg (get_message('MSG_YOUR_BUDGET') + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
+								do user_msg (MSG_DISTRICT_POPULATION + " " + current_population, INFORMATION_MESSAGE);
+								do user_msg (MSG_YOUR_BUDGET + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 							}
 						}
 						default {
 							ask world {
-								do user_msg(get_message('MSG_THE_ROUND') + " " + game_round + " " + get_message('MSG_HAS_STARTED'), INFORMATION_MESSAGE);
+								do user_msg(MSG_ROUND + " " + game_round + " " + MSG_HAS_STARTED, INFORMATION_MESSAGE);
 								do user_msg("" + ((previous_population = current_population) ? "" : ((previous_population < current_population) ?							
-									get_message('MSG_DISTRICT_RECEIVE') + " " + (current_population - previous_population) :
-									get_message('MSG_DISTRICT_LOSE') + " " + (previous_population - current_population))
-									+ " " + get_message('MSG_NEW_COMERS') + ". ") + get_message('MSG_DISTRICT_POPULATION') + " " +
-									current_population + " " + get_message('MSG_INHABITANTS') + ".", POPULATION_MESSAGE);
+									MSG_DISTRICT_RECEIVE + " " + (current_population - previous_population) :
+									MSG_DISTRICT_LOSE + " " + (previous_population - current_population))
+									+ " " + MSG_NEW_COMERS + ". ") + MSG_DISTRICT_POPULATION + " " +
+									current_population + " " + MSG_INHABITANTS + ".", POPULATION_MESSAGE);
 							}	
 							received_tax <- int(current_population * tax_unit);
 							ask world {
 								do user_msg (get_message('MSG_TAXES_RECEIVED_FROM') +" "+ thousands_separator(received_tax) + ' By. '
-									+ get_message('MSG_YOUR_BUDGET') + " : " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
+									+ MSG_YOUR_BUDGET + " : " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 							}
 						}
 					}
@@ -1597,7 +1606,7 @@ species Network_Player skills:[network]{
 						if game_round != 0 {
 							do user_msg(get_message('MSG_ITS_ROUND') + " " + game_round, INFORMATION_MESSAGE);
 							do user_msg (get_message('MSG_DISTRICT_POPULATION') + " " + current_population, INFORMATION_MESSAGE);
-							do user_msg (get_message('MSG_YOUR_BUDGET') + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
+							do user_msg (MSG_YOUR_BUDGET + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 						}
 					}
 				}
@@ -2336,7 +2345,7 @@ experiment LittoSIM_GEN_Player type: gui{
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 
-	parameter "District choice : " var: active_district_name <- districts[2] among: districts;
+	parameter "District choice : " var: active_district_name <- districts[0] among: districts;
 	parameter "Language choice : " var: my_language	<- default_language  among: languages_list;
 	
 	init {
