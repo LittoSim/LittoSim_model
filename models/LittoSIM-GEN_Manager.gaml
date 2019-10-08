@@ -725,9 +725,9 @@ global {
  		ask n_cells among (shuffle(luss)) {
  			if flip(nb_watered_cells/length(cells)) {
 	 			add string(self.id) at: "lu_id"+i to: nmap;
-	 			float max_w_h <- int(cells max_of(each.max_water_height) * 10)/10;
-				add string(max_w_h) at: "max_w_h"+i to: nmap;
-				add string(((length(cells where (each.max_water_height >= max_w_h)) / length(cells)) * 100) with_precision 2) at: "max_w_h_per_cent"+i to: nmap;
+	 			float max_w_h <- cells max_of(each.max_water_height);
+				add string(max_w_h with_precision 1) at: "max_w_h"+i to: nmap;
+				add string(((length(cells where (each.max_water_height >= int(max_w_h*10)/10)) / length(cells)) * 100) with_precision 2) at: "max_w_h_per_cent"+i to: nmap;
 				add string(cells mean_of(each.max_water_height) with_precision 1) at: "mean_w_h"+i to: nmap;
 				i <- i + 1;
 			}
@@ -738,7 +738,7 @@ global {
 		if ok_to_display_ruptures {
 			nmap <- ["TOPIC"::"NEW_RUPTURES"];
 			ask Coastal_Defense where (each.district_code = my_district) {
-				add string(rupture) at: string(coast_def_id) to: nmap;
+				add string(rupture and flooded) at: string(coast_def_id) to: nmap;
 			}
 			ask Network_Game_Manager{
 				do send to: my_district contents: nmap;
@@ -1043,9 +1043,6 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 					match 7 {
 						is_selected <- !is_selected;
 						show_max_water_height <- is_selected;
-						ask Cell where (each.cell_type = 1){ // reset water heights
-							water_height <- 0.0; 
-						}
 					}
 					match 8 {
 						is_selected <- !is_selected;
@@ -1345,7 +1342,6 @@ species Network_Game_Manager skills: [network]{
 			do send to: d.district_code contents: mp;
 		}
 		loop tmp over: Activated_Lever where(each.my_map[DISTRICT_CODE] = d.district_code) {
-			write "***********loop tmp "+tmp.my_map;
 			map<string, string> mp <- tmp.my_map;
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
@@ -1747,6 +1743,7 @@ species Coastal_Defense {
 			"maintained"::string(maintained),
 			"dune_type"::string(dune_type),
 			"rupture"::string(rupture),
+			"slices"::string(slices),
 			"locationx"::string(location.x),
 			"locationy"::string(location.y)];
 		int i <- 0;
@@ -1915,7 +1912,7 @@ species Coastal_Defense {
 			int cIndex <- int(length(cells) / 2);
 			// rupture area is about RADIUS_RUPTURE m arount rupture point.
 			// if the dike is protected by a pebble cord, the radius is multiplied by 2
-			int rupture_radius <- is_protected_by_cord ? RADIUS_RUPTURE * 2 : RADIUS_RUPTURE; 
+			int rupture_radius <- is_protected_by_cord ? int(RADIUS_RUPTURE * 1.5) : RADIUS_RUPTURE; 
 			rupture_area <- circle(rupture_radius#m,(cells[cIndex]).location);
 			// rupture is applied on relevant area cells : circle of radius_rupture
 			float soil_height_after_rupture <- max([0, self.alt - self.height]);
@@ -2916,7 +2913,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 		}
 		
-		display "Dunes" {
+		/*display "Dunes" {
 			chart MSG_MEAN_ALT type: histogram size: {0.24,0.32} position: {0.0,0.01} style: stack background: #whitesmoke 
 				x_serie_labels: districts_in_game collect each.district_name {
 			 	data MSG_GOOD value: districts_in_game collect first(each.mean_alt_dunes_good) color: #green;
@@ -2991,7 +2988,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data MSG_MEDIUM value: districts_in_game[3].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-		}
+		}*/
 		
 		display "Flooded depth per area"{
 			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}

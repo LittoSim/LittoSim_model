@@ -1525,7 +1525,6 @@ species Network_Listener_To_Leader skills: [network] {
 						}
 					}
 					match 'DIEPPE_CRIEL_PEBBLES' {
-						write m_contents;
 						dieppe_pebbles_allowed <- bool(m_contents['ALLOWED']);
 						ask world {
 							if dieppe_pebbles_allowed {
@@ -1706,10 +1705,11 @@ species Network_Player skills:[network]{
 					}
 					loop i from: 0 to: 4 {
 						Land_Use lu <- first(Land_Use where (each.id = int(m_contents["lu_id"+i])));
-						if lu != nil {
+						float max_wat_h	<- float(m_contents["max_w_h"+i]);
+						if lu != nil and max_wat_h > 0 {
 							create Flood_Mark {
 								location <- lu.location - {0,200#m};
-								max_w_h	<- float(m_contents["max_w_h"+i]);
+								max_w_h	<- max_wat_h;
 								max_w_h_per_cent <- float(m_contents["max_w_h_per_cent"+i]);
 								mean_w_h <- float(m_contents["mean_w_h"+i]);
 								floo1 <- PLY_MSG_WATER_H + " : " + string(max_w_h) + "m ("+ max_w_h_per_cent + "%)";
@@ -2128,7 +2128,7 @@ species Coastal_Defense {
 		self.rupture	<- bool(a at "rupture");	
 		self.location	<- {float(a at "locationx"), float(a at "locationy")};
 		self.district_code <- active_district_code;
-		
+		self.slices <-  int(a at "slices");
 		int tot_points	<- int(a at "tot_points");
 		point pp;
 		list<point> all_points <- [];
@@ -2386,7 +2386,7 @@ experiment LittoSIM_GEN_Player type: gui{
 
 			graphics "Coast Def Info" {
 				if explored_coast_def != nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected and explored_button = nil
-							and explored_flood_mark = nil {
+							and (!(Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected or explored_flood_mark = nil) {
 					Coastal_Defense my_codef <- explored_coast_def;
 					point target <- {my_codef.location.x , my_codef.location.y};
 					point target2 <- {my_codef.location.x + 1 *(INFORMATION_BOX_SIZE.x#px),my_codef.location.y + 1*(INFORMATION_BOX_SIZE.y#px + 60#px)};
