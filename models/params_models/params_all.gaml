@@ -13,6 +13,7 @@ global{
 	map<string,map> data_action 			<- store_csv_data_into_map_of_map(study_area_def["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
 	
 	string application_name <- study_area_def["APPLICATION_NAME"];
+	bool IS_OSX <- bool(configuration_file["IS_OSX"]);
 	// Network 
 	string SERVER 			<- configuration_file["SERVER_ADDRESS"]; 
 	string GAME_MANAGER 	<- "GAME_MANAGER";
