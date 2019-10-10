@@ -1866,6 +1866,7 @@ species Player_Action {
 		 	if should_wait_lever_to_activate {return 0;}
 		 	else {
 		 		write "Activation delay is anormal !";
+		 		return 0;
 		 	}
 		}
 		return nb_rounds;

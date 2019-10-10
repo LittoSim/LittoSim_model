@@ -1157,7 +1157,7 @@ species Network_Game_Manager skills: [network]{
 								location 		 <- {float(m_contents["location.x"]),float(m_contents["location.y"])}; 
 							}
 							else{
-								if is_expropriation { write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.act_id; }
+								//if is_expropriation { write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.act_id; }
 								switch self.action_type {
 									match PLAYER_ACTION_TYPE_LU {
 										Land_Use tmp  	<- Land_Use first_with (each.id = self.element_id);
@@ -2591,7 +2591,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				}			
 			}
 			//-----
-			chart districts_in_game[0].district_name type: pie size: {0.33,0.24} position: {0.34,0.0}
+			chart districts_in_game[0].district_long_name type: pie size: {0.33,0.24} position: {0.34,0.0}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: sum(districts_taxes[0]) color: color_lbls[0];
 			 	data LDR_GIVEN value: sum(districts_given_money[0]) color: color_lbls[1];
@@ -2600,7 +2600,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: sum(districts_actions_costs[0] collect abs(each)) color: color_lbls[3];
 			 	data MSG_LEVERS value: sum(districts_levers_costs[0]) color: color_lbls[4];		
 			}
-			chart districts_in_game[1].district_name type: pie size: {0.33,0.24} position: {0.67,0.0}
+			chart districts_in_game[1].district_long_name type: pie size: {0.33,0.24} position: {0.67,0.0}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: sum(districts_taxes[1]) color: color_lbls[0];
 			 	data LDR_GIVEN value: sum(districts_given_money[1]) color: color_lbls[1];
@@ -2609,7 +2609,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: sum(districts_actions_costs[1] collect abs(each)) color: color_lbls[3];
 			 	data MSG_LEVERS value: sum(districts_levers_costs[1]) color: color_lbls[4];		
 			}
-			chart districts_in_game[2].district_name type: pie size: {0.33,0.24} position: {0.34,0.25}
+			chart districts_in_game[2].district_long_name type: pie size: {0.33,0.24} position: {0.34,0.25}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: sum(districts_taxes[2]) color: color_lbls[0];
 			 	data LDR_GIVEN value: sum(districts_given_money[2]) color: color_lbls[1];
@@ -2618,7 +2618,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: sum(districts_actions_costs[2] collect abs(each)) color: color_lbls[3];
 			 	data MSG_LEVERS value: sum(districts_levers_costs[2]) color: color_lbls[4];		
 			}
-			chart districts_in_game[3].district_name type: pie size: {0.33,0.24} position: {0.67,0.25}
+			chart districts_in_game[3].district_long_name type: pie size: {0.33,0.24} position: {0.67,0.25}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: sum(districts_taxes[3]) color: color_lbls[0];
 			 	data LDR_GIVEN value: sum(districts_given_money[3]) color: color_lbls[1];
@@ -2638,7 +2638,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data MSG_LEVERS value: districts_levers_costs collect sum(each) color: color_lbls[4];		
 			}
 						
-			chart districts_in_game[0].district_name type: histogram size: {0.33,0.24} position: {0.34,0.5}
+			chart districts_in_game[0].district_long_name type: histogram size: {0.33,0.24} position: {0.34,0.5}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: districts_taxes[0] color: color_lbls[0];
 			 	data LDR_GIVEN value: districts_given_money[0] color: color_lbls[1];
@@ -2647,7 +2647,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: districts_actions_costs[0] color: color_lbls[3];
 			 	data MSG_LEVERS value: districts_levers_costs[0] color: color_lbls[4];		
 			}
-			chart districts_in_game[1].district_name type: histogram size: {0.33,0.24} position: {0.67,0.5}
+			chart districts_in_game[1].district_long_name type: histogram size: {0.33,0.24} position: {0.67,0.5}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: districts_taxes[1] color: color_lbls[0];
 			 	data LDR_GIVEN value: districts_given_money[1] color: color_lbls[1];
@@ -2656,7 +2656,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: districts_actions_costs[1] color: color_lbls[3];
 			 	data MSG_LEVERS value: districts_levers_costs[1] color: color_lbls[4];		
 			}
-			chart districts_in_game[2].district_name type: histogram size: {0.33,0.24} position: {0.34,0.75}
+			chart districts_in_game[2].district_long_name type: histogram size: {0.33,0.24} position: {0.34,0.75}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: districts_taxes[2] color: color_lbls[0];
 			 	data LDR_GIVEN value: districts_given_money[2] color: color_lbls[1];
@@ -2665,7 +2665,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: districts_actions_costs[2] color: color_lbls[3];
 			 	data MSG_LEVERS value: districts_levers_costs[2] color: color_lbls[4];		
 			}
-			chart districts_in_game[3].district_name type: histogram size: {0.33,0.24} position: {0.67,0.75}
+			chart districts_in_game[3].district_long_name type: histogram size: {0.33,0.24} position: {0.67,0.75}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: districts_taxes[3] color: color_lbls[0];
 			 	data LDR_GIVEN value: districts_given_money[3] color: color_lbls[1];
@@ -2701,28 +2701,28 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				}		
 			}
 			//-------					
-			chart districts_in_game[0].district_name type: histogram size: {0.48,0.24} position: {0.01,0.5}
+			chart districts_in_game[0].district_long_name type: histogram size: {0.48,0.24} position: {0.01,0.5}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_BUILDER value: districts_build_strategies[0] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[0] color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies[0] color: color_lbls[0];
 			 	data MSG_NEUTRAL value: districts_neutral_strategies[0] color: color_lbls[3];
 			}
-			chart districts_in_game[1].district_name type: histogram size: {0.48,0.24} position: {0.5,0.5}
+			chart districts_in_game[1].district_long_name type: histogram size: {0.48,0.24} position: {0.5,0.5}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_BUILDER value: districts_build_strategies[1] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[1] color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies[1] color: color_lbls[0];
 			 	data MSG_NEUTRAL value: districts_neutral_strategies[1] color: color_lbls[3];
 			}
-			chart districts_in_game[2].district_name type: histogram size: {0.48,0.24} position: {0.01,0.75}
+			chart districts_in_game[2].district_long_name type: histogram size: {0.48,0.24} position: {0.01,0.75}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_BUILDER value: districts_build_strategies[2] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[2] color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies[2] color: color_lbls[0];
 			 	data MSG_NEUTRAL value: districts_neutral_strategies[2] color: color_lbls[3];
 			}
-			chart districts_in_game[3].district_name type: histogram size: {0.48,0.24} position: {0.5,0.75}
+			chart districts_in_game[3].district_long_name type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_BUILDER value: districts_build_strategies[3] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[3] color: color_lbls[1];
@@ -2732,7 +2732,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 				
 		display "Land Use" {
-			chart districts_in_game[0].district_name type: pie size: {0.24,0.32} position: {0.0,0.01}
+			chart districts_in_game[0].district_long_name type: pie size: {0.24,0.32} position: {0.0,0.01}
 				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[0].surface_N) color: #green;
 					data "U" value: first(districts_in_game[0].surface_U) color: #gray;
@@ -2741,7 +2741,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: first(districts_in_game[0].surface_Us) color: #blue;
 					data "Us"+MSG_DENSE value: first(districts_in_game[0].surface_Usdense) color: #darkblue;
 			}
-			chart districts_in_game[1].district_name type: pie size: {0.24,0.32} position: {0.25,0.01}
+			chart districts_in_game[1].district_long_name type: pie size: {0.24,0.32} position: {0.25,0.01}
 				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[1].surface_N) color: #green;
 					data "U" value: first(districts_in_game[1].surface_U) color: #gray;
@@ -2750,7 +2750,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: first(districts_in_game[1].surface_Us) color: #blue;
 					data "Us"+MSG_DENSE value: first(districts_in_game[1].surface_Usdense) color: #darkblue;
 			}
-			chart districts_in_game[2].district_name type: pie size: {0.24,0.32} position: {0.50,0.01}
+			chart districts_in_game[2].district_long_name type: pie size: {0.24,0.32} position: {0.50,0.01}
 				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[2].surface_N) color: #green;
 					data "U" value: first(districts_in_game[2].surface_U) color: #gray;
@@ -2759,7 +2759,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: first(districts_in_game[2].surface_Us) color: #blue;
 					data "Us"+MSG_DENSE value: first(districts_in_game[2].surface_Usdense) color: #darkblue;
 			}
-			chart districts_in_game[3].district_name type: pie size: {0.24,0.32} position: {0.75,0.01}
+			chart districts_in_game[3].district_long_name type: pie size: {0.24,0.32} position: {0.75,0.01}
 				style: stack x_range:[0,16] x_label: MSG_ROUND background: #whitesmoke{
 					data "N" value: first(districts_in_game[3].surface_N) color: #green;
 					data "U" value: first(districts_in_game[3].surface_U) color: #gray;
@@ -2769,7 +2769,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us"+MSG_DENSE value: first(districts_in_game[3].surface_Usdense) color: #darkblue;
 			}
 			/****************************************//****************************************/
-			chart districts_in_game[0].district_name type: series size: {0.24,0.32} position: {0.0,0.34}
+			chart districts_in_game[0].district_long_name type: series size: {0.24,0.32} position: {0.0,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: districts_in_game[0].surface_N_diff color: #green marker_shape: marker_circle;
 					data "U" value: districts_in_game[0].surface_U_diff color: #gray marker_shape: marker_circle;
@@ -2778,7 +2778,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: districts_in_game[0].surface_Us_diff color: #blue marker_shape: marker_circle;
 					data "Us"+MSG_DENSE value: districts_in_game[0].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
 			}
-			chart districts_in_game[1].district_name type: series size: {0.24,0.32} position: {0.25,0.34}
+			chart districts_in_game[1].district_long_name type: series size: {0.24,0.32} position: {0.25,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: districts_in_game[1].surface_N_diff color: #green marker_shape: marker_circle;
 					data "U" value: districts_in_game[1].surface_U_diff color: #gray marker_shape: marker_circle;
@@ -2787,7 +2787,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: districts_in_game[1].surface_Us_diff color: #blue marker_shape: marker_circle;
 					data "Us"+MSG_DENSE value: districts_in_game[1].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
 			}
-			chart districts_in_game[2].district_name type: series size: {0.24,0.32} position: {0.50,0.34}
+			chart districts_in_game[2].district_long_name type: series size: {0.24,0.32} position: {0.50,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: districts_in_game[2].surface_N_diff color: #green marker_shape: marker_circle;
 					data "U" value: districts_in_game[2].surface_U_diff color: #gray marker_shape: marker_circle;
@@ -2796,7 +2796,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: districts_in_game[2].surface_Us_diff color: #blue marker_shape: marker_circle;
 					data "Us"+MSG_DENSE value: districts_in_game[2].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
 			}
-			chart districts_in_game[3].district_name type: series size: {0.24,0.32} position: {0.75,0.34}
+			chart districts_in_game[3].district_long_name type: series size: {0.24,0.32} position: {0.75,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: districts_in_game[3].surface_N_diff color: #green marker_shape: marker_circle;
 					data "U" value: districts_in_game[3].surface_U_diff color: #gray marker_shape: marker_circle;
@@ -2806,7 +2806,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us"+MSG_DENSE value: districts_in_game[3].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
 			}
 			/****************************************//****************************************/
-			chart districts_in_game[0].district_name type: pie size: {0.24,0.32} position: {0.0,0.67}
+			chart districts_in_game[0].district_long_name type: pie size: {0.24,0.32} position: {0.0,0.67}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: last(districts_in_game[0].surface_N) color: #green;
 					data "U" value: last(districts_in_game[0].surface_U) color: #gray;
@@ -2815,7 +2815,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: last(districts_in_game[0].surface_Us) color: #blue;
 					data "Us"+MSG_DENSE value: last(districts_in_game[0].surface_Usdense) color: #darkblue;
 			}
-			chart districts_in_game[1].district_name type: pie size: {0.24,0.32} position: {0.25,0.67}
+			chart districts_in_game[1].district_long_name type: pie size: {0.24,0.32} position: {0.25,0.67}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: last(districts_in_game[1].surface_N) color: #green;
 					data "U" value: last(districts_in_game[1].surface_U) color: #gray;
@@ -2824,7 +2824,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: last(districts_in_game[1].surface_Us) color: #blue;
 					data "Us"+MSG_DENSE value: last(districts_in_game[1].surface_Usdense) color: #darkblue;
 			}
-			chart districts_in_game[2].district_name type: pie size: {0.24,0.32} position: {0.50,0.67}
+			chart districts_in_game[2].district_long_name type: pie size: {0.24,0.32} position: {0.50,0.67}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: last(districts_in_game[2].surface_N) color: #green;
 					data "U" value: last(districts_in_game[2].surface_U) color: #gray;
@@ -2833,7 +2833,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: last(districts_in_game[2].surface_Us) color: #blue;
 					data "Us"+MSG_DENSE value: last(districts_in_game[2].surface_Usdense) color: #darkblue;
 			}
-			chart districts_in_game[3].district_name type: pie size: {0.24,0.32} position: {0.75,0.67}
+			chart districts_in_game[3].district_long_name type: pie size: {0.24,0.32} position: {0.75,0.67}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 					data "N" value: last(districts_in_game[3].surface_N) color: #green;
 					data "U" value: last(districts_in_game[3].surface_U) color: #gray;
@@ -2869,50 +2869,50 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data MSG_BAD value: districts_in_game collect last(each.length_dikes_bad) color: #red; 	
 			}
 			/***************************************/
-			chart districts_in_game[0].district_name type: series size: {0.24,0.32} position: {0.0,0.34}
+			chart districts_in_game[0].district_long_name type: series size: {0.24,0.32} position: {0.0,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[0].mean_alt_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[0].mean_alt_dikes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[0].mean_alt_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[1].district_name type: series size: {0.24,0.32} position: {0.25,0.34}
+			chart districts_in_game[1].district_long_name type: series size: {0.24,0.32} position: {0.25,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[1].mean_alt_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[1].mean_alt_dikes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[1].mean_alt_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[2].district_name type: series size: {0.24,0.32} position: {0.50,0.34}
+			chart districts_in_game[2].district_long_name type: series size: {0.24,0.32} position: {0.50,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[2].mean_alt_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[2].mean_alt_dikes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[2].mean_alt_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[3].district_name type: series size: {0.24,0.32} position: {0.75,0.34}
+			chart districts_in_game[3].district_long_name type: series size: {0.24,0.32} position: {0.75,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[3].mean_alt_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[3].mean_alt_dikes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].mean_alt_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
 			/*********************************/
-			chart districts_in_game[0].district_name type: series size: {0.24,0.32} position: {0.0,0.67}
+			chart districts_in_game[0].district_long_name type: series size: {0.24,0.32} position: {0.0,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[0].length_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[0].length_dikes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[0].length_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[1].district_name type: series size: {0.24,0.32} position: {0.25,0.67}
+			chart districts_in_game[1].district_long_name type: series size: {0.24,0.32} position: {0.25,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[1].length_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[1].length_dikes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[1].length_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[2].district_name type: series size: {0.24,0.32} position: {0.50,0.67}
+			chart districts_in_game[2].district_long_name type: series size: {0.24,0.32} position: {0.50,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[2].length_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[2].length_dikes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[2].length_dikes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[3].district_name type: series size: {0.24,0.32} position: {0.75,0.67}
+			chart districts_in_game[3].district_long_name type: series size: {0.24,0.32} position: {0.75,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[3].length_dikes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[3].length_dikes_medium_diff color: #orange marker_shape: marker_circle;
