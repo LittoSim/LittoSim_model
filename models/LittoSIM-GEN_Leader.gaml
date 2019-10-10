@@ -140,28 +140,27 @@ global{
 	}
 	
 	action save_leader_data{
-		string folder_name <- "leader_data-" + sim_id;
 		int num_round <- game_round;
 		if length(leader_activities) > 0 {
 			loop a over: leader_activities {
-				save a to: records_folder + folder_name + "/leader_activities_round" + num_round + ".txt" type: "text";
+				save a to: records_folder + "leader_data-" + sim_id + "/leader_activities_round" + num_round + ".txt" type: "text" rewrite: false;
 			}
 			leader_activities <- [];
 		}
 		if length(player_actions) > 0 {
 			loop pa over: player_actions {
-				save pa to: records_folder + folder_name + "/player_actions_round" + num_round + ".csv" type: "csv";
+				save pa to: records_folder + "leader_data-" + sim_id + "/player_actions_round" + num_round + ".csv" type: "csv" rewrite: false;
 			}
 			player_actions <- [];
 		}
 		if length(activated_levers) > 0 {
 			loop al over: activated_levers {
-				save al to: records_folder + folder_name + "/activated_levers_round" + num_round + ".csv" type: "csv";
+				save al to: records_folder + "leader_data-" + sim_id + "/activated_levers_round" + num_round + ".csv" type: "csv" rewrite: false;
 			}
 			activated_levers <- [];
 		} 
 		loop a over: (all_levers accumulate (each.population) sort_by (each.my_district.dist_id)) {
-			save a to: records_folder + folder_name + "/all_levers_round" + num_round + ".csv"  type: "csv" rewrite: false;
+			save a to: records_folder + "leader_data-" + sim_id + "/all_levers_round" + num_round + ".csv"  type: "csv" rewrite: false;
 		}
 	}
 
@@ -336,6 +335,10 @@ species Player_Action schedules:[]{
 						} else if previous_lu_name = 'AU'{
 							return WITHDRAWAL;
 						}
+					}
+					match ACTION_MODIFY_LAND_COVER_Ui {
+						if is_in_coast_border_area or is_in_risk_area { return BUILDER; }
+						else { return WITHDRAWAL; }	
 					}
 				}
 			}
@@ -573,6 +576,7 @@ species Activated_Lever {
 		lever_explanation 	<- m["lever_explanation"];
 		round_creation 		<- int(m["round_creation"]);
 		round_application	<- int(m["round_application"]);
+		applied	<- bool(m["applied"]);
 	}
 	
 	map<string,string> build_map_from_attributes{
@@ -588,7 +592,8 @@ species Activated_Lever {
 			"added_delay"::added_delay,
 			"lever_explanation"::lever_explanation,
 			"round_creation"::round_creation,
-			"round_application"::round_application]	;
+			"round_application"::round_application,
+			"applied"::applied];
 		return res;
 	}
 }
@@ -692,7 +697,7 @@ species Lever {
 	int timer_duration 		 	<- 240000;	// 1 minute = 60000 milliseconds //   4 mn = 240000
 	string lever_type		 	<-	"";
 	string lever_name		 	<-	"";
-	string box_title 		 	-> {lever_name +' ('+length(associated_actions)+')'};
+	string box_title 		 	-> {lever_name + ' (' + length(associated_actions) + ')'};
 	string progression_bar		<-	"";
 	string help_lever_msg 	 	<-	"";
 	string activation_label_L1	<-	"";
@@ -1419,7 +1424,7 @@ species Network_Leader skills:[network] {
 			message msg 					<- fetch_message();
 			string m_sender 				<- msg.sender;
 			map<string, string> m_contents 	<- msg.contents;
-			switch(m_contents[RESPONSE_TO_LEADER]) {
+			switch m_contents[RESPONSE_TO_LEADER] {
 				match NUM_ROUND	{
 					if save_data {
 						ask world { do save_leader_data; }
@@ -1704,7 +1709,7 @@ experiment LittoSIM_GEN_Leader {
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- false;
+	parameter "Save data : " var: save_data <- true;
 	
 	output{
 		display Levers{

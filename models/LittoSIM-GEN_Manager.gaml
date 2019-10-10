@@ -544,7 +544,6 @@ global {
 		do add_element_in_list_flooding_events("" + game_round , results_lisflood_rep);
 		save "Directory created by LittoSIM GAMA model" to: "../"+results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
 		ask Network_Game_Manager {
-			write "is_osx " + IS_OSX;
 			if IS_OSX {
 				do execute command: "sh " + lisfloodPath + lisflood_bat_file;
 			}
@@ -646,8 +645,12 @@ global {
 			
 			float min_alt_all_dikes <- min_alt_dikes_all[num_round];
 			float mean_alt_all_dikes <- mean_alt_dikes_all[num_round];
-			float min_alt_all_dunes <- min_alt_dunes_all[num_round];
-			float mean_alt_all_dunes <- mean_alt_dunes_all[num_round];
+			float min_alt_all_dunes <- 0.0;
+			float mean_alt_all_dunes <- 0.0;
+			if application_name != "caen" {
+				float min_alt_all_dunes <- min_alt_dunes_all[num_round];
+				float mean_alt_all_dunes <- mean_alt_dunes_all[num_round];
+			}
 			
 			int actions_cost <- districts_actions_costs[dist_id-1][num_round];
 			int given_money <- districts_given_money[dist_id-1][num_round];
@@ -1088,25 +1091,29 @@ species Network_Game_Manager skills: [network]{
 					do send_data_to_district(first(District where(each.dist_id = id_dist)));
 				}
 				match "WATER_GATE" {
-					ask first(Water_Gate where (each.id = 9999)) {
-						display_me <- bool(m_contents["CLOSE"]);
-						do close_open;
-						if display_me {
-							write "La porte de Dieppe a été fermée!";
-						} else {
-							write "La porte de Dieppe a été ouverte!";
-						}
+					if first(Water_Gate where (each.id = 9999)) != nil {
+						ask first(Water_Gate where (each.id = 9999)) {
+							display_me <- bool(m_contents["CLOSE"]);
+							do close_open;
+							if display_me {
+								write "La porte de Dieppe a été fermée!";
+							} else {
+								write "La porte de Dieppe a été ouverte!";
+							}
+						}	
 					}
 				}
 				match "FLOOD_GATES" {
-					ask Water_Gate where (each.id != 9999) {
-						display_me <- bool(m_contents["CLOSE"]);
-						do close_open;
-						if display_me {
-							write "La portes-à-flot du bassin de Dieppe ont été fermées!";
-						} else {
-							write "La portes-à-flot du bassin de Dieppe ont été ouvertes!";
-						}
+					if first(Water_Gate where (each.id != 9999)) != nil {
+						ask Water_Gate where (each.id != 9999) {
+							display_me <- bool(m_contents["CLOSE"]);
+							do close_open;
+							if display_me {
+								write "La portes-à-flot du bassin de Dieppe ont été fermées!";
+							} else {
+								write "La portes-à-flot du bassin de Dieppe ont été ouvertes!";
+							}
+						}	
 					}
 				}
 				match string(CONNECTION_MESSAGE) { // a client district wants to connect
@@ -1172,7 +1179,7 @@ species Network_Game_Manager skills: [network]{
 								budget <- int(budget - myself.cost);	// updating players payment (server side)
 								round_actions_cost <- int(round_actions_cost - myself.cost);
 							}
-							write "received action : " + world.label_of_action(command);
+							//write "received action : " + world.label_of_action(command);
 							// saving data
 							if save_data {
 								save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";	
@@ -1425,7 +1432,7 @@ species Network_Listener_To_Leader skills:[network]{
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
 			string cmd <- m_contents[LEADER_COMMAND];
-			write "Leader command : " + cmd;
+			//write "Leader command : " + cmd;
 			switch cmd {
 				match EXCHANGE_MONEY {
 					int money <- int(m_contents[AMOUNT]);
@@ -1461,7 +1468,7 @@ species Network_Listener_To_Leader skills:[network]{
 					Player_Action act <- Player_Action first_with (each.act_id = string(m_contents[PLAYER_ACTION_ID]));
 					if act!= nil {
 						act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-						write "waiting for a lever : " + world.label_of_action(act.command);	
+						//write "waiting for a lever : " + world.label_of_action(act.command);	
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
@@ -1538,7 +1545,7 @@ species Network_Listener_To_Leader skills:[network]{
 			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg;
 			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
-			write "sending action to leader : " + world.label_of_action(act.command);
+			//write "sending action to leader : " + world.label_of_action(act.command);
 		}
 	}
 	
@@ -1912,7 +1919,7 @@ species Coastal_Defense {
 			int cIndex <- int(length(cells) / 2);
 			// rupture area is about RADIUS_RUPTURE m arount rupture point.
 			// if the dike is protected by a pebble cord, the radius is multiplied by 2
-			int rupture_radius <- is_protected_by_cord ? int(RADIUS_RUPTURE * 1.5) : RADIUS_RUPTURE; 
+			int rupture_radius <- is_protected_by_cord ? int(RADIUS_RUPTURE * 2) : RADIUS_RUPTURE; 
 			rupture_area <- circle(rupture_radius#m,(cells[cIndex]).location);
 			// rupture is applied on relevant area cells : circle of radius_rupture
 			float soil_height_after_rupture <- max([0, self.alt - self.height]);
@@ -2505,7 +2512,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- false;
+	parameter "Save data : " var: save_data <- true;
 	
 	output {
 		
