@@ -321,7 +321,7 @@ global{
 		string act_name;
 		int lu_index;
 		int codef_index;
-		loop i from: 0 to: length(data_action)-1{
+		loop i from: 0 to: length(data_action) - 1 {
 			act_name <- data_action.keys[i];
 			lu_index <- int(data_action at act_name at 'lu_index') - 1;
 			codef_index <- int(data_action at act_name at 'coast_def_index') - 1;
@@ -411,6 +411,7 @@ global{
 			do clear_selected_button;
 			if ((length (current_active_button) = 1 and first(current_active_button).command != (first(clicked_lu_button)).command)) or length (current_active_button) = 0 {
 				ask (first(clicked_lu_button)){
+					if !active { return; }
 					is_selected <- true;
 				}
 			}
@@ -443,7 +444,10 @@ global{
 			do clear_selected_button;
 			
 			if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
-				ask clicked_coast_def_button { is_selected <- true; }
+				ask clicked_coast_def_button {
+					if !active { return; }
+					is_selected <- true;
+				}
 			}
 		}
 		else{
@@ -1535,6 +1539,11 @@ species Network_Listener_To_Leader skills: [network] {
 							}	
 						}
 					}
+					match 'TOGGLE_BUTTON' {
+						ask Button where (each.command = int(m_contents['COMMAND'])) {
+							do toggle (bool(m_contents['ACTIVE']));
+						}
+					}
 				}
 			}
 		}
@@ -1865,8 +1874,8 @@ species Player_Action {
 		if nb_rounds < 0 {
 		 	if should_wait_lever_to_activate {return 0;}
 		 	else {
-		 		write "Activation delay is anormal !";
-		 		return 0;
+		 		write "Activation delay is anormal !"; // TODO
+		 		//return 0;
 		 	}
 		}
 		return nb_rounds;
@@ -1968,6 +1977,7 @@ species Button skills:[UI_location] {
 	image_file my_icon;
 	string help_msg;
 	float select_size <- 0.0 update: min([ui_width,ui_height]);
+	bool active <- true;
 	
 	reflex update{
 		shape <- rectangle(select_size, select_size);
@@ -1982,11 +1992,19 @@ species Button skills:[UI_location] {
 		my_icon 	<-  image_file(data_action at action_name at 'button_icon_file') ;
 	}
 	
+	action toggle (bool activated){
+		active <- activated;
+		if !active { is_selected <- false; }
+	}
+	
 	aspect map{
 		if(display_name = active_display or display_name = BOTH_DISPLAYS){
 			draw my_icon size: {select_size, select_size};
 			if(is_selected){
-				draw shape empty: true border: # red ;
+				draw shape empty: true border: # red;
+			}
+			if !active {
+				draw TRANSPARENT size: {select_size, select_size};
 			}
 		}
 	}

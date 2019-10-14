@@ -216,7 +216,7 @@ global {
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
-		do read_lisflood_files;
+		do read_lisflood_files (true);
 		last_played_event <- 0;
 
 		create Legend_Planning;
@@ -425,7 +425,7 @@ global {
 	reflex show_flood_stats when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
 		write flood_results;
 		if save_data {
-			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";	
+			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";
 		}
 		if send_flood_results {
 			do send_flooding_results (nil); // to districts
@@ -477,7 +477,7 @@ global {
 			ask Cell {
 				max_water_height <- 0.0; // reset of max_water_height
 			} 
-			do read_lisflood_files;
+			do read_lisflood_files (true);
 			send_flood_results <- true;
 		}
 		lisfloodReadingStep <- 0;
@@ -502,7 +502,7 @@ global {
 			stateSimPhase <- SIM_EXEC_LISFLOOD;
 			write stateSimPhase;
 			do execute_lisflood;
-			do read_lisflood_files;
+			do read_lisflood_files (false);
 			lisfloodReadingStep <- 0;
 			last_played_event <- length(list_flooding_events.keys) - 1;
 			event_ruptures <- last_played_event;
@@ -516,6 +516,12 @@ global {
 				ask Network_Game_Manager { do lock_user (myself, false); }
 			}
 			game_paused <- false;
+			// saving ruptures file
+			string rupt <- "";
+			ask Coastal_Defense {
+				rupt <- rupt + ""+ coast_def_id +","+ int(rupture and flooded) +"\n";
+			}
+			save rupt to: "../"+results_lisflood_rep + "/ruptures.txt" type: "text";
 		}
 	}
 
@@ -668,23 +674,24 @@ global {
 		}
 	}
 	   
-	action read_lisflood_files {
+	action read_lisflood_files (bool read_also_ruptures){
 		write "reading flood files ...";
 		ask Cell where (each.cell_type = 1){ // reset water heights
 			water_heights <- [];
 		}
-		
+		string fileName <- "";
+		list<string> data <- [];
 		string nb <- "";
 		loop i from: 0 to: 14 {
 			nb <- "0000" + i;
 			nb <- copy_between (nb, length(nb)-4, length(nb));
-			string fileName <- "../" + results_lisflood_rep + "/res-" + nb + ".wd";
+			fileName <- "../" + results_lisflood_rep + "/res-" + nb + ".wd";
 			if file_exists (fileName){
 				file lfdata <- text_file(fileName);
 				loop r from: 0 to: GRID_NB_ROWS - 1 {
-					list<string> res <- lfdata[r+6] split_with "\t";
+					data <- lfdata[r+6] split_with "\t";
 					loop c from: 0 to: GRID_NB_COLS - 1 {
-						float w <- float(res[c]);
+						float w <- float(data[c]);
 						add w to: Cell[c, r].water_heights;
 					}
 				}
@@ -703,6 +710,25 @@ global {
 					col <- world.color_of_water_height (myself.max_water_height);
 				}
 			}
+		}
+		if read_also_ruptures {
+			// reading ruptures file
+			fileName <- "../" + results_lisflood_rep + "/ruptures.txt";
+			if file_exists (fileName){
+				loop line over: text_file(fileName){
+					if line contains ',' {
+						data <- line split_with(",");
+						ask Coastal_Defense where (each.coast_def_id = int(data[0])) {
+							if int(data[1]) = 1 {
+								rupture <- true;
+								flooded <- true;
+							} else {
+								rupture <- false;
+							}
+						}
+					}	
+				}
+			}	
 		}
 	}
 	
@@ -1888,10 +1914,10 @@ species Coastal_Defense {
 			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
 			
 			if is_protected_by_cord { // there is a pebble cord protecting the dike
-				map<string, int> probas_med <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_MEDIUM, STATUS_MEDIUM::PROBA_RUPTURE_DIKE_STATUS_BAD,
-									STATUS_BAD::PROBA_RUPTURE_DIKE_STATUS_BAD * 2];
-				map<string, int> probas_bad <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD, STATUS_MEDIUM::PROBA_RUPTURE_DIKE_STATUS_BAD * 2,
-									STATUS_BAD::PROBA_RUPTURE_DIKE_STATUS_BAD * 3];
+				map<string, int> probas_med <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD, STATUS_MEDIUM::int(PROBA_RUPTURE_DIKE_STATUS_BAD * 1.5),
+									STATUS_BAD::int(PROBA_RUPTURE_DIKE_STATUS_BAD * 2.5)];
+				map<string, int> probas_bad <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD * 2, STATUS_MEDIUM::PROBA_RUPTURE_DIKE_STATUS_BAD * 3,
+									STATUS_BAD::100];
 				ask Coastal_Defense where (each.type=COAST_DEF_TYPE_CORD) closest_to self {
 					if status = STATUS_BAD {
 						p <- probas_bad at myself.status;
@@ -2512,7 +2538,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- true;
+	parameter "Save data : " var: save_data <- false;
 	
 	output {
 		
@@ -2920,7 +2946,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 		}
 		
-		/*display "Dunes" {
+		display "Dunes" {
 			chart MSG_MEAN_ALT type: histogram size: {0.24,0.32} position: {0.0,0.01} style: stack background: #whitesmoke 
 				x_serie_labels: districts_in_game collect each.district_name {
 			 	data MSG_GOOD value: districts_in_game collect first(each.mean_alt_dunes_good) color: #green;
@@ -2995,7 +3021,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data MSG_MEDIUM value: districts_in_game[3].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-		}*/
+		}
 		
 		display "Flooded depth per area"{
 			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}

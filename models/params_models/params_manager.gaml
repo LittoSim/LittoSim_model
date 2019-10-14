@@ -53,9 +53,6 @@ global{
 	int PROBA_RUPTURE_DUNE_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_DUNE_STATUS_MEDIUM"]);
 	int PROBA_RUPTURE_DUNE_STATUS_GOOD 		<- int(study_area_def["PROBA_RUPTURE_DUNE_STATUS_GOOD"]); 			// -1 = never
 	int RADIUS_RUPTURE 						<- int(study_area_def["RADIUS_RUPTURE"]); 						// the extent of rupture in #m
-	int PROBA_RUPTURE_CORD_STATUS_BAD 		<- int(study_area_def["PROBA_RUPTURE_CORD_STATUS_BAD"]);
-	int PROBA_RUPTURE_CORD_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_CORD_STATUS_MEDIUM"]);
-	int PROBA_RUPTURE_CORD_STATUS_GOOD 		<- int(study_area_def["PROBA_RUPTURE_CORD_STATUS_GOOD"]);
 
 	//  Demographic parameters
 	int POP_FOR_NEW_U 			<- int(study_area_def["POP_FOR_NEW_U"]) ; 						// initial population for cells passing from AU to U

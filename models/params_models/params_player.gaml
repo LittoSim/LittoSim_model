@@ -29,6 +29,8 @@ global{
 	string GAMA_MAP_DISPLAY		<- "Map";
 	string GAMA_HISTORY_DISPLAY <- "History";
 	string GAMA_MESSAGES_DISPLAY<- "Messages";
+	
+	image_file TRANSPARENT <- image_file("../images/icons/transparent.png");
 
 	// Received user messages type
 	string INFORMATION_MESSAGE 	<- "INFORMATION_MESSAGE";

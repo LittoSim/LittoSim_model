@@ -78,6 +78,7 @@ global{
 		 
 		do create_district_buttons_names;
 		do create_levers;
+		do create_player_buttons;
 		create Network_Leader;
 		create Lever_Window_Info;
 		create Lever_Window_Actions;
@@ -133,6 +134,45 @@ global{
 		}
 	}
 	
+	action create_player_buttons {
+		string act_name;
+		int lu_index;
+		int codef_index;
+		map<int,string> codef_actions <- [];
+		map<int,string> lu_actions <- [];
+		loop i from: 0 to: length(data_action) - 1 {
+			act_name <- data_action.keys[i];
+			lu_index <- int(data_action at act_name at 'lu_index') - 1;
+			codef_index <- int(data_action at act_name at 'coast_def_index') - 1;
+			if codef_index >= 0 {
+				put act_name in: codef_actions key: codef_index;
+			} else if lu_index >= 0 {
+				put act_name in: lu_actions key: lu_index;
+			}
+		}
+		list<string> all_actions <- [];
+		loop j from: 0 to: length(codef_actions)-1 {
+			add codef_actions at j to: all_actions;
+		}
+		loop j from: 0 to: length(lu_actions)-1 {
+			add lu_actions at j to: all_actions;
+		}
+		int i <- 0;
+		loop ac over: all_actions {
+			ask districts {
+				create Player_Button {
+					my_district <- myself;
+					action_name  <- ac;
+					location <- (Grille[my_district.dist_id - 1, 1]).location + {0, 6 * i};
+					command	<- int(data_action at action_name at 'action_code');
+					label <- world.label_of_action(command);
+					my_icon <- image_file(data_action at action_name at 'button_icon_file') ;
+				}
+			}
+			i <- i + 1;
+		}
+	}
+	
 	action record_leader_activity (string msg_type, string d, string msg){
 		string aText <- "<" + string (current_date.hour) + ":" + current_date.minute + ">" + msg_type + " " + d + " -> " + msg;
 		write aText;
@@ -164,6 +204,24 @@ global{
 		}
 	}
 
+	action user_buttons_click{
+		point loc <- #user_location;
+		Player_Button but <- (Player_Button) first_with (each overlaps loc);
+		if but != nil {
+			ask but {
+				active <- !active;
+				write ""+ label + " : " + (active ? "enabled." :  "disabled");
+				map<string, unknown> msg <-[];
+				put 'TOGGLE_BUTTON' 	key: LEADER_COMMAND in: msg;
+				put my_district.district_code	key: DISTRICT_CODE 	in: msg;
+				put command				key: "COMMAND"	 	in: msg;
+				put active				key: "ACTIVE"	 	in: msg;
+				ask world{
+					do send_message_from_leader(msg);
+				}
+			}
+		}
+	}
 	action user_click{
 		point loc <- #user_location;
 		if selected_lever != nil {
@@ -324,8 +382,19 @@ species Player_Action schedules:[]{
 			if is_expropriation { return WITHDRAWAL; }
 			else {
 				switch command {
-					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U]   { return BUILDER;	 }
-					match_one [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] { return SOFT_DEFENSE; }
+					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U]   {
+						if is_in_coast_border_area or is_in_risk_area {
+							return BUILDER;	
+						}
+					}
+					match_one [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] {
+						if is_in_risk_area {
+							return BUILDER;
+						}
+						else if is_in_coast_border_area {
+							return SOFT_DEFENSE;	
+						}
+					}
 					match ACTION_MODIFY_LAND_COVER_A {
 						if previous_lu_name = 'N' and is_in_risk_area { return BUILDER;}
 					}
@@ -338,7 +407,8 @@ species Player_Action schedules:[]{
 					}
 					match ACTION_MODIFY_LAND_COVER_Ui {
 						if is_in_coast_border_area or is_in_risk_area { return BUILDER; }
-						else { return WITHDRAWAL; }	
+						//else { return WITHDRAWAL; }
+						// TODO : voir autres actions pour décider	
 					}
 				}
 			}
@@ -398,7 +468,8 @@ species District{
 	int budget <- -1;
 	bool not_updated <- false;
 	bool is_selected -> {selected_district = self};
-	list<Lever> levers ;
+	list<Lever> levers;
+	list<Player_Button> buttons;
 	
 	// indicators for leader
 	int length_dikes_t0 								<- int(0#m);
@@ -599,6 +670,24 @@ species Activated_Lever {
 }
 //------------------------------ End of Activated_Lever -------------------------------//
 
+species Player_Button {
+	string action_name;
+	geometry shape <- rectangle (20, 5);
+	int command;
+	string label;
+	image_file my_icon;
+	bool active <- true;
+	District my_district;
+	
+	aspect {
+		draw shape color: active ? #lightblue : #indianred border: #black;
+		draw my_icon size: {4,4} at: location - {10,0};
+		draw label at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
+	}
+	
+}
+//------------------------------ End of Player_Button -------------------------------//
+
 species Lever_Window_Info {
 	point loca;
 	geometry shape <- rectangle(30#m,15#m);
@@ -681,7 +770,6 @@ species Lever_Window_Button {
 		}
 	}
 }
-
 //------------------------------ End of Lever_Windows -------------------------------//
 
 species Lever {
@@ -1545,7 +1633,7 @@ species Network_Leader skills:[network] {
 }
 //------------------------------ end of Network_Leader -------------------------------//
 
-grid Grille width: 4 height: 11 {
+grid Grille width: GRID_W height: GRID_H {
 	init {
 		color <- #white ;
 	}
@@ -1709,7 +1797,7 @@ experiment LittoSIM_GEN_Leader {
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- true;
+	parameter "Save data : " var: save_data <- false;
 	
 	output{
 		display Levers{
@@ -1791,6 +1879,13 @@ experiment LittoSIM_GEN_Leader {
 						districts[i].withdraw_actions/districts[i].sum_buil_sof_wit_actions] color: dist_colors[i];
 				}		
 			}
+		}
+		
+		display Player_Buttons {
+			species District_Name;
+			species Player_Button;
+			
+			event [mouse_down] action: user_buttons_click;
 		}
 	}
 }

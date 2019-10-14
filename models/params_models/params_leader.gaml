@@ -14,6 +14,9 @@ global{
 	int game_round <- 0;
 	point MOUSE_LOC;
 	
+	int GRID_W <- 4;
+	int GRID_H <- 11;
+	
 	// messages to display in multi-langs
 	string MSG_CHOOSE_MSG_TO_SEND;	
 	string MSG_TYPE_CUSTOMIZED_MSG;
