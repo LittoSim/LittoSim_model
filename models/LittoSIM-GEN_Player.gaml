@@ -1586,6 +1586,12 @@ species Network_Player skills:[network]{
 								do user_msg (MSG_DISTRICT_POPULATION + " " + current_population, INFORMATION_MESSAGE);
 								do user_msg (MSG_YOUR_BUDGET + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 							}
+							list<int> buts <- [];
+							ask Button where (each.display_name != BOTH_DISPLAYS) {
+								add command to: buts;
+							}
+							map<string,string> mp <- ["REQUEST"::"MY_BUTTONS","buts"::buts];
+							do send to: GAME_MANAGER contents: mp;
 						}
 						default {
 							ask world {
@@ -1615,6 +1621,14 @@ species Network_Player skills:[network]{
 							do user_msg(get_message('MSG_ITS_ROUND') + " " + game_round, INFORMATION_MESSAGE);
 							do user_msg (get_message('MSG_DISTRICT_POPULATION') + " " + current_population, INFORMATION_MESSAGE);
 							do user_msg (MSG_YOUR_BUDGET + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
+						}
+					}
+					if game_round > 1 {
+						ask Button where (each.display_name != BOTH_DISPLAYS) {
+							string actv <- m_contents ["button_"+command];
+							if actv != nil {
+								active <- bool(int(actv));
+							}
 						}
 					}
 				}
@@ -1994,7 +2008,16 @@ species Button skills:[UI_location] {
 	
 	action toggle (bool activated){
 		active <- activated;
-		if !active { is_selected <- false; }
+		if active {
+			ask world {
+				do user_msg (replace_strings('MSG_BUTTON_ENABLED', [myself.label]), INFORMATION_MESSAGE);
+			}
+		} else {
+			is_selected <- false;
+			ask world {
+				do user_msg (replace_strings('MSG_BUTTON_DISABLED', [myself.label]), INFORMATION_MESSAGE);
+			}
+		}
 	}
 	
 	aspect map{
@@ -2372,8 +2395,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500])//;
-				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500]);
+				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {

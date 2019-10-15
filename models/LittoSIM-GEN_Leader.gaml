@@ -210,7 +210,6 @@ global{
 		if but != nil {
 			ask but {
 				active <- !active;
-				write ""+ label + " : " + (active ? "enabled." :  "disabled");
 				map<string, unknown> msg <-[];
 				put 'TOGGLE_BUTTON' 	key: LEADER_COMMAND in: msg;
 				put my_district.district_code	key: DISTRICT_CODE 	in: msg;
@@ -218,7 +217,9 @@ global{
 				put active				key: "ACTIVE"	 	in: msg;
 				ask world{
 					do send_message_from_leader(msg);
+					do record_leader_activity("Button " + myself.label + (myself.active ? " enabled." :  " disabled") + " at", myself.my_district.district_name, " at round " + game_round);
 				}
+				
 			}
 		}
 	}
@@ -1575,6 +1576,13 @@ species Network_Leader skills:[network] {
 							soft_cost <- int(m_contents ["SOFT_COST"]);
 							withdraw_cost <- int(m_contents ["WITHDRAW_COST"]);
 							neutral_cost <- int(m_contents ["NEUTRAL_COST"]);
+							
+							ask Player_Button where (each.my_district = self){
+								string actv <- m_contents ["button_"+command];
+								if actv != nil {
+									active <- bool(int(actv));
+								}
+							}
 						}	
 					}
 				}

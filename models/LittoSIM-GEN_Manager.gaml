@@ -787,12 +787,6 @@ global {
 			int A_0_5 <-0;		int A_1 <-0;		int A_max <-0;
 			int N_0_5 <-0;		int N_1 <-0;		int N_max <-0;
 			
-			ask Coastal_Defense where (each.district_code = self.district_code) {
-				if length(cells where (each.max_water_height > 0)) > 0 {
-					flooded <- true;
-				}
-			}
-			
 			ask LUs{
 				nb_watered_cells <- 0;
 				ask cells where (each.max_water_height > 0) {
@@ -917,6 +911,12 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				add totAU to: data_totAU;
 				add totN to: data_totN;
 				add totA to: data_totA;
+			}
+			
+			ask Coastal_Defense where (each.district_code = self.district_code) {
+				if length(cells where (each.max_water_height > 0)) > 0 {
+					flooded <- true;
+				}
 			}
 		}
 	}
@@ -1142,6 +1142,14 @@ species Network_Game_Manager skills: [network]{
 						}	
 					}
 				}
+				match "MY_BUTTONS" { // a client declares its buttons
+					ask District where(each.dist_id = id_dist) {
+						list<int> lisa <- eval_gaml(string(m_contents["buts"]));
+						loop bt over: lisa {
+							put 1 in: buttons_states key: bt;
+						}
+					}
+				}
 				match string(CONNECTION_MESSAGE) { // a client district wants to connect
 					ask District where(each.dist_id = id_dist) {
 						do inform_current_round;
@@ -1205,7 +1213,6 @@ species Network_Game_Manager skills: [network]{
 								budget <- int(budget - myself.cost);	// updating players payment (server side)
 								round_actions_cost <- int(round_actions_cost - myself.cost);
 							}
-							//write "received action : " + world.label_of_action(command);
 							// saving data
 							if save_data {
 								save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";	
@@ -1427,7 +1434,7 @@ species Network_Control_Manager skills:[remoteGUI]{
 			match NEW_ROUND 	{ ask world { do new_round;}	}
 			match LOCK_USERS 	{ do lock_user_window(true);  }
 			match UNLOCK_USERS 	{ do lock_user_window(false); }
-			match_one [HIGH_FLOODING, LOW_FLOODING] {
+			match_one [HIGH_FLOODING, MEDIUM_FLOODING, LOW_FLOODING] {
 				floodEventType <- selected_action;
 				ask world {	do launchFlood_event;	}
 			}
@@ -1457,9 +1464,8 @@ species Network_Listener_To_Leader skills:[network]{
 		loop while: has_more_message(){
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
-			string cmd <- m_contents[LEADER_COMMAND];
-			//write "Leader command : " + cmd;
-			switch cmd {
+			
+			switch m_contents[LEADER_COMMAND] {
 				match EXCHANGE_MONEY {
 					int money <- int(m_contents[AMOUNT]);
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]) {
@@ -1494,7 +1500,6 @@ species Network_Listener_To_Leader skills:[network]{
 					Player_Action act <- Player_Action first_with (each.act_id = string(m_contents[PLAYER_ACTION_ID]));
 					if act!= nil {
 						act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-						//write "waiting for a lever : " + world.label_of_action(act.command);	
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
@@ -1518,7 +1523,6 @@ species Network_Listener_To_Leader skills:[network]{
 								}
 							}
 						}
-						
 					}else {
 						if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
 							create Activated_Lever{
@@ -1561,6 +1565,12 @@ species Network_Listener_To_Leader skills:[network]{
 						}
 					}
 				}
+				
+				match "TOGGLE_BUTTON" {
+					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]){
+						put int(m_contents["ACTIVE"]) in: buttons_states at: int(m_contents["COMMAND"]);
+					}
+				}
 			}	
 		}
 	}
@@ -1571,7 +1581,6 @@ species Network_Listener_To_Leader skills:[network]{
 			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg;
 			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
-			//write "sending action to leader : " + world.label_of_action(act.command);
 		}
 	}
 	
@@ -1611,6 +1620,12 @@ species Network_Listener_To_Leader skills:[network]{
 				loop ixx from: 0 to: game_round - 2 {
 					put string(districts_budgets[dist_id-1][ixx]) key: "budget_round"+ixx   in: msg;
 				}
+				if length(buttons_states) > 0 {
+					loop ix from: 0 to: length(buttons_states) - 1{
+						put string(buttons_states at buttons_states.keys[ix]) key: "button_"+buttons_states.keys[ix] in: msg;
+					}
+				}
+				
 			}
 			ask myself {
 				do send to: GAME_LEADER contents: msg;
@@ -2217,7 +2232,8 @@ species District {
 	string district_long_name;
 	list<Land_Use> LUs;
 	list<Cell> cells;
-	 
+	map<int, int> buttons_states <- [];
+	
 	int budget;
 	float tax_unit;
 	int received_tax <-0;
@@ -2354,6 +2370,11 @@ species District {
 		put string(game_paused) 		at: "GAME_PAUSED"	in: msg;
 		put string(current_population()) at: POPULATION in: msg;
 		put string(budget) 				at: BUDGET 	   in: msg;
+		if game_round > 1 and length(buttons_states) > 0 {
+			loop ix from: 0 to: length(buttons_states) - 1{
+				put string(buttons_states at buttons_states.keys[ix]) key: "button_"+buttons_states.keys[ix] in: msg;
+			}
+		}
 		ask Network_Game_Manager{
 			do send to: myself.district_code contents: msg;
 		}
