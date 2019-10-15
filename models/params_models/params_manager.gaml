@@ -104,6 +104,6 @@ global{
 	string MSG_POPULATION;
 	
 	string get_message(string code_msg){
-		return code_msg = 'na' ? "" : langs_def at code_msg at my_language;
+		return code_msg = nil or code_msg = 'na'? "" : (langs_def at code_msg != nil ? langs_def at code_msg at my_language : '');
 	}	
 }

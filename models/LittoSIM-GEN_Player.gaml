@@ -113,6 +113,7 @@ global{
 		
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
+			district_id <- 1 + world.dist_code_sname_correspondance_table.keys index_of district_code;
 		}
 		active_district <- District first_with (each.district_code = active_district_code);
 		local_shape 	<- envelope(active_district);
@@ -199,14 +200,6 @@ global{
 		ask Network_Player {
 			do send to: GAME_MANAGER contents: mp;
 		}
-	}
-	
-	user_command "Fermer les portes-à-flot du bassin de Dieppe" when: active_district_code = "76217"{ // Dieppe only
-		do close_or_open_dieppe_flood_gates (true);
-	}
-	
-	user_command "Ouvrir les portes-à-flot du bassin de Dieppe" when: active_district_code = "76217"{ // Dieppe only
-		do close_or_open_dieppe_flood_gates (false);
 	}
 	
 	action close_or_open_dieppe_flood_gates (bool close){
@@ -323,20 +316,22 @@ global{
 		int codef_index;
 		loop i from: 0 to: length(data_action) - 1 {
 			act_name <- data_action.keys[i];
-			lu_index <- int(data_action at act_name at 'lu_index') - 1;
-			codef_index <- int(data_action at act_name at 'coast_def_index') - 1;
-			if lu_index >= 0 {
-				create Button {
-					action_name  <- act_name; 
-					display_name <- LU_DISPLAY;
-					p <- {0.05 + (lu_index*0.1) - (lu_index*0.025), increment + 0.13};
-				}
-			} else if codef_index >= 0 {
-				create Button {
-					action_name  <- act_name; 
-					display_name <- COAST_DEF_DISPLAY;
-					p <- {0.05 + (codef_index*0.1) - (codef_index*0.025), increment + 0.13};
-				}
+			if (string(data_action at act_name at 'active') at (active_district.district_id-1)) = '1'{ // the button is activated on this district
+				lu_index <- int(data_action at act_name at 'lu_index') - 1;
+				codef_index <- int(data_action at act_name at 'coast_def_index') - 1;
+				if lu_index >= 0 {
+					create Button {
+						action_name  <- act_name; 
+						display_name <- LU_DISPLAY;
+						p <- {0.05 + (lu_index*0.1) - (lu_index*0.025), increment + 0.13};
+					}
+				} else if codef_index >= 0 {
+					create Button {
+						action_name  <- act_name; 
+						display_name <- COAST_DEF_DISPLAY;
+						p <- {0.05 + (codef_index*0.1) - (codef_index*0.025), increment + 0.13};
+					}
+				}	
 			}
 		}
 		
@@ -441,13 +436,17 @@ global{
 		Button clicked_coast_def_button <- first(Button where (each overlaps loc and each.display_name != LU_DISPLAY));
 		if clicked_coast_def_button != nil {
 			Button current_active_button <- first(Button where (each.is_selected));
-			do clear_selected_button;
-			
-			if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
-				ask clicked_coast_def_button {
-					if !active { return; }
-					is_selected <- true;
-				}
+			if clicked_coast_def_button.command = ACTION_CLOSE_OPEN_GATES {
+				clicked_coast_def_button.is_selected <- ! clicked_coast_def_button.is_selected;
+				do close_or_open_dieppe_flood_gates (clicked_coast_def_button.is_selected);
+			} else {
+				do clear_selected_button;
+				if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
+					ask clicked_coast_def_button {
+						if !active { return; }
+						is_selected <- true;
+					}
+				}	
 			}
 		}
 		else{
@@ -468,7 +467,9 @@ global{
 	action clear_selected_button {
 		previous_clicked_point <- nil;
 		ask Button {
-			self.is_selected <- false;
+			if command != ACTION_CLOSE_OPEN_GATES {
+				self.is_selected <- false;	
+			}
 		}
 	}
 
@@ -531,7 +532,7 @@ global{
 		point loc <- #user_location;
 		Coastal_Defense selected_codef <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
 		Button selected_button <- Button first_with(each.is_selected);
-		if(selected_button != nil){
+		if selected_button != nil {
 			if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY] {
 				return;
 			}else if selected_button.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
@@ -2045,6 +2046,7 @@ species Button_Map parent: Button {
 //------------------------------ End of Button_Map -------------------------------//
 
 species District {
+	int district_id <- 0;
 	string district_name <- "";
 	string district_code <- "";
 	aspect base{
@@ -2522,7 +2524,8 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw my_button.label    at: target2 + {5#px, 15#px} font: regular color: #yellow;
 					draw my_button.help_msg at: target2 + {10#px, 35#px} font: regular color: #whitesmoke;
 
-					if !(my_button.command in [ACTION_INSPECT, ACTION_HISTORY,ACTION_DISPLAY_PROTECTED_AREA, ACTION_DISPLAY_FLOODED_AREA, ACTION_DISPLAY_FLOODING]) {
+					if !(my_button.command in [ACTION_INSPECT, ACTION_HISTORY,ACTION_DISPLAY_PROTECTED_AREA, ACTION_DISPLAY_FLOODED_AREA,
+							ACTION_DISPLAY_FLOODING,ACTION_CLOSE_OPEN_GATES]) {
 						string txtt;
 						if active_display = LU_DISPLAY { txtt <- MSG_COST_APPLIED_PARCEL; }
 						switch my_button.command {	

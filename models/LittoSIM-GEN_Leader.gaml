@@ -152,21 +152,23 @@ global{
 		}
 		list<string> all_actions <- [];
 		loop j from: 0 to: length(codef_actions)-1 {
-			add codef_actions at j to: all_actions;
+			add codef_actions at codef_actions.keys[j] to: all_actions;
 		}
 		loop j from: 0 to: length(lu_actions)-1 {
-			add lu_actions at j to: all_actions;
+			add lu_actions at lu_actions.keys[j] to: all_actions;
 		}
 		int i <- 0;
 		loop ac over: all_actions {
 			ask districts {
-				create Player_Button {
-					my_district <- myself;
-					action_name  <- ac;
-					location <- (Grille[my_district.dist_id - 1, 1]).location + {0, 6 * i};
-					command	<- int(data_action at action_name at 'action_code');
-					label <- world.label_of_action(command);
-					my_icon <- image_file(data_action at action_name at 'button_icon_file') ;
+				if (string(data_action at ac at 'active') at (dist_id-1)) = '1'{
+					create Player_Button {
+						my_district <- myself;
+						action_name  <- ac;
+						location <- (Grille[my_district.dist_id - 1, 1]).location + {0, 6 * i};
+						command	<- int(data_action at action_name at 'action_code');
+						label <- world.label_of_action(command);
+						my_icon <- image_file(data_action at action_name at 'button_icon_file') ;
+					}	
 				}
 			}
 			i <- i + 1;
@@ -217,7 +219,7 @@ global{
 				put active				key: "ACTIVE"	 	in: msg;
 				ask world{
 					do send_message_from_leader(msg);
-					do record_leader_activity("Button " + myself.label + (myself.active ? " enabled." :  " disabled") + " at", myself.my_district.district_name, " at round " + game_round);
+					do record_leader_activity("Button " + myself.label + (myself.active ? " enabled" :  " disabled") + " at", myself.my_district.district_name, " at round " + game_round);
 				}
 				
 			}

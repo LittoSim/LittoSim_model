@@ -80,8 +80,8 @@ global{
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE, ACTION_CREATE_DUNE,
-							ACTION_INSTALL_GANIVELLE, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE, ACTION_LOAD_PEBBLES_CORD, ACTION_MODIFY_LAND_COVER_AU,
-							ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, 
+							ACTION_INSTALL_GANIVELLE, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE, ACTION_LOAD_PEBBLES_CORD, ACTION_CLOSE_OPEN_GATES, 
+							ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, 
 							ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
 	
 	// List of actions with their parameters
@@ -102,6 +102,7 @@ global{
 	int ACTION_MODIFY_LAND_COVER_Us	 <- data_action at 'ACTION_MODIFY_LAND_COVER_Us' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_Ui  <- data_action at 'ACTION_MODIFY_LAND_COVER_Ui' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code') : 0;
 	int ACTION_EXPROPRIATION 		 <- data_action at 'ACTION_EXPROPRIATION'		 != nil ? int(data_action at 'ACTION_EXPROPRIATION' 		at 'action_code') : 0;
+	int ACTION_CLOSE_OPEN_GATES	 	 <- data_action at 'ACTION_CLOSE_OPEN_GATES'	 != nil ? int(data_action at 'ACTION_CLOSE_OPEN_GATES' 		at 'action_code') : 0;
 	
 	// Constant vars
 	string PLAYER_ACTION_TYPE_LU		<- "PLAYER_ACTION_TYPE_LU";
@@ -129,7 +130,7 @@ global{
 	float BUILT_DIKE_HEIGHT <- float(study_area_def["BUILT_DIKE_HEIGHT"]);
 	float RAISE_DIKE_HEIGHT <- float(study_area_def["RAISE_DIKE_HEIGHT"]);
 	string BUILT_DIKE_STATUS<- study_area_def["BUILT_DIKE_STATUS"];
-	float  MIN_HEIGHT_DIKE 	<- float (eval_gaml(study_area_def["MIN_HEIGHT_DIKE"]));
+	float MIN_HEIGHT_DIKE 	<- float (eval_gaml(study_area_def["MIN_HEIGHT_DIKE"]));
 	float DUNE_TYPE_DISTANCE_COAST  <- float(study_area_def["DUNE_TYPE_DISTANCE_COAST"]);
 	float BUILT_DUNE_TYPE1_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE1_HEIGHT"]);
 	float BUILT_DUNE_TYPE2_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE2_HEIGHT"]);
