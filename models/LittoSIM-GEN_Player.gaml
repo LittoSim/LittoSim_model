@@ -2417,9 +2417,9 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: map;
 			species Coastal_Defense 		aspect: historical;
-			species Water_Gate				aspect: base;
 			species Road 					aspect:	base;
 			species Water					aspect: base;
+			species Water_Gate				aspect: base;
 			species Protected_Area 			aspect: base;
 			species Flood_Risk_Area 		aspect: base;
 			species Flood_Mark				aspect: base;

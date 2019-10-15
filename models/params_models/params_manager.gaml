@@ -31,6 +31,8 @@ global{
 	string SHOW_RUPTURE				<- "SHOW_RUPTURE";
 	string ONE_STEP					<- "ONE_STEP";
 	string SHOW_PREVIOUS_FLOODING	<- "SHOW_PREVIOUS_FLOODING";
+	string ACTION_DISPLAY_PROTECTED_AREA <- "ACTION_DISPLAY_PROTECTED_AREA";
+	string ACTION_DISPLAY_FLOODED_AREA <- "ACTION_DISPLAY_FLOODED_AREA";
 	
 	map<string, string> flooding_icons <- [HIGH_FLOODING::"high_event.png", MEDIUM_FLOODING::"medium_event.png", LOW_FLOODING::"low_event.png"];
 	

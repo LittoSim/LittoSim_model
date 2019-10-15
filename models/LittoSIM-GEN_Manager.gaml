@@ -77,6 +77,9 @@ global {
 	int population_still_to_dispatch <- 0;	// population dynamics
 	// other variables 
 	bool show_max_water_height	<- false;			// defines if the water_height displayed on the map should be the max one or the current one
+	bool show_protected_areas	<- false;
+	bool show_risked_areas	<- false;
+	bool show_grid <- false;
 	string stateSimPhase 		<- SIM_NOT_STARTED; // state variable of current simulation state 
 	int game_round 				<- 0;
 	bool game_paused			<- false;
@@ -86,7 +89,6 @@ global {
 	bool submersion_is_running <- false;
 	bool save_data <- false; // whether save or not data logs
 	bool display_ruptures <- false; // display or not ruptures
-	bool ok_to_display_ruptures <- true; // this variable allows to prevent displaying ruptures of an event while replaying another event
 	int event_ruptures <- 0;
 	bool submersion_ok <- false;
 	bool send_flood_results <- true;
@@ -470,7 +472,6 @@ global {
 			return;
 		}
 		do clear_map;
-		ok_to_display_ruptures <- event_ruptures = fe; // we display ruptures only if this event is the event that caused ruptures. To overcome this problem, we should have a history of ruptures for each played event
 		if last_played_event != fe {
 			last_played_event <- fe;
 			results_lisflood_rep <- list_flooding_events at list_flooding_events.keys[fe];
@@ -516,12 +517,6 @@ global {
 				ask Network_Game_Manager { do lock_user (myself, false); }
 			}
 			game_paused <- false;
-			// saving ruptures file
-			string rupt <- "";
-			ask Coastal_Defense {
-				rupt <- rupt + ""+ coast_def_id +","+ int(rupture and flooded) +"\n";
-			}
-			save rupt to: "../"+results_lisflood_rep + "/ruptures.txt" type: "text";
 		}
 	}
 
@@ -715,6 +710,7 @@ global {
 			// reading ruptures file
 			fileName <- "../" + results_lisflood_rep + "/ruptures.txt";
 			if file_exists (fileName){
+				write "reading ruptures file ...";
 				loop line over: text_file(fileName){
 					if line contains ',' {
 						data <- line split_with(",");
@@ -764,14 +760,12 @@ global {
  		ask Network_Game_Manager{
 			do send to: my_district contents: nmap;
 		}
-		if ok_to_display_ruptures {
-			nmap <- ["TOPIC"::"NEW_RUPTURES"];
-			ask Coastal_Defense where (each.district_code = my_district) {
-				add string(rupture and flooded) at: string(coast_def_id) to: nmap;
-			}
-			ask Network_Game_Manager{
-				do send to: my_district contents: nmap;
-			}
+		nmap <- ["TOPIC"::"NEW_RUPTURES"];
+		ask Coastal_Defense where (each.district_code = my_district) {
+			add string(rupture and flooded) at: string(coast_def_id) to: nmap;
+		}
+		ask Network_Game_Manager{
+			do send to: my_district contents: nmap;
 		}
 	}
 	
@@ -912,12 +906,17 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				add totN to: data_totN;
 				add totA to: data_totA;
 			}
-			
-			ask Coastal_Defense where (each.district_code = self.district_code) {
-				if length(cells where (each.max_water_height > 0)) > 0 {
-					flooded <- true;
-				}
+		}
+		string rupt <- "";
+		ask Coastal_Defense {
+			if length(cells where (each.max_water_height > 0)) > 0 {
+				flooded <- true;
 			}
+			rupt <- rupt + ""+ coast_def_id +","+ int(rupture and flooded) +"\n";
+		}
+		// saving ruptures file
+		if sub_event = 1 {
+			save rupt to: "../"+results_lisflood_rep + "/ruptures.txt" type: "text";
 		}
 	}
 	
@@ -1006,22 +1005,34 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
-			location 	<- {world.shape.width/2 - button_size.x*0.66,  world.shape.height - button_size.y*0.75};
+			location 	<- {world.shape.width/2 - button_size.x*2,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 8;
 			command	 	<- SHOW_RUPTURE;
 			my_icon 	<- image_file("../images/icons/rupture2.png");
-			location 	<-  {world.shape.width/2 + button_size.x*0.66,  world.shape.height - button_size.y*0.75};
+			location 	<-  {world.shape.width/2 - button_size.x*0.6,  world.shape.height - button_size.y*0.75};
+		}
+		create Button{
+			nb_button 	<- 911;
+			command	 	<- ACTION_DISPLAY_FLOODED_AREA;
+			my_icon 	<- image_file("../images/icons/display_ppr.png");
+			location 	<- {world.shape.width/2 + button_size.x*0.6,  world.shape.height - button_size.y*0.75};
+		}
+		create Button{
+			nb_button 	<- 912;
+			command	 	<- ACTION_DISPLAY_PROTECTED_AREA;
+			my_icon 	<- image_file("../images/icons/display_protected.png");
+			location 	<-  {world.shape.width/2 + button_size.x*2,  world.shape.height - button_size.y*0.75};
 		}
 	}
 	
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		Button button_master <- first(Button where (each.nb_button in [0,1,2,3,5,6,7,8,55,57] and each overlaps loc));
+		Button button_master <- first(Button where (each.nb_button in [0,1,2,3,5,6,7,8,55,57,911,912] and each overlaps loc));
 		if button_master != nil {
-			ask Button where !(each.nb_button in [4,7,8]) {
+			ask Button where !(each.nb_button in [4,7,8,911,912]) {
 				self.is_selected <- false;
 			}
 			ask button_master {
@@ -1063,7 +1074,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 							do send to: "76217" contents: mp;
 						}
 					}
-					match 6			{
+					match 6	{
 						if int(command) < length(list_flooding_events) {
 							is_selected <- true;
 							ask world { do replay_flood_event(int(myself.command));}
@@ -1077,6 +1088,14 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 						is_selected <- !is_selected;
 						display_ruptures <- is_selected;
 					}
+					match 911 {
+						is_selected <- !is_selected;
+						show_risked_areas <- is_selected;
+					}
+					match 912 {
+						is_selected <- !is_selected;
+						show_protected_areas <- is_selected;
+					}
 				}
 			}
 		}
@@ -1089,6 +1108,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 		if a_button != nil{
 			ask a_button {
 				is_selected <- !is_selected;
+				show_grid <- is_selected;
 				my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
 			}
 		}
@@ -2033,7 +2053,7 @@ species Coastal_Defense {
 				draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
 			}
 		}
-		if ok_to_display_ruptures and display_ruptures and rupture and flooded {
+		if display_ruptures and rupture and flooded {
 			list<point> pts <- shape.points;
 			point tmp <- length(pts) > 2 ? pts[int(length(pts)/2)] : shape.centroid;
 			draw image_file("../images/icons/rupture.png") at: tmp size: 30#px;
@@ -2197,7 +2217,7 @@ species Land_Use {
 	}
 	
 	aspect conditional_outline {
-		if (Button first_with (each.nb_button = 4)).is_selected {	draw shape empty: true border:#black;	}
+		if show_grid {	draw shape empty: true border:#black;	}
 	}
 	
 	rgb get_color_density {
@@ -2424,7 +2444,7 @@ species Button{
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if nb_button in [0,1,2,3,5,7,8,55,57] {
+		if nb_button in [0,1,2,3,5,7,8,55,57,911,912] {
 			draw shape color: #white border: is_selected ? #red : #black;
 			draw display_text color: #black at: location + {0,shape.height*0.55} anchor: #center;
 			draw display_text2 color: #black at: location + {0,shape.height*0.75} anchor: #center;
@@ -2440,7 +2460,7 @@ species Button{
 	}
 	
 	aspect buttons_map {
-		if(nb_button = 4){
+		if nb_button = 4 {
 			draw shape color: #white border: is_selected? # red : # black;
 			draw my_icon size: 800#m;
 		}
@@ -2512,9 +2532,21 @@ species Isoline {	aspect base { draw shape color: #gray; } }
 
 species Water { aspect base { draw shape color: #blue; } }
 
-species Protected_Area { aspect base { draw shape color: rgb (185, 255, 185,120) border:#black;} }
+species Protected_Area {
+	aspect base {
+		if show_protected_areas {
+			draw shape color: rgb (185, 255, 185,120) border:#black;	
+		}
+	}
+}
 
-species Flood_Risk_Area { aspect base { draw shape color: rgb (20, 200, 255,120) border:#black; } }
+species Flood_Risk_Area {
+	aspect base {
+		if show_risked_areas {
+			draw shape color: rgb (20, 200, 255,120) border:#black;
+		}
+	}
+}
 // 400 m littoral area
 species Coastal_Border_Area {
 	geometry line_shape;
@@ -2595,11 +2627,14 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Road 			aspect: base;
 			species Water			aspect: base;
 			species Coastal_Defense aspect: base;
-			species Water_Gate		aspect: base;
 			species Land_Use 		aspect: conditional_outline;
+			species Water_Gate		aspect: base;
+			species Protected_Area 	aspect: base;
+			species Flood_Risk_Area aspect: base;
 			species Button 			aspect: buttons_map;
 			species Legend_Map;
 			species Legend_Flood;
+			
 			event mouse_down 		action: button_click_map;
 		}
 		
@@ -2609,9 +2644,11 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Land_Use 		aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Road 	 		aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Water			aspect: base size: {0.49,0.49} position: {0.24,0.01};
-			species Polycell		aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Coastal_Defense aspect: base size: {0.49,0.49} position: {0.24,0.01};
+			species Polycell		aspect: base size: {0.49,0.49} position: {0.24,0.01};			
 			species Water_Gate		aspect: base size: {0.49,0.49} position: {0.24,0.01};
+			species Protected_Area 	aspect: base size: {0.49,0.49} position: {0.24,0.01};
+			species Flood_Risk_Area aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Legend_Planning size: {0.49,0.49} position: {0.24,0.01};
 			
 			chart MSG_POPULATION type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,16] 
