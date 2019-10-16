@@ -92,7 +92,7 @@ global{
 	int font_interleave    <- int(shape.width/60);
 	
 	string MSG_SUBMERSION;
-
+	string MSG_WATER_HEIGHTS;
 	string MSG_NEW_ROUND;
 	string MSG_GAME_DONE;
 	string MSG_LENGTH;
@@ -106,6 +106,7 @@ global{
 	string MSG_POPULATION;
 	
 	string get_message(string code_msg){
+				write "hhhhhhhhhhhh " + code_msg;
 		return code_msg = nil or code_msg = 'na'? "" : (langs_def at code_msg != nil ? langs_def at code_msg at my_language : '');
 	}	
 }

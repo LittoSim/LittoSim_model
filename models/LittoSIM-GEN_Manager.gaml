@@ -122,6 +122,7 @@ global {
 		LDR_TOTAL		<- get_message('LDR_TOTAL');
 		MSG_COMMUNE		<- get_message('MSG_COMMUNE');
 		MSG_POPULATION	<- get_message('MSG_POPULATION');
+		MSG_WATER_HEIGHTS<- get_message('MSG_WATER_HEIGHTS');
 		
 		lisfloodPath <- IS_OSX ? configuration_file["LISFLOOD_PATH_OSX"] : configuration_file["LISFLOOD_PATH_WIN"];
 		
@@ -898,6 +899,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			
 			
 			if length(data_flooded_area) < length (list_flooding_events) {
+				add LUs accumulate each.cells max_of (each.max_water_height) to: district_max_w_h;
 				add flooded_area to: data_flooded_area;
 				add totU to: data_totU;
 				add totUs to: data_totUs;
@@ -2298,6 +2300,7 @@ species District {
 	float totAU 	   <- 0.0;	list<float> data_totAU 		 <- [];
 	float totN 		   <- 0.0;	list<float> data_totN 		 <- [];
 	float totA 		   <- 0.0;	list<float> data_totA 		 <- [];
+	list<float> district_max_w_h <- [];
 	
 	list<int> round_population <- [];
 	list<float> surface_N <- [];
@@ -2419,7 +2422,15 @@ species District {
 		put string(length(LUs where (each.lu_name = 'N'))) 	key: "count_LU_N_t0" 	in: my_indicators_t0; // count cells of type N
 		put string(length(LUs where (each.lu_name = 'AU'))) key: "count_LU_AU_t0" 	in: my_indicators_t0; // count cells of type AU
 		put string(length(LUs where (each.lu_name = 'U'))) 	key: "count_LU_U_t0" 	in: my_indicators_t0; // count cells of type U
-	}				
+	}
+	
+	float my_max_w_h (string lu, int dens) {
+		list<Land_Use> luss <- LUs where (each.lu_name = lu);
+		if dens = 1 {
+			luss <- luss where (each.density_class = POP_DENSE);
+		}
+		return empty (luss) ? 0 : luss accumulate each.cells max_of(each.max_water_height);	
+	}			
 }
 //------------------------------ End of District -------------------------------//
 
@@ -3030,50 +3041,50 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data MSG_BAD value: districts_in_game collect last(each.length_dunes_bad) color: #red; 	
 			}
 			//***************************************
-			chart districts_in_game[0].district_name type: series size: {0.24,0.32} position: {0.0,0.34}
+			chart districts_in_game[0].district_long_name type: series size: {0.24,0.32} position: {0.0,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[0].mean_alt_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[0].mean_alt_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[0].mean_alt_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[1].district_name type: series size: {0.24,0.32} position: {0.25,0.34}
+			chart districts_in_game[1].district_long_name type: series size: {0.24,0.32} position: {0.25,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[1].mean_alt_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[1].mean_alt_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[1].mean_alt_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[2].district_name type: series size: {0.24,0.32} position: {0.50,0.34}
+			chart districts_in_game[2].district_long_name type: series size: {0.24,0.32} position: {0.50,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[2].mean_alt_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[2].mean_alt_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[2].mean_alt_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[3].district_name type: series size: {0.24,0.32} position: {0.75,0.34}
+			chart districts_in_game[3].district_long_name type: series size: {0.24,0.32} position: {0.75,0.34}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_MEAN_ALT{
 					data MSG_GOOD value: districts_in_game[3].mean_alt_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[3].mean_alt_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].mean_alt_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
 			//**********************************
-			chart districts_in_game[0].district_name type: series size: {0.24,0.32} position: {0.0,0.67}
+			chart districts_in_game[0].district_long_name type: series size: {0.24,0.32} position: {0.0,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[0].length_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[0].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[0].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[1].district_name type: series size: {0.24,0.32} position: {0.25,0.67}
+			chart districts_in_game[1].district_long_name type: series size: {0.24,0.32} position: {0.25,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[1].length_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[1].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[1].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[2].district_name type: series size: {0.24,0.32} position: {0.50,0.67}
+			chart districts_in_game[2].district_long_name type: series size: {0.24,0.32} position: {0.50,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[2].length_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[2].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[2].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-			chart districts_in_game[3].district_name type: series size: {0.24,0.32} position: {0.75,0.67}
+			chart districts_in_game[3].district_long_name type: series size: {0.24,0.32} position: {0.75,0.67}
 				x_tick_line_visible: false x_range:[0,16] x_label: MSG_ROUND y_label: MSG_LENGTH{
 					data MSG_GOOD value: districts_in_game[3].length_dunes_good_diff color: #green marker_shape: marker_circle;
 					data MSG_MEDIUM value: districts_in_game[3].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
@@ -3209,6 +3220,48 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			chart MSG_AREA+" A" type: series size: {0.24,0.45} position: {0.75, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i] marker_shape: marker_circle;
+				}			
+			}
+		}
+		
+		display "Max water heights"{
+			chart districts_in_game[0].district_long_name type: histogram background: rgb("white") size: {0.24,0.48} position: {0, 0} {
+				data "N" value: districts_in_game[0].my_max_w_h("N",0) color: #green;
+				data "U" value: districts_in_game[0].my_max_w_h("U",0) color: #gray;
+				data "U"+MSG_DENSE value: districts_in_game[0].my_max_w_h("U",1) color: #black;
+				data "A" value: districts_in_game[0].my_max_w_h("A",0) color: #orange;
+				data "Us" value: districts_in_game[0].my_max_w_h("Us",0) color: #blue;
+				data "Us"+MSG_DENSE value: districts_in_game[0].my_max_w_h("Us",1) color: #darkblue; 
+			}
+			chart districts_in_game[1].district_long_name type: histogram background: rgb("white") size: {0.24,0.48} position: {0.25, 0} {
+				data "N" value: districts_in_game[1].my_max_w_h("N",0) color: #green;
+				data "U" value: districts_in_game[1].my_max_w_h("U",0) color: #gray;
+				data "U"+MSG_DENSE value: districts_in_game[1].my_max_w_h("U",1) color: #black;
+				data "A" value: districts_in_game[1].my_max_w_h("A",0) color: #orange;
+				data "Us" value: districts_in_game[1].my_max_w_h("Us",0) color: #blue;
+				data "Us"+MSG_DENSE value: districts_in_game[1].my_max_w_h("Us",1) color: #darkblue; 
+			}
+			chart districts_in_game[2].district_long_name type: histogram background: rgb("white") size: {0.24,0.48} position: {0.51, 0} {
+				data "N" value: districts_in_game[2].my_max_w_h("N",0) color: #green;
+				data "U" value: districts_in_game[2].my_max_w_h("U",0) color: #gray;
+				data "U"+MSG_DENSE value: districts_in_game[2].my_max_w_h("U",1) color: #black;
+				data "A" value: districts_in_game[2].my_max_w_h("A",0) color: #orange;
+				data "Us" value: districts_in_game[2].my_max_w_h("Us",0) color: #blue;
+				data "Us"+MSG_DENSE value: districts_in_game[2].my_max_w_h("Us",1) color: #darkblue;
+			}
+			chart districts_in_game[3].district_long_name type: histogram background: rgb("white") size: {0.24,0.48} position: {0.76, 0} {
+				data "N" value: districts_in_game[3].my_max_w_h("N",0) color: #green;
+				data "U" value: districts_in_game[3].my_max_w_h("U",0) color: #gray;
+				data "U"+MSG_DENSE value: districts_in_game[3].my_max_w_h("U",1) color: #black;
+				data "A" value: districts_in_game[3].my_max_w_h("A",0) color: #orange;
+				data "Us" value: districts_in_game[3].my_max_w_h("Us",0) color: #blue;
+				data "Us"+MSG_DENSE value: districts_in_game[3].my_max_w_h("Us",1) color: #darkblue;
+			}
+			
+			chart world.get_message("MSG_ALL_AREAS") type: series size: {0.5,0.48} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5]
+				x_label: MSG_SUBMERSION y_label: MSG_WATER_HEIGHTS {
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].district_max_w_h color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 		}
