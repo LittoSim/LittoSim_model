@@ -1213,7 +1213,6 @@ species Network_Game_Manager skills: [network]{
 								location 		 <- {float(m_contents["location.x"]),float(m_contents["location.y"])}; 
 							}
 							else{
-								//if is_expropriation { write world.get_message('MSG_EXPROPRIATION_TRIGGERED') + " " + self.act_id; }
 								switch self.action_type {
 									match PLAYER_ACTION_TYPE_LU {
 										Land_Use tmp  	<- Land_Use first_with (each.id = self.element_id);
@@ -1486,7 +1485,6 @@ species Network_Listener_To_Leader skills:[network]{
 		loop while: has_more_message(){
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
-			
 			switch m_contents[LEADER_COMMAND] {
 				match EXCHANGE_MONEY {
 					int money <- int(m_contents[AMOUNT]);
@@ -1522,6 +1520,7 @@ species Network_Listener_To_Leader skills:[network]{
 					Player_Action act <- Player_Action first_with (each.act_id = string(m_contents[PLAYER_ACTION_ID]));
 					if act!= nil {
 						act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
+						add int(m_contents["lever_id"]) to: act.id_applied_levers;
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
@@ -1558,6 +1557,7 @@ species Network_Listener_To_Leader skills:[network]{
 								if ply_action != nil {
 									add self to: ply_action.activated_levers;
 									ply_action.a_lever_has_been_applied <- true;
+									add int(m_contents["id"]) to: ply_action.id_applied_levers;
 								}
 							}
 						}
@@ -1601,6 +1601,8 @@ species Network_Listener_To_Leader skills:[network]{
 		loop act over: Player_Action where (!each.is_sent_to_leader){
 			map<string,string> msg <- act.build_map_from_action_attributes();
 			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg;
+			put string(act.id_applied_levers) at: "activ_levs" in: msg;
+			
 			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
 		}
@@ -1699,7 +1701,8 @@ species Player_Action schedules:[]{
 	bool is_alive 						<- true;
 	bool should_wait_lever_to_activate  <- false;
 	bool a_lever_has_been_applied		<- false;
-	list<Activated_Lever> activated_levers <-[];
+	list<Activated_Lever> activated_levers <-[]; // activated and validated levers
+	list<int> id_applied_levers <- []; // this list contains ids of all triggered levers (validated or canceled)
 	int draw_around;
 	float altit;
 

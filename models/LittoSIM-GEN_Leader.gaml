@@ -369,6 +369,7 @@ species Player_Action schedules:[]{
 	list<Activated_Lever> activated_levers 	<-[];
 	bool should_wait_lever_to_activate 		<- false;
 	bool a_lever_has_been_applied			<- false;
+	list<int> previous_activated_levers <- [];
 	
 	string get_strategy_profile {
 		if(action_type = PLAYER_ACTION_TYPE_COAST_DEF){
@@ -437,7 +438,15 @@ species Player_Action schedules:[]{
 		self.command_round 				<- int(a at "command_round");
 		self.strategy_profile 			<- get_strategy_profile();
 		self.length_coast_def 			<- int(a at "length_coast_def");
-		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");			
+		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");
+		
+		list<int> activ_levs <- eval_gaml(a["activ_levs"]);
+		if length(activ_levs) > 0 {
+			loop al over: activ_levs {
+				add al to: previous_activated_levers;
+			}
+		}
+		
 	}
 	
 	map<string,string> build_map_from_attributes{
@@ -852,20 +861,27 @@ species Lever {
 		}
 	}
 	
-	action queue_activated_lever(Player_Action a_p_action){
-		create Activated_Lever {
+	Activated_Lever queue_activated_lever(Player_Action a_p_action){
+		create Activated_Lever returns: act_levs{
 			lever_name 		<- myself.lever_name;
 			district_code 	<- myself.my_district.district_code;
 			self.p_action 	<- a_p_action;
 			p_action_id 	<- a_p_action.id;
 			activation_time <- machine_time + myself.timer_duration ;
 			round_creation 	<- game_round;
-			add self to: myself.activation_queue;
 			add self to: activated_levers;
+		}
+		ask first(act_levs) {
+			if id in a_p_action.previous_activated_levers {
+				applied <- true;
+			} else {
+				add self to: myself.activation_queue;
+			}
 		}
 		ask world {
 			do record_leader_activity("Lever " + myself.lever_name + " programmed at", myself.my_district.district_name, a_p_action.label + "(" + a_p_action + ")");
 		}
+		return first(act_levs);
 	}
 
 	action toggle_status {
@@ -953,7 +969,7 @@ species Lever {
 	
 	action cancel_lever(Activated_Lever lev){
 		lev.p_action.should_wait_lever_to_activate <- false;
-		do inform_network_should_wait_lever_to_activate(lev.p_action);
+		do inform_network_should_wait_lever_to_activate(lev.p_action, lev);
 		ask world {
 			do record_leader_activity("Lever " + myself.lever_name + " canceled at", myself.my_district.district_name, "Cancel of " + myself.activation_queue[0].p_action);
 		}
@@ -971,11 +987,12 @@ species Lever {
 		} 	
 	}
 	
-	action inform_network_should_wait_lever_to_activate(Player_Action p_action){
+	action inform_network_should_wait_lever_to_activate(Player_Action p_action, Activated_Lever al){
 		map<string, unknown> msg <-[];
 		put ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE 	key: LEADER_COMMAND 						in: msg;
 		put my_district.district_code 			 	key: DISTRICT_CODE  						in: msg;
 		put p_action.id 						 	key: PLAYER_ACTION_ID 						in: msg;
+		put al.id 						 			key: "lever_id"		 						in: msg;
 		put p_action.should_wait_lever_to_activate  key: ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE 	in: msg;
 		ask world { do send_message_from_leader(msg); }
 	}
@@ -1067,9 +1084,9 @@ species Delay_Lever parent: Lever{
 		if status_on{ 
 			if should_be_activated {
 				threshold_reached <- true;
-				do queue_activated_lever (p_action);
+				Activated_Lever al <- queue_activated_lever (p_action);
 				p_action.should_wait_lever_to_activate <- true;
-				do inform_network_should_wait_lever_to_activate(p_action);
+				do inform_network_should_wait_lever_to_activate(p_action, al);
 			}
 			else { threshold_reached <- false; }	
 		}
@@ -1083,7 +1100,7 @@ species Delay_Lever parent: Lever{
 		
 		activation_label_L1 <- (total_lever_delay() < 0 ? world.get_message('LDR_TOTAL_ADVANCE') + ": " : world.get_message('LDR_TOTAL_DELAY') + ": ") + abs(total_lever_delay()) + ' ' + LDR_MSG_ROUNDS;
 		lev.p_action.should_wait_lever_to_activate <- false;
-		do inform_network_should_wait_lever_to_activate(lev.p_action);
+		do inform_network_should_wait_lever_to_activate(lev.p_action, lev);
 		
 		ask world {
 			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_delay + " rounds" + "(" + lev.p_action + ")");
@@ -1304,7 +1321,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	int nb_activations 		<- 0;
 	string box_title 		-> { lever_name + ' (' + nb_activations +')' };
 	
-	bool should_be_activated-> { (nb_rounds_before_activation  <0) and !empty(list_of_impacted_actions)};
+	bool should_be_activated-> { (nb_rounds_before_activation < 0) and !empty(list_of_impacted_actions)};
 	int nb_rounds_before_activation;
 	list<Player_Action> list_of_impacted_actions -> {my_district.actions_install_ganivelle()};
 	
@@ -1526,7 +1543,7 @@ species Network_Leader skills:[network] {
 						string bud <- m_contents[district_code];
 						if bud != nil {
 							budget <- int(bud);
-							if game_round = 0{
+							if game_round = 1{
 								received_tax <- budget;
 								add budget to: districts_budgets[dist_id-1];
 							}
@@ -1541,6 +1558,9 @@ species Network_Leader skills:[network] {
 				}
 				match ACTION_STATE {
 					do update_action (m_contents);
+				}
+				match "ACTIVATED_LEVER_ON_ACTION" {
+					
 				}
 				match INDICATORS_T0 		{
 					ask districts where (each.district_code = m_contents[DISTRICT_CODE]) {

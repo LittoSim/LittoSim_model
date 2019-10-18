@@ -437,6 +437,9 @@ global{
 		if clicked_coast_def_button != nil {
 			Button current_active_button <- first(Button where (each.is_selected));
 			if clicked_coast_def_button.command = ACTION_CLOSE_OPEN_GATES {
+				if !clicked_coast_def_button.active {
+					return; 
+				}
 				clicked_coast_def_button.is_selected <- ! clicked_coast_def_button.is_selected;
 				do close_or_open_dieppe_flood_gates (clicked_coast_def_button.is_selected);
 			} else {
@@ -2014,7 +2017,9 @@ species Button skills:[UI_location] {
 				do user_msg (replace_strings('MSG_BUTTON_ENABLED', [myself.label]), INFORMATION_MESSAGE);
 			}
 		} else {
-			is_selected <- false;
+			if command != ACTION_CLOSE_OPEN_GATES {
+				is_selected <- false;
+			}
 			ask world {
 				do user_msg (replace_strings('MSG_BUTTON_DISABLED', [myself.label]), INFORMATION_MESSAGE);
 			}
