@@ -386,7 +386,7 @@ species Player_Action schedules:[]{
 			if is_expropriation { return WITHDRAWAL; }
 			else {
 				switch command {
-					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_U]   {
+					match_one [ACTION_MODIFY_LAND_COVER_AU]   {
 						if is_in_coast_border_area or is_in_risk_area {
 							return BUILDER;	
 						}

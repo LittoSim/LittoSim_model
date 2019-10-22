@@ -218,8 +218,8 @@ global {
 		
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
-		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		do read_lisflood_files (true);
+		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		last_played_event <- 0;
 
 		create Legend_Planning;
@@ -386,7 +386,7 @@ global {
 			add my_dikes where (each.status=STATUS_MEDIUM) min_of(each.alt) to: min_alt_dikes_medium;
 			add my_dikes where (each.status=STATUS_BAD) min_of(each.alt) to: min_alt_dikes_bad;
 			
-			if application_name != "caen" {
+			if application_name != "normandie" {
 				list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
 				add my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) to: length_dunes_good;
 				add my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) to: length_dunes_medium;
@@ -408,7 +408,7 @@ global {
 				add mean_alt_dikes_good[game_round] - mean_alt_dikes_good[game_round-1] + mean_alt_dikes_good_diff[game_round-1] to: mean_alt_dikes_good_diff;
 				add mean_alt_dikes_medium[game_round] - mean_alt_dikes_medium[game_round-1] + mean_alt_dikes_medium_diff[game_round-1] to: mean_alt_dikes_medium_diff;
 				add mean_alt_dikes_bad[game_round] - mean_alt_dikes_bad[game_round-1] + mean_alt_dikes_bad_diff[game_round-1] to: mean_alt_dikes_bad_diff;
-				if application_name != "caen" {
+				if application_name != "normandie" {
 					add length_dunes_good[game_round] - length_dunes_good[game_round-1] + length_dunes_good_diff[game_round-1] to: length_dunes_good_diff;
 					add length_dunes_medium[game_round] - length_dunes_medium[game_round-1] + length_dunes_medium_diff[game_round-1] to: length_dunes_medium_diff;
 					add length_dunes_bad[game_round] - length_dunes_bad[game_round-1] + length_dunes_bad_diff[game_round-1] to: length_dunes_bad_diff;
@@ -544,7 +544,7 @@ global {
 		do save_dem_and_rugosity;
 		do save_lf_launch_files;
 		do add_element_in_list_flooding_events("" + game_round , results_lisflood_rep);
-		save "Directory created by LittoSIM GAMA model" to: "../"+results_lisflood_rep + "/readme.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by himself
+		save floodEventType to: "../"+results_lisflood_rep + "/submersion_type.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by itself
 		ask Network_Game_Manager {
 			if IS_OSX {
 				do execute command: "sh " + lisfloodPath + lisflood_bat_file;
@@ -649,7 +649,7 @@ global {
 			float mean_alt_all_dikes <- mean_alt_dikes_all[num_round];
 			float min_alt_all_dunes <- 0.0;
 			float mean_alt_all_dunes <- 0.0;
-			if application_name != "caen" {
+			if application_name != "normandie" {
 				float min_alt_all_dunes <- min_alt_dunes_all[num_round];
 				float mean_alt_all_dunes <- mean_alt_dunes_all[num_round];
 			}
@@ -675,7 +675,15 @@ global {
 		ask Cell where (each.cell_type = 1){ // reset water heights
 			water_heights <- [];
 		}
-		string fileName <- "";
+		string fileName <- "../" + results_lisflood_rep + "/submersion_type.txt";
+		if file_exists (fileName){
+			loop line over: text_file(fileName){
+				if line contains 'FLOODING' {
+					floodEventType <- line;
+				}
+			}
+		}
+		
 		list<string> data <- [];
 		string nb <- "";
 		loop i from: 0 to: 14 {
@@ -967,7 +975,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				display_text <- text_label split_with ' ' at 0;
 				display_text2 <- text_label split_with ' ' at 1;
 			}	
-		} else if application_name = "caen" {
+		} else if application_name = "normandie" {
 			create Button{
 				nb_button 	<- 57;
 				command	 	<- "OPEN_DIEPPE_GATES";

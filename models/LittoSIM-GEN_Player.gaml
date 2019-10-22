@@ -33,7 +33,6 @@ global{
 	int received_tax	<- 0;
 	float tax_unit  	<- 0.0;
 	
-	bool subsidized_adapted_habitat <- false;
 	int previous_population			<- 0;
 	int current_population 			<- 0;
 	list<Player_Action> my_basket <-[];
@@ -784,8 +783,8 @@ global{
 					else if command = ACTION_MODIFY_LAND_COVER_AUs {
 						if previous_lu_name = "U" {
 							command <- ACTION_MODIFY_LAND_COVER_Us;
-							label 	<- world.get_message('PLY_CHANGE_TO_Us') + " " + (subsidized_adapted_habitat ? "(Subsidized)":"");
-							cost 	<- element_shape.area / STANDARD_LU_AREA * (subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us'));	
+							label 	<- world.get_message('PLY_CHANGE_TO_Us');
+							cost 	<- element_shape.area / STANDARD_LU_AREA * world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
 						}
 					}
 				}
@@ -1123,6 +1122,7 @@ species Basket parent: Displayed_List {
 	float final_budget -> {world.budget - sum(elements collect((Basket_Element(each).current_action).actual_cost))};
 	string init_budget_label;
 	string solde_label;
+	string district_label;
 	string validate_label;
 	
 	point validation_button_size <- {0, 0};
@@ -1133,6 +1133,7 @@ species Basket parent: Displayed_List {
 		do create_navigation_items;
 		init_budget_label <- world.get_message('MSG_INITIAL_BUDGET');
 		solde_label <- world.get_message('MSG_SOLDE');
+		district_label <- world.get_message('MSG_COMMUNE');
 		validate_label <- world.get_message('PLY_MSG_VALIDATE');
 	}
 	
@@ -1164,9 +1165,11 @@ species Basket parent: Displayed_List {
 		draw polygon([{0,0}, {0,0.1*ui_height}, {ui_width,header_height/2*ui_height}, {ui_width,0}, {0,0}]) 
 				at: {location.x + ui_width / 2, location.y + ui_height- header_height / 4 * ui_height} color: rgb(219,219,219);
 		
-		draw solde_label font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 170#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
-		draw " : " + world.thousands_separator(int(final_budget)) font: f1 color:#black
-						at: {location.x + ui_width - 120#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		draw district_label + " : " font: f0 color: rgb(101,101,101) at: {location.x + 10#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		draw active_district_name font: f1 color:#black at: {location.x + 80#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		draw solde_label + " : " font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 100#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		draw world.thousands_separator(int(final_budget)) font: f1 color:#black
+						at: {location.x + ui_width - 55#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 	}
 	
 	point validation_button_location (float msz){
@@ -2541,8 +2544,7 @@ experiment LittoSIM_GEN_Player type: gui{
 							}
 							match ACTION_MODIFY_LAND_COVER_AUs{
 								draw txtt + " AU : " + my_button.action_cost  at: target2 + {10#px, 55#px} font: regular color: #white;
-								draw txtt + " U : "  + (subsidized_adapted_habitat ? world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us_SUBSIDY') : 
-											world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us')) at: target2 + {10#px, 75#px} font: regular color: #white; 
+								draw txtt + " U : "  + world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us') at: target2 + {10#px, 75#px} font: regular color: #white; 
 							}
 							default {
 								txtt <- active_display = COAST_DEF_DISPLAY ? "/m" : ""; 

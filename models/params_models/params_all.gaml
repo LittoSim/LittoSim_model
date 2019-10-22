@@ -81,7 +81,7 @@ global{
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE, ACTION_CREATE_DUNE,
 							ACTION_INSTALL_GANIVELLE, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE, ACTION_LOAD_PEBBLES_CORD, ACTION_CLOSE_OPEN_GATES, 
-							ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A,ACTION_MODIFY_LAND_COVER_U, ACTION_MODIFY_LAND_COVER_Us, 
+							ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_Us, 
 							ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
 	
 	// List of actions with their parameters
@@ -96,7 +96,6 @@ global{
 	int ACTION_MAINTAIN_DUNE 		 <- data_action at 'ACTION_MAINTAIN_DUNE' 		 != nil ? int(data_action at 'ACTION_MAINTAIN_DUNE' 		at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_AU  <- data_action at 'ACTION_MODIFY_LAND_COVER_AU' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AU'	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_A 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_A'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_A' 	at 'action_code') : 0;
-	int ACTION_MODIFY_LAND_COVER_U 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_U'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_U' 	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_N 	 <- data_action at 'ACTION_MODIFY_LAND_COVER_N'  != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_N' 	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_AUs <- data_action at 'ACTION_MODIFY_LAND_COVER_AUs'!= nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_AUs' at 'action_code') : 0;	
 	int ACTION_MODIFY_LAND_COVER_Us	 <- data_action at 'ACTION_MODIFY_LAND_COVER_Us' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code') : 0;
@@ -226,7 +225,6 @@ global{
 		switch command {
 			match ACTION_MODIFY_LAND_COVER_AU 	{	return "AU" ;	}
 			match ACTION_MODIFY_LAND_COVER_A 	{	return "A"  ;	}
-			match ACTION_MODIFY_LAND_COVER_U 	{	return "U"  ;	}
 			match ACTION_MODIFY_LAND_COVER_N 	{	return "N"  ;	}
 			match ACTION_MODIFY_LAND_COVER_AUs 	{	return "AUs";	}
 			match ACTION_MODIFY_LAND_COVER_Us 	{	return "Us" ;	}
