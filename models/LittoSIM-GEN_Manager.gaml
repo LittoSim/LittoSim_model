@@ -67,12 +67,12 @@ global {
 	list<list<int>> districts_build_strategies 	<- [[0],[0],[0],[0]];
 	list<list<int>> districts_soft_strategies 	<- [[0],[0],[0],[0]];
 	list<list<int>> districts_withdraw_strategies<- [[0],[0],[0],[0]];
-	list<list<int>> districts_neutral_strategies <- [[0],[0],[0],[0]];
+	list<list<int>> districts_other_strategies <- [[0],[0],[0],[0]];
 
 	list<list<float>> districts_build_costs 	<- [[0],[0],[0],[0]];
 	list<list<float>> districts_soft_costs 	<- [[0],[0],[0],[0]];
 	list<list<float>> districts_withdraw_costs<- [[0],[0],[0],[0]];
-	list<list<float>> districts_neutral_costs <- [[0],[0],[0],[0]];
+	list<list<float>> districts_other_costs <- [[0],[0],[0],[0]];
 
 	int population_still_to_dispatch <- 0;	// population dynamics
 	// other variables 
@@ -103,7 +103,7 @@ global {
 		MSG_BUILDER		<- get_message('MSG_BUILDER');
 		MSG_SOFT_DEF	<- get_message('MSG_SOFT_DEF');
 		MSG_WITHDRAWAL	<- get_message('MSG_WITHDRAWAL');
-		MSG_NEUTRAL		<- get_message("MSG_NEUTRAL");
+		MSG_OTHER		<- get_message("MSG_OTHER");
 		MSG_NEW_ROUND	<- get_message('MSG_NEW_ROUND');
 		MSG_GAME_DONE	<- get_message('MSG_GAME_DONE');
 		MSG_LENGTH		<- get_message('PLY_MSG_LENGTH');
@@ -123,6 +123,9 @@ global {
 		MSG_COMMUNE		<- get_message('MSG_COMMUNE');
 		MSG_POPULATION	<- get_message('MSG_POPULATION');
 		MSG_WATER_HEIGHTS<- get_message('MSG_WATER_HEIGHTS');
+		MSG_CYCLE 		<- get_message("MSG_CYCLE");
+		MSG_ALL_AREAS 	<- get_message("MSG_ALL_AREAS");
+		LDR_LASTE 		<- get_message("LDR_LASTE");
 		
 		lisfloodPath <- IS_OSX ? configuration_file["LISFLOOD_PATH_OSX"] : configuration_file["LISFLOOD_PATH_WIN"];
 		
@@ -306,21 +309,21 @@ global {
 				add round_build_actions to: districts_build_strategies[dist_id-1];
 				add round_soft_actions to: districts_soft_strategies[dist_id-1];
 				add round_withdraw_actions to: districts_withdraw_strategies[dist_id-1];
-				add round_neutral_actions to: districts_neutral_strategies[dist_id-1];
+				add round_other_actions to: districts_other_strategies[dist_id-1];
 				sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + round_build_actions + round_soft_actions + round_withdraw_actions;
 				round_build_actions <- 0;
 				round_soft_actions <- 0;
 				round_withdraw_actions <- 0;
-				round_neutral_actions <- 0;
+				round_other_actions <- 0;
 				
 				add round_build_cost to: districts_build_costs[dist_id-1];
 				add round_soft_cost to: districts_soft_costs[dist_id-1];
 				add round_withdraw_cost to: districts_withdraw_costs[dist_id-1];
-				add round_neutral_cost to: districts_neutral_costs[dist_id-1];
+				add round_other_cost to: districts_other_costs[dist_id-1];
 				round_build_cost <- 0.0;
 				round_soft_cost <- 0.0;
 				round_withdraw_cost <- 0.0;
-				round_neutral_cost <- 0.0;
+				round_other_cost <- 0.0;
 			}
 		}
 		do calculate_lu_coast_def_data;
@@ -905,9 +908,9 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			totN <- (N_0_5c + N_1c + N_maxc) with_precision 1;
 			totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1;
 			
-			
+			float maxwh <- LUs accumulate each.cells max_of (each.max_water_height);
 			if length(data_flooded_area) < length (list_flooding_events) {
-				add LUs accumulate each.cells max_of (each.max_water_height) to: district_max_w_h;
+				add maxwh to: district_max_w_h;
 				add flooded_area to: data_flooded_area;
 				add totU to: data_totU;
 				add totUs to: data_totUs;
@@ -916,7 +919,13 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				add totN to: data_totN;
 				add totA to: data_totA;
 			}
+			write "maxwh " + maxwh;
+			ask first(cells where (each.max_water_height = maxwh)) {
+				write self;
+				myself.c_max_w_h_heights <- water_heights;
+			}
 		}
+		
 		string rupt <- "";
 		ask Coastal_Defense {
 			if length(cells where (each.max_water_height > 0)) > 0 {
@@ -1176,7 +1185,7 @@ species Network_Game_Manager skills: [network]{
 					ask District where(each.dist_id = id_dist) {
 						list<int> lisa <- eval_gaml(string(m_contents["buts"]));
 						loop bt over: lisa {
-							put 1 in: buttons_states key: bt;
+							put B_ACTIVE in: buttons_states key: bt;
 						}
 					}
 				}
@@ -1588,9 +1597,9 @@ species Network_Listener_To_Leader skills:[network]{
 								round_withdraw_actions <- round_withdraw_actions + 1;
 								round_withdraw_cost <- round_withdraw_cost + money;
 							}
-							match NEUTRAL 		{
-								round_neutral_actions <- round_neutral_actions + 1;
-								round_neutral_cost <- round_neutral_cost + money;
+							match OTHER 		{
+								round_other_actions <- round_other_actions + 1;
+								round_other_cost <- round_other_cost + money;
 							}
 						}
 					}
@@ -1598,7 +1607,7 @@ species Network_Listener_To_Leader skills:[network]{
 				
 				match "TOGGLE_BUTTON" {
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]){
-						put int(m_contents["ACTIVE"]) in: buttons_states at: int(m_contents["COMMAND"]);
+						put int(m_contents["STATE"]) in: buttons_states at: int(m_contents["COMMAND"]);
 					}
 				}
 			}	
@@ -1621,7 +1630,8 @@ species Network_Listener_To_Leader skills:[network]{
 		put NUM_ROUND 			key: RESPONSE_TO_LEADER in: msg;
 		put string(game_round) 	key: NUM_ROUND in: msg;
 		ask districts_in_game {
-			put string(budget)  key: district_code	in: msg;
+			put string(budget)  key: district_code+"_bud"	in: msg;
+			put string(current_population()) key: district_code+"_pop"  in: msg;
 		}
 		do send to: GAME_LEADER contents: msg;
 	}
@@ -1641,12 +1651,12 @@ species Network_Listener_To_Leader skills:[network]{
 			put string(sum(districts_build_strategies[dist_id-1]))		key: "BUILD_ACTIONS"	in: msg;
 			put string(sum(districts_soft_strategies[dist_id-1]))		key: "SOFT_ACTIONS"	in: msg;
 			put string(sum(districts_withdraw_strategies[dist_id-1]))	key: "WITHDRAW_ACTIONS"	in: msg;
-			put string(sum(districts_neutral_strategies[dist_id-1]))	key: "NEUTRAL_ACTIONS"	in: msg;
+			put string(sum(districts_other_strategies[dist_id-1]))	key: "OTHER_ACTIONS"	in: msg;
 			
 			put string(sum(districts_build_costs[dist_id-1]))	key: "BUILD_COST"	 in: msg;
 			put string(sum(districts_soft_costs[dist_id-1]))	key: "SOFT_COST"	 in: msg;
 			put string(sum(districts_withdraw_costs[dist_id-1]))key: "WITHDRAW_COST" in: msg;
-			put string(sum(districts_neutral_costs[dist_id-1]))	key: "NEUTRAL_COST"	 in: msg;
+			put string(sum(districts_other_costs[dist_id-1]))	key: "OTHER_COST"	 in: msg;
 			
 			if game_round > 1 {
 				loop ixx from: 0 to: game_round - 2 {
@@ -2279,13 +2289,13 @@ species District {
 	int round_build_actions <- 0;
 	int round_soft_actions <- 0;
 	int round_withdraw_actions <- 0;
-	int round_neutral_actions <- 0;
+	int round_other_actions <- 0;
 	int sum_buil_sof_wit_actions <- 1;
 	
 	float round_build_cost <- 0.0;
 	float round_soft_cost <- 0.0;
 	float round_withdraw_cost <- 0.0;
-	float round_neutral_cost <- 0.0;
+	float round_other_cost <- 0.0;
 	
 	// init water heights
 	float tot_0_5c	  <-0.0;		float tot_1c 	<-0.0;		float tot_maxc 	  <-0.0;
@@ -2312,6 +2322,7 @@ species District {
 	float totN 		   <- 0.0;	list<float> data_totN 		 <- [];
 	float totA 		   <- 0.0;	list<float> data_totA 		 <- [];
 	list<float> district_max_w_h <- [];
+	list<float> c_max_w_h_heights <- [];
 	
 	list<int> round_population <- [];
 	list<float> surface_N <- [];
@@ -2788,14 +2799,14 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data MSG_BUILDER value: districts_build_strategies collect sum(each) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies collect sum(each) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies collect sum(each) color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts_neutral_strategies collect sum(each) color: color_lbls[3];
+			 	data MSG_OTHER value: districts_other_strategies collect sum(each) color: color_lbls[3];
 			}
 			chart world.get_message('MSG_COST_ACTIONS') type: histogram size: {0.33,0.48} position: {0.34,0.01}
 				x_serie_labels: districts_in_game collect (each.district_name) style:stack {
 			 	data MSG_BUILDER value: districts_build_costs collect sum(each) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_costs collect sum(each) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_costs collect sum(each) color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts_neutral_costs collect sum(each) color: color_lbls[3];
+			 	data MSG_OTHER value: districts_other_costs collect sum(each) color: color_lbls[3];
 			}
 			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.01} 
 					x_serie_labels: [MSG_BUILDER,MSG_SOFT_DEF, MSG_WITHDRAWAL] {
@@ -2812,28 +2823,28 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data MSG_BUILDER value: districts_build_strategies[0] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[0] color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies[0] color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts_neutral_strategies[0] color: color_lbls[3];
+			 	data MSG_OTHER value: districts_other_strategies[0] color: color_lbls[3];
 			}
 			chart districts_in_game[1].district_long_name type: histogram size: {0.48,0.24} position: {0.5,0.5}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_BUILDER value: districts_build_strategies[1] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[1] color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies[1] color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts_neutral_strategies[1] color: color_lbls[3];
+			 	data MSG_OTHER value: districts_other_strategies[1] color: color_lbls[3];
 			}
 			chart districts_in_game[2].district_long_name type: histogram size: {0.48,0.24} position: {0.01,0.75}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_BUILDER value: districts_build_strategies[2] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[2] color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies[2] color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts_neutral_strategies[2] color: color_lbls[3];
+			 	data MSG_OTHER value: districts_other_strategies[2] color: color_lbls[3];
 			}
 			chart districts_in_game[3].district_long_name type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,16] x_label: MSG_ROUND{
 			 	data MSG_BUILDER value: districts_build_strategies[3] color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies[3] color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies[3] color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts_neutral_strategies[3] color: color_lbls[3];
+			 	data MSG_OTHER value: districts_other_strategies[3] color: color_lbls[3];
 			}
 		}
 				
@@ -3196,7 +3207,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Flooded area per district"{
-			chart world.get_message("MSG_ALL_AREAS") type: series size: {0.48,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
+			chart MSG_ALL_AREAS type: series size: {0.48,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i] marker_shape: marker_circle;
 				}			
@@ -3269,7 +3280,14 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data "Us"+MSG_DENSE value: districts_in_game[3].my_max_w_h("Us",1) color: #darkblue;
 			}
 			
-			chart world.get_message("MSG_ALL_AREAS") type: series size: {0.5,0.48} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5]
+			chart LDR_LASTE + " " + MSG_SUBMERSION type: series size: {0.48,0.48} position: {0.01, 0.5} x_tick_line_visible: false x_range:[0,14]
+				x_label: MSG_CYCLE y_label: MSG_WATER_HEIGHTS {
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].c_max_w_h_heights color: dist_colors[i] marker_shape: marker_circle;
+				}			
+			}
+			
+			chart MSG_ALL_AREAS type: series size: {0.48,0.48} position: {0.51, 0.5} x_tick_line_visible: false x_range:[0,5]
 				x_label: MSG_SUBMERSION y_label: MSG_WATER_HEIGHTS {
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].district_max_w_h color: dist_colors[i] marker_shape: marker_circle;

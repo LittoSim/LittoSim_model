@@ -76,7 +76,7 @@ global{
 	string BUILDER 		<- "BUILDER";
 	string SOFT_DEFENSE <- "SOFT_DEFENSE";
 	string WITHDRAWAL 	<- "WITHDRAWAL";
-	string NEUTRAL 		<- "NEUTRAL";
+	string OTHER 		<- "OTHER";
 	
 		// List of all possible actions to send over network
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE, ACTION_CREATE_DUNE,
@@ -255,6 +255,11 @@ global{
 	list<rgb> color_lbls <- [#moccasin,#lightgreen,#deepskyblue,#darkgray,#darkgreen,#darkblue];
 	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
 	
+	// player button states
+	int B_INVISIBLE <- 0;
+	int B_DISABLED 	<- 1;
+	int B_ACTIVE 	<- 2;
+	
 	string MSG_ROUND;
 	string LDR_TOTAL;
 	string LEV_MSG_ACTIONS;
@@ -266,5 +271,5 @@ global{
 	string MSG_BUILDER;
 	string MSG_SOFT_DEF;
 	string MSG_WITHDRAWAL;
-	string MSG_NEUTRAL;
+	string MSG_OTHER;
 }

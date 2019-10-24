@@ -405,7 +405,7 @@ global{
 			do clear_selected_button;
 			if ((length (current_active_button) = 1 and first(current_active_button).command != (first(clicked_lu_button)).command)) or length (current_active_button) = 0 {
 				ask (first(clicked_lu_button)){
-					if !active { return; }
+					if state = B_DISABLED { return; }
 					is_selected <- true;
 				}
 			}
@@ -436,7 +436,7 @@ global{
 		if clicked_coast_def_button != nil {
 			Button current_active_button <- first(Button where (each.is_selected));
 			if clicked_coast_def_button.command = ACTION_CLOSE_OPEN_GATES {
-				if !clicked_coast_def_button.active {
+				if clicked_coast_def_button.state = B_DISABLED {
 					return; 
 				}
 				clicked_coast_def_button.is_selected <- ! clicked_coast_def_button.is_selected;
@@ -445,7 +445,7 @@ global{
 				do clear_selected_button;
 				if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
 					ask clicked_coast_def_button {
-						if !active { return; }
+						if state = B_DISABLED { return; }
 						is_selected <- true;
 					}
 				}	
@@ -1548,7 +1548,7 @@ species Network_Listener_To_Leader skills: [network] {
 					}
 					match 'TOGGLE_BUTTON' {
 						ask Button where (each.command = int(m_contents['COMMAND'])) {
-							do toggle (bool(m_contents['ACTIVE']));
+							do toggle (int(m_contents["STATE"]));
 						}
 					}
 				}
@@ -1608,9 +1608,7 @@ species Network_Player skills:[network]{
 									MSG_DISTRICT_LOSE + " " + (previous_population - current_population))
 									+ " " + MSG_NEW_COMERS + ". ") + MSG_DISTRICT_POPULATION + " " +
 									current_population + " " + MSG_INHABITANTS + ".", POPULATION_MESSAGE);
-							}	
-							received_tax <- int(current_population * tax_unit);
-							ask world {
+								received_tax <- int(current_population * tax_unit);
 								do user_msg (get_message('MSG_TAXES_RECEIVED_FROM') +" "+ thousands_separator(received_tax) + ' By. '
 									+ MSG_YOUR_BUDGET + " : " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 							}
@@ -1632,9 +1630,9 @@ species Network_Player skills:[network]{
 					}
 					if game_round > 1 {
 						ask Button where (each.display_name != BOTH_DISPLAYS) {
-							string actv <- m_contents ["button_"+command];
-							if actv != nil {
-								active <- bool(int(actv));
+							string etat <- m_contents ["button_"+command];
+							if etat != nil {
+								state <- int(etat);
 							}
 						}
 					}
@@ -1998,7 +1996,7 @@ species Button skills:[UI_location] {
 	image_file my_icon;
 	string help_msg;
 	float select_size <- 0.0 update: min([ui_width,ui_height]);
-	bool active <- true;
+	int state <- B_ACTIVE;
 	
 	reflex update{
 		shape <- rectangle(select_size, select_size);
@@ -2013,13 +2011,13 @@ species Button skills:[UI_location] {
 		my_icon 	<-  image_file(data_action at action_name at 'button_icon_file') ;
 	}
 	
-	action toggle (bool activated){
-		active <- activated;
-		if active {
+	action toggle (int etat) {
+		state <- etat;
+		if state = B_ACTIVE {
 			ask world {
 				do user_msg (replace_strings('MSG_BUTTON_ENABLED', [myself.label]), INFORMATION_MESSAGE);
 			}
-		} else {
+		} else if state = B_DISABLED {
 			if command != ACTION_CLOSE_OPEN_GATES {
 				is_selected <- false;
 			}
@@ -2030,12 +2028,12 @@ species Button skills:[UI_location] {
 	}
 	
 	aspect map{
-		if(display_name = active_display or display_name = BOTH_DISPLAYS){
+		if state != B_INVISIBLE and (display_name = active_display or display_name = BOTH_DISPLAYS) {
 			draw my_icon size: {select_size, select_size};
-			if(is_selected){
+			if is_selected {
 				draw shape empty: true border: # red;
 			}
-			if !active {
+			if state = B_DISABLED {
 				draw TRANSPARENT size: {select_size, select_size};
 			}
 		}

@@ -104,6 +104,9 @@ global{
 	string MSG_AREA;
 	string MSG_COMMUNE;
 	string MSG_POPULATION;
+	string MSG_CYCLE;
+	string MSG_ALL_AREAS;
+	string LDR_LASTE;
 	
 	string get_message(string code_msg){
 		return code_msg = nil or code_msg = 'na'? "" : (langs_def at code_msg != nil ? langs_def at code_msg at my_language : '');

@@ -27,6 +27,7 @@ global{
 	bool save_data <- false; // whether save or not data logs 
 	
 	list<list<int>> districts_budgets <- [[],[],[],[]];
+	list<list<int>> districts_populations <- [[],[],[],[]];
 	
 	init{
 		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
@@ -54,7 +55,7 @@ global{
 		MSG_BUILDER				<- get_message('MSG_BUILDER');
 		MSG_SOFT_DEF			<- get_message('MSG_SOFT_DEF');
 		MSG_WITHDRAWAL			<- get_message('MSG_WITHDRAWAL');
-		MSG_NEUTRAL				<- get_message("MSG_NEUTRAL");
+		MSG_OTHER				<- get_message("MSG_OTHER");
 		
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
 				Ganivelle_Lever, Enhance_Natural_Accr_Lever, Create_Dune_Lever, Maintain_Dune_Lever, Us_out_Coast_or_Risk_Area_Lever, Us_in_Coast_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
@@ -212,15 +213,15 @@ global{
 		Player_Button but <- (Player_Button) first_with (each overlaps loc);
 		if but != nil {
 			ask but {
-				active <- !active;
+				state <- (state + 1) mod 3 ;
 				map<string, unknown> msg <-[];
 				put 'TOGGLE_BUTTON' 	key: LEADER_COMMAND in: msg;
 				put my_district.district_code	key: DISTRICT_CODE 	in: msg;
 				put command				key: "COMMAND"	 	in: msg;
-				put active				key: "ACTIVE"	 	in: msg;
-				ask world{
+				put state				key: "STATE"	 	in: msg;
+				ask world {
 					do send_message_from_leader(msg);
-					do record_leader_activity("Button " + myself.label + (myself.active ? " enabled" :  " disabled") + " at", myself.my_district.district_name, " at round " + game_round);
+					do record_leader_activity("Button " + myself.label + (myself.state = 2 ? " enabled" : (myself.state = 1 ? " disabled" : " invisible")) + " at", myself.my_district.district_name, " at round " + game_round);
 				}
 				
 			}
@@ -413,7 +414,7 @@ species Player_Action schedules:[]{
 				}
 			}
 		}
-		return NEUTRAL;
+		return OTHER;
 	}
 	
 	action init_from_map (map<string, string> a ){
@@ -522,13 +523,13 @@ species District{
 	int build_actions 	<- 0;
 	int soft_actions  	<- 0;
 	int withdraw_actions<- 0;
-	int neutral_actions <- 0;
+	int other_actions <- 0;
 	int sum_buil_sof_wit_actions <- 1;
 	
 	int build_cost 	<- 0;
 	int soft_cost 	<- 0;
 	int withdraw_cost <- 0;
-	int neutral_cost  <- 0;
+	int other_cost  <- 0;
 	
 	action update_indicators_and_register_player_action (Player_Action act){
 		if act.is_applied {
@@ -699,11 +700,11 @@ species Player_Button {
 	int command;
 	string label;
 	image_file my_icon;
-	bool active <- true;
+	int state <- B_ACTIVE;
 	District my_district;
 	
 	aspect {
-		draw shape color: active ? #lightblue : #indianred border: #black;
+		draw shape color: state = 2 ? #lightblue : (state = 1 ? #indianred : #gray) border: #black;
 		draw my_icon size: {4,4} at: location - {10,0};
 		draw label at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
 	}
@@ -785,7 +786,7 @@ species Lever_Window_Button {
 			Lever selev <- selected_lever;
 			draw shape color: col border: #black at: loca;
 			draw text font: font("Arial", 12 , #bold) color: #darkblue at: loca anchor: #center;
-			if (command in [3,4,5,6] and (!selev.status_on or !selev.timer_activated)) or
+			if command in [3,4,5,6] and (!selev.status_on or !selev.timer_activated) or
 			   (species(selev) = Give_Pebbles_Lever and command in [1,3,4,5,6])
 			{
 				draw shape+0.1#m color: rgb(200,200,200,160);
@@ -1616,18 +1617,24 @@ species Network_Leader skills:[network] {
 					game_round <-int (m_contents[NUM_ROUND]);
 					write MSG_ROUND + " " + game_round;
 					ask districts {
-						string bud <- m_contents[district_code];
-						if bud != nil {
-							budget <- int(bud);
-							if game_round = 1{
-								received_tax <- budget;
-								add budget to: districts_budgets[dist_id-1];
+						if game_round > 0 {
+							string bud <- m_contents[district_code+"_bud"];
+							string pop <- m_contents[district_code+"_pop"];
+							if bud != nil {
+								budget <- int(bud);
+								if game_round = 1{
+									received_tax <- budget;
+								}
+								if game_round >= 1{
+									add budget to: districts_budgets[dist_id-1]; 
+								}
 							}
-							else if game_round > 1{
-								add budget to: districts_budgets[dist_id-1]; 
+							if pop != nil and game_round > 0{
+								add int(pop) to: districts_populations[dist_id-1]; 
 							}
 						}
 					}
+					
 					loop lev over: all_levers{
 						ask lev.population { 
 							do check_activation_at_new_round();
@@ -1669,18 +1676,18 @@ species Network_Leader skills:[network] {
 							build_actions <- int(m_contents ["BUILD_ACTIONS"]);
 							soft_actions <- int(m_contents ["SOFT_ACTIONS"]);
 							withdraw_actions <- int(m_contents ["WITHDRAW_ACTIONS"]);
-							neutral_actions <- int(m_contents ["NEUTRAL_ACTIONS"]);
+							other_actions <- int(m_contents ["OTHER_ACTIONS"]);
 							sum_buil_sof_wit_actions <- max(1,build_actions + soft_actions + withdraw_actions);
 							
 							build_cost <- int(m_contents ["BUILD_COST"]);
 							soft_cost <- int(m_contents ["SOFT_COST"]);
 							withdraw_cost <- int(m_contents ["WITHDRAW_COST"]);
-							neutral_cost <- int(m_contents ["NEUTRAL_COST"]);
+							other_cost <- int(m_contents ["OTHER_COST"]);
 							
 							ask Player_Button where (each.my_district = self){
-								string actv <- m_contents ["button_"+command];
-								if actv != nil {
-									active <- bool(int(actv));
+								string stat <- m_contents ["button_"+command];
+								if stat != nil {
+									state <- int(int(stat));
 								}
 							}
 						}	
@@ -1689,7 +1696,7 @@ species Network_Leader skills:[network] {
 				match "STATS" {
 					ask districts where (each.district_code = m_contents[DISTRICT_CODE]) {
 						received_tax <- received_tax + int(m_contents['TAX']);
-						actions_cost <- actions_cost + int(m_contents['ACTIONS']); 					
+						actions_cost <- actions_cost + int(m_contents['ACTIONS']); 			
 					}
 				}
 			}
@@ -1719,9 +1726,9 @@ species Network_Leader skills:[network] {
 							withdraw_cost <- withdraw_cost + myself.cost;
 							sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + 1;
 						}
-						match NEUTRAL 		{
-							neutral_actions <- neutral_actions + 1;
-							neutral_cost <- neutral_cost + myself.cost;
+						match OTHER 		{
+							other_actions <- other_actions + 1;
+							other_cost <- other_cost + myself.cost;
 						}
 					}
 				}
@@ -1951,17 +1958,18 @@ experiment LittoSIM_GEN_Leader {
 		}
 		
 		display Statistics {
-			chart world.get_message('MSG_BUDGETS') type: series size: {0.33,0.48} position: {0.0,0.01} x_range:[0,16] 
+			chart world.get_message('MSG_POPULATION') type: series size: {0.33,0.48} position: {0.0,0.01} x_range:[0,16] 
+					x_label: MSG_ROUND x_tick_line_visible: false{
+				loop i from: 0 to: 3{
+					data districts[i].district_name value: districts_populations[i] color: dist_colors[i] marker_shape: marker_circle;
+				}		
+			}
+			
+			chart world.get_message('MSG_BUDGETS') type: series size: {0.33,0.48} position: {0.34,0.01} x_range:[0,16] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				loop i from: 0 to: 3{
 					data districts[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
-			}
-			
-			chart LDR_TOTAL type: histogram size: {0.33,0.48} position: {0.34,0.01}  {
-				loop i from: 0 to: 3{
-					data districts[i].district_name value: last(districts_budgets[i]) color: dist_colors[i];
-				}			
 			}
 			
 			chart LDR_TOTAL type: histogram size: {0.33,0.48} position: {0.67,0.01} style:stack
@@ -1979,14 +1987,14 @@ experiment LittoSIM_GEN_Leader {
 			 	data MSG_BUILDER value: districts collect (each.build_actions) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_actions) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_actions) color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts collect (each.neutral_actions) color: color_lbls[3];
+			 	data MSG_OTHER value: districts collect (each.other_actions) color: color_lbls[3];
 			}
 			chart world.get_message('MSG_COST_ACTIONS') type: histogram size: {0.33,0.48} position: {0.34,0.51}
 				x_serie_labels: districts collect (each.district_name) style:stack {
 			 	data MSG_BUILDER value: districts collect (each.build_cost) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_cost) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_cost) color: color_lbls[0];
-			 	data MSG_NEUTRAL value: districts collect (each.neutral_cost) color: color_lbls[3];
+			 	data MSG_OTHER value: districts collect (each.other_cost) color: color_lbls[3];
 			}
 			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.51} 
 					x_serie_labels: [MSG_BUILDER,MSG_SOFT_DEF, MSG_WITHDRAWAL] {
