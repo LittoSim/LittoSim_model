@@ -78,6 +78,7 @@ global {
 	// other variables 
 	bool show_max_water_height	<- false;			// defines if the water_height displayed on the map should be the max one or the current one
 	bool show_protected_areas	<- false;
+	bool show_river_flood	<- true;
 	bool show_risked_areas	<- false;
 	bool show_grid <- false;
 	string stateSimPhase 		<- SIM_NOT_STARTED; // state variable of current simulation state 
@@ -163,6 +164,9 @@ global {
 		}
 		if water_shape != nil {
 			create Water from: water_shape;
+		}
+		if river_flood_shape != nil {
+			create River_Flood from: river_flood_shape;
 		}
 		
 		create Coastal_Border_Area from: coastline_shape {
@@ -2584,6 +2588,7 @@ species Flood_Risk_Area {
 species Coastal_Border_Area {
 	geometry line_shape;
 }
+
 //100 m coastline inland area to identify retro dikes
 species Inland_Dike_Area { aspect base { draw shape color: rgb (100, 100, 205,120) border:#black;} }
 
@@ -2608,6 +2613,15 @@ species Water_Gate { // a water gate for the case of Dieppe
 			ask cells {
 				soil_height <- soil_height_before_broken;
 			}
+		}
+	}
+}
+
+// river flood shapefile for dieppe
+species River_Flood {
+	aspect base {
+		if show_river_flood {
+			draw shape color: #blue border:#transparent;	
 		}
 	}
 }
@@ -2659,6 +2673,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Isoline			aspect: base;
 			species Road 			aspect: base;
 			species Water			aspect: base;
+			species River_Flood		aspect: base;
 			species Coastal_Defense aspect: base;
 			species Land_Use 		aspect: conditional_outline;
 			species Water_Gate		aspect: base;
@@ -2678,7 +2693,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Road 	 		aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Water			aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Coastal_Defense aspect: base size: {0.49,0.49} position: {0.24,0.01};
-			species Polycell		aspect: base size: {0.49,0.49} position: {0.24,0.01};			
+			species Polycell		aspect: base size: {0.49,0.49} position: {0.24,0.01};
+			species River_Flood		aspect: base size: {0.49,0.49} position: {0.24,0.01};			
 			species Water_Gate		aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Protected_Area 	aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Flood_Risk_Area aspect: base size: {0.49,0.49} position: {0.24,0.01};
