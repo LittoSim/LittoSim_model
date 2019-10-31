@@ -78,7 +78,7 @@ global {
 	// other variables 
 	bool show_max_water_height	<- false;			// defines if the water_height displayed on the map should be the max one or the current one
 	bool show_protected_areas	<- false;
-	bool show_river_flood	<- true;
+	bool show_river_flooded_area <- false;
 	bool show_risked_areas	<- false;
 	bool show_grid <- false;
 	string stateSimPhase 		<- SIM_NOT_STARTED; // state variable of current simulation state 
@@ -978,7 +978,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			display_text <- text_label split_with ' ' at 0;
 			display_text2 <- text_label split_with ' ' at 1;
 		}
-		if application_name = "camargue" {
+		if study_area_def ["LISFLOOD_BDY_MEDIUM_FILENAME"] != nil {
 			create Button{
 				nb_button 	<- 55;
 				command	 	<- MEDIUM_FLOODING;
@@ -988,7 +988,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				display_text <- text_label split_with ' ' at 0;
 				display_text2 <- text_label split_with ' ' at 1;
 			}	
-		} else if application_name = "normandie" {
+		} else if first(Water_Gate) != nil {
 			create Button{
 				nb_button 	<- 57;
 				command	 	<- "OPEN_DIEPPE_GATES";
@@ -1048,14 +1048,22 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			my_icon 	<- image_file("../images/icons/display_protected.png");
 			location 	<-  {world.shape.width/2 + button_size.x*2,  world.shape.height - button_size.y*0.75};
 		}
+		if river_flood_shape != nil {
+			create Button{
+				nb_button 	<- 913;
+				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
+				my_icon 	<- image_file("../images/icons/river_flood.jpg");
+				location 	<-  {world.shape.width/2 - button_size.x*3.4,  world.shape.height - button_size.y*0.75};
+			}
+		}
 	}
 	
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		Button button_master <- first(Button where (each.nb_button in [0,1,2,3,5,6,7,8,55,57,911,912] and each overlaps loc));
+		Button button_master <- first(Button where (each.nb_button in [0,1,2,3,5,6,7,8,55,57,911,912,913] and each overlaps loc));
 		if button_master != nil {
-			ask Button where !(each.nb_button in [4,7,8,911,912]) {
+			ask Button where !(each.nb_button in [4,7,8,911,912,913]) {
 				self.is_selected <- false;
 			}
 			ask button_master {
@@ -1118,6 +1126,10 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 					match 912 {
 						is_selected <- !is_selected;
 						show_protected_areas <- is_selected;
+					}
+					match 913 {
+						is_selected <- !is_selected;
+						show_river_flooded_area <- is_selected;
 					}
 				}
 			}
@@ -1189,7 +1201,7 @@ species Network_Game_Manager skills: [network]{
 					ask District where(each.dist_id = id_dist) {
 						list<int> lisa <- eval_gaml(string(m_contents["buts"]));
 						loop bt over: lisa {
-							put B_ACTIVE in: buttons_states key: bt;
+							put B_ACTIVATED in: buttons_states key: bt;
 						}
 					}
 				}
@@ -2481,7 +2493,7 @@ species Button{
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if nb_button in [0,1,2,3,5,7,8,55,57,911,912] {
+		if nb_button in [0,1,2,3,5,7,8,55,57,911,912,913] {
 			draw shape color: #white border: is_selected ? #red : #black;
 			draw display_text color: #black at: location + {0,shape.height*0.55} anchor: #center;
 			draw display_text2 color: #black at: location + {0,shape.height*0.75} anchor: #center;
@@ -2620,7 +2632,7 @@ species Water_Gate { // a water gate for the case of Dieppe
 // river flood shapefile for dieppe
 species River_Flood {
 	aspect base {
-		if show_river_flood {
+		if show_river_flooded_area {
 			draw shape color: #blue border:#transparent;	
 		}
 	}

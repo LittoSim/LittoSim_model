@@ -18,6 +18,7 @@ global{
 	list<District> districts <- nil;
 	geometry shape <- square(100#m);
 	Lever selected_lever;
+	Player_Button clicked_pButton;
 	Lever explored_lever;
 	list<species<Lever>> all_levers <- []; // levers in all_levers and levers_names should be in the same order
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
@@ -83,6 +84,7 @@ global{
 		create Network_Leader;
 		create Lever_Window_Info;
 		create Lever_Window_Actions;
+		create Player_Button_Actions;
 	}
 	//------------------------------ end of init -------------------------------//
 	
@@ -211,19 +213,34 @@ global{
 	action user_buttons_click{
 		point loc <- #user_location;
 		Player_Button but <- (Player_Button) first_with (each overlaps loc);
-		if but != nil {
-			ask but {
-				state <- (state + 1) mod 3 ;
-				map<string, unknown> msg <-[];
-				put 'TOGGLE_BUTTON' 	key: LEADER_COMMAND in: msg;
-				put my_district.district_code	key: DISTRICT_CODE 	in: msg;
-				put command				key: "COMMAND"	 	in: msg;
-				put state				key: "STATE"	 	in: msg;
-				ask world {
-					do send_message_from_leader(msg);
-					do record_leader_activity("Button " + myself.label + (myself.state = 2 ? " enabled" : (myself.state = 1 ? " disabled" : " invisible")) + " at", myself.my_district.district_name, " at round " + game_round);
-				}
-				
+		if but != nil and clicked_pButton = nil {
+			clicked_pButton <- but;
+		} else {
+			Player_Button_Button but <- (Player_Button_Button) first_with (each overlaps loc);
+			if but != nil {
+				switch but.command {
+					match clicked_pButton.state { // clicked button has already that state
+						return; 
+					}
+					match 3 {
+						clicked_pButton <- nil;
+					}
+					default {
+						ask clicked_pButton {
+							state <- but.command;
+							map<string, unknown> msg <-[];
+							put 'TOGGLE_BUTTON' 	key: LEADER_COMMAND in: msg;
+							put my_district.district_code	key: DISTRICT_CODE 	in: msg;
+							put command				key: "COMMAND"	 	in: msg;
+							put state				key: "STATE"	 	in: msg;
+							ask world {
+								do send_message_from_leader(msg);
+								do record_leader_activity("Button " + myself.label + (myself.state = B_ACTIVATED ? " enabled" : (myself.state = B_DEACTIVATED ? " disabled" : " invisible")) + " at", myself.my_district.district_name, " at round " + game_round);
+							}
+						}
+						clicked_pButton <- nil;
+					}		
+				}	
 			}
 		}
 	}
@@ -505,7 +522,7 @@ species District{
 	int length_maintained_dunes 					<- 0;
 	int count_Us 									<- 0;
 	int count_expropriation							<- 0;
-	int count_Us_in_risk_area							<- 0;
+	int count_Us_in_risk_area						<- 0;
 	int count_AU_or_Ui_in_coast_area 				<- 0;
 	int count_AU_or_Ui_in_risk_area 				<- 0;
 	int count_Us_out_coast_or_risk_area				<- 0;
@@ -700,15 +717,56 @@ species Player_Button {
 	int command;
 	string label;
 	image_file my_icon;
-	int state <- B_ACTIVE;
+	int state <- B_ACTIVATED;
 	District my_district;
 	
 	aspect {
-		draw shape color: state = 2 ? #lightblue : (state = 1 ? #indianred : #gray) border: #black;
+		draw shape color: state = B_ACTIVATED ? #lightblue : (state = B_DEACTIVATED ? #indianred : #gray) border: #black;
 		draw my_icon size: {4,4} at: location - {10,0};
 		draw label at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
 	}
 	
+}
+
+species Player_Button_Actions {
+	point loca <- world.location;
+	geometry shape <- rectangle(25, 27);
+	
+	list<string> text_buttons <- ['LDR_ACTIVATE','LDR_DEACTIVATE','LDR_HIDE','LEV_CLOSE_WINDOW'];
+	
+	init {
+		point lo <- loca - {1, 7.5};
+		loop i from: 0 to: 3 {
+			create Player_Button_Button {
+				command <- i ;
+				text <- world.get_message(myself.text_buttons[i]);	
+				loca <- lo + {1, 1 + (i * 5.5)};
+				if i = 3 {	col <- #red; }
+			}
+		}
+	}
+	
+	aspect {
+		if clicked_pButton != nil {
+			draw shape color: #white border: #black at: loca;
+			draw clicked_pButton.label at: loca - {0,11} anchor: #center font: font("Arial", 13 , #bold) color: #darkblue;
+		}
+	}
+}
+
+species Player_Button_Button {
+	int command;
+	string text;
+	point loca;
+	rgb col <- #yellow;
+	geometry shape <- rectangle(15#m, 5#m);
+	
+	aspect {
+		if clicked_pButton != nil {
+			draw shape color: col border: #black at: loca;
+			draw text font: font("Arial", 12 , #bold) color: #darkblue at: loca anchor: #center;
+		}
+	}
 }
 //------------------------------ End of Player_Button -------------------------------//
 
@@ -1953,6 +2011,8 @@ experiment LittoSIM_GEN_Leader {
 		display Player_Buttons {
 			species District_Name;
 			species Player_Button;
+			species Player_Button_Actions;
+			species Player_Button_Button;
 			
 			event [mouse_down] action: user_buttons_click;
 		}

@@ -257,9 +257,9 @@ global{
 	list<rgb> dist_colors <- [#red, #blue, #green, #orange];
 	
 	// player button states
-	int B_INVISIBLE <- 0;
-	int B_DISABLED 	<- 1;
-	int B_ACTIVE 	<- 2;
+	int B_HIDDEN <- 2;
+	int B_DEACTIVATED <- 1;
+	int B_ACTIVATED	<- 0;
 	
 	string MSG_ROUND;
 	string LDR_TOTAL;
