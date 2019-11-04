@@ -154,12 +154,14 @@ global{
 				put act_name in: lu_actions key: lu_index;
 			}
 		}
-		list<string> all_actions <- [];
+		// saving the same order of buttons as in the player interface
+		list<string> all_actions <- codef_actions.values + lu_actions.values;
 		loop j from: 0 to: length(codef_actions)-1 {
-			add codef_actions at codef_actions.keys[j] to: all_actions;
+			all_actions[codef_actions.keys[j]] <- codef_actions at codef_actions.keys[j];
 		}
-		loop j from: 0 to: length(lu_actions)-1 {
-			add lu_actions at lu_actions.keys[j] to: all_actions;
+		int cda <- length(codef_actions);
+		loop j from: cda to: length(all_actions)-1 {
+			all_actions[lu_actions.keys[j-cda]+cda] <- lu_actions at lu_actions.keys[j-cda];
 		}
 		int i <- 0;
 		loop ac over: all_actions {
@@ -1057,6 +1059,7 @@ species Lever {
 	}
 	
 	action inform_network_should_wait_lever_to_activate(Player_Action p_action, Activated_Lever al){
+		write ""+p_action + " " + p_action.should_wait_lever_to_activate + " " + al;
 		map<string, unknown> msg <-[];
 		put ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE 	key: LEADER_COMMAND 						in: msg;
 		put my_district.district_code 			 	key: DISTRICT_CODE  						in: msg;
@@ -1718,6 +1721,14 @@ species Network_Leader skills:[network] {
 						count_LU_N_t0 									<- int (m_contents['count_LU_N_t0']);
 						count_LU_AU_t0 									<- int (m_contents['count_LU_AU_t0']);
 						count_LU_U_t0									<- int (m_contents['count_LU_U_t0']);
+						if game_round > 0 {
+							ask Player_Button where (each.my_district = self){
+								string stat <- m_contents ["button_"+command];
+								if stat != nil {
+									state <- int(stat);
+								}
+							}
+						}
 						if game_round > 1 {
 							districts_budgets[dist_id-1] <- [];
 							loop i from: 0 to: game_round - 2 {
@@ -1741,13 +1752,6 @@ species Network_Leader skills:[network] {
 							soft_cost <- int(m_contents ["SOFT_COST"]);
 							withdraw_cost <- int(m_contents ["WITHDRAW_COST"]);
 							other_cost <- int(m_contents ["OTHER_COST"]);
-							
-							ask Player_Button where (each.my_district = self){
-								string stat <- m_contents ["button_"+command];
-								if stat != nil {
-									state <- int(int(stat));
-								}
-							}
 						}	
 					}
 				}

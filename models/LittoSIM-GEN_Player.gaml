@@ -405,7 +405,7 @@ global{
 			do clear_selected_button;
 			if ((length (current_active_button) = 1 and first(current_active_button).command != (first(clicked_lu_button)).command)) or length (current_active_button) = 0 {
 				ask (first(clicked_lu_button)){
-					if state = B_DISABLED { return; }
+					if state = B_DEACTIVATED { return; }
 					is_selected <- true;
 				}
 			}
@@ -436,7 +436,7 @@ global{
 		if clicked_coast_def_button != nil {
 			Button current_active_button <- first(Button where (each.is_selected));
 			if clicked_coast_def_button.command = ACTION_CLOSE_OPEN_GATES {
-				if clicked_coast_def_button.state = B_DISABLED {
+				if clicked_coast_def_button.state = B_DEACTIVATED {
 					return; 
 				}
 				clicked_coast_def_button.is_selected <- ! clicked_coast_def_button.is_selected;
@@ -445,7 +445,7 @@ global{
 				do clear_selected_button;
 				if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
 					ask clicked_coast_def_button {
-						if state = B_DISABLED { return; }
+						if state = B_DEACTIVATED { return; }
 						is_selected <- true;
 					}
 				}	
@@ -1593,12 +1593,6 @@ species Network_Player skills:[network]{
 								do user_msg (MSG_DISTRICT_POPULATION + " " + current_population, INFORMATION_MESSAGE);
 								do user_msg (MSG_YOUR_BUDGET + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 							}
-							list<int> buts <- [];
-							ask Button where (each.display_name != BOTH_DISPLAYS) {
-								add command to: buts;
-							}
-							map<string,string> mp <- ["REQUEST"::"MY_BUTTONS","buts"::buts];
-							do send to: GAME_MANAGER contents: mp;
 						}
 						default {
 							ask world {
@@ -1620,6 +1614,7 @@ species Network_Player skills:[network]{
 					current_population <- int(m_contents[POPULATION]);
 					budget <- int(m_contents[BUDGET]);
 					is_active_gui <- ! bool(m_contents["GAME_PAUSED"]);
+										
 					ask world {
 						do refresh_all;
 						if game_round != 0 {
@@ -1628,7 +1623,15 @@ species Network_Player skills:[network]{
 							do user_msg (MSG_YOUR_BUDGET + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 						}
 					}
-					if game_round > 1 {
+					if game_round = 0 {
+						list<int> buts <- [];
+						ask Button where (each.display_name != BOTH_DISPLAYS) {
+							add command to: buts;
+						}
+						map<string,string> mp <- ["REQUEST"::"MY_BUTTONS","buts"::buts];
+						do send to: GAME_MANAGER contents: mp;
+					}
+					else {
 						ask Button where (each.display_name != BOTH_DISPLAYS) {
 							string etat <- m_contents ["button_"+command];
 							if etat != nil {
@@ -1893,8 +1896,8 @@ species Player_Action {
 		if nb_rounds < 0 {
 		 	if should_wait_lever_to_activate {return 0;}
 		 	else {
-		 		write "Activation delay is anormal !"; // TODO
-		 		//return 0;
+		 		write "Activation delay is anormal !";
+		 		return 0;
 		 	}
 		}
 		return nb_rounds;
@@ -1996,7 +1999,7 @@ species Button skills:[UI_location] {
 	image_file my_icon;
 	string help_msg;
 	float select_size <- 0.0 update: min([ui_width,ui_height]);
-	int state <- B_ACTIVE;
+	int state <- B_ACTIVATED;
 	
 	reflex update{
 		shape <- rectangle(select_size, select_size);
@@ -2012,12 +2015,13 @@ species Button skills:[UI_location] {
 	}
 	
 	action toggle (int etat) {
+		write etat;
 		state <- etat;
-		if state = B_ACTIVE {
+		if state = B_ACTIVATED {
 			ask world {
 				do user_msg (replace_strings('MSG_BUTTON_ENABLED', [myself.label]), INFORMATION_MESSAGE);
 			}
-		} else if state = B_DISABLED {
+		} else if state = B_DEACTIVATED {
 			if command != ACTION_CLOSE_OPEN_GATES {
 				is_selected <- false;
 			}
@@ -2028,12 +2032,12 @@ species Button skills:[UI_location] {
 	}
 	
 	aspect map{
-		if state != B_INVISIBLE and (display_name = active_display or display_name = BOTH_DISPLAYS) {
+		if state != B_HIDDEN and (display_name = active_display or display_name = BOTH_DISPLAYS) {
 			draw my_icon size: {select_size, select_size};
 			if is_selected {
 				draw shape empty: true border: # red;
 			}
-			if state = B_DISABLED {
+			if state = B_DEACTIVATED {
 				draw TRANSPARENT size: {select_size, select_size};
 			}
 		}
@@ -2518,7 +2522,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			}
 			
 			graphics "Button Info" {
-				if explored_button != nil {
+				if explored_button != nil and explored_button.state != B_HIDDEN {
 					Button my_button <- explored_button;
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-INFORMATION_BOX_SIZE.y #px) : 0.0;
 					point target 	<- world.button_box_location(my_button.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));

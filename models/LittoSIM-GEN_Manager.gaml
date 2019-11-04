@@ -1674,16 +1674,17 @@ species Network_Listener_To_Leader skills:[network]{
 			put string(sum(districts_withdraw_costs[dist_id-1]))key: "WITHDRAW_COST" in: msg;
 			put string(sum(districts_other_costs[dist_id-1]))	key: "OTHER_COST"	 in: msg;
 			
-			if game_round > 1 {
-				loop ixx from: 0 to: game_round - 2 {
-					put string(districts_budgets[dist_id-1][ixx]) key: "budget_round"+ixx   in: msg;
-				}
+			if game_round > 0 {
 				if length(buttons_states) > 0 {
 					loop ix from: 0 to: length(buttons_states) - 1{
 						put string(buttons_states at buttons_states.keys[ix]) key: "button_"+buttons_states.keys[ix] in: msg;
 					}
 				}
-				
+			}
+			if game_round > 1 {
+				loop ixx from: 0 to: game_round - 2 {
+					put string(districts_budgets[dist_id-1][ixx]) key: "budget_round"+ixx   in: msg;
+				}				
 			}
 			ask myself {
 				do send to: GAME_LEADER contents: msg;
@@ -2431,7 +2432,7 @@ species District {
 		put string(game_paused) 		at: "GAME_PAUSED"	in: msg;
 		put string(current_population()) at: POPULATION in: msg;
 		put string(budget) 				at: BUDGET 	   in: msg;
-		if game_round > 1 and length(buttons_states) > 0 {
+		if game_round > 0 and length(buttons_states) > 0 {
 			loop ix from: 0 to: length(buttons_states) - 1{
 				put string(buttons_states at buttons_states.keys[ix]) key: "button_"+buttons_states.keys[ix] in: msg;
 			}
