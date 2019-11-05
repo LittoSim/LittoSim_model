@@ -84,8 +84,7 @@ global{
 	float cells_max_depth;
 	list<rgb> land_colors <- [rgb(255,255,212), rgb(254,217,142), rgb(254,153,41), rgb(217,95,14), rgb(153,52,4)];
 	float land_color_interval;
-	
-	float coastBorderBuffer <- float(eval_gaml(study_area_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (<400m)	
+		
 	// User interface params
 	string LEGEND_POSITION <- study_area_def["LEGEND_POSITION"];
 	int LEGEND_SIZE 	   <- int(study_area_def["LEGEND_SIZE"]);

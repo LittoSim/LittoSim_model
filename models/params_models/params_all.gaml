@@ -151,6 +151,7 @@ global{
 	file buffer_in_100m_shape 	<- file(study_area_def["BUFFER_IN100M_SHAPE"]);
 	map dist_code_lname_correspondance_table	<- eval_gaml(study_area_def["MAP_DIST_CODE_LONG_NAME"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(study_area_def["MAP_DIST_CODE_SHORT_NAME"]);
+	float coastBorderBuffer <- float(eval_gaml(study_area_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (<400m)
 	
 	bool AU_AND_AUs_TO_N	<- bool (study_area_def["AU_AND_AUs_TO_N"]); // should we replace AU and AUs by N ?
 	int STANDARD_LU_AREA <- int(study_area_def["STANDARD_LU_AREA"]); // area of a standard cell to manage costs and populations
@@ -221,6 +222,12 @@ global{
 	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
 	//			 lu_code			0	1	2	3	4	5	6	  7
     list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
+    int LU_TYPE_N <- 1;
+    int LU_TYPE_U <- 2;
+    int LU_TYPE_AU <- 4;
+    int LU_TYPE_A <- 5;
+    int LU_TYPE_Us <- 6;
+    int LU_TYPE_AUs <- 7;
 	
 	string lu_name_of_command (int command) {
 		switch command {

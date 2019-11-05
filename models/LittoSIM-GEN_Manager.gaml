@@ -177,12 +177,12 @@ global {
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
 			lu_name <- lu_type_names[lu_code];
-			if lu_name in ["AU","AUs"] { // if true, convert all AU and AUs to N (AU should not be imposed to players !)
+			if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] { // if true, convert all AU and AUs to N (AU should not be imposed to players !)
 				if AU_AND_AUs_TO_N {
 					lu_name <- "N";
-					lu_code <- lu_type_names index_of lu_name;
+					lu_code <- LU_TYPE_N;
 				} else {
-					if lu_name = "AU" {
+					if lu_code = LU_TYPE_AU {
 						AU_to_U_counter <- flip(0.5) ? 1 : 0;
 						not_updated <- true;
 					}
@@ -192,7 +192,7 @@ global {
 		}
 		
 		// fix populations issues
-		ask Land_Use where (each.lu_name in ['N','A'] and each.population > 0) { // move populations of Natural and Agricultural cells
+		ask Land_Use where (each.lu_code in [LU_TYPE_N,LU_TYPE_A] and each.population > 0) { // move populations of Natural and Agricultural cells
 			loop i from: 1 to: population {
 				ask one_of(Land_Use where (each.dist_code = self.dist_code and each.lu_name = "U")){
 					population <- population + 1;
@@ -200,7 +200,7 @@ global {
 			}
 			population <- 0;
 		}
-		ask Land_Use where (each.lu_name = "U" and each.population < MIN_POP_AREA) { // each U should have a min pop
+		ask Land_Use where (each.lu_code = LU_TYPE_U and each.population < MIN_POP_AREA) { // each U should have a min pop
 			population <- MIN_POP_AREA;
 		}
 		//*****
@@ -800,11 +800,11 @@ global {
 			ask LUs{
 				nb_watered_cells <- 0;
 				ask cells where (each.max_water_height > 0) {
-					switch myself.lu_name{ //"U","Us","AU","N","A"    -> but not  "AUs"
-						match "AUs" {
+					switch myself.lu_code{ //"U","Us","AU","N","A"    -> but not  "AUs"
+						match LU_TYPE_AUs {
 							write "STOP :  AUs " + world.get_message('MSG_IMPOSSIBLE_NORMALLY');
 						}
-						match "U" {
+						match LU_TYPE_U {
 							if max_water_height <= 0.5 {
 								U_0_5 <- U_0_5 +1;
 								if myself.density_class = POP_DENSE { Udense_0_5 <- Udense_0_5 +1; }
@@ -818,22 +818,22 @@ global {
 								if myself.density_class = POP_DENSE { Udense_0_5 <- Udense_0_5 +1; }
 							}
 						}
-						match "Us" {
+						match LU_TYPE_Us {
 							if max_water_height <= 0.5 { Us_0_5 <- Us_0_5 +1; }
 							else if between (max_water_height ,0.5, 1.0) { Us_1 <- Us_1 +1; }
 							else { Us_max <- Us_max +1; }
 						}
-						match "AU" {
+						match LU_TYPE_AU {
 							if max_water_height <= 0.5 { AU_0_5 <- AU_0_5 +1; }
 							else if between (max_water_height ,0.5, 1.0) { AU_1 <- AU_1 +1; }
 							else { AU_max <- AU_max +1; }
 						}
-						match "N"  {
+						match LU_TYPE_N  {
 							if max_water_height <= 0.5 { N_0_5 <- N_0_5 +1; }
 							else if between (max_water_height ,0.5, 1.0) { N_1 <- N_1 +1; }
 							else { N_max <- N_max +1; }
 						}
-						match "A" {
+						match LU_TYPE_A {
 							if max_water_height <= 0.5 { A_0_5 <- A_0_5 +1; }
 							else if between (max_water_height ,0.5, 1.0) { A_1 <- A_1 +1; }
 							else { A_max <- A_max +1; }
@@ -2142,8 +2142,8 @@ species Land_Use {
 	string density_class-> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_VERY_LOW_DENSITY : (population < POP_MEDIUM_NUMBER ? POP_LOW_DENSITY : 
 								(population < POP_HIGH_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE)))};
 	int exp_cost 		-> {round (population * 400 * population ^ (-0.5))};
-	bool isUrbanType 	-> {lu_name in ["U","Us","AU","AUs"]};
-	bool is_adapted 	-> {lu_name in ["Us","AUs"]};
+	bool isUrbanType 	-> {lu_code in [LU_TYPE_U,LU_TYPE_Us,LU_TYPE_AU,LU_TYPE_AUs]};
+	bool is_adapted 	-> {lu_code in [LU_TYPE_Us,LU_TYPE_AUs]};
 	bool is_in_densification<- false;
 	bool not_updated 		<- false;
 	bool pop_updated 		<- false;
@@ -2172,7 +2172,7 @@ species Land_Use {
 	}
 		
 	action modify_LU (string new_lu_name) {
-		if (lu_name in ["U","Us"]) and new_lu_name = "N" {
+		if (lu_code in [LU_TYPE_U,LU_TYPE_Us]) and new_lu_name = "N" {
 			population <-0; //expropriation
 		} 
 		lu_name <- new_lu_name;
@@ -2183,11 +2183,11 @@ species Land_Use {
 	}
 	
 	action evolve_AU_to_U {
-		if lu_name in ["AU","AUs"]{
+		if lu_code in [LU_TYPE_AU,LU_TYPE_AUs]{
 			AU_to_U_counter <- AU_to_U_counter + 1;
 			if AU_to_U_counter = STEPS_FOR_AU_TO_U {
 				AU_to_U_counter <- 0;
-				lu_name <- lu_name = "AU" ? "U" : "Us";
+				lu_name <- lu_code = LU_TYPE_AU ? "U" : "Us";
 				lu_code <- lu_type_names index_of lu_name;
 				not_updated <- true;
 				do assign_population (int(POP_FOR_NEW_U * self.shape.area / STANDARD_LU_AREA), true);
@@ -2196,7 +2196,7 @@ species Land_Use {
 	}
 	
 	action evolve_pop_U_densification {
-		if !pop_updated and is_in_densification and lu_name in ["U","Us"]{
+		if !pop_updated and is_in_densification and lu_code in [LU_TYPE_U,LU_TYPE_Us]{
 			string previous_d_class <- density_class;
 			do assign_population (int(POP_FOR_U_DENSIFICATION * self.shape.area / STANDARD_LU_AREA), true);
 			if previous_d_class != density_class {
@@ -2206,7 +2206,7 @@ species Land_Use {
 	}
 		
 	action evolve_pop_U_standard { 
-		if !pop_updated and !is_in_densification and lu_name in ["U","Us"]{
+		if !pop_updated and !is_in_densification and lu_code in [LU_TYPE_U,LU_TYPE_Us]{
 			if population_still_to_dispatch > 0 {
 				do assign_population (int(POP_FOR_U_STANDARD * self.shape.area / STANDARD_LU_AREA), false);
 			}
@@ -2272,11 +2272,11 @@ species Land_Use {
 	
 	rgb cell_color{
 		rgb res <- nil;
-		switch (lu_name){
-			match	  	"N" 				 {res <- #palegreen;		} // natural
-			match	  	"A" 				 {res <- rgb(225, 165, 0);	} // agricultural
-			match_one ["AU","AUs"]  		 {res <- #yellow;		 	} // to urbanize
-			match_one ["U","Us"] { 								 	    // urbanised
+		switch lu_code{
+			match	  LU_TYPE_N				 {res <- #palegreen;		} // natural
+			match	  LU_TYPE_A				 {res <- rgb(225, 165, 0);	} // agricultural
+			match_one [LU_TYPE_AU,LU_TYPE_AUs]{res <- #yellow;		 	} // to urbanize
+			match_one [LU_TYPE_U,LU_TYPE_Us] {					 	    // urbanised
 				return get_color_density();
 			}			
 		}
@@ -2457,10 +2457,10 @@ species District {
 		put string(length(LUs where (each.isUrbanType and each intersects all_flood_risk_area))) key: "count_LU_urban_in_flood_risk_area_t0" in: my_indicators_t0; // built cells in flooded area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_flood_risk_area))) key: "count_LU_urban_dense_in_flood_risk_area_t0" in: my_indicators_t0; // dense cells in risk area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_coastal_border_area))) key: "count_LU_urban_dense_is_in_coast_border_area_t0" in: my_indicators_t0; //dense cells in littoral area
-		put string(length(LUs where (each.lu_name = 'A'))) 	key: "count_LU_A_t0" 	in: my_indicators_t0; // count cells of type A
-		put string(length(LUs where (each.lu_name = 'N'))) 	key: "count_LU_N_t0" 	in: my_indicators_t0; // count cells of type N
-		put string(length(LUs where (each.lu_name = 'AU'))) key: "count_LU_AU_t0" 	in: my_indicators_t0; // count cells of type AU
-		put string(length(LUs where (each.lu_name = 'U'))) 	key: "count_LU_U_t0" 	in: my_indicators_t0; // count cells of type U
+		put string(length(LUs where (each.lu_code = LU_TYPE_A))) 	key: "count_LU_A_t0" 	in: my_indicators_t0; // count cells of type A
+		put string(length(LUs where (each.lu_code = LU_TYPE_N))) 	key: "count_LU_N_t0" 	in: my_indicators_t0; // count cells of type N
+		put string(length(LUs where (each.lu_code = LU_TYPE_AU))) key: "count_LU_AU_t0" 	in: my_indicators_t0; // count cells of type AU
+		put string(length(LUs where (each.lu_code = LU_TYPE_U))) 	key: "count_LU_U_t0" 	in: my_indicators_t0; // count cells of type U
 	}
 	
 	float my_max_w_h (string lu, int dens) {
