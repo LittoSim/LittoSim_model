@@ -32,6 +32,8 @@ global{
 	string LEV_DUNES;
 	string LEV_MSG_LEVER_HELP;
 	
+	float PROFILING_THRESHOLD <- 0.3;
+	
 	string records_folder <- "../includes/"+ application_name +"/";
 	
 	string get_lever_name(string lever_id){

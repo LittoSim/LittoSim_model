@@ -21,10 +21,10 @@ global{
 	Player_Button clicked_pButton;
 	Lever explored_lever;
 	list<species<Lever>> all_levers <- []; // levers in all_levers and levers_names should be in the same order
-	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_COAST_BORDER_AREA', 'LEVER_AU_Ui_RISK_AREA',
-								  'LEVER_GANIVELLE', 'LEVER_ENHANCE_NAT_ACCR', 'LEVER_CREATE_DUNE', 'LEVER_MAINTAIN_DUNE', 'LEVER_Us_COAST_BORDER_RISK_AREA', 'LEVER_Us_COAST_BORDER_AREA', 'LEVER_Us_RISK_AREA', 'LEVER_INLAND_DIKE',
-								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_N_COAST_BORDER_RISK_AREA',
-								  'LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE','LEVER_GIVE_PEBBLES'];
+	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_in_COAST_AREA', 'LEVER_AU_Ui_in_RISK_AREA',
+								  'LEVER_GANIVELLE', 'LEVER_ENHANCE_NAT_ACCR', 'LEVER_CREATE_DUNE', 'LEVER_MAINTAIN_DUNE', 'LEVER_Us_out_COAST_and_RISK_AREA', 'LEVER_Us_in_COAST_AREA', 'LEVER_Us_in_RISK_AREA', 'LEVER_INLAND_DIKE',
+								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_to_N_in_COAST_or_RISK_AREA',
+								  'LEVER_DENSIFICATION_out_COAST_and_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE','LEVER_GIVE_PEBBLES'];
 	bool save_data <- false; // whether save or not data logs 
 	
 	list<list<int>> districts_budgets <- [[],[],[],[]];
@@ -59,7 +59,7 @@ global{
 		MSG_OTHER				<- get_message("MSG_OTHER");
 		
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
-				Ganivelle_Lever, Enhance_Natural_Accr_Lever, Create_Dune_Lever, Maintain_Dune_Lever, Us_out_Coast_or_Risk_Area_Lever, Us_in_Coast_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
+				Ganivelle_Lever, Enhance_Natural_Accr_Lever, Create_Dune_Lever, Maintain_Dune_Lever, Us_out_Coast_and_Risk_Area_Lever, Us_in_Coast_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
 				No_Dike_Creation_Lever, No_Dike_Raise_Lever, No_Dike_Repair_Lever, A_to_N_in_Coast_or_Risk_Area_Lever,
 				Densification_out_Coast_and_Risk_Area_Lever, Expropriation_Lever, Destroy_Dike_Lever, Give_Pebbles_Lever];
 		
@@ -393,13 +393,16 @@ species Player_Action schedules:[]{
 	list<int> previous_activated_levers <- [];
 	
 	string get_strategy_profile {
-		if(action_type = PLAYER_ACTION_TYPE_COAST_DEF){
-			if is_inland_dike { return SOFT_DEFENSE; }
+		District dd <- first(District where(each.district_code = self.district_code));
+		if action_type = PLAYER_ACTION_TYPE_COAST_DEF {
+			if is_inland_dike {
+				return dd.builder_score >= PROFILING_THRESHOLD ? SOFT_DEFENSE : WITHDRAWAL;
+			}
 			else{
 				switch command {
 					match_one [ACTION_CREATE_DIKE, ACTION_RAISE_DIKE, ACTION_REPAIR_DIKE] { return BUILDER; }
 					match_one [ACTION_CREATE_DUNE, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE,
-								ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD] { return SOFT_DEFENSE; }
+								ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD] {return SOFT_DEFENSE; }
 					match ACTION_DESTROY_DIKE	{ return WITHDRAWAL; }
 				}
 			}
@@ -407,28 +410,27 @@ species Player_Action schedules:[]{
 			if is_expropriation { return WITHDRAWAL; }
 			else {
 				switch command {
-					match_one [ACTION_MODIFY_LAND_COVER_AU]   {
+					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_Ui]   {
 						if is_in_coast_area or is_in_risk_area {
 							return BUILDER;	
-						}
+						} else if dd.withdrawal_score >= PROFILING_THRESHOLD { return WITHDRAWAL; }
 					}
 					match_one [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] {
 						return SOFT_DEFENSE;
 					}
 					match ACTION_MODIFY_LAND_COVER_A {
-						if previous_lu_name = 'N' and is_in_risk_area { return BUILDER;}
+						if previous_lu_name = 'N' and is_in_risk_area { return BUILDER; }
 					}
 					match ACTION_MODIFY_LAND_COVER_N {
 						if previous_lu_name = 'A'{
-							return is_in_risk_area ? WITHDRAWAL :SOFT_DEFENSE;						
+							if is_in_risk_area or (is_in_coast_area and dd.withdrawal_score >= PROFILING_THRESHOLD) {
+								return WITHDRAWAL;
+							} else {
+								return SOFT_DEFENSE;
+							}			
 						} else if previous_lu_name = 'AU'{
 							return WITHDRAWAL;
 						}
-					}
-					match ACTION_MODIFY_LAND_COVER_Ui {
-						if is_in_coast_area or is_in_risk_area { return BUILDER; }
-						//else { return WITHDRAWAL; }
-						// TODO : voir les autres actions pour en décider !!	
 					}
 				}
 			}
@@ -436,7 +438,7 @@ species Player_Action schedules:[]{
 		return OTHER;
 	}
 	
-	action init_from_map (map<string, string> a ){
+	action init_action_from_map (map<string, string> a ){
 		self.id 						<- a at "id";
 		self.element_id 				<- int(a at "element_id");
 		self.district_code 				<- a at DISTRICT_CODE;
@@ -499,6 +501,10 @@ species District{
 	list<Lever> levers;
 	list<Player_Button> buttons;
 	
+	float builder_score <- 0.0;
+	float soft_def_score <- 0.0;
+	float withdrawal_score <- 0.0;
+		
 	// indicators for leader
 	int length_dikes_t0 								<- int(0#m);
 	int length_dunes_t0 								<- int(0#m); 
@@ -604,7 +610,7 @@ species District{
 				count_Us <- count_Us +1;
 				if !act.is_in_risk_area and !act.is_in_coast_area {
 					count_Us_out_coast_or_risk_area <- count_Us_out_coast_or_risk_area +1;
-					ask Us_out_Coast_or_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
+					ask Us_out_Coast_and_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 				} else{
 					if act.is_in_coast_area {
 					count_Us_in_coast_area <- count_Us_in_coast_area +1;
@@ -644,12 +650,14 @@ species District{
 		}
 	}
 	
-	list<Player_Action> actions_install_ganivelle {
-		Lever lv <- Ganivelle_Lever first_with (each.my_district = self);
-		if lv = nil {
-			return [];
+	list<Player_Action> soft_and_withdraw_actions {
+		if builder_score < PROFILING_THRESHOLD and (soft_def_score >= PROFILING_THRESHOLD or withdrawal_score >= PROFILING_THRESHOLD) {
+			list<Lever> levs <- Lever where (each.my_district = self and each.lever_type in [SOFT_DEFENSE, WITHDRAWAL]);
+			if length(levs) > 0 {
+				return levs accumulate each.associated_actions sort_by (-each.command_round);	
+			}	
 		}
-		return lv.associated_actions sort_by (-each.command_round);
+		return [];
 	}
 	
 	list<Player_Action> actions_densification_out_coast_border_and_risk_area{
@@ -680,7 +688,7 @@ species Activated_Lever {
 	int round_creation;
 	int round_application;
 	
-	action init_from_map (map<string, string> m ){
+	/*action init_actlev_from_map (map<string, string> m ){
 		id 					<- int(m["id"]);
 		lever_name 			<- m["lever_name"];
 		district_code 		<- m[DISTRICT_CODE];
@@ -691,7 +699,7 @@ species Activated_Lever {
 		round_creation 		<- int(m["round_creation"]);
 		round_application	<- int(m["round_application"]);
 		applied	<- bool(m["applied"]);
-	}
+	}*/
 	
 	map<string,string> build_map_from_attributes{
 		map<string,string> res <- [
@@ -924,9 +932,7 @@ species Lever {
 	}	
 	
 	action check_activation_and_impact_on_first_element_of (list<Player_Action> list_p_action){
-		if list_p_action = nil {
-			return;
-		}
+		if list_p_action = nil { return; }
 		if !empty(list_p_action){
 			do check_activation_and_impact_on (list_p_action[0]);
 		}
@@ -1059,7 +1065,6 @@ species Lever {
 	}
 	
 	action inform_network_should_wait_lever_to_activate(Player_Action p_action, Activated_Lever al){
-		write ""+p_action + " " + p_action.should_wait_lever_to_activate + " " + al;
 		map<string, unknown> msg <-[];
 		put ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE 	key: LEADER_COMMAND 						in: msg;
 		put my_district.district_code 			 	key: DISTRICT_CODE  						in: msg;
@@ -1232,10 +1237,10 @@ species AU_or_Ui_in_Coast_Area_Lever parent: Delay_Lever{
 	string progression_bar 	-> { "" + indicator + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_COAST_BORDER_AREA');
-		lever_type	<- world.get_lever_type('LEVER_AU_Ui_COAST_BORDER_AREA');
-		threshold	<- world.get_lever_threshold('LEVER_AU_Ui_COAST_BORDER_AREA');
-		added_delay	<- world.get_lever_delay('LEVER_AU_Ui_COAST_BORDER_AREA');
+		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_in_COAST_AREA');
+		lever_type	<- world.get_lever_type('LEVER_AU_Ui_in_COAST_AREA');
+		threshold	<- world.get_lever_threshold('LEVER_AU_Ui_in_COAST_AREA');
+		added_delay	<- world.get_lever_delay('LEVER_AU_Ui_in_COAST_AREA');
 		player_msg 	<- world.get_message('LEV_COAST_BORDER_AREA_PLAYER');	
 	}
 	
@@ -1257,10 +1262,10 @@ species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + indicator + " " + LEV_MSG_ACTIONS + " / "+ int(threshold) + " " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_RISK_AREA');
-		lever_type	<- world.get_lever_type('LEVER_AU_Ui_RISK_AREA');
-		threshold	<- world.get_lever_threshold('LEVER_AU_Ui_RISK_AREA');
-		added_cost 	<- world.get_lever_cost('LEVER_AU_Ui_RISK_AREA');
+		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_in_RISK_AREA');
+		lever_type	<- world.get_lever_type('LEVER_AU_Ui_in_RISK_AREA');
+		threshold	<- world.get_lever_threshold('LEVER_AU_Ui_in_RISK_AREA');
+		added_cost 	<- world.get_lever_cost('LEVER_AU_Ui_in_RISK_AREA');
 		player_msg 	<- world.get_message('LEV_REPAIR_DIKE_PLAYER');	
 	}
 		
@@ -1346,15 +1351,15 @@ species Maintain_Dune_Lever parent: Cost_Lever {
 }
 //------------------------------ End of Maintain_Dune_Lever -------------------------------//
 
-species Us_out_Coast_or_Risk_Area_Lever parent: Cost_Lever{
+species Us_out_Coast_and_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 			-> { my_district.count_Us_out_coast_or_risk_area };
 	string progression_bar 	-> { "" + indicator + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_Us_COAST_BORDER_RISK_AREA');
-		lever_type	<- world.get_lever_type('LEVER_Us_COAST_BORDER_RISK_AREA');
-		threshold	<- world.get_lever_threshold('LEVER_Us_COAST_BORDER_RISK_AREA');
-		added_cost 	<- world.get_lever_cost('LEVER_Us_COAST_BORDER_RISK_AREA');
+		lever_name 	<- world.get_lever_name('LEVER_Us_out_COAST_and_RISK_AREA');
+		lever_type	<- world.get_lever_type('LEVER_Us_out_COAST_and_RISK_AREA');
+		threshold	<- world.get_lever_threshold('LEVER_Us_out_COAST_and_RISK_AREA');
+		added_cost 	<- world.get_lever_cost('LEVER_Us_out_COAST_and_RISK_AREA');
 		player_msg 		<- world.get_message('LEV_GANIVELLE_PLAYER');
 	}
 	
@@ -1389,10 +1394,10 @@ species Us_in_Coast_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + my_district.count_Us_in_coast_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) +" " + LEV_MAX};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_Us_COAST_BORDER_AREA');
-		lever_type	<- world.get_lever_type('LEVER_Us_COAST_BORDER_AREA');
-		threshold	<- world.get_lever_threshold('LEVER_Us_COAST_BORDER_AREA');
-		added_cost 	<- world.get_lever_cost('LEVER_Us_COAST_BORDER_AREA');
+		lever_name 	<- world.get_lever_name('LEVER_Us_in_COAST_AREA');
+		lever_type	<- world.get_lever_type('LEVER_Us_in_COAST_AREA');
+		threshold	<- world.get_lever_threshold('LEVER_Us_in_COAST_AREA');
+		added_cost 	<- world.get_lever_cost('LEVER_Us_in_COAST_AREA');
 		player_msg 	<- world.get_message('LEV_ADAPTATION_PLAYER');
 	}
 	
@@ -1411,10 +1416,10 @@ species Us_in_Risk_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + my_district.count_Us_in_risk_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_Us_RISK_AREA');
-		lever_type	<- world.get_lever_type('LEVER_Us_RISK_AREA');
-		threshold	<- world.get_lever_threshold('LEVER_Us_RISK_AREA');
-		added_cost 	<- world.get_lever_cost('LEVER_Us_RISK_AREA');
+		lever_name 	<- world.get_lever_name('LEVER_Us_in_RISK_AREA');
+		lever_type	<- world.get_lever_type('LEVER_Us_in_RISK_AREA');
+		threshold	<- world.get_lever_threshold('LEVER_Us_in_RISK_AREA');
+		added_cost 	<- world.get_lever_cost('LEVER_Us_in_RISK_AREA');
 		player_msg 	<- world.get_message('LEV_ADAPTATION_PLAYER');
 	}
 	
@@ -1457,7 +1462,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	
 	bool should_be_activated-> { (nb_rounds_before_activation < 0) and !empty(list_of_impacted_actions)};
 	int nb_rounds_before_activation;
-	list<Player_Action> list_of_impacted_actions -> {my_district.actions_install_ganivelle()};
+	list<Player_Action> list_of_impacted_actions -> {my_district.soft_and_withdraw_actions()};
 	
 	init{
 		nb_rounds_before_activation <- int(threshold);
@@ -1473,7 +1478,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 		nb_rounds_before_activation <- int(threshold);	
 	}	
 
-	action check_activation_at_new_round{
+	action check_activation_at_new_round {
 		if game_round > 1 {
 			nb_rounds_before_activation <- nb_rounds_before_activation - 1;
 			do check_activation_and_impact_on_first_element_of(list_of_impacted_actions);
@@ -1551,10 +1556,10 @@ species A_to_N_in_Coast_or_Risk_Area_Lever parent: Cost_Lever{
 	bool should_be_activated 	-> { indicator > threshold and !empty(my_district.actions_densification_out_coast_border_and_risk_area()) };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_A_N_COAST_BORDER_RISK_AREA');
-		lever_type	<- world.get_lever_type('LEVER_A_N_COAST_BORDER_RISK_AREA');
-		threshold	<- world.get_lever_threshold('LEVER_A_N_COAST_BORDER_RISK_AREA');
-		added_cost 	<- world.get_lever_cost('LEVER_A_N_COAST_BORDER_RISK_AREA');
+		lever_name 	<- world.get_lever_name('LEVER_A_to_N_in_COAST_or_RISK_AREA');
+		lever_type	<- world.get_lever_type('LEVER_A_to_N_in_COAST_or_RISK_AREA');
+		threshold	<- world.get_lever_threshold('LEVER_A_to_N_in_COAST_or_RISK_AREA');
+		added_cost 	<- world.get_lever_cost('LEVER_A_to_N_in_COAST_or_RISK_AREA');
 		player_msg 	<- world.get_message('LEV_GANIVELLE_PLAYER');
 	}
 	
@@ -1573,10 +1578,10 @@ species Densification_out_Coast_and_Risk_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + my_district.count_densification_out_coast_and_risk_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) +" " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
-		lever_type	<- world.get_lever_type('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
-		threshold	<- world.get_lever_threshold('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
-		added_cost 	<- world.get_lever_cost('LEVER_DENSIFICATION_COAST_BORDER_RISK_AREA');
+		lever_name 	<- world.get_lever_name('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
+		lever_type	<- world.get_lever_type('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
+		threshold	<- world.get_lever_threshold('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
+		added_cost 	<- world.get_lever_cost('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
 		player_msg 	<- world.get_message('LEV_GANIVELLE_PLAYER');
 	}
 	
@@ -1767,11 +1772,12 @@ species Network_Leader skills:[network] {
 	
 	action update_action (map<string,string> msg){
 		Player_Action p_act <- first(Player_Action where(each.id = (msg at "id")));
-		if(p_act = nil){ // new action commanded by a player : indicators are updated and levers triggering tresholds are tested
+		if p_act = nil { // new action commanded by a player : indicators are updated and levers triggering tresholds are tested
 			create Player_Action{
-				do init_from_map(msg);
+				do init_action_from_map(msg);
 				ask districts first_with (each.district_code = district_code) {
 					do update_indicators_and_register_player_action (myself);
+					// classifying this action
 					switch myself.strategy_profile{
 						match BUILDER 		{
 							build_actions <- build_actions + 1;
@@ -1793,6 +1799,15 @@ species Network_Leader skills:[network] {
 							other_cost <- other_cost + myself.cost;
 						}
 					}
+					// updating player profile scores : only player actions of current and previous rounds
+					list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [game_round, game_round-1]);
+					builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
+					soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
+					withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
+					float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
+					builder_score <- (builder_score / tot_score) with_precision 2;
+					soft_def_score <- (soft_def_score / tot_score) with_precision 2;
+					withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
 				}
 				
 				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
@@ -1803,7 +1818,7 @@ species Network_Leader skills:[network] {
 		}
 		else{ // an update of an action already commanded
 			ask first(p_act) {
-				do init_from_map(msg);
+				do init_action_from_map(msg);
 			}
 		}
 	}
@@ -1992,7 +2007,7 @@ experiment LittoSIM_GEN_Leader {
 			species Enhance_Natural_Accr_Lever;
 			species Create_Dune_Lever;
 			species Maintain_Dune_Lever;
-			species Us_out_Coast_or_Risk_Area_Lever;
+			species Us_out_Coast_and_Risk_Area_Lever;
 			species Us_in_Coast_Area_Lever;
 			species Us_in_Risk_Area_Lever;
 			species Inland_Dike_Lever;

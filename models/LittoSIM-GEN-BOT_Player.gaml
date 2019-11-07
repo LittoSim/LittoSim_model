@@ -10,10 +10,18 @@ import "LittoSIM-GEN_Player.gaml"
 
 
 experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
+	int BOT_ACTION_TYPE <- 0;
+	int BOT_ACTION_CODE <- 1;
+	int BOT_ACTION_PROBA <- 2;
+	int BOT_ACTION_ELEMENT <- 3;
+	int BOT_ACTION_OUT_RISK_COAST <- 4;
+	int BOT_ACTION_IN_RISK <- 5;
+	int BOT_ACTION_IN_COAST <- 6;
+	
 	string scenario <- "builder100";
 	int current_read_round <- 0;
 	int current_exec_round <- 0;
-	int pause_cycles <- 1;
+	int pause_cycles <- 5;
 	list<list<string>> actions_to_exec <- [];
 	
 	action _init_ {
@@ -35,15 +43,20 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 	
 	reflex play_act when: current_exec_round = game_round and (cycle mod pause_cycles = 0) {
 		list<string> data <- actions_to_exec [rnd(length(actions_to_exec)-1)];
-		int comm <- int(eval_gaml(data[1]));
+		int comm <- int(eval_gaml(data[BOT_ACTION_CODE]));
 
-		if flip(float(data[2])) {
+		if flip(float(data[BOT_ACTION_PROBA])) {
 			// action on land use
-			if data[0] = PLAYER_ACTION_TYPE_LU {
+			if data[BOT_ACTION_TYPE] = PLAYER_ACTION_TYPE_LU {
 				list<Land_Use> lus <- [];
 				
-				// land units of type data[3] with no current player actions
-				lus <- Land_Use where (each.lu_code = eval_gaml(data[3]) and length(Player_Action collect(each.element_id = each.id)) = 0);
+				// land units of type BOT_ACTION_ELEMENT with no current player actions
+				lus <- Land_Use where (each.lu_code = eval_gaml(data[BOT_ACTION_ELEMENT]));
+				ask lus {
+					if length(my_basket where(each.element_id = id)) > 0 { 
+						remove self from: lus;
+					}
+				} 
 				
 				// conditions on action
 				if comm = ACTION_MODIFY_LAND_COVER_Ui {
@@ -55,16 +68,15 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 				}
 				
 				// conditions on element
-				if flip(float(data[4])) { // in risk area
-					lus <- lus where (each.shape intersects all_flood_risk_area);
+				 if flip(float(data[BOT_ACTION_OUT_RISK_COAST])){ // out risk and coast areas
+					lus <- lus where (!(each.shape intersects all_coastal_area) and !(each.shape intersects all_flood_risk_area));
 				} else {
-					if flip(float(data[5])) { // in coast area
+					if flip(float(data[BOT_ACTION_IN_RISK])) { // in risk area
+						lus <- lus where (each.shape intersects all_flood_risk_area);
+					} else if flip(float(data[BOT_ACTION_IN_COAST])) { // in coast area
 						lus <- lus where (each.shape intersects all_coastal_area);
-					} else if flip(float(data[6])){ // out risk and coast areas
-						lus <- lus where (!(each.shape intersects all_coastal_area) and !(each.shape intersects all_flood_risk_area));
 					}
 				}
-				
 				if length(lus) > 0 {
 					ask world {
 						do create_land_use_action (one_of(lus), Button first_with (each.command = comm));
@@ -72,7 +84,7 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 				}
 			}
 			// action on coast def
-			else if data[0] = PLAYER_ACTION_TYPE_COAST_DEF {
+			else if data[BOT_ACTION_TYPE] = PLAYER_ACTION_TYPE_COAST_DEF {
 				if comm = ACTION_CREATE_DIKE {
 					previous_clicked_point <- any_location_in(local_shape inter all_coastal_area);
 					point loca <- previous_clicked_point + 200#m;
@@ -80,15 +92,20 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 						do create_new_coast_def_action (Button first_with (each.command = comm), loca);
 					}
 				} else {
-					list<Coastal_Defense> codefs <- Coastal_Defense where (each.type = eval_gaml(data[3]) and length(my_basket where(each.element_id = each.id)) = 0);
+					list<Coastal_Defense> codefs <- Coastal_Defense where (each.type = eval_gaml(data[BOT_ACTION_ELEMENT]));
+					ask codefs {
+						if length(my_basket where(each.element_id = coast_def_id)) > 0 { 
+							remove self from: codefs;
+						}
+					} 
 					
-					if flip(float(data[4])) { // in risk area
-						codefs <- codefs where (each.shape intersects all_flood_risk_area);
+					if flip(float(data[BOT_ACTION_OUT_RISK_COAST])){ // out risk and coast areas
+						codefs <- codefs where (!(each.shape intersects all_coastal_area) and !(each.shape intersects all_flood_risk_area));
 					} else {
-						if flip(float(data[5])) { // in coast area
+						if flip(float(data[BOT_ACTION_IN_RISK])) { // in risk area
+							codefs <- codefs where (each.shape intersects all_flood_risk_area);
+						} else if flip(float(data[BOT_ACTION_IN_COAST])) { // in coast area
 							codefs <- codefs where (each.shape intersects all_coastal_area);
-						} else if flip(float(data[6])){ // out risk and coast areas
-							codefs <- codefs where (!(each.shape intersects all_coastal_area) and !(each.shape intersects all_flood_risk_area));
 						}
 					}
 					if length(codefs) > 0 {
@@ -107,6 +124,9 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 				}
 			} else if final_budget <= -1900 {
 				myself.current_exec_round <- game_round + 1;
+				ask Network_Player{
+					do send_basket;
+				}
 			}
 		}
 	}
