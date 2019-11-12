@@ -923,9 +923,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				add totN to: data_totN;
 				add totA to: data_totA;
 			}
-			write "maxwh " + maxwh;
 			ask first(cells where (each.max_water_height = maxwh)) {
-				write self;
 				myself.c_max_w_h_heights <- water_heights;
 			}
 		}
@@ -1553,7 +1551,10 @@ species Network_Listener_To_Leader skills:[network]{
 					Player_Action act <- Player_Action first_with (each.act_id = string(m_contents[PLAYER_ACTION_ID]));
 					if act!= nil {
 						act.should_wait_lever_to_activate <- bool (m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-						add int(m_contents["lever_id"]) to: act.id_applied_levers;
+						int idd <- int(m_contents["lever_id"]);
+						if !(idd in act.id_applied_levers) {
+							add idd to: act.id_applied_levers;
+						}
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
@@ -1590,7 +1591,10 @@ species Network_Listener_To_Leader skills:[network]{
 								if ply_action != nil {
 									add self to: ply_action.activated_levers;
 									ply_action.a_lever_has_been_applied <- true;
-									add int(m_contents["id"]) to: ply_action.id_applied_levers;
+									int idd <- int(m_contents["id"]);
+									if !(idd in ply_action.id_applied_levers) {
+										add idd to: ply_action.id_applied_levers;
+									}
 								}
 							}
 						}
@@ -1599,23 +1603,26 @@ species Network_Listener_To_Leader skills:[network]{
 				
 				match NEW_REQUESTED_ACTION {
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]){
-						float money <- float(m_contents["cost"]);
-						switch m_contents[STRATEGY_PROFILE]{
-							match BUILDER 		{
-								round_build_actions <- round_build_actions + 1;
-								round_build_cost <- round_build_cost + money;
-							}
-							match SOFT_DEFENSE 	{
-								round_soft_actions <- round_soft_actions + 1;
-								round_soft_cost <- round_soft_cost + money;
-							}
-							match WITHDRAWAL 	{
-								round_withdraw_actions <- round_withdraw_actions + 1;
-								round_withdraw_cost <- round_withdraw_cost + money;
-							}
-							match OTHER 		{
-								round_other_actions <- round_other_actions + 1;
-								round_other_cost <- round_other_cost + money;
+						ask Player_Action first_with (each.act_id = m_contents[PLAYER_ACTION_ID]) {
+							strategy_profile <- m_contents[STRATEGY_PROFILE];
+							float money <- float(m_contents["cost"]);
+							switch m_contents[STRATEGY_PROFILE]{
+								match BUILDER 		{
+									myself.round_build_actions <- myself.round_build_actions + 1;
+									myself.round_build_cost <- myself.round_build_cost + money;
+								}
+								match SOFT_DEFENSE 	{
+									myself.round_soft_actions <- myself.round_soft_actions + 1;
+									myself.round_soft_cost <- myself.round_soft_cost + money;
+								}
+								match WITHDRAWAL 	{
+									myself.round_withdraw_actions <- myself.round_withdraw_actions + 1;
+									myself.round_withdraw_cost <- myself.round_withdraw_cost + money;
+								}
+								match OTHER 		{
+									myself.round_other_actions <- myself.round_other_actions + 1;
+									myself.round_other_cost <- myself.round_other_cost + money;
+								}
 							}
 						}
 					}
@@ -1635,7 +1642,6 @@ species Network_Listener_To_Leader skills:[network]{
 			map<string,string> msg <- act.build_map_from_action_attributes();
 			put ACTION_STATE 			key: RESPONSE_TO_LEADER in: msg;
 			put string(act.id_applied_levers) at: "activ_levs" in: msg;
-			
 			do send to: GAME_LEADER 	contents: msg;
 			act.is_sent_to_leader <- true;
 		}
@@ -1663,16 +1669,6 @@ species Network_Listener_To_Leader skills:[network]{
 			put string(sum(districts_transferred_money[dist_id-1]))	key: "TRANSFER"	in: msg;
 			put string(sum(districts_actions_costs[dist_id-1]))		key: "ACTIONS"	in: msg;
 			put string(sum(districts_levers_costs[dist_id-1]))		key: "LEVERS"	in: msg;
-			
-			put string(sum(districts_build_strategies[dist_id-1]))		key: "BUILD_ACTIONS"	in: msg;
-			put string(sum(districts_soft_strategies[dist_id-1]))		key: "SOFT_ACTIONS"	in: msg;
-			put string(sum(districts_withdraw_strategies[dist_id-1]))	key: "WITHDRAW_ACTIONS"	in: msg;
-			put string(sum(districts_other_strategies[dist_id-1]))	key: "OTHER_ACTIONS"	in: msg;
-			
-			put string(sum(districts_build_costs[dist_id-1]))	key: "BUILD_COST"	 in: msg;
-			put string(sum(districts_soft_costs[dist_id-1]))	key: "SOFT_COST"	 in: msg;
-			put string(sum(districts_withdraw_costs[dist_id-1]))key: "WITHDRAW_COST" in: msg;
-			put string(sum(districts_other_costs[dist_id-1]))	key: "OTHER_COST"	 in: msg;
 			
 			if game_round > 0 {
 				if length(buttons_states) > 0 {
@@ -1714,6 +1710,7 @@ species Player_Action schedules:[]{
 	int command 			<- -1 on_change: { label <- world.label_of_action(command); };
 	int command_round		<- 	-1;
 	string label 			<- "";
+	string strategy_profile <- "";
 	int initial_application_round <- -1;
 	int round_delay 			  -> {activated_levers sum_of int (each.my_map["added_delay"])};
 	int actual_application_round  -> {initial_application_round + round_delay};
@@ -1764,6 +1761,7 @@ species Player_Action schedules:[]{
 			"length_coast_def"::string(length_coast_def),
 			"a_lever_has_been_applied"::string(a_lever_has_been_applied),
 			"draw_around"::string(draw_around),
+			STRATEGY_PROFILE::strategy_profile,
 			"altit"::string(altit)];
 			put district_code at: DISTRICT_CODE in: res;
 			int i <- 0;

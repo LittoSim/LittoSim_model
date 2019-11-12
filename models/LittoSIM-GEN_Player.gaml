@@ -400,7 +400,7 @@ global{
 			explored_flood_mark		 <- nil;
 		}
 		else{
-			if(active_display = LU_DISPLAY){do button_click_lu; 	  }
+			if active_display = LU_DISPLAY {do button_click_lu; 	  }
 			else						   {do button_click_coast_def;}	
 		}	
 	}
@@ -423,17 +423,7 @@ global{
 				}
 			}
 		} else{	
-			Button_Map a_MAP_button <- first (Button_Map where (each overlaps loc));
-			if a_MAP_button != nil {
-				ask a_MAP_button {
-					is_selected <- !is_selected;
-					switch command {
-						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png");}
-						match ACTION_DISPLAY_FLOODED_AREA   {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") 			 :  image_file("../images/ihm/I_afficher_PPR.png");}
-					}		
-				}
-			}
-			else {do change_plu;}
+			if button_map_clicked (loc) = nil {do change_plu;}
 		}
 	}
 	
@@ -465,18 +455,22 @@ global{
 			}
 		}
 		else{
-			Button_Map a_MAP_button <- first (Button_Map where (each overlaps loc));
-			if a_MAP_button != nil {
-				ask a_MAP_button {
-					is_selected <- ! is_selected;
-					switch command {
-						match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_afficher_zone_protegee.png") :  image_file("../images/ihm/I_desafficher_zone_protegee.png");}
-						match ACTION_DISPLAY_FLOODED_AREA 	{my_icon <-  is_selected ? image_file("../images/ihm/I_afficher_PPR.png") 			 :  image_file("../images/ihm/I_desafficher_PPR.png");}
-					}			
-				}
-			}
-			else {	do change_coast_def; }
+			if button_map_clicked (loc) = nil {	do change_coast_def; }
 		}
+	}
+	
+	Button_Map button_map_clicked (point loc) {
+		Button_Map a_MAP_button <- first (Button_Map where (each overlaps loc));
+		if a_MAP_button != nil {
+			ask a_MAP_button {
+				is_selected <- ! is_selected;
+				switch command {
+					match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png");}
+					match ACTION_DISPLAY_FLOODED_AREA 	{my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") :  image_file("../images/ihm/I_afficher_PPR.png");}
+				}			
+			}
+		}
+		return a_MAP_button;
 	}
 	
 	action clear_selected_button {
@@ -1517,16 +1511,14 @@ species Network_Listener_To_Leader skills: [network] {
 						}
 					}
 					match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
-						bool shouldWait <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
-						if shouldWait {
-							Player_Action aAct <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = m_contents[PLAYER_ACTION_ID]);
-							if aAct != nil {
-								aAct.should_wait_lever_to_activate <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);	
-							}
+						Player_Action aAct <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = m_contents[PLAYER_ACTION_ID]);
+						if aAct != nil {
+							aAct.should_wait_lever_to_activate <- bool(m_contents[ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE]);
 						}
 					}
 					match NEW_ACTIVATED_LEVER {
-						if empty(Activated_Lever where (each.my_map["id"] = int(m_contents["id"]))){
+						Activated_Lever al <- Activated_Lever first_with (each.my_map["id"] = int(m_contents["id"]));
+						if al = nil {
 							create Activated_Lever {
 								do init_activ_lever_from_map (m_contents);
 								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"]);
@@ -1545,17 +1537,21 @@ species Network_Listener_To_Leader skills: [network] {
 										}	
 									}
 									int added_delay <- int(my_map["added_delay"]);
-									if  added_delay != 0{
+									if added_delay != 0{
 										ask world{
 											do user_msg (get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + 
 												(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : '(' + myself.ply_act.element_id + ")")+"' " +
 												get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? get_message('PLY_DELAYED'): get_message('PLY_ADVANCED')) +
 												" " + get_message("PLY_BY") + " " + abs(added_delay) + " " + MSG_ROUND + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
 										}
-										ply_act.should_wait_lever_to_activate <- false;
 									}
+									ply_act.should_wait_lever_to_activate <- false;
 									add self to: ply_act.activated_levers;	
 								}
+							}
+						} else {
+							ask al.ply_act {
+								should_wait_lever_to_activate <- false;
 							}
 						}
 					}
@@ -1916,7 +1912,7 @@ species Player_Action {
 	}
 	
 	int nb_rounds_before_activation_and_waiting_for_lever_to_activate {
-		int nb_rounds <- effective_application_round - world.game_round;
+		int nb_rounds <- effective_application_round - game_round;
 		if nb_rounds < 0 {
 		 	if should_wait_lever_to_activate {return 0;}
 		 	else {
@@ -2039,7 +2035,6 @@ species Button skills:[UI_location] {
 	}
 	
 	action toggle (int etat) {
-		write etat;
 		state <- etat;
 		if state = B_ACTIVATED {
 			ask world {
@@ -2435,8 +2430,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500])
-				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500]);
+				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {

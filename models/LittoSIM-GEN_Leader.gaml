@@ -22,7 +22,8 @@ global{
 	Lever explored_lever;
 	list<species<Lever>> all_levers <- []; // levers in all_levers and levers_names should be in the same order
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_in_COAST_AREA', 'LEVER_AU_Ui_in_RISK_AREA',
-								  'LEVER_GANIVELLE', 'LEVER_ENHANCE_NAT_ACCR', 'LEVER_CREATE_DUNE', 'LEVER_MAINTAIN_DUNE', 'LEVER_Us_out_COAST_and_RISK_AREA', 'LEVER_Us_in_COAST_AREA', 'LEVER_Us_in_RISK_AREA', 'LEVER_INLAND_DIKE',
+								  'LEVER_GANIVELLE', 'LEVER_ENHANCE_NAT_ACCR', 'LEVER_CREATE_DUNE', 'LEVER_MAINTAIN_DUNE', 'LEVER_Us_out_COAST_and_RISK_AREA',
+								  'LEVER_Us_in_COAST_AREA', 'LEVER_Us_in_RISK_AREA', 'LEVER_INLAND_DIKE',
 								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_to_N_in_COAST_or_RISK_AREA',
 								  'LEVER_DENSIFICATION_out_COAST_and_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE','LEVER_GIVE_PEBBLES'];
 	bool save_data <- false; // whether save or not data logs 
@@ -391,6 +392,7 @@ species Player_Action schedules:[]{
 	bool should_wait_lever_to_activate 		<- false;
 	bool a_lever_has_been_applied			<- false;
 	list<int> previous_activated_levers <- [];
+	bool already_impacted <- false; // to prevent that an action be impacted by two levers
 	
 	string get_strategy_profile {
 		District dd <- first(District where(each.district_code = self.district_code));
@@ -454,38 +456,11 @@ species Player_Action schedules:[]{
 		self.is_in_risk_area 			<- bool(a at "is_in_risk_area");
 		self.is_inland_dike 			<- bool(a at "is_inland_dike");
 		self.command_round 				<- int(a at "command_round");
-		self.strategy_profile 			<- get_strategy_profile();
+		self.strategy_profile 			<- a at STRATEGY_PROFILE;
 		self.length_coast_def 			<- int(a at "length_coast_def");
 		self.a_lever_has_been_applied 	<- bool(a at "a_lever_has_been_applied");
 		
-		list<int> activ_levs <- eval_gaml(a["activ_levs"]);
-		if length(activ_levs) > 0 {
-			loop al over: activ_levs {
-				add al to: previous_activated_levers;
-			}
-		}
-		
-	}
-	
-	map<string,string> build_map_from_attributes{
-		map<string,string> res <- [
-			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
-			"id"::id,
-			"element_id"::string(element_id),
-			(DISTRICT_CODE)::district_code,
-			"command"::string(command),
-			"label"::label,
-			"cost"::string(cost),
-			"initial_application_round"::string(initial_application_round),
-			"action_type"::action_type,
-			"previous_lu_name"::previous_lu_name,
-			"is_expropriation"::is_expropriation,
-			"is_in_protected_area"::is_in_protected_area,
-			"is_in_coast_border_area"::is_in_coast_area,
-			"is_in_risk_area"::is_in_risk_area,
-			"is_inland_dike"::is_inland_dike,
-			"command_round"::command_round];	
-		return res;
+		self.previous_activated_levers <- eval_gaml(a["activ_levs"]);
 	}
 }
 //------------------------------ End of Player_Action -------------------------------//
@@ -627,14 +602,16 @@ species District{
 					count_A_to_N_in_coast_or_risk_area <- count_A_to_N_in_coast_or_risk_area + 1;
 					ask A_to_N_in_Coast_or_Risk_Area_Lever where(each.my_district = self) {
 						do register (act);
-						do check_activation_and_impact_on_first_element_of (myself.actions_densification_out_coast_border_and_risk_area());
+						do check_activation_and_impact_on_first_element_of (myself.get_impacted_withdrawal_actions());
 					}
 				}
 			}
 			match_one [ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_AU] {
-				if act.command = ACTION_MODIFY_LAND_COVER_Ui and !act.is_in_coast_area and !act.is_in_risk_area {	
-					count_densification_out_coast_and_risk_area <- count_densification_out_coast_and_risk_area + 1;
-					ask Densification_out_Coast_and_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation (act); }
+				if act.command = ACTION_MODIFY_LAND_COVER_Ui and !act.is_in_coast_area and !act.is_in_risk_area {
+					if withdrawal_score >= PROFILING_THRESHOLD {
+						count_densification_out_coast_and_risk_area <- count_densification_out_coast_and_risk_area + 1;
+						ask Densification_out_Coast_and_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation (act); }	
+					}
 				}
 				else{
 					if act.is_in_coast_area and act.previous_lu_name != "Us"{
@@ -650,22 +627,26 @@ species District{
 		}
 	}
 	
-	list<Player_Action> soft_and_withdraw_actions {
-		if builder_score < PROFILING_THRESHOLD and (soft_def_score >= PROFILING_THRESHOLD or withdrawal_score >= PROFILING_THRESHOLD) {
-			list<Lever> levs <- Lever where (each.my_district = self and each.lever_type in [SOFT_DEFENSE, WITHDRAWAL]);
+	list<Player_Action> get_impacted_soft_def_actions {
+		if game_round <= 1 { return []; }
+		if builder_score < PROFILING_THRESHOLD and soft_def_score >= PROFILING_THRESHOLD {
+			list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self);
 			if length(levs) > 0 {
-				return levs accumulate each.associated_actions sort_by (-each.command_round);	
+				return levs accumulate each.associated_actions where (each.strategy_profile = SOFT_DEFENSE) sort_by (-each.command_round);	
 			}	
 		}
 		return [];
 	}
 	
-	list<Player_Action> actions_densification_out_coast_border_and_risk_area{
-		return ((Densification_out_Coast_and_Risk_Area_Lever first_with(each.my_district = self)).associated_actions sort_by(-each.command_round));
-	}
-	
-	list<Player_Action> actions_expropriation{
-		return ((Expropriation_Lever first_with(each.my_district = self)).associated_actions sort_by(-each.command_round));
+	list<Player_Action> get_impacted_withdrawal_actions {
+		if game_round <= 1 { return []; }
+		if builder_score < PROFILING_THRESHOLD and withdrawal_score >= PROFILING_THRESHOLD {
+			list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self);
+			if length(levs) > 0 {
+				return levs accumulate each.associated_actions where (each.strategy_profile = WITHDRAWAL) sort_by (-each.command_round);	
+			}	
+		}
+		return [];
 	}
 }
 //------------------------------ End of District -------------------------------//
@@ -682,26 +663,12 @@ species Activated_Lever {
 	string district_code;
 	string lever_name;
 	string lever_explanation <- "";
-	string p_action_id 		 <- "";
 	int added_delay <- 0;
-	float added_cost 	<- 0.0;
+	float added_cost <- 0.0;
 	int round_creation;
 	int round_application;
 	
-	/*action init_actlev_from_map (map<string, string> m ){
-		id 					<- int(m["id"]);
-		lever_name 			<- m["lever_name"];
-		district_code 		<- m[DISTRICT_CODE];
-		p_action_id 		<- m["p_action_id"];
-		added_cost 			<- float(m["added_cost"]);
-		added_delay 		<- int(m["added_delay"]);
-		lever_explanation 	<- m["lever_explanation"];
-		round_creation 		<- int(m["round_creation"]);
-		round_application	<- int(m["round_application"]);
-		applied	<- bool(m["applied"]);
-	}*/
-	
-	map<string,string> build_map_from_attributes{
+	map<string,string> build_lev_map_from_attributes{
 		map<string,string> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_ACTIVATED_LEVER,
 			"id"::id,
@@ -709,7 +676,7 @@ species Activated_Lever {
 			"name"::name,
 			"lever_name"::lever_name,
 			(DISTRICT_CODE)::district_code,
-			"p_action_id"::p_action_id,
+			"p_action_id"::p_action.id,
 			"added_cost"::added_cost,
 			"added_delay"::added_delay,
 			"lever_explanation"::lever_explanation,
@@ -925,6 +892,7 @@ species Lever {
 		if status_on {
 			if should_be_activated {
 				threshold_reached <- true;
+				p_action.already_impacted <- true;
 				do queue_activated_lever (p_action);
 			}
 			else{ threshold_reached <- false; }	
@@ -933,32 +901,37 @@ species Lever {
 	
 	action check_activation_and_impact_on_first_element_of (list<Player_Action> list_p_action){
 		if list_p_action = nil { return; }
+		list_p_action <- list_p_action where !(each.already_impacted);
 		if !empty(list_p_action){
 			do check_activation_and_impact_on (list_p_action[0]);
 		}
 	}
 	
-	Activated_Lever queue_activated_lever(Player_Action a_p_action){
+	action queue_activated_lever(Player_Action a_p_action){
 		create Activated_Lever returns: act_levs{
 			lever_name 		<- myself.lever_name;
 			district_code 	<- myself.my_district.district_code;
 			self.p_action 	<- a_p_action;
-			p_action_id 	<- a_p_action.id;
 			activation_time <- machine_time + myself.timer_duration ;
 			round_creation 	<- game_round;
 			add self to: activated_levers;
 		}
 		ask first(act_levs) {
-			if id in a_p_action.previous_activated_levers {
+			if id in a_p_action.previous_activated_levers { // Leader restarted, this lever is already applied
 				applied <- true;
 			} else {
+				if added_delay != 0 {
+					p_action.should_wait_lever_to_activate <- true;
+					ask myself {
+						do inform_network_should_wait_lever_to_activate(a_p_action, myself);
+					}
+				}
 				add self to: myself.activation_queue;
 			}
 		}
 		ask world {
 			do record_leader_activity("Lever " + myself.lever_name + " programmed at", myself.my_district.district_name, a_p_action.label + "(" + a_p_action + ")");
 		}
-		return first(act_levs);
 	}
 
 	action toggle_status {
@@ -1075,7 +1048,7 @@ species Lever {
 	}
 	
 	action send_lever_message (Activated_Lever lev) {
-		map<string, unknown> msg <- lev.build_map_from_attributes();
+		map<string, unknown> msg <- lev.build_lev_map_from_attributes();
 		put NEW_ACTIVATED_LEVER 	key: LEADER_COMMAND in: msg;
 		ask world { do send_message_from_leader(msg); }
 		int money <- int(msg["added_cost"]);
@@ -1154,18 +1127,6 @@ species Delay_Lever parent: Lever{
 		
 		ask world {
 			do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "-> The new rounds number of the lever is : " + myself.added_delay);
-		}
-	}
-	
-	action check_activation_and_impact_on (Player_Action p_action){
-		if status_on{ 
-			if should_be_activated {
-				threshold_reached <- true;
-				Activated_Lever al <- queue_activated_lever (p_action);
-				p_action.should_wait_lever_to_activate <- true;
-				do inform_network_should_wait_lever_to_activate(p_action, al);
-			}
-			else { threshold_reached <- false; }	
 		}
 	}	
 	
@@ -1462,7 +1423,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	
 	bool should_be_activated-> { (nb_rounds_before_activation < 0) and !empty(list_of_impacted_actions)};
 	int nb_rounds_before_activation;
-	list<Player_Action> list_of_impacted_actions -> {my_district.soft_and_withdraw_actions()};
+	list<Player_Action> list_of_impacted_actions -> {my_district.get_impacted_soft_def_actions()};
 	
 	init{
 		nb_rounds_before_activation <- int(threshold);
@@ -1553,7 +1514,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 species A_to_N_in_Coast_or_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 				-> { my_district.count_A_to_N_in_coast_or_risk_area };
 	string progression_bar 		-> { "" + my_district.count_A_to_N_in_coast_or_risk_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX };
-	bool should_be_activated 	-> { indicator > threshold and !empty(my_district.actions_densification_out_coast_border_and_risk_area()) };
+	bool should_be_activated 	-> { indicator > threshold and !empty(my_district.get_impacted_withdrawal_actions()) };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_A_to_N_in_COAST_or_RISK_AREA');
@@ -1619,7 +1580,7 @@ species Expropriation_Lever parent: Cost_Lever{
 
 species Destroy_Dike_Lever parent: Cost_Lever{
 	float indicator 		 -> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_destroyed_dikes / my_district.length_dikes_t0 };
-	bool should_be_activated -> { indicator > threshold and !empty(my_district.actions_expropriation()) };
+	bool should_be_activated -> { indicator > threshold and !empty(my_district.get_impacted_withdrawal_actions()) };
 	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " + LEV_AT + " t0"};
 	
 	init{
@@ -1747,16 +1708,16 @@ species Network_Leader skills:[network] {
 							levers_cost <- int(m_contents ["LEVERS"]);
 							transferred_money <- int(m_contents ["TRANSFER"]);
 							
-							build_actions <- int(m_contents ["BUILD_ACTIONS"]);
+							/*build_actions <- int(m_contents ["BUILD_ACTIONS"]);
 							soft_actions <- int(m_contents ["SOFT_ACTIONS"]);
 							withdraw_actions <- int(m_contents ["WITHDRAW_ACTIONS"]);
 							other_actions <- int(m_contents ["OTHER_ACTIONS"]);
-							sum_buil_sof_wit_actions <- max(1,build_actions + soft_actions + withdraw_actions);
+							sum_buil_sof_wit_actions <- max(1,build_actions + soft_actions + withdraw_actions);*/
 							
-							build_cost <- int(m_contents ["BUILD_COST"]);
+							/*build_cost <- int(m_contents ["BUILD_COST"]);
 							soft_cost <- int(m_contents ["SOFT_COST"]);
 							withdraw_cost <- int(m_contents ["WITHDRAW_COST"]);
-							other_cost <- int(m_contents ["OTHER_COST"]);
+							other_cost <- int(m_contents ["OTHER_COST"]);*/
 						}	
 					}
 				}
@@ -1775,6 +1736,13 @@ species Network_Leader skills:[network] {
 		if p_act = nil { // new action commanded by a player : indicators are updated and levers triggering tresholds are tested
 			create Player_Action{
 				do init_action_from_map(msg);
+				bool profile_this_action <- false;
+				int ref_round <- command_round;
+				if strategy_profile = "" {
+					strategy_profile <- get_strategy_profile();
+					profile_this_action <- true;
+					ref_round <- game_round;
+				}
 				ask districts first_with (each.district_code = district_code) {
 					do update_indicators_and_register_player_action (myself);
 					// classifying this action
@@ -1800,19 +1768,23 @@ species Network_Leader skills:[network] {
 						}
 					}
 					// updating player profile scores : only player actions of current and previous rounds
-					list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [game_round, game_round-1]);
-					builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
-					soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
-					withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
-					float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
-					builder_score <- (builder_score / tot_score) with_precision 2;
-					soft_def_score <- (soft_def_score / tot_score) with_precision 2;
-					withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
+					list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [ref_round, ref_round-1]);
+					if length(pacts) > 0 {
+						builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
+						soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
+						withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
+						float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
+						builder_score <- (builder_score / tot_score) with_precision 2;
+						soft_def_score <- (soft_def_score / tot_score) with_precision 2;
+						withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
+					}
 				}
 				
-				map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
-					(STRATEGY_PROFILE)::strategy_profile,"cost"::cost];
-				ask world { do send_message_from_leader(mpp); }
+				if profile_this_action {
+					map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
+					(STRATEGY_PROFILE)::strategy_profile,"cost"::cost,PLAYER_ACTION_ID::id];
+					ask world { do send_message_from_leader(mpp); }
+				}
 				add self to: player_actions;
 			}
 		}
