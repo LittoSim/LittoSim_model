@@ -581,7 +581,7 @@ species District{
 				length_maintained_dunes <- length_maintained_dunes + act.length_coast_def;
 				ask Maintain_Dune_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 			}
-			match ACTION_MODIFY_LAND_COVER_Us {
+			match_one [ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs] {
 				count_Us <- count_Us +1;
 				if !act.is_in_risk_area and !act.is_in_coast_area {
 					count_Us_out_coast_or_risk_area <- count_Us_out_coast_or_risk_area +1;
@@ -647,6 +647,18 @@ species District{
 			}	
 		}
 		return [];
+	}
+	
+	action calculate_scores (int roundd) {
+		// updating player profile scores : only player actions of current and previous rounds
+		list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [roundd, roundd-1]);
+		builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
+		soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
+		withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
+		float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
+		builder_score <- (builder_score / tot_score) with_precision 2;
+		soft_def_score <- (soft_def_score / tot_score) with_precision 2;
+		withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
 	}
 }
 //------------------------------ End of District -------------------------------//
@@ -1421,13 +1433,12 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	int nb_activations 		<- 0;
 	string box_title 		-> { lever_name + ' (' + nb_activations +')' };
 	
-	bool should_be_activated-> { (nb_rounds_before_activation < 0) and !empty(list_of_impacted_actions)};
+	bool should_be_activated-> { nb_rounds_before_activation < 0 and !empty(list_of_impacted_actions)};
 	int nb_rounds_before_activation;
 	list<Player_Action> list_of_impacted_actions -> {my_district.get_impacted_soft_def_actions()};
 	
 	init{
-		nb_rounds_before_activation <- int(threshold);
-		player_msg 					<- world.get_message('LEV_GANIVELLE_PLAYER');
+		player_msg <- world.get_message('LEV_GANIVELLE_PLAYER');
 	}
 		
 	string info_of_next_activated_lever {
@@ -1436,7 +1447,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	
 	action register (Player_Action p_action){
 		add p_action to: associated_actions;
-		nb_rounds_before_activation <- int(threshold);	
+		nb_rounds_before_activation <- int(threshold);
 	}	
 
 	action check_activation_at_new_round {
@@ -1474,6 +1485,7 @@ species No_Dike_Creation_Lever parent: No_Action_On_Dike_Lever{
 		lever_type	<- world.get_lever_type('LEVER_NO_DIKE_CREATION');
 		threshold	<- world.get_lever_threshold('LEVER_NO_DIKE_CREATION');
 		added_cost	<- world.get_lever_cost('LEVER_NO_DIKE_CREATION');
+		nb_rounds_before_activation <- int(threshold);
 	}
 	
 	string get_lever_help_msg {
@@ -1488,6 +1500,7 @@ species No_Dike_Raise_Lever parent: No_Action_On_Dike_Lever{
 		lever_type	<- world.get_lever_type('LEVER_NO_DIKE_RAISE');
 		threshold	<- world.get_lever_threshold('LEVER_NO_DIKE_RAISE');
 		added_cost	<- world.get_lever_cost('LEVER_NO_DIKE_RAISE');
+		nb_rounds_before_activation <- int(threshold);
 	}
 	
 	string get_lever_help_msg {
@@ -1502,6 +1515,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 		lever_type	<- world.get_lever_type('LEVER_NO_DIKE_REPAIR');
 		threshold	<- world.get_lever_threshold('LEVER_NO_DIKE_REPAIR');
 		added_cost	<- world.get_lever_cost('LEVER_NO_DIKE_REPAIR');
+		nb_rounds_before_activation <- int(threshold);
 	}
 	
 	string get_lever_help_msg {
@@ -1660,6 +1674,7 @@ species Network_Leader skills:[network] {
 								add int(pop) to: districts_populations[dist_id-1]; 
 							}
 						}
+						do calculate_scores (game_round);
 					}
 					
 					loop lev over: all_levers{
@@ -1701,23 +1716,18 @@ species Network_Leader skills:[network] {
 								add int(m_contents ["budget_round"+i]) to: districts_budgets[dist_id-1];
 							}
 							add budget to: districts_budgets[dist_id-1];
+							
+							districts_populations[dist_id-1] <- [];
+							loop i from: 0 to: game_round - 1 {
+								add int(m_contents ["pop_round"+i]) to: districts_populations[dist_id-1];
+							}
+							
 							received_tax <- int(m_contents ["TAXES"]);
 							actions_cost <- int(m_contents ["ACTIONS"]);
 							given_money <- int(m_contents ["GIVEN"]);
 							taken_money <- int(m_contents ["TAKEN"]);
 							levers_cost <- int(m_contents ["LEVERS"]);
 							transferred_money <- int(m_contents ["TRANSFER"]);
-							
-							/*build_actions <- int(m_contents ["BUILD_ACTIONS"]);
-							soft_actions <- int(m_contents ["SOFT_ACTIONS"]);
-							withdraw_actions <- int(m_contents ["WITHDRAW_ACTIONS"]);
-							other_actions <- int(m_contents ["OTHER_ACTIONS"]);
-							sum_buil_sof_wit_actions <- max(1,build_actions + soft_actions + withdraw_actions);*/
-							
-							/*build_cost <- int(m_contents ["BUILD_COST"]);
-							soft_cost <- int(m_contents ["SOFT_COST"]);
-							withdraw_cost <- int(m_contents ["WITHDRAW_COST"]);
-							other_cost <- int(m_contents ["OTHER_COST"]);*/
 						}	
 					}
 				}
@@ -1767,17 +1777,7 @@ species Network_Leader skills:[network] {
 							other_cost <- other_cost + myself.cost;
 						}
 					}
-					// updating player profile scores : only player actions of current and previous rounds
-					list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [ref_round, ref_round-1]);
-					if length(pacts) > 0 {
-						builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
-						soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
-						withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
-						float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
-						builder_score <- (builder_score / tot_score) with_precision 2;
-						soft_def_score <- (soft_def_score / tot_score) with_precision 2;
-						withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
-					}
+					do calculate_scores (ref_round);
 				}
 				
 				if profile_this_action {
@@ -2033,18 +2033,18 @@ experiment LittoSIM_GEN_Leader {
 			 	data MSG_LEVERS value: districts collect each.levers_cost collect sum(each) color: color_lbls[4];		
 			}
 			
-			chart world.get_message('MSG_NUMBER_ACTIONS') type: histogram size: {0.33,0.48} position: {0.01,0.51}
-				x_serie_labels: districts collect (each.district_name) style:stack {
-			 	data MSG_BUILDER value: districts collect (each.build_actions) color: color_lbls[2];
-			 	data MSG_SOFT_DEF value: districts collect (each.soft_actions) color: color_lbls[1];
-			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_actions) color: color_lbls[0];
-			 	data MSG_OTHER value: districts collect (each.other_actions) color: color_lbls[3];
-			}
-			chart world.get_message('MSG_COST_ACTIONS') type: histogram size: {0.33,0.48} position: {0.34,0.51}
+			chart world.get_message('MSG_COST_ACTIONS') + " ("+ LDR_TOTAL +")" type: histogram size: {0.33,0.48} position: {0.01,0.51}
 				x_serie_labels: districts collect (each.district_name) style:stack {
 			 	data MSG_BUILDER value: districts collect (each.build_cost) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_cost) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_cost) color: color_lbls[0];
+			 	data MSG_OTHER value: districts collect (each.other_cost) color: color_lbls[3];
+			}
+			chart world.get_message('MSG_COST_ACTIONS') + " (2 " + LDR_MSG_ROUNDS + ")" type: histogram size: {0.33,0.48} position: {0.34,0.51}
+				x_serie_labels: districts collect (each.district_name) style:stack {
+			 	data MSG_BUILDER value: districts collect (each.builder_score) color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: districts collect (each.soft_def_score) color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: districts collect (each.withdrawal_score) color: color_lbls[0];
 			 	data MSG_OTHER value: districts collect (each.other_cost) color: color_lbls[3];
 			}
 			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.51} 

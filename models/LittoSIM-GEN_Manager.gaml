@@ -78,7 +78,7 @@ global {
 	// other variables 
 	bool show_max_water_height	<- false;			// defines if the water_height displayed on the map should be the max one or the current one
 	bool show_protected_areas	<- false;
-	bool show_river_flooded_area <- false;
+	int show_river_flooded_area <- 0;
 	bool show_risked_areas	<- false;
 	bool show_grid <- false;
 	string stateSimPhase 		<- SIM_NOT_STARTED; // state variable of current simulation state 
@@ -166,7 +166,14 @@ global {
 			create Water from: water_shape;
 		}
 		if river_flood_shape != nil {
-			create River_Flood from: river_flood_shape;
+			create River_Flood_Cell from: river_flood_shape with: [water_h::float(read("water_h"))] {
+				col <- world.color_of_water_height(water_h);
+			}
+		}
+		if river_flood_shape_1m != nil {
+			create River_Flood_Cell_1m from: river_flood_shape_1m with: [water_h::float(read("water_h"))] {
+				col <- world.color_of_water_height(water_h);
+			}
 		}
 		
 		create Coastal_Border_Area from: coastline_shape {
@@ -1050,8 +1057,14 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			create Button{
 				nb_button 	<- 913;
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
-				my_icon 	<- image_file("../images/icons/river_flood.jpg");
+				my_icon 	<- image_file("../images/icons/river_flood0.jpg");
 				location 	<-  {world.shape.width/2 - button_size.x*3.4,  world.shape.height - button_size.y*0.75};
+			}
+			create Button{
+				nb_button 	<- 914;
+				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
+				my_icon 	<- image_file("../images/icons/river_flood1.jpg");
+				location 	<-  {world.shape.width/2 + button_size.x*3.4,  world.shape.height - button_size.y*0.75};
 			}
 		}
 	}
@@ -1059,9 +1072,9 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 	// the four buttons of game master control display 
     action button_click_master_control{
 		point loc <- #user_location;
-		Button button_master <- first(Button where (each.nb_button in [0,1,2,3,5,6,7,8,55,57,911,912,913] and each overlaps loc));
+		Button button_master <- first(Button where (each.nb_button in [0,1,2,3,5,6,7,8,55,57,911,912,913,914] and each overlaps loc));
 		if button_master != nil {
-			ask Button where !(each.nb_button in [4,7,8,911,912,913]) {
+			ask Button where !(each.nb_button in [4,7,8,911,912,913,914]) {
 				self.is_selected <- false;
 			}
 			ask button_master {
@@ -1127,7 +1140,14 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 					}
 					match 913 {
 						is_selected <- !is_selected;
-						show_river_flooded_area <- is_selected;
+						show_river_flooded_area <- is_selected ? 1 : 0;
+						first(Button where (each.nb_button = 914)).is_selected <- false;
+						 
+					}
+					match 914 {
+						is_selected <- !is_selected;
+						show_river_flooded_area <- is_selected ? 2 : 0;
+						first(Button where (each.nb_button = 913)).is_selected <- false;
 					}
 				}
 			}
@@ -1680,7 +1700,10 @@ species Network_Listener_To_Leader skills:[network]{
 			if game_round > 1 {
 				loop ixx from: 0 to: game_round - 2 {
 					put string(districts_budgets[dist_id-1][ixx]) key: "budget_round"+ixx   in: msg;
-				}				
+				}
+				loop ixx from: 0 to: game_round - 1 {
+					put string(round_population[ixx]) key: "pop_round"+ixx   in: msg;
+				}		
 			}
 			ask myself {
 				do send to: GAME_LEADER contents: msg;
@@ -1987,17 +2010,18 @@ species Coastal_Defense {
 			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
 			
 			if is_protected_by_cord { // there is a pebble cord protecting the dike
-				map<string, int> probas_med <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD, STATUS_MEDIUM::int(PROBA_RUPTURE_DIKE_STATUS_BAD * 1.5),
+				/*map<string, int> probas_med <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD, STATUS_MEDIUM::int(PROBA_RUPTURE_DIKE_STATUS_BAD * 1.5),
 									STATUS_BAD::int(PROBA_RUPTURE_DIKE_STATUS_BAD * 2.5)];
 				map<string, int> probas_bad <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD * 2, STATUS_MEDIUM::PROBA_RUPTURE_DIKE_STATUS_BAD * 3,
-									STATUS_BAD::100];
+									STATUS_BAD::100];*/
 				ask Coastal_Defense where (each.type=COAST_DEF_TYPE_CORD) closest_to self {
-					if status = STATUS_BAD {
-						p <- probas_bad at myself.status;
-					}
-					else if  status = STATUS_MEDIUM	{
-						p <- probas_med at myself.status;
-					}
+					if status = STATUS_GOOD {
+						p <- 0;
+					} else if  status = STATUS_MEDIUM	{
+						p <- 50;
+					} else if status = STATUS_BAD {
+						p <- 100;
+					}  
 				}
 			}
 		}
@@ -2492,7 +2516,7 @@ species Button{
 	image_file my_icon;
 	
 	aspect buttons_master {
-		if nb_button in [0,1,2,3,5,7,8,55,57,911,912,913] {
+		if nb_button in [0,1,2,3,5,7,8,55,57,911,912,913,914] {
 			draw shape color: #white border: is_selected ? #red : #black;
 			draw display_text color: #black at: location + {0,shape.height*0.55} anchor: #center;
 			draw display_text2 color: #black at: location + {0,shape.height*0.75} anchor: #center;
@@ -2629,10 +2653,20 @@ species Water_Gate { // a water gate for the case of Dieppe
 }
 
 // river flood shapefile for dieppe
-species River_Flood {
+species River_Flood_Cell {
+	float water_h;
+	rgb col;
 	aspect base {
-		if show_river_flooded_area {
-			draw shape color: #blue border:#transparent;	
+		if show_river_flooded_area = 1 {
+			draw shape color: col border:#transparent;	
+		}
+	}
+}
+
+species River_Flood_Cell_1m parent: River_Flood_Cell{
+	aspect base {
+		if show_river_flooded_area = 2 {
+			draw shape color: col border:#transparent;	
 		}
 	}
 }
@@ -2684,7 +2718,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Isoline			aspect: base;
 			species Road 			aspect: base;
 			species Water			aspect: base;
-			species River_Flood		aspect: base;
+			species River_Flood_Cell aspect: base;
+			species River_Flood_Cell_1m aspect: base;
 			species Coastal_Defense aspect: base;
 			species Land_Use 		aspect: conditional_outline;
 			species Water_Gate		aspect: base;
@@ -2705,7 +2740,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Water			aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Coastal_Defense aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Polycell		aspect: base size: {0.49,0.49} position: {0.24,0.01};
-			species River_Flood		aspect: base size: {0.49,0.49} position: {0.24,0.01};			
+			species River_Flood_Cell aspect: base size: {0.49,0.49} position: {0.24,0.01};
+			species River_Flood_Cell_1m aspect: base size: {0.49,0.49} position: {0.24,0.01};	
 			species Water_Gate		aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Protected_Area 	aspect: base size: {0.49,0.49} position: {0.24,0.01};
 			species Flood_Risk_Area aspect: base size: {0.49,0.49} position: {0.24,0.01};

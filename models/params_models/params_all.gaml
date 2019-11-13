@@ -142,6 +142,7 @@ global{
 	file protected_areas_shape 	<- file(study_area_def["SPA_SHAPE"]);
 	file water_shape 			<- file(study_area_def["WATER_SHAPE"]);
 	file river_flood_shape 		<- file(study_area_def["RIVER_FLOOD_SHAPE"]);
+	file river_flood_shape_1m 	<- file(study_area_def["RIVER_FLOOD_SHAPE_1M"]);
 	file rpp_area_shape 		<- file(study_area_def["RPP_SHAPE"]);
 	file coastline_shape 		<- file(study_area_def["COASTLINES_SHAPE"]);
 	file coastal_defenses_shape <- file(study_area_def["COASTAL_DEFENSES_SHAPE"]);
