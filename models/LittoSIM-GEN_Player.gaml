@@ -36,6 +36,7 @@ global{
 	int previous_population			<- 0;
 	int current_population 			<- 0;
 	list<Player_Action> my_basket <-[];
+	list<Player_Action> my_history	<- [];
 	
 	Button explored_button <- nil;
 	geometry population_area <- nil;
@@ -45,9 +46,6 @@ global{
 	Flood_Mark explored_flood_mark <- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	Coastal_Defense_Action explored_coast_def_action<- nil;
-	
-	list<Player_Action> ordered_action 	<- nil;
-	list<Player_Action> my_history	 	<- [] update: ordered_action where(each.is_sent);
 	
 	Basket game_basket 			<-nil;
 	Message_Console game_console<-nil;
@@ -113,6 +111,7 @@ global{
 		MSG_NEW_COMERS <- get_message('MSG_NEW_COMERS');
 		MSG_DISTRICT_POPULATION <- get_message('MSG_DISTRICT_POPULATION');
 		MSG_INHABITANTS <- get_message('MSG_INHABITANTS');
+		PLY_MSG_DOSSIER <- get_message('PLY_MSG_DOSSIER');
 		
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
@@ -194,14 +193,6 @@ global{
 	user_command "Refresh All" {
 		write "Refreshing all...";
 		do refresh_all;
-	}
-	
-	user_command "Fermer la porte de Dieppe" when: active_district_code = "76217"{ // Dieppe only
-		do close_or_open_dieppe_water_gate (true);
-	}
-	
-	user_command "Ouvrir la porte de Dieppe" when: active_district_code = "76217"{ // Dieppe only
-		do close_or_open_dieppe_water_gate (false);
 	}
 	
 	action close_or_open_dieppe_water_gate (bool close){
@@ -438,12 +429,16 @@ global{
 		Button clicked_coast_def_button <- first(Button where (each overlaps loc and each.display_name != LU_DISPLAY));
 		if clicked_coast_def_button != nil {
 			Button current_active_button <- first(Button where (each.is_selected));
-			if clicked_coast_def_button.command = ACTION_CLOSE_OPEN_GATES {
+			if clicked_coast_def_button.command in [ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE] {
 				if clicked_coast_def_button.state = B_DEACTIVATED {
 					return; 
 				}
 				clicked_coast_def_button.is_selected <- ! clicked_coast_def_button.is_selected;
-				do close_or_open_dieppe_flood_gates (clicked_coast_def_button.is_selected);
+				if clicked_coast_def_button.command = ACTION_CLOSE_OPEN_GATES {
+					do close_or_open_dieppe_flood_gates (clicked_coast_def_button.is_selected);	
+				} else {
+					do close_or_open_dieppe_water_gate (clicked_coast_def_button.is_selected);	
+				}
 			} else {
 				do clear_selected_button;
 				if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
@@ -476,7 +471,7 @@ global{
 	action clear_selected_button {
 		previous_clicked_point <- nil;
 		ask Button {
-			if command != ACTION_CLOSE_OPEN_GATES {
+			if !(command in [ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE]) {
 				self.is_selected <- false;	
 			}
 		}
@@ -558,7 +553,10 @@ global{
 	action modify_coast_def (Coastal_Defense codef, Button but){
 		if codef != nil{
 			ask my_basket { // an action on the same dike is already in the basket
-				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DUNE] and element_id = codef.coast_def_id { return; }
+				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DUNE] and element_id = codef.coast_def_id { return; } 
+			}
+			ask my_history where (!each.is_applied) { // a not applied action on the same dike is already in the history
+				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DUNE] and element_id = codef.coast_def_id { return; } 
 			}
 			if codef.type = COAST_DEF_TYPE_CORD and (codef.slices + length(my_basket where
 						(each.action_type = PLAYER_ACTION_TYPE_COAST_DEF and each.element_id = codef.coast_def_id)) + length(my_history where
@@ -617,7 +615,6 @@ global{
 		}
 		current_action.initial_application_round <- game_round  + action_delay;
 		my_basket <- my_basket + current_action; 
-		ordered_action <- ordered_action + current_action;
 		ask game_basket  {
 			do add_action_to_basket(current_action);
 		}
@@ -692,7 +689,6 @@ global{
 		}
 		current_action.initial_application_round <- game_round  + action_delay;
 		my_basket <- my_basket + current_action; 
-		ordered_action <- ordered_action + current_action;
 		ask game_basket {
 			do add_action_to_basket(current_action);
 		}	
@@ -707,11 +703,6 @@ global{
 			if cell_tmp = nil {return;}
 			if basket_overflow() {return;}
 			ask cell_tmp {
-				loop p_act over: my_basket { // an action is already triggered on the same cell
-					if p_act.element_id = self.id {
-						return;
-					}
-				}
 				if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY]	   {return;}	// inspect : do nothing
 				if length(Player_Action collect(each.element_id = cell_tmp.id)) > 0  {return;}
 				if(		(lu_code = LU_TYPE_N 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_N)
@@ -721,6 +712,16 @@ global{
 					 or (lu_code in [LU_TYPE_A,LU_TYPE_N,LU_TYPE_AU,LU_TYPE_AUs] and selected_button.command = ACTION_MODIFY_LAND_COVER_Ui)){
 						return; // the cell has already the selected action, do nothing
 				}
+				
+				loop p_act over: my_basket { // an action is already triggered on the same cell
+					if p_act.element_id = self.id {
+						return;
+					}
+				}
+				ask my_history where (!each.is_applied) { // a not applied action on the same cell is already in the history
+					if element_id = myself.id { return; } 
+				}
+				
 				if lu_code in [LU_TYPE_U,LU_TYPE_Us] {
 					switch selected_button.command {
 						match ACTION_MODIFY_LAND_COVER_A {
@@ -796,6 +797,7 @@ global{
 					initial_application_round <- game_round + world.delay_of_action(ACTION_EXPROPRIATION);
 					cost <- float(mylu.expro_cost) * element_shape.area / STANDARD_LU_AREA;
 					is_expropriation <- true;
+					label <- world.get_message("MSG_EXPROPRIATION");
 				} else if previous_lu_name = "A" {
 					cost <- world.cost_of_action ('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') * element_shape.area / STANDARD_LU_AREA;
 				}
@@ -803,14 +805,12 @@ global{
 			else if command = ACTION_MODIFY_LAND_COVER_AUs {
 				if previous_lu_name = "U" {
 					command <- ACTION_MODIFY_LAND_COVER_Us;
-					label 	<- world.get_message('PLY_CHANGE_TO_Us');
 					cost 	<- element_shape.area / STANDARD_LU_AREA * world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
 				}
 			}
 		}
 		current_action  <- first(actions_list);
 		my_basket 		<- my_basket + current_action; 
-		ordered_action  <- ordered_action + current_action;
 		ask game_basket {
 			do add_action_to_basket(current_action);
 		}	
@@ -1275,6 +1275,7 @@ species History parent: Displayed_List { //schedules:[]{
 	}
 	
 	action add_action_to_history(Player_Action act){
+		add act to: my_history;
 	  	create History_Element returns: elem {
 			label <- act.label;
 			if act.is_applied or !(act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]) {
@@ -1369,27 +1370,29 @@ species History_Element parent: Displayed_List_Element { //schedules:[]{
 	
 	Player_Action current_action;
 	
+	rgb std_color <- rgb(87,87,87);
+	
 	action on_mouse_down{
 		highlighted_action <-  highlighted_action = current_action  ? nil : (current_action.is_applied ? nil : current_action);
 	}
 	
 	action draw_element{
+		int prix <- int(final_price); // temporal variable mandatory to correctly display the price ! displaying final_price directly doesn't work !!
 		font font1 <- font ('Helvetica Neue', font_size, #italic); 
-		int prix <- int(final_price);
 		if(!current_action.is_applied) {
 			if delay != 0 {
 				int ddl <- delay;
-				draw circle(bullet_size.x / 2) at: delay_location color: rgb(235,33,46);
+				draw circle(bullet_size.x / 2) at: delay_location color: delay < 0 ? #green : #red;
 				draw ""  + ddl at: delay_location anchor:#center color: #white font: font1;
 			}
-			draw circle(bullet_size.x / 2) at: round_apply_location color: rgb(87,87,87);
+			draw circle(bullet_size.x / 2) at: round_apply_location color: std_color;
 			draw "" + current_action.nb_rounds_before_activation_and_waiting_for_lever_to_activate() at: round_apply_location anchor: #center color: #white font: font1;
 		}
 		else {
-			draw file("../images/ihm/I_valider.png") at: round_apply_location size: bullet_size color: rgb(87,87,87);
+			draw file("../images/ihm/I_valider.png") at: round_apply_location size: bullet_size color: std_color;
 		}
 
-		rgb mc <- (final_price = initial_price) ? rgb(87,87,87): rgb(235,33,46);
+		rgb mc <- (final_price = initial_price) ? std_color : (final_price > initial_price ? #red : #green);
 		draw "" + prix at: price_location anchor: #center color: mc font: font1;
 		
 		if highlighted_action = current_action {
@@ -1411,7 +1414,6 @@ species Basket_Element parent: Displayed_List_Element {
 	point round_apply_location  <- point(0,0) update: {location.x + 1.3 * ui_width / 5, location.y};
 	
 	action remove_action{
-		remove current_action from: ordered_action;
 		ask my_parent{
 			do remove_element(myself);
 		}
@@ -1533,13 +1535,14 @@ species Network_Listener_To_Leader skills: [network] {
 										budget <- budget - added_cost;
 										ask world{
 											do user_msg (get_message('PLY_MSG_BEEN')+" " + (added_cost > 0 ? get_message('LDR_TAKEN'): get_message('LDR_GIVEN')) + " " +
-												abs(added_cost)+ " By "+ get_message('PLY_MSG_DOSSIER')+" '" + myself.ply_act.label + "'", BUDGET_MESSAGE);
+												abs(added_cost)+ " By "+ PLY_MSG_DOSSIER +" '" + myself.ply_act.label + (myself.ply_act.command in [ACTION_CREATE_DIKE, 
+														ACTION_CREATE_DUNE ] ? "" : '(' + myself.ply_act.element_id + ")")+ "'", BUDGET_MESSAGE);
 										}	
 									}
 									int added_delay <- int(my_map["added_delay"]);
 									if added_delay != 0{
 										ask world{
-											do user_msg (get_message('PLY_THE_DOSSIER') + " '" + myself.ply_act.label + 
+											do user_msg (PLY_MSG_DOSSIER + " '" + myself.ply_act.label + 
 												(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : '(' + myself.ply_act.element_id + ")")+"' " +
 												get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? get_message('PLY_DELAYED'): get_message('PLY_ADVANCED')) +
 												" " + get_message("PLY_BY") + " " + abs(added_delay) + " " + MSG_ROUND + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
@@ -1836,15 +1839,11 @@ species Player_Action {
 	int initial_application_round <- -1; // round where the action is supposed to be executed
 	int added_delay -> {activated_levers sum_of int(each.my_map["added_delay"])};
 	int effective_application_round -> {initial_application_round + added_delay};
-	bool is_delayed -> {added_delay > 0} ;
 	float cost 		<- 0.0;
 	int added_cost 		-> {activated_levers sum_of int(each.my_map["added_cost"])};
-	float actual_cost 	-> {cost + added_cost};
-	bool has_added_cost -> {added_cost > 0} ;
-	bool has_diminished_cost -> {added_cost < 0};
+	float actual_cost 	-> {max([cost + added_cost,0])};
 	bool is_sent 		<- false;
 	bool is_applied 	<- false;
-	bool is_highlighted <- false;
 	History_Element my_hist_elem <- nil;
 	
 	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF ;
@@ -2041,7 +2040,7 @@ species Button skills:[UI_location] {
 				do user_msg (replace_strings('MSG_BUTTON_ENABLED', [myself.label]), INFORMATION_MESSAGE);
 			}
 		} else if state = B_DEACTIVATED {
-			if command != ACTION_CLOSE_OPEN_GATES {
+			if !(command in [ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE]) {
 				is_selected <- false;
 			}
 			ask world {
@@ -2430,8 +2429,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500]);
-				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500])
+				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {
@@ -2558,7 +2557,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw my_button.help_msg at: target2 + {10#px, 35#px} font: regular color: #whitesmoke;
 
 					if !(my_button.command in [ACTION_INSPECT, ACTION_HISTORY,ACTION_DISPLAY_PROTECTED_AREA, ACTION_DISPLAY_FLOODED_AREA,
-							ACTION_DISPLAY_FLOODING,ACTION_CLOSE_OPEN_GATES]) {
+							ACTION_DISPLAY_FLOODING,ACTION_CLOSE_OPEN_GATES,ACTION_CLOSE_OPEN_DIEPPE_GATE]) {
 						string txtt;
 						if active_display = LU_DISPLAY { txtt <- MSG_COST_APPLIED_PARCEL; }
 						switch my_button.command {	

@@ -602,7 +602,7 @@ species District{
 					count_A_to_N_in_coast_or_risk_area <- count_A_to_N_in_coast_or_risk_area + 1;
 					ask A_to_N_in_Coast_or_Risk_Area_Lever where(each.my_district = self) {
 						do register (act);
-						do check_activation_and_impact_on_first_element_of (myself.get_impacted_withdrawal_actions());
+						do check_activation_and_impact_on_first_element_of (associated_actions);
 					}
 				}
 			}
@@ -627,38 +627,24 @@ species District{
 		}
 	}
 	
-	list<Player_Action> get_impacted_soft_def_actions {
+	list<Player_Action> get_impacted_soft_def_withraw_actions {
 		if game_round <= 1 { return []; }
-		if builder_score < PROFILING_THRESHOLD and soft_def_score >= PROFILING_THRESHOLD {
-			list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self);
-			if length(levs) > 0 {
-				return levs accumulate each.associated_actions where (each.strategy_profile = SOFT_DEFENSE) sort_by (-each.command_round);	
+		list<Player_Action> impactions <- [];
+		if builder_score < PROFILING_THRESHOLD {
+			if soft_def_score >= PROFILING_THRESHOLD {
+				list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self and each.lever_type = SOFT_DEFENSE);
+				if length(levs) > 0 {
+					impactions <- distinct(levs accumulate each.associated_actions where (!(each.already_impacted)));	
+				}	
+			}
+			if withdrawal_score >= PROFILING_THRESHOLD {
+				list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self and each.lever_type = WITHDRAWAL);
+				if length(levs) > 0 {
+					impactions <- impactions + distinct(levs accumulate each.associated_actions where (!(each.already_impacted)));	
+				}	
 			}	
 		}
-		return [];
-	}
-	
-	list<Player_Action> get_impacted_withdrawal_actions {
-		if game_round <= 1 { return []; }
-		if builder_score < PROFILING_THRESHOLD and withdrawal_score >= PROFILING_THRESHOLD {
-			list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self);
-			if length(levs) > 0 {
-				return levs accumulate each.associated_actions where (each.strategy_profile = WITHDRAWAL) sort_by (-each.command_round);	
-			}	
-		}
-		return [];
-	}
-	
-	action calculate_scores (int roundd) {
-		// updating player profile scores : only player actions of current and previous rounds
-		list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [roundd, roundd-1]);
-		builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
-		soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
-		withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
-		float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
-		builder_score <- (builder_score / tot_score) with_precision 2;
-		soft_def_score <- (soft_def_score / tot_score) with_precision 2;
-		withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
+		return impactions sort_by (-each.command_round);
 	}
 }
 //------------------------------ End of District -------------------------------//
@@ -777,7 +763,7 @@ species Lever_Window_Info {
 			draw my_lever.progression_bar at: loca - {0, 2} anchor: #center font: font("Arial", 12 , #plain) color: my_lever.threshold_reached ? #red : #black;
 			
 			if my_lever.timer_activated {
-				draw string(my_lever.remaining_seconds()) + " s " + (length(my_lever.activation_queue)=1? "" : "(" + 
+				draw string(my_lever.remaining_seconds()) + " s " + (length(my_lever.activation_queue) = 1 ? "" : "(" + 
 					length(my_lever.activation_queue) + ")") + "-> " + my_lever.info_of_next_activated_lever()
 						at: loca anchor: #center font: font("Arial", 12 , #plain) color:#black;
 			}
@@ -852,7 +838,7 @@ species Lever {
 	bool threshold_reached 	 	<- false;
 	bool timer_activated 	 	-> { !empty(activation_queue) };
 	bool has_activated_levers	-> { !empty(activated_levers) };
-	int timer_duration 		 	<- 240000;	// 1 minute = 60000 milliseconds //   4 mn = 240000
+	int timer_duration 		 	<- 120000;	// 1 minute = 60000 milliseconds //   2 mn = 120000
 	string lever_type		 	<-	"";
 	string lever_name		 	<-	"";
 	string box_title 		 	-> {lever_name + ' (' + length(associated_actions) + ')'};
@@ -913,7 +899,6 @@ species Lever {
 	
 	action check_activation_and_impact_on_first_element_of (list<Player_Action> list_p_action){
 		if list_p_action = nil { return; }
-		list_p_action <- list_p_action where !(each.already_impacted);
 		if !empty(list_p_action){
 			do check_activation_and_impact_on (list_p_action[0]);
 		}
@@ -977,28 +962,30 @@ species Lever {
 		}
 	}
 	
-	string get_lever_help_msg {
-		return help_lever_msg;
-	}
-	
 	action write_help_lever_msg {
 		map values <- user_input(LEV_MSG_LEVER_HELP,
-					[get_lever_help_msg()::true, world.get_message('LEV_THRESHOLD_VALUE') + " : " + threshold::true]);
+					[help_lever_msg::true, world.get_message('LEV_THRESHOLD_VALUE') + " : " + threshold::true]);
 	}
 	
 	action change_lever_player_msg {
 		map values <- user_input(world.get_message('LEV_MSG_SENT_TRIGGER_LEVER'), [world.get_message('LEV_MESSAGE'):: player_msg]);
-		player_msg <- values at values.keys[0];
-		ask world {
-			do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "The new message sent to the player is : " + myself.player_msg);
+		string new_msg <- values at values.keys[0];
+		if new_msg != "" and new_msg != player_msg {
+			player_msg <- new_msg;
+			ask world {
+				do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "The new message sent to the player is : " + myself.player_msg);
+			}
 		}
 	}
 	
 	action change_lever_threshold_value{
 		map values <- user_input(world.replace_strings('LEV_CURRENT_THRESHOLD_LEVER', [lever_name, string(threshold)]), [world.get_message('LEV_NEW_THRESHOLD_VALUE') + " : ":: threshold]); 
-		threshold <- float(values at values.keys[0]);
-		ask world {
-			do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "The new threshold value is : " + myself.threshold);
+		float new_thresh <- float(values at values.keys[0]);
+		if new_thresh != threshold {
+			threshold <- new_thresh;
+			ask world {
+				do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "The new threshold value is : " + myself.threshold);
+			}
 		}	
 	}
 	
@@ -1093,10 +1080,11 @@ species Cost_Lever parent: Lever {
 	action change_lever_cost{
 		map values <- user_input(world.replace_strings('LEV_ACTUAL_PERCENTAGE_COST', [lever_name, string(added_cost)]), [world.get_message('LEV_ENTER_THE_NEW') + " :":: added_cost]);
 		float n_val <- float(values at values.keys[0]);
-		added_cost <- n_val;
-		
-		ask world {
-			do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, " The new cost of the lever is : " + myself.added_cost);
+		if n_val != added_cost {
+			added_cost <- n_val;
+			ask world {
+				do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, " The new cost of the lever is : " + myself.added_cost);
+			}
 		}
 	}
 	
@@ -1135,10 +1123,12 @@ species Delay_Lever parent: Lever{
 	action change_lever_delay {
 		map values <- user_input(world.replace_strings('LEV_ACTUAL_DELAY', [lever_name, string(added_delay)]), [world.get_message('LEV_ENTER_THE_NEW') + " :":: added_delay]);
 		int n_val <- int(values at values.keys[0]);
-		added_delay <- n_val;
 		
-		ask world {
-			do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "-> The new rounds number of the lever is : " + myself.added_delay);
+		if n_val != added_delay {
+			added_delay <- n_val;
+			ask world {
+				do record_leader_activity("Change lever " + myself.lever_name + " at", myself.my_district.district_name, "-> The new rounds number of the lever is : " + myself.added_delay);
+			}
 		}
 	}	
 	
@@ -1435,7 +1425,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	
 	bool should_be_activated-> { nb_rounds_before_activation < 0 and !empty(list_of_impacted_actions)};
 	int nb_rounds_before_activation;
-	list<Player_Action> list_of_impacted_actions -> {my_district.get_impacted_soft_def_actions()};
+	list<Player_Action> list_of_impacted_actions -> {my_district.get_impacted_soft_def_withraw_actions()};
 	
 	init{
 		player_msg <- world.get_message('LEV_GANIVELLE_PLAYER');
@@ -1463,14 +1453,14 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 		lev.added_cost <- float(lev.p_action.cost * added_cost);
 		do send_lever_message(lev);
 		
-		last_lever_cost 	<-lev.added_cost;
+		last_lever_cost 	<- lev.added_cost;
 		activation_label_L1 <- world.get_message('LDR_LAST') + " "  + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : 
 						world.get_message('LDR_PAYMENT')) + " : " + abs(last_lever_cost)   + ' By.';
 		activation_label_L2 <- world.get_message('LDR_TOTAL') + " " + (last_lever_cost >= 0 ? world.get_message('LDR_TAKEN'):
 						world.get_message('LDR_GIVEN')) + " : " + abs(total_lever_cost())+ ' By.';
 		
 		nb_rounds_before_activation <- int(threshold);
-		nb_activations 				<- nb_activations +1;
+		nb_activations 	<- nb_activations +1;
 		
 		ask world {
 			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + (lev.added_cost) + "By" + "(" + lev.p_action + ")");
@@ -1528,7 +1518,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 species A_to_N_in_Coast_or_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 				-> { my_district.count_A_to_N_in_coast_or_risk_area };
 	string progression_bar 		-> { "" + my_district.count_A_to_N_in_coast_or_risk_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX };
-	bool should_be_activated 	-> { indicator > threshold and !empty(my_district.get_impacted_withdrawal_actions()) };
+	bool should_be_activated 	-> { indicator > threshold and !empty(associated_actions) };
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_A_to_N_in_COAST_or_RISK_AREA');
@@ -1594,7 +1584,7 @@ species Expropriation_Lever parent: Cost_Lever{
 
 species Destroy_Dike_Lever parent: Cost_Lever{
 	float indicator 		 -> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_destroyed_dikes / my_district.length_dikes_t0 };
-	bool should_be_activated -> { indicator > threshold and !empty(my_district.get_impacted_withdrawal_actions()) };
+	bool should_be_activated -> { indicator > threshold and !empty(associated_actions) };
 	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " + LEV_AT + " t0"};
 	
 	init{
@@ -1674,7 +1664,6 @@ species Network_Leader skills:[network] {
 								add int(pop) to: districts_populations[dist_id-1]; 
 							}
 						}
-						do calculate_scores (game_round);
 					}
 					
 					loop lev over: all_levers{
@@ -1777,13 +1766,21 @@ species Network_Leader skills:[network] {
 							other_cost <- other_cost + myself.cost;
 						}
 					}
-					do calculate_scores (ref_round);
-				}
-				
-				if profile_this_action {
-					map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
-					(STRATEGY_PROFILE)::strategy_profile,"cost"::cost,PLAYER_ACTION_ID::id];
-					ask world { do send_message_from_leader(mpp); }
+					if profile_this_action {
+						// updating player profile scores : only player actions of current and previous rounds
+						list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [ref_round, ref_round-1]);
+						builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
+						soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
+						withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
+						float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
+						builder_score <- (builder_score / tot_score) with_precision 2;
+						soft_def_score <- (soft_def_score / tot_score) with_precision 2;
+						withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
+						
+						map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
+						(STRATEGY_PROFILE)::myself.strategy_profile,"cost"::myself.cost,PLAYER_ACTION_ID::myself.id];
+						ask world { do send_message_from_leader(mpp); }
+					}	
 				}
 				add self to: player_actions;
 			}
@@ -2040,12 +2037,11 @@ experiment LittoSIM_GEN_Leader {
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_cost) color: color_lbls[0];
 			 	data MSG_OTHER value: districts collect (each.other_cost) color: color_lbls[3];
 			}
-			chart world.get_message('MSG_COST_ACTIONS') + " (2 " + LDR_MSG_ROUNDS + ")" type: histogram size: {0.33,0.48} position: {0.34,0.51}
+			chart "% " + world.get_message('MSG_COST_ACTIONS') + " (2 " + LDR_MSG_ROUNDS + ")" type: histogram size: {0.33,0.48} position: {0.34,0.51}
 				x_serie_labels: districts collect (each.district_name) style:stack {
-			 	data MSG_BUILDER value: districts collect (each.builder_score) color: color_lbls[2];
-			 	data MSG_SOFT_DEF value: districts collect (each.soft_def_score) color: color_lbls[1];
-			 	data MSG_WITHDRAWAL value: districts collect (each.withdrawal_score) color: color_lbls[0];
-			 	data MSG_OTHER value: districts collect (each.other_cost) color: color_lbls[3];
+			 	data MSG_BUILDER value: districts collect (each.builder_score * 100) color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: districts collect (each.soft_def_score * 100) color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: districts collect (each.withdrawal_score * 100) color: color_lbls[0];
 			}
 			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.51} 
 					x_serie_labels: [MSG_BUILDER,MSG_SOFT_DEF, MSG_WITHDRAWAL] {
