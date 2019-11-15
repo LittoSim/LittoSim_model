@@ -60,7 +60,8 @@ global{
 		MSG_OTHER				<- get_message("MSG_OTHER");
 		
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
-				Ganivelle_Lever, Enhance_Natural_Accr_Lever, Create_Dune_Lever, Maintain_Dune_Lever, Us_out_Coast_and_Risk_Area_Lever, Us_in_Coast_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
+				Ganivelle_Lever, Enhance_Natural_Accr_Lever, Create_Dune_Lever, Maintain_Dune_Lever, Us_out_Coast_and_Risk_Area_Lever,
+				Us_in_Coast_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
 				No_Dike_Creation_Lever, No_Dike_Raise_Lever, No_Dike_Repair_Lever, A_to_N_in_Coast_or_Risk_Area_Lever,
 				Densification_out_Coast_and_Risk_Area_Lever, Expropriation_Lever, Destroy_Dike_Lever, Give_Pebbles_Lever];
 		
@@ -376,7 +377,6 @@ species Player_Action schedules:[]{
 	int command_round 				<- -1;	
 	bool is_applied -> { game_round >= initial_application_round };
 	int round_delay	-> { activated_levers sum_of (each.added_delay) } ; // number rounds of delay
-	bool is_delayed -> { round_delay > 0 };
 	
 	string action_type 		<- ""; 					// COAST_DEF or LU
 	string previous_lu_name <- "";  				// for LU action
@@ -386,7 +386,6 @@ species Player_Action schedules:[]{
 	bool is_in_risk_area 	<- false; 				// for LU action
 	bool is_inland_dike 	<- false; 				// for COAST_DEF (retro dikes)
 	string strategy_profile	<- "";
-	float lever_activation_time;
 	int length_coast_def;
 	list<Activated_Lever> activated_levers 	<-[];
 	bool should_wait_lever_to_activate 		<- false;
@@ -398,7 +397,7 @@ species Player_Action schedules:[]{
 		District dd <- first(District where(each.district_code = self.district_code));
 		if action_type = PLAYER_ACTION_TYPE_COAST_DEF {
 			if is_inland_dike {
-				return dd.builder_score >= PROFILING_THRESHOLD ? SOFT_DEFENSE : WITHDRAWAL;
+				return dd.is_builder ? SOFT_DEFENSE : WITHDRAWAL;
 			}
 			else{
 				switch command {
@@ -415,7 +414,7 @@ species Player_Action schedules:[]{
 					match_one [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_Ui]   {
 						if is_in_coast_area or is_in_risk_area {
 							return BUILDER;	
-						} else if dd.withdrawal_score >= PROFILING_THRESHOLD { return WITHDRAWAL; }
+						} else if dd.is_withdrawal { return WITHDRAWAL; }
 					}
 					match_one [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us] {
 						return SOFT_DEFENSE;
@@ -425,7 +424,7 @@ species Player_Action schedules:[]{
 					}
 					match ACTION_MODIFY_LAND_COVER_N {
 						if previous_lu_name = 'A'{
-							if is_in_risk_area or (is_in_coast_area and dd.withdrawal_score >= PROFILING_THRESHOLD) {
+							if is_in_risk_area or (is_in_coast_area and dd.is_withdrawal) {
 								return WITHDRAWAL;
 							} else {
 								return SOFT_DEFENSE;
@@ -471,8 +470,9 @@ species District{
 	string district_name;
 	string district_long_name;
 	int budget <- -1;
-	bool not_updated <- false;
-	bool is_selected -> {selected_district = self};
+	bool is_builder -> {builder_score >= PROFILING_THRESHOLD};
+	bool is_soft_def -> {soft_def_score >= PROFILING_THRESHOLD};
+	bool is_withdrawal -> {withdrawal_score >= PROFILING_THRESHOLD};
 	list<Lever> levers;
 	list<Player_Button> buttons;
 	
@@ -601,14 +601,14 @@ species District{
 				if act.previous_lu_name = "A" and (act.is_in_coast_area or act.is_in_risk_area) {
 					count_A_to_N_in_coast_or_risk_area <- count_A_to_N_in_coast_or_risk_area + 1;
 					ask A_to_N_in_Coast_or_Risk_Area_Lever where(each.my_district = self) {
+						do check_activation_and_impact_on_first_element_of(myself.get_impacted_actions_by_profile(act.strategy_profile));
 						do register (act);
-						do check_activation_and_impact_on_first_element_of (associated_actions);
 					}
 				}
 			}
 			match_one [ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_AU] {
 				if act.command = ACTION_MODIFY_LAND_COVER_Ui and !act.is_in_coast_area and !act.is_in_risk_area {
-					if withdrawal_score >= PROFILING_THRESHOLD {
+					if is_withdrawal {
 						count_densification_out_coast_and_risk_area <- count_densification_out_coast_and_risk_area + 1;
 						ask Densification_out_Coast_and_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation (act); }	
 					}
@@ -627,22 +627,32 @@ species District{
 		}
 	}
 	
+	action calculate_scores (int ref_round) {
+		// updating player profile scores : only player actions of current and previous rounds
+		list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [ref_round, ref_round-1]);
+		builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
+		soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
+		withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
+		float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
+		builder_score <- (builder_score / tot_score) with_precision 2;
+		soft_def_score <- (soft_def_score / tot_score) with_precision 2;
+		withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
+	}
+	
+	list<Player_Action> get_impacted_actions_by_profile (string prof) {
+		if (prof = WITHDRAWAL and !is_withdrawal) or (prof = SOFT_DEFENSE and !is_soft_def) { return [];}
+		list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self and each.lever_type = prof);
+		if length(levs) > 0 {
+			return distinct(levs accumulate each.associated_actions where (!(each.already_impacted))) sort_by (-each.command_round);
+		}
+		return [];
+	}
+	
 	list<Player_Action> get_impacted_soft_def_withraw_actions {
-		if game_round <= 1 { return []; }
 		list<Player_Action> impactions <- [];
-		if builder_score < PROFILING_THRESHOLD {
-			if soft_def_score >= PROFILING_THRESHOLD {
-				list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self and each.lever_type = SOFT_DEFENSE);
-				if length(levs) > 0 {
-					impactions <- distinct(levs accumulate each.associated_actions where (!(each.already_impacted)));	
-				}	
-			}
-			if withdrawal_score >= PROFILING_THRESHOLD {
-				list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self and each.lever_type = WITHDRAWAL);
-				if length(levs) > 0 {
-					impactions <- impactions + distinct(levs accumulate each.associated_actions where (!(each.already_impacted)));	
-				}	
-			}	
+		if !is_builder {
+			impactions <- get_impacted_actions_by_profile(SOFT_DEFENSE);
+			impactions <- impactions + get_impacted_actions_by_profile(WITHDRAWAL);
 		}
 		return impactions sort_by (-each.command_round);
 	}
@@ -843,7 +853,7 @@ species Lever {
 	string lever_name		 	<-	"";
 	string box_title 		 	-> {lever_name + ' (' + length(associated_actions) + ')'};
 	string progression_bar		<-	"";
-	string help_lever_msg 	 	<-	"";
+	string lever_help_msg 	 	<-	"";
 	string activation_label_L1	<-	"";
 	string activation_label_L2	<-	"";
 	string player_msg;
@@ -924,10 +934,11 @@ species Lever {
 					}
 				}
 				add self to: myself.activation_queue;
+				string diss <- myself.my_district.district_name;
+				ask world {
+					do record_leader_activity("Lever " + myself.lever_name + " programmed at", diss, a_p_action.label + "(" + a_p_action + ")");
+				}
 			}
-		}
-		ask world {
-			do record_leader_activity("Lever " + myself.lever_name + " programmed at", myself.my_district.district_name, a_p_action.label + "(" + a_p_action + ")");
 		}
 	}
 
@@ -962,9 +973,13 @@ species Lever {
 		}
 	}
 	
+	string get_lever_help_msg {
+		return lever_help_msg;
+	}
+	
 	action write_help_lever_msg {
 		map values <- user_input(LEV_MSG_LEVER_HELP,
-					[help_lever_msg::true, world.get_message('LEV_THRESHOLD_VALUE') + " : " + threshold::true]);
+					[get_lever_help_msg()::true, world.get_message('LEV_THRESHOLD_VALUE') + " : " + threshold::true]);
 	}
 	
 	action change_lever_player_msg {
@@ -1049,6 +1064,7 @@ species Lever {
 	action send_lever_message (Activated_Lever lev) {
 		map<string, unknown> msg <- lev.build_lev_map_from_attributes();
 		put NEW_ACTIVATED_LEVER 	key: LEADER_COMMAND in: msg;
+		write msg;
 		ask world { do send_message_from_leader(msg); }
 		int money <- int(msg["added_cost"]);
 		ask districts first_with (each.district_code = msg[DISTRICT_CODE]) {
@@ -1103,7 +1119,7 @@ species Cost_Lever parent: Lever {
 		activation_label_L1 <- world.get_message('LDR_LAST') + " "   + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : world.get_message('LDR_PAYMENT')) + " : " + abs(last_lever_cost) + ' By';
 		activation_label_L2 <- world.get_message('LDR_TOTAL') + " "  + (last_lever_cost >= 0 ? world.get_message('LDR_TAKEN') : world.get_message('LDR_GIVEN')) + " : " + abs(total_lever_cost()) + ' By';
 		ask world {
-			do record_leader_activity("Lever " + myself.lever_name + " validated at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_cost + "By" + "(" + lev.p_action + ")");
+			do record_leader_activity("Lever " + myself.lever_name + " validated at", myself.my_district.district_name, myself.lever_help_msg + " : " + lev.added_cost + "By" + "(" + lev.p_action + ")");
 		}
 	}
 	
@@ -1143,7 +1159,7 @@ species Delay_Lever parent: Lever{
 		do inform_network_should_wait_lever_to_activate(lev.p_action, lev);
 		
 		ask world {
-			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_delay + " rounds" + "(" + lev.p_action + ")");
+			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.lever_help_msg + " : " + lev.added_delay + " rounds" + "(" + lev.p_action + ")");
 		}
 	}
 	
@@ -1242,7 +1258,7 @@ species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 //------------------------------ End of AU_or_Ui_in_Risk_Area_Lever -------------------------------//
 
 species Ganivelle_Lever parent: Cost_Lever {
-		int indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 : int(my_district.length_created_ganivelles / my_district.length_dunes_t0) };
+		float indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 : my_district.length_created_ganivelles / my_district.length_dunes_t0 };
 		string progression_bar 	-> { "" + my_district.length_created_ganivelles + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " + LEV_DUNES };
 	
 	init{
@@ -1260,7 +1276,7 @@ species Ganivelle_Lever parent: Cost_Lever {
 //------------------------------ End of Ganivelle_Lever -------------------------------//
 
 species Enhance_Natural_Accr_Lever parent: Cost_Lever {
-	int indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 : int(my_district.length_enhanced_accretion / my_district.length_dunes_t0) };
+	float indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 : my_district.length_enhanced_accretion / my_district.length_dunes_t0 };
 	string progression_bar 	-> { "" + my_district.length_enhanced_accretion + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " + LEV_DUNES };
 	
 	init{
@@ -1297,7 +1313,7 @@ species Create_Dune_Lever parent: Cost_Lever {
 //------------------------------ End of Create_Dune_Lever -------------------------------//
 
 species Maintain_Dune_Lever parent: Cost_Lever {
-	int indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 : int(my_district.length_maintained_dunes / my_district.length_dunes_t0) };
+	float indicator 			-> { my_district.length_dunes_t0 = 0 ? 0 :  my_district.length_maintained_dunes / my_district.length_dunes_t0 };
 	string progression_bar 	-> { "" + my_district.length_maintained_dunes + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " + LEV_DUNES };
 	
 	init{
@@ -1346,7 +1362,7 @@ species Us_out_Coast_and_Risk_Area_Lever parent: Cost_Lever{
 		activation_label_L2 <- 'Total paid : '  + (-1 * total_lever_cost()) + ' By';
 		
 		ask world {
-			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + lev.added_cost + "By : " + lev.added_delay + " rounds" + "(" + lev.p_action + ")");
+			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.lever_help_msg + " : " + lev.added_cost + "By : " + lev.added_delay + " rounds" + "(" + lev.p_action + ")");
 		}
 	}
 }
@@ -1432,7 +1448,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 	}
 		
 	string info_of_next_activated_lever {
-		return world.get_message('LDR_LAST_GANIVELLE') + " - " + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By';
+		return world.get_message('LEV_ACTION_SOFTDEF_WITH') + " - " + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By';
 	}	
 	
 	action register (Player_Action p_action){
@@ -1463,7 +1479,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 		nb_activations 	<- nb_activations +1;
 		
 		ask world {
-			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.help_lever_msg + " : " + (lev.added_cost) + "By" + "(" + lev.p_action + ")");
+			do record_leader_activity(myself.lever_name + " triggered at", myself.my_district.district_name, myself.lever_help_msg + " : " + (lev.added_cost) + "By" + "(" + lev.p_action + ")");
 		}
 	}
 }
@@ -1479,7 +1495,7 @@ species No_Dike_Creation_Lever parent: No_Action_On_Dike_Lever{
 	}
 	
 	string get_lever_help_msg {
-		return world.get_message('LEV_DURING_MSG') + " " + threshold + " " + world.get_message('LEV_NO_DIKE_CREATION_HELP') + ". " + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
+		return world.get_message('LEV_DURING_MSG') + " " + threshold + " " + world.get_message('LEV_NO_DIKE_CREATION_HELP') + ". " + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_ACTION_SOFTDEF_WITH') + "/m";
 	}
 }
 //------------------------------ end of No_Dike_Creation_Lever -------------------------------//
@@ -1494,7 +1510,7 @@ species No_Dike_Raise_Lever parent: No_Action_On_Dike_Lever{
 	}
 	
 	string get_lever_help_msg {
-		return world.get_message('LEV_DURING_MSG') + " " + threshold + " " + world.get_message('LEV_NO_DIKE_RAISE_HELP') + ". " + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
+		return world.get_message('LEV_DURING_MSG') + " " + threshold + " " + world.get_message('LEV_NO_DIKE_RAISE_HELP') + ". " + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_ACTION_SOFTDEF_WITH') + "/m";
 	}
 }
 //------------------------------ end of No_Dike_Raise_Lever -------------------------------//
@@ -1509,7 +1525,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 	}
 	
 	string get_lever_help_msg {
-		return world.get_message('LEV_DURING_MSG') + " " + threshold + " " + world.get_message('LEV_NO_DIKE_REPAIR_HELP') + ". " + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_GANIVELLE_HELPER2') + "/m";
+		return world.get_message('LEV_DURING_MSG') + " " + threshold + " " + world.get_message('LEV_NO_DIKE_REPAIR_HELP') + ". " + world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost)+"% " + world.get_message('LEV_ACTION_SOFTDEF_WITH') + "/m";
 
 	}
 }
@@ -1518,7 +1534,7 @@ species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 species A_to_N_in_Coast_or_Risk_Area_Lever parent: Cost_Lever{
 	int indicator 				-> { my_district.count_A_to_N_in_coast_or_risk_area };
 	string progression_bar 		-> { "" + my_district.count_A_to_N_in_coast_or_risk_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX };
-	bool should_be_activated 	-> { indicator > threshold and !empty(associated_actions) };
+	bool should_be_activated 	-> { indicator > threshold and (my_district.is_withdrawal or my_district.is_soft_def)};
 	
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_A_to_N_in_COAST_or_RISK_AREA');
@@ -1529,11 +1545,11 @@ species A_to_N_in_Coast_or_Risk_Area_Lever parent: Cost_Lever{
 	}
 	
 	string get_lever_help_msg {
-		return world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_DENSIFICATION_LA_FA');
+		return world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_ACTION_SOFTDEF_WITH');
 	}
 
 	string info_of_next_activated_lever {
-		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By ' + world.get_message('LEV_DENSIFICATION_HELPER3');
+		return "+" + abs(int(activation_queue[0].p_action.cost * added_cost)) + ' By ' + world.get_message('LEV_ACTION_SOFTDEF_WITH');
 	}	
 }
 //------------------------------ end of A_to_N_in_Coast_Border_or_Risk_Area_Lever -------------------------------//
@@ -1584,7 +1600,7 @@ species Expropriation_Lever parent: Cost_Lever{
 
 species Destroy_Dike_Lever parent: Cost_Lever{
 	float indicator 		 -> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_destroyed_dikes / my_district.length_dikes_t0 };
-	bool should_be_activated -> { indicator > threshold and !empty(associated_actions) };
+	bool should_be_activated -> { indicator > threshold and my_district.is_withdrawal};
 	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " + LEV_AT + " t0"};
 	
 	init{
@@ -1596,7 +1612,7 @@ species Destroy_Dike_Lever parent: Cost_Lever{
 	}
 	
 	string get_lever_help_msg {
-		return world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_DESTROY_EXPROPR');
+		return world.get_message('LEV_GANIVELLE_HELPER1') + " " + int(100*added_cost) + "% " + world.get_message('LEV_DESTROY_WITHDRAW');
 	}
 		
 	string info_of_next_activated_lever {
@@ -1663,6 +1679,7 @@ species Network_Leader skills:[network] {
 							if pop != nil and game_round > 0{
 								add int(pop) to: districts_populations[dist_id-1]; 
 							}
+							do calculate_scores(game_round);
 						}
 					}
 					
@@ -1728,7 +1745,7 @@ species Network_Leader skills:[network] {
 				}
 			}
 		}	
-	}	
+	}
 	
 	action update_action (map<string,string> msg){
 		Player_Action p_act <- first(Player_Action where(each.id = (msg at "id")));
@@ -1743,7 +1760,6 @@ species Network_Leader skills:[network] {
 					ref_round <- game_round;
 				}
 				ask districts first_with (each.district_code = district_code) {
-					do update_indicators_and_register_player_action (myself);
 					// classifying this action
 					switch myself.strategy_profile{
 						match BUILDER 		{
@@ -1766,17 +1782,9 @@ species Network_Leader skills:[network] {
 							other_cost <- other_cost + myself.cost;
 						}
 					}
+					do calculate_scores (ref_round);
+					do update_indicators_and_register_player_action (myself);
 					if profile_this_action {
-						// updating player profile scores : only player actions of current and previous rounds
-						list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [ref_round, ref_round-1]);
-						builder_score <- float(sum(pacts where (each.strategy_profile = BUILDER) collect (each.cost)));
-						soft_def_score <- float(sum(pacts where (each.strategy_profile = SOFT_DEFENSE) collect (each.cost)));
-						withdrawal_score <- float(sum(pacts where (each.strategy_profile = WITHDRAWAL) collect (each.cost)));
-						float tot_score <- max([1,builder_score + soft_def_score + withdrawal_score]);
-						builder_score <- (builder_score / tot_score) with_precision 2;
-						soft_def_score <- (soft_def_score / tot_score) with_precision 2;
-						withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
-						
 						map<string, string> mpp <- [(LEADER_COMMAND)::NEW_REQUESTED_ACTION,(DISTRICT_CODE)::district_code,
 						(STRATEGY_PROFILE)::myself.strategy_profile,"cost"::myself.cost,PLAYER_ACTION_ID::myself.id];
 						ask world { do send_message_from_leader(mpp); }
@@ -2043,7 +2051,7 @@ experiment LittoSIM_GEN_Leader {
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_def_score * 100) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdrawal_score * 100) color: color_lbls[0];
 			}
-			chart world.get_message('MSG_PROFILES') type: radar size: {0.33,0.48} position: {0.67,0.51} 
+			chart world.get_message('MSG_NUMBER_ACTIONS') type: radar size: {0.33,0.48} position: {0.67,0.51} 
 					x_serie_labels: [MSG_BUILDER,MSG_SOFT_DEF, MSG_WITHDRAWAL] {
 				loop i from: 0 to: 3{
 					data districts[i].district_name value: game_round = 0? [0.75,0.75,0.75] : [

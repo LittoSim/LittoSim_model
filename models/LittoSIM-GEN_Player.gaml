@@ -805,7 +805,8 @@ global{
 			else if command = ACTION_MODIFY_LAND_COVER_AUs {
 				if previous_lu_name = "U" {
 					command <- ACTION_MODIFY_LAND_COVER_Us;
-					cost 	<- element_shape.area / STANDARD_LU_AREA * world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
+					label <- world.get_message('ACTION_MODIFY_LAND_COVER_Us');
+					cost <- element_shape.area / STANDARD_LU_AREA * world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
 				}
 			}
 		}
@@ -1536,14 +1537,14 @@ species Network_Listener_To_Leader skills: [network] {
 										ask world{
 											do user_msg (get_message('PLY_MSG_BEEN')+" " + (added_cost > 0 ? get_message('LDR_TAKEN'): get_message('LDR_GIVEN')) + " " +
 												abs(added_cost)+ " By "+ PLY_MSG_DOSSIER +" '" + myself.ply_act.label + (myself.ply_act.command in [ACTION_CREATE_DIKE, 
-														ACTION_CREATE_DUNE ] ? "" : '(' + myself.ply_act.element_id + ")")+ "'", BUDGET_MESSAGE);
+														ACTION_CREATE_DUNE ] ? "" : ' (' + myself.ply_act.element_id + ")")+ "'", BUDGET_MESSAGE);
 										}	
 									}
 									int added_delay <- int(my_map["added_delay"]);
 									if added_delay != 0{
 										ask world{
 											do user_msg (PLY_MSG_DOSSIER + " '" + myself.ply_act.label + 
-												(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : '(' + myself.ply_act.element_id + ")")+"' " +
+												(myself.ply_act.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] ? "" : ' (' + myself.ply_act.element_id + ")")+"' " +
 												get_message("PLY_HAS_BEEN") + " " + (added_delay >= 0 ? get_message('PLY_DELAYED'): get_message('PLY_ADVANCED')) +
 												" " + get_message("PLY_BY") + " " + abs(added_delay) + " " + MSG_ROUND + (abs(added_delay) <=1 ? "" : "s"), INFORMATION_MESSAGE);
 										}
