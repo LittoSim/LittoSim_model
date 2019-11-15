@@ -30,6 +30,7 @@ global{
 	
 	list<list<int>> districts_budgets <- [[],[],[],[]];
 	list<list<int>> districts_populations <- [[],[],[],[]];
+	Action_Counter last_colored <- nil;
 	
 	init{
 		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
@@ -83,6 +84,7 @@ global{
 		do create_district_buttons_names;
 		do create_levers;
 		do create_player_buttons;
+		do create_actions_counters;
 		create Network_Leader;
 		create Lever_Window_Info;
 		create Lever_Window_Actions;
@@ -138,6 +140,31 @@ global{
 				}
 			}
 		}
+	}
+	
+	action create_actions_counters {
+		string act;
+		int lu_index;
+		int codef_index;
+		list<string> all_actions <- [];
+		loop i from: 0 to: length(data_action) - 1 {
+			act <- data_action.keys[i];
+			lu_index <- int(data_action at act at 'lu_index');
+			codef_index <- int(data_action at act at 'coast_def_index');
+			if codef_index >= 0 or  lu_index >= 0 {
+				ask districts {					
+					if (string(data_action at act at 'active') at (dist_id-1)) = '1'{
+						create Action_Counter {
+							my_district <- myself;
+							location <- (Grille2[my_district.dist_id - 1, 1]).location + {0, 5.25 * i};
+							action_code	<- int(data_action at act at 'action_code');
+							action_name <- world.label_of_action(action_code);
+						}	
+					}
+				}
+			} 
+		}
+		last_colored <- first(Action_Counter);
 	}
 	
 	action create_player_buttons {
@@ -753,6 +780,30 @@ species Player_Button_Button {
 		}
 	}
 }
+
+species Action_Counter {
+	int action_code;
+	string action_name;
+	int action_count <- 0;
+	geometry shape <- rectangle (24, 5);
+	District my_district;
+	rgb col <- #whitesmoke;
+	
+	action add_one {
+		action_count <- action_count + 1;
+		ask last_colored {
+			col <- #whitesmoke;
+		}
+		col <- #red;
+		last_colored <- self;
+	}
+	
+	aspect {
+		draw shape color: col border: #black;
+		draw action_name + " (" + action_count +")" at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
+	}
+	
+}
 //------------------------------ End of Player_Button -------------------------------//
 
 species Lever_Window_Info {
@@ -1064,7 +1115,6 @@ species Lever {
 	action send_lever_message (Activated_Lever lev) {
 		map<string, unknown> msg <- lev.build_lev_map_from_attributes();
 		put NEW_ACTIVATED_LEVER 	key: LEADER_COMMAND in: msg;
-		write msg;
 		ask world { do send_message_from_leader(msg); }
 		int money <- int(msg["added_cost"]);
 		ask districts first_with (each.district_code = msg[DISTRICT_CODE]) {
@@ -1760,6 +1810,23 @@ species Network_Leader skills:[network] {
 					ref_round <- game_round;
 				}
 				ask districts first_with (each.district_code = district_code) {
+					int act_code <- myself.command;
+					if myself.command = ACTION_MODIFY_LAND_COVER_N{
+						if myself.is_expropriation { act_code <- ACTION_EXPROPRIATION;}
+						else {
+							if myself.previous_lu_name = 'A' {
+								act_code <- ACTON_MODIFY_LAND_COVER_FROM_A_TO_N;
+							} else if myself.previous_lu_name = 'AU' {
+								act_code <- ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N;
+							}	
+						}
+					} else if myself.command = ACTION_MODIFY_LAND_COVER_AUs and myself.previous_lu_name = 'U' {
+						act_code <- ACTION_MODIFY_LAND_COVER_Us;
+					}
+					
+					ask Action_Counter where (each.my_district = self and each.action_code = act_code) {
+						do add_one();
+					}
 					// classifying this action
 					switch myself.strategy_profile{
 						match BUILDER 		{
@@ -1803,6 +1870,12 @@ species Network_Leader skills:[network] {
 //------------------------------ end of Network_Leader -------------------------------//
 
 grid Grille width: GRID_W height: GRID_H {
+	init {
+		color <- #white ;
+	}
+}
+
+grid Grille2 width: GRID_W height: GRID_H+1 {
 	init {
 		color <- #white ;
 	}
@@ -2060,6 +2133,12 @@ experiment LittoSIM_GEN_Leader {
 						districts[i].withdraw_actions/districts[i].sum_buil_sof_wit_actions] color: dist_colors[i];
 				}		
 			}
+		}
+		
+		display Actions {
+			species District_Name;
+			species Action_Counter;
+			
 		}
 	}
 }

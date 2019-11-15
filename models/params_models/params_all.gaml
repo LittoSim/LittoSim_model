@@ -101,7 +101,9 @@ global{
 	int ACTION_MODIFY_LAND_COVER_Us	 <- data_action at 'ACTION_MODIFY_LAND_COVER_Us' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_Ui  <- data_action at 'ACTION_MODIFY_LAND_COVER_Ui' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code') : 0;
 	int ACTION_EXPROPRIATION 		 <- data_action at 'ACTION_EXPROPRIATION'		 != nil ? int(data_action at 'ACTION_EXPROPRIATION' 		at 'action_code') : 0;
-	int ACTION_CLOSE_OPEN_GATES	 	 <- data_action at 'ACTION_CLOSE_OPEN_GATES'	 != nil ? int(data_action at 'ACTION_CLOSE_OPEN_GATES' 		at 'action_code') : 0;
+	int ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N  <- data_action at 'ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N' != nil ? int(data_action at 'ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N' at 'action_code') : 0;
+	int ACTON_MODIFY_LAND_COVER_FROM_A_TO_N  <- data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' != nil ? int(data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' at 'action_code') : 0;
+	int ACTION_CLOSE_OPEN_GATES	 <- data_action at 'ACTION_CLOSE_OPEN_GATES'	 != nil ? int(data_action at 'ACTION_CLOSE_OPEN_GATES' 		at 'action_code') : 0;
 	int ACTION_CLOSE_OPEN_DIEPPE_GATE<- data_action at 'ACTION_CLOSE_OPEN_DIEPPE_GATE' != nil ? int(data_action at 'ACTION_CLOSE_OPEN_DIEPPE_GATE' at 'action_code') : 0;
 	
 	// Constant vars
