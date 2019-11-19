@@ -691,9 +691,9 @@ species District{
 	
 	list<Player_Action> get_impacted_actions_by_profile (string prof) {
 		if (prof = WITHDRAWAL and !is_withdrawal) or (prof = SOFT_DEFENSE and !is_soft_def) { return [];}
-		list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self and each.lever_type = prof);
+		list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self);
 		if length(levs) > 0 {
-			return distinct(levs accumulate each.associated_actions where (!(each.already_impacted))) sort_by (-each.command_round);
+			return distinct(levs accumulate each.associated_actions where (each.strategy_profile = prof and !each.already_impacted)) sort_by (-each.command_round);
 		}
 		return [];
 	}
@@ -715,22 +715,20 @@ species Activated_Lever {
 	bool applied <- false;
 	
 	//attributes sent through network
-	int manual <- 0; // 0 : Automatic | 1 : Manual
 	string name <- "";
 	int id <- length(Activated_Lever);
-	string district_code;
-	string lever_name;
+	string district_code <- "";
+	string lever_name <- "";
 	string lever_explanation <- "";
 	int added_delay <- 0;
 	float added_cost <- 0.0;
-	int round_creation;
-	int round_application;
+	int round_creation <- 0;
+	int round_application <- 0;
 	
 	map<string,string> build_lev_map_from_attributes{
 		map<string,string> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_ACTIVATED_LEVER,
 			"id"::id,
-			"manual"::manual,
 			"name"::name,
 			"lever_name"::lever_name,
 			(DISTRICT_CODE)::district_code,
@@ -1043,23 +1041,15 @@ species Lever {
 			put status_on				key: "ALLOWED"	 	in: msg;
 			if status_on {
 				put (1 + first(Give_Pebbles_Lever).added_cost)		key: "DISCOUNT"		in: msg; 
-				create Player_Action {
+				create Player_Action returns: pacts {
 					add self to: myself.associated_actions;
 				}
 			}
 			ask world { do send_message_from_leader(msg); }
-			put '76217'					key: DISTRICT_CODE 	in: msg; // to Dieppe
+			put '76217'	key: DISTRICT_CODE 	in: msg; // to Dieppe
 			ask world {
 				do send_message_from_leader(msg);
 				do record_leader_activity ("Authorizing Dieppe-Criel pebbles:", "" + myself.status_on, "Transaction number: " + length(myself.associated_actions));		
-			}
-			create Activated_Lever returns: act_levs {
-				name <- string(species(myself));
-				manual <- 1; // manual lever
-				district_code <- '76192'; // Criel
-				added_cost <- (1 + first(Give_Pebbles_Lever).added_cost);
-				ask myself { do send_lever_message (myself); }
-				do die;
 			}
 		}
 	}

@@ -221,7 +221,7 @@ global {
 		if river_flood_shape != nil {
 			ask Land_Use {
 				ask River_Flood_Cell inside self {
-				lu_type <- myself.lu_code;
+					lu_type <- myself.lu_code;
 					if lu_type = LU_TYPE_U and myself.density_class = POP_DENSE {
 						lu_type <- LU_TYPE_Ui;
 					}
@@ -420,9 +420,9 @@ global {
 			add my_dikes where (each.status=STATUS_GOOD) min_of(each.alt) to: min_alt_dikes_good;
 			add my_dikes where (each.status=STATUS_MEDIUM) min_of(each.alt) to: min_alt_dikes_medium;
 			add my_dikes where (each.status=STATUS_BAD) min_of(each.alt) to: min_alt_dikes_bad;
-			
-			if application_name != "normandie" {
-				list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
+
+			list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
+			if length (my_dunes) > 0 {
 				add my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) to: length_dunes_good;
 				add my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) to: length_dunes_medium;
 				add my_dunes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) to: length_dunes_bad;
@@ -443,7 +443,7 @@ global {
 				add mean_alt_dikes_good[game_round] - mean_alt_dikes_good[game_round-1] + mean_alt_dikes_good_diff[game_round-1] to: mean_alt_dikes_good_diff;
 				add mean_alt_dikes_medium[game_round] - mean_alt_dikes_medium[game_round-1] + mean_alt_dikes_medium_diff[game_round-1] to: mean_alt_dikes_medium_diff;
 				add mean_alt_dikes_bad[game_round] - mean_alt_dikes_bad[game_round-1] + mean_alt_dikes_bad_diff[game_round-1] to: mean_alt_dikes_bad_diff;
-				if application_name != "normandie" {
+				if length (my_dunes) > 0 {
 					add length_dunes_good[game_round] - length_dunes_good[game_round-1] + length_dunes_good_diff[game_round-1] to: length_dunes_good_diff;
 					add length_dunes_medium[game_round] - length_dunes_medium[game_round-1] + length_dunes_medium_diff[game_round-1] to: length_dunes_medium_diff;
 					add length_dunes_bad[game_round] - length_dunes_bad[game_round-1] + length_dunes_bad_diff[game_round-1] to: length_dunes_bad_diff;
@@ -539,8 +539,7 @@ global {
 			//********* for Criel case only *//////////////*******
 			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_CORD) {
 				if status = STATUS_BAD {
-					list<Coastal_Defense> cordies <- Coastal_Defense where (each.is_protected_by_cord and !rupture);
-					write "Criel : " + length(cordies) + " digues sans ruptures.";
+					list<Coastal_Defense> cordies <- Coastal_Defense where (each.is_protected_by_cord and !each.rupture);
 					if length(cordies) = 3 {
 						ask one_of(cordies) {
 							rupture <- true;
@@ -675,7 +674,7 @@ global {
 		}
 	}
 	
-	action save_round_data{
+	action save_round_data {
 		int num_round <- game_round;
 		save Land_Use type:"shp" to: shapes_export_path+"Land_Use_" + num_round + ".shp"
 				attributes: ['id'::id, 'lu_code'::lu_code, 'dist_code'::dist_code, 'density_class'::density_class, 'population'::population];
@@ -697,7 +696,7 @@ global {
 			float mean_alt_all_dikes <- mean_alt_dikes_all[num_round];
 			float min_alt_all_dunes <- 0.0;
 			float mean_alt_all_dunes <- 0.0;
-			if application_name != "normandie" {
+			if length(min_alt_dunes_all) > 0 {
 				float min_alt_all_dunes <- min_alt_dunes_all[num_round];
 				float mean_alt_all_dunes <- mean_alt_dunes_all[num_round];
 			}
@@ -1070,38 +1069,38 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
 			my_icon 	<- image_file("../images/icons/max_water_height.png");
-			location 	<- {world.shape.width/2 - button_size.x*2,  world.shape.height - button_size.y*0.75};
+			location 	<- {button_size.x*2,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 8;
 			command	 	<- SHOW_RUPTURE;
 			my_icon 	<- image_file("../images/icons/rupture2.png");
-			location 	<-  {world.shape.width/2 - button_size.x*0.6,  world.shape.height - button_size.y*0.75};
+			location 	<-  {button_size.x*3.25,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 911;
 			command	 	<- ACTION_DISPLAY_FLOODED_AREA;
 			my_icon 	<- image_file("../images/icons/display_ppr.png");
-			location 	<- {world.shape.width/2 + button_size.x*0.6,  world.shape.height - button_size.y*0.75};
+			location 	<- {button_size.x*4.5,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 912;
 			command	 	<- ACTION_DISPLAY_PROTECTED_AREA;
 			my_icon 	<- image_file("../images/icons/display_protected.png");
-			location 	<-  {world.shape.width/2 + button_size.x*2,  world.shape.height - button_size.y*0.75};
+			location 	<-  {button_size.x*5.75,  world.shape.height - button_size.y*0.75};
 		}
 		if river_flood_shape != nil {
 			create Button{
 				nb_button 	<- 913;
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
 				my_icon 	<- image_file("../images/icons/river_flood0.jpg");
-				location 	<-  {world.shape.width/2 - button_size.x*3.4,  world.shape.height - button_size.y*0.75};
+				location 	<- {button_size.x*0.75, world.shape.height - button_size.y*0.75};
 			}
 			create Button{
 				nb_button 	<- 914;
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
 				my_icon 	<- image_file("../images/icons/river_flood1.jpg");
-				location 	<-  {world.shape.width/2 + button_size.x*3.4,  world.shape.height - button_size.y*0.75};
+				location 	<- {button_size.x*0.75, world.shape.height - button_size.y*2};
 			}
 		}
 	}
@@ -1178,8 +1177,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 					match 913 {
 						is_selected <- !is_selected;
 						show_river_flooded_area <- is_selected ? 1 : 0;
-						first(Button where (each.nb_button = 914)).is_selected <- false;
-						 
+						first(Button where (each.nb_button = 914)).is_selected <- false;	 
 					}
 					match 914 {
 						is_selected <- !is_selected;
@@ -1241,15 +1239,16 @@ species Network_Game_Manager skills: [network]{
 				}
 				match "FLOOD_GATES" {
 					if first(Water_Gate where (each.id != 9999)) != nil {
+						bool close_gates <- bool(m_contents["CLOSE"]);
 						ask Water_Gate where (each.id != 9999) {
-							display_me <- bool(m_contents["CLOSE"]);
+							display_me <- close_gates;
 							do close_open;
-							if display_me {
-								write "La portes-à-flot du bassin de Dieppe ont été fermées!";
-							} else {
-								write "La portes-à-flot du bassin de Dieppe ont été ouvertes!";
-							}
-						}	
+						}
+						if close_gates {
+							write "Les portes-à-flot du bassin de Dieppe ont été fermées!";
+						} else {
+							write "Les portes-à-flot du bassin de Dieppe ont été ouvertes!";
+						}
 					}
 				}
 				match "MY_BUTTONS" { // a client declares its buttons
@@ -1616,43 +1615,21 @@ species Network_Listener_To_Leader skills:[network]{
 					}	
 				}
 				match NEW_ACTIVATED_LEVER {
-					if int(m_contents["manual"]) = 1 { // manual
-						string lever_nature <- string(m_contents["name"]);
-						if lever_nature = 'Give_Pebbles_Lever' {
-							if empty(Activated_Lever where (lever_nature = 'Give_Pebbles_Lever')){
-								create Activated_Lever {
-									do init_activ_lever_from_map (m_contents);
-									create Player_Action {
-										is_alive <- false;
-										is_sent_to_leader <- true;
-										add myself to: self.activated_levers;
-										myself.ply_action <- self;
-									}
-								}
-							} else {
-								ask Activated_Lever where (lever_nature = 'Give_Pebbles_Lever'){
-									ask ply_action { do die;}
-									do die;
-								}
+					if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
+						create Activated_Lever{
+							do init_activ_lever_from_map (m_contents);
+							int money <- int(my_map["added_cost"]);
+							ask districts_in_game first_with (each.district_code = my_map[DISTRICT_CODE]) {
+								budget <- budget - money;
+								round_levers_cost <- round_levers_cost - money;
 							}
-						}
-					}else {
-						if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
-							create Activated_Lever{
-								do init_activ_lever_from_map (m_contents);
-								int money <- int(my_map["added_cost"]);
-								ask districts_in_game first_with (each.district_code = my_map[DISTRICT_CODE]) {
-									budget <- budget - money;
-									round_levers_cost <- round_levers_cost - money;
-								}
-								ply_action <- Player_Action first_with (each.act_id = my_map["p_action_id"]);
-								if ply_action != nil {
-									add self to: ply_action.activated_levers;
-									ply_action.a_lever_has_been_applied <- true;
-									int idd <- int(m_contents["id"]);
-									if !(idd in ply_action.id_applied_levers) {
-										add idd to: ply_action.id_applied_levers;
-									}
+							ply_action <- Player_Action first_with (each.act_id = my_map["p_action_id"]);
+							if ply_action != nil {
+								add self to: ply_action.activated_levers;
+								ply_action.a_lever_has_been_applied <- true;
+								int idd <- int(m_contents["id"]);
+								if !(idd in ply_action.id_applied_levers) {
+									add idd to: ply_action.id_applied_levers;
 								}
 							}
 						}
@@ -2533,10 +2510,10 @@ species District {
 		put string(length(LUs where (each.isUrbanType and each intersects all_flood_risk_area))) key: "count_LU_urban_in_flood_risk_area_t0" in: my_indicators_t0; // built cells in flooded area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_flood_risk_area))) key: "count_LU_urban_dense_in_flood_risk_area_t0" in: my_indicators_t0; // dense cells in risk area
 		put string(length(LUs where (each.isUrbanType and each.density_class = POP_DENSE and each intersects all_coastal_border_area))) key: "count_LU_urban_dense_is_in_coast_border_area_t0" in: my_indicators_t0; //dense cells in littoral area
-		put string(length(LUs where (each.lu_code = LU_TYPE_A))) 	key: "count_LU_A_t0" 	in: my_indicators_t0; // count cells of type A
-		put string(length(LUs where (each.lu_code = LU_TYPE_N))) 	key: "count_LU_N_t0" 	in: my_indicators_t0; // count cells of type N
-		put string(length(LUs where (each.lu_code = LU_TYPE_AU))) key: "count_LU_AU_t0" 	in: my_indicators_t0; // count cells of type AU
-		put string(length(LUs where (each.lu_code = LU_TYPE_U))) 	key: "count_LU_U_t0" 	in: my_indicators_t0; // count cells of type U
+		put string(length(LUs where (each.lu_code = LU_TYPE_A))) 	key: "count_LU_A_t0"   in: my_indicators_t0; // count cells of type A
+		put string(length(LUs where (each.lu_code = LU_TYPE_N))) 	key: "count_LU_N_t0"   in: my_indicators_t0; // count cells of type N
+		put string(length(LUs where (each.lu_code = LU_TYPE_AU)))   key: "count_LU_AU_t0"  in: my_indicators_t0; // count cells of type AU
+		put string(length(LUs where (each.lu_code = LU_TYPE_U))) 	key: "count_LU_U_t0"   in: my_indicators_t0; // count cells of type U
 	}
 	
 	float my_max_w_h (string lu, int dens) {
@@ -2555,30 +2532,34 @@ species District {
 		}
 		
 		ask River_Flood_Cell where (each intersects self) {
-			my_area <- self.shape.area / 10000;
-			if water_h <= 0.5 { // flooded area by river inundation
-				myself.loth_0_5c[0] <- myself.loth_0_5c[0] + my_area;
-				myself.loth_0_5c[lu_type] <- myself.loth_0_5c[lu_type] + my_area;
-			} else if between (water_h ,0.5, 1.0) {
-				myself.loth_1c[0] <- myself.loth_1c[0] + my_area;
-				myself.loth_1c[lu_type] <- myself.loth_1c[lu_type] + my_area;
-			} else{
-				myself.loth_maxc[0] <- myself.loth_maxc[0] + my_area;
-				myself.loth_maxc[lu_type] <- myself.loth_maxc[lu_type] + my_area;
+			if lu_type != -1 {
+				my_area <- self.shape.area / 10000;
+				if water_h <= 0.5 { // flooded area by river inundation
+					myself.loth_0_5c[0] <- myself.loth_0_5c[0] + my_area;
+					myself.loth_0_5c[lu_type] <- myself.loth_0_5c[lu_type] + my_area;
+				} else if between (water_h ,0.5, 1.0) {
+					myself.loth_1c[0] <- myself.loth_1c[0] + my_area;
+					myself.loth_1c[lu_type] <- myself.loth_1c[lu_type] + my_area;
+				} else{
+					myself.loth_maxc[0] <- myself.loth_maxc[0] + my_area;
+					myself.loth_maxc[lu_type] <- myself.loth_maxc[lu_type] + my_area;
+				}
 			}
 		}
 
 		ask River_Flood_Cell_1m where (each intersects self) {
-			my_area <- self.shape.area / 10000;
-			if water_h <= 0.5 { // flooded area by river inundation
-				myself.loth1m_0_5c[0] <- myself.loth1m_0_5c[0] + my_area;
-				myself.loth1m_0_5c[lu_type] <- myself.loth1m_0_5c[lu_type] + my_area;
-			} else if between (water_h ,0.5, 1.0) {
-				myself.loth1m_1c[0] <- myself.loth1m_1c[0] + my_area;
-				myself.loth1m_1c[lu_type] <- myself.loth1m_1c[lu_type] + my_area;
-			} else{
-				myself.loth1m_maxc[0] <- myself.loth1m_maxc[0] + my_area;
-				myself.loth1m_maxc[lu_type] <- myself.loth1m_maxc[lu_type] + my_area;
+			if lu_type != -1 {
+				my_area <- self.shape.area / 10000;
+				if water_h <= 0.5 { // flooded area by river inundation
+					myself.loth1m_0_5c[0] <- myself.loth1m_0_5c[0] + my_area;
+					myself.loth1m_0_5c[lu_type] <- myself.loth1m_0_5c[lu_type] + my_area;
+				} else if between (water_h ,0.5, 1.0) {
+					myself.loth1m_1c[0] <- myself.loth1m_1c[0] + my_area;
+					myself.loth1m_1c[lu_type] <- myself.loth1m_1c[lu_type] + my_area;
+				} else{
+					myself.loth1m_maxc[0] <- myself.loth1m_maxc[0] + my_area;
+					myself.loth1m_maxc[lu_type] <- myself.loth1m_maxc[lu_type] + my_area;
+				}	
 			}
 		}
 	}			
@@ -2745,7 +2726,7 @@ species Water_Gate { // a water gate for the case of Dieppe
 // river flood shapefile for dieppe
 species River_Flood_Cell {
 	float water_h;
-	int lu_type <- 0;
+	int lu_type <- -1;
 	rgb col;
 	aspect base {
 		if show_river_flooded_area = 1 {

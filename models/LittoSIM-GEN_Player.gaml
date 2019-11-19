@@ -1736,17 +1736,10 @@ species Network_Player skills:[network]{
 						match OBJECT_TYPE_ACTIVATED_LEVER{
 							create Activated_Lever {
 								do init_activ_lever_from_map(m_contents);
-								if int(my_map["manual"]) = 1 {
-									if my_map["name"] = 'Give_Pebbles_Lever' {
-										dieppe_pebbles_allowed <- true;
-										dieppe_pebbles_discount <- float (m_contents['added_cost']);
-									}
-								} else {
-									ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"] );
-									if ply_act != nil {
-										add self to: ply_act.activated_levers;	
-									}	
-								}
+								ply_act <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = my_map["p_action_id"] );
+								if ply_act != nil {
+									add self to: ply_act.activated_levers;	
+								}	
 							}				
 						}
 					}
@@ -1783,6 +1776,9 @@ species Network_Player skills:[network]{
 				match 'OPEN_DIEPPE_GATES' {
 					ask Water_Gate {
 						display_me <- false;
+					}
+					ask Button where (each.command in [ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE]) {
+						is_selected <- false;
 					}
 					write "Les portes de Dieppe ont été ouvertes!";	
 				}
