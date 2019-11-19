@@ -225,9 +225,10 @@ global{
 	
 	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
 	//			 lu_code			0	1	2	3	4	5	6	  7
-    list<string> lu_type_names 	<- ["","N","U","","AU","A","Us","AUs"];
+    list<string> lu_type_names 	<- ["","N","U","Ui","AU","A","Us","AUs"];
     int LU_TYPE_N <- 1;
     int LU_TYPE_U <- 2;
+    int LU_TYPE_Ui <- 3;
     int LU_TYPE_AU <- 4;
     int LU_TYPE_A <- 5;
     int LU_TYPE_Us <- 6;
@@ -245,11 +246,12 @@ global{
 		}
 	}
 	
-	rgb color_of_water_height (float w_height){
-		if 		w_height  	<= 0.5	{	return rgb(200,200,255);	}
-		else if w_height  	<= 1  	{	return rgb(115,115,255);	}
-		else if w_height	<= 2  	{	return rgb(65,65,255);		}
-		else 						{	return rgb(30,30,255);		}
+	list<rgb> colors_of_water_height <- [rgb(200,200,255),rgb(115,115,255),rgb(65,65,255),rgb(30,30,255)];
+	int class_of_water_height (float w_height){
+		if 		w_height  	<= 0.5	{	return 0;	}
+		else if w_height  	<= 1  	{	return 1;	}
+		else if w_height	<= 2  	{	return 2;	}
+		else 						{	return 3;	}
 	}
 	
 	string get_message(string code_msg){

@@ -537,7 +537,7 @@ global{
 		Coastal_Defense selected_codef <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
 		Button selected_button <- Button first_with(each.is_selected);
 		if selected_button != nil {
-			if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY] {
+			if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY, ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE] {
 				return;
 			}else if selected_button.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
 				if basket_overflow() {return;}

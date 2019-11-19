@@ -30,7 +30,7 @@ global{
 	
 	list<list<int>> districts_budgets <- [[],[],[],[]];
 	list<list<int>> districts_populations <- [[],[],[],[]];
-	Action_Counter last_colored <- nil;
+	Action_Name last_updated <- nil;
 	
 	init{
 		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
@@ -152,19 +152,30 @@ global{
 			lu_index <- int(data_action at act at 'lu_index');
 			codef_index <- int(data_action at act at 'coast_def_index');
 			if codef_index >= 0 or  lu_index >= 0 {
-				ask districts {					
+				int act_code <- int(data_action at act at 'action_code');
+				create Action_Name {
+					action_code	<- act_code;
+					action_name <- world.label_of_action(act_code);
+					col <- string(data_action at act at 'entity') = "COAST_DEF" ? #lightgray : #whitesmoke;
+					origi_color <- col;
+					location <- (Grille2[0, 1]).location + {1.5, 5.25 * i};
+				}
+				ask districts {
+					create District_Name2 {
+						display_name <- myself.district_name;
+						location <- (Grille2[myself.dist_id, 0]).location  - {0,1.5};
+					}					
 					if (string(data_action at act at 'active') at (dist_id-1)) = '1'{
 						create Action_Counter {
 							my_district <- myself;
-							location <- (Grille2[my_district.dist_id - 1, 1]).location + {0, 5.25 * i};
-							action_code	<- int(data_action at act at 'action_code');
-							action_name <- world.label_of_action(action_code);
+							location <- (Grille2[my_district.dist_id, 1]).location + {2, 5.25 * i};
+							action_code	<- act_code;
 						}	
 					}
 				}
 			} 
 		}
-		last_colored <- first(Action_Counter);
+		last_updated <- first(Action_Name);
 	}
 	
 	action create_player_buttons {
@@ -389,6 +400,18 @@ global{
 		loop lev over: all_levers{
 			ask lev.population { activation_queue <-[]; }
 		}
+	}
+	
+	rgb color_profile (string prof){
+		switch prof {
+			match BUILDER 		{ return #deepskyblue;}
+			match SOFT_DEFENSE	{ return #lightgreen; }
+			match WITHDRAWAL	{ return #moccasin;	  }
+			default 			{ return #red;		  }
+		}
+	}
+	string color_profile_num (int num){
+		return num = 0 ? BUILDER : (num = 1 ? SOFT_DEFENSE : WITHDRAWAL);
 	}
 }
 //------------------------------ end of global -------------------------------//
@@ -781,26 +804,43 @@ species Player_Button_Button {
 	}
 }
 
-species Action_Counter {
+species Action_Name {
 	int action_code;
 	string action_name;
-	int action_count <- 0;
-	geometry shape <- rectangle (24, 5);
+	geometry shape <- rectangle (22, 5);
+	rgb col;
+	rgb origi_color;
+	
+	aspect {
+		draw shape color: col border: #black;
+		draw action_name at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
+	}
+	
+}
+
+species Action_Counter {
+	int action_code;
+	list<int> action_count_by_profile <- [0,0,0];
+	geometry shape <- rectangle (15, 5);
 	District my_district;
 	rgb col <- #whitesmoke;
 	
-	action add_one {
-		action_count <- action_count + 1;
-		ask last_colored {
-			col <- #whitesmoke;
+	action add_one(string prof) {
+		int ix <- prof = BUILDER ? 0 : (prof = SOFT_DEFENSE ? 1 : 2);
+		action_count_by_profile[ix] <- action_count_by_profile[ix] + 1;
+		col <- world.color_profile(world.color_profile_num(action_count_by_profile index_of max(action_count_by_profile)));
+		ask last_updated {
+			col <- origi_color;
 		}
-		col <- #red;
-		last_colored <- self;
+		ask first(Action_Name where(each.action_code = action_code)){
+			col <- #red;
+			last_updated <- self;	
+		}
 	}
 	
 	aspect {
 		draw shape color: col border: #black;
-		draw action_name + " (" + action_count +")" at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
+		draw ""+action_count_by_profile at: location anchor: #center font: font("Arial", 15 , #bold) color: #black;
 	}
 	
 }
@@ -813,7 +853,7 @@ species Lever_Window_Info {
 	aspect {
 		if explored_lever != nil {
 			Lever my_lever <- explored_lever;
-			draw shape color: my_lever.color_profile() at: loca;
+			draw shape color: world.color_profile(my_lever.lever_type) at: loca;
 			draw 0.5 around shape color: #black;
 			
 			if my_lever.timer_activated {
@@ -923,7 +963,7 @@ species Lever {
 			draw shape+0.2#m color: #red;
 		}
 		
-		draw shape color: color_profile() border: #black at: location;
+		draw shape color: world.color_profile(lever_type) border: #black at: location;
 		draw lever_name +' ('+length(associated_actions)+')' at: location -{0,1.5} anchor: #center font: font("Arial", 12 , #bold) color: #black;
 		draw progression_bar at: location anchor: #center font: font("Arial", 12 , #plain) color: threshold_reached ? #red : #black;
 		
@@ -1119,16 +1159,6 @@ species Lever {
 		int money <- int(msg["added_cost"]);
 		ask districts first_with (each.district_code = msg[DISTRICT_CODE]) {
 			levers_cost <- levers_cost - money;
-		}
-	}
-	
-	rgb color_profile {
-		switch lever_type {
-			match BUILDER 		{ return #deepskyblue;}
-			match SOFT_DEFENSE	{ return #lightgreen; }
-			match WITHDRAWAL	{ return #moccasin;	  }
-			match "" 			{ return #darkgrey;	  }
-			default 			{ return #red;		  }
 		}
 	}
 	
@@ -1809,23 +1839,29 @@ species Network_Leader skills:[network] {
 					profile_this_action <- true;
 					ref_round <- game_round;
 				}
+				string act_prof <- strategy_profile;
 				ask districts first_with (each.district_code = district_code) {
-					int act_code <- myself.command;
-					if myself.command = ACTION_MODIFY_LAND_COVER_N{
-						if myself.is_expropriation { act_code <- ACTION_EXPROPRIATION;}
-						else {
-							if myself.previous_lu_name = 'A' {
-								act_code <- ACTON_MODIFY_LAND_COVER_FROM_A_TO_N;
-							} else if myself.previous_lu_name = 'AU' {
-								act_code <- ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N;
-							}	
+					if act_prof != OTHER { // only if the action is profiled
+						int act_code <- myself.command;
+						if myself.command = ACTION_MODIFY_LAND_COVER_N{
+							ask Action_Counter where (each.my_district = self and each.action_code = act_code) {
+								do add_one(act_prof);
+							}
+							if myself.is_expropriation { act_code <- ACTION_EXPROPRIATION;}
+							else {
+								if myself.previous_lu_name = 'A' {
+									act_code <- ACTON_MODIFY_LAND_COVER_FROM_A_TO_N;
+								} else if myself.previous_lu_name = 'AU' {
+									act_code <- ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N;
+								}	
+							}
+						} else if myself.command = ACTION_MODIFY_LAND_COVER_AUs and myself.previous_lu_name = 'U' {
+							act_code <- ACTION_MODIFY_LAND_COVER_Us;
 						}
-					} else if myself.command = ACTION_MODIFY_LAND_COVER_AUs and myself.previous_lu_name = 'U' {
-						act_code <- ACTION_MODIFY_LAND_COVER_Us;
-					}
-					
-					ask Action_Counter where (each.my_district = self and each.action_code = act_code) {
-						do add_one();
+						
+						ask Action_Counter where (each.my_district = self and each.action_code = act_code) {
+							do add_one(act_prof);
+						}	
 					}
 					// classifying this action
 					switch myself.strategy_profile{
@@ -1875,7 +1911,7 @@ grid Grille width: GRID_W height: GRID_H {
 	}
 }
 
-grid Grille2 width: GRID_W height: GRID_H+1 {
+grid Grille2 width: GRID_W+1 height: GRID_H+1 {
 	init {
 		color <- #white ;
 	}
@@ -2028,6 +2064,8 @@ species District_Name {
 		draw "" + display_name color:#black font: font("Arial", 17.5 , #bold) at: location anchor:#center;
 	}
 }
+
+species District_Name2 parent: District_Name {}
 //------------------------------ end of District_Name -------------------------------//
 
 experiment LittoSIM_GEN_Leader {
@@ -2077,13 +2115,11 @@ experiment LittoSIM_GEN_Leader {
 			event [mouse_move] action: user_move;
 		}
 		
-		display Player_Buttons {
-			species District_Name;
-			species Player_Button;
-			species Player_Button_Actions;
-			species Player_Button_Button;
+		display Actions {
+			species District_Name2;
+			species Action_Name;
+			species Action_Counter;
 			
-			event [mouse_down] action: user_buttons_click;
 		}
 		
 		display Statistics {
@@ -2135,10 +2171,13 @@ experiment LittoSIM_GEN_Leader {
 			}
 		}
 		
-		display Actions {
+		display Player_Buttons {
 			species District_Name;
-			species Action_Counter;
+			species Player_Button;
+			species Player_Button_Actions;
+			species Player_Button_Button;
 			
+			event [mouse_down] action: user_buttons_click;
 		}
 	}
 }

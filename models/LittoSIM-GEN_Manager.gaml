@@ -164,18 +164,7 @@ global {
 		}
 		if water_shape != nil {
 			create Water from: water_shape;
-		}
-		if river_flood_shape != nil {
-			create River_Flood_Cell from: river_flood_shape with: [water_h::float(read("water_h"))] {
-				col <- world.color_of_water_height(water_h);
-			}
-		}
-		if river_flood_shape_1m != nil {
-			create River_Flood_Cell_1m from: river_flood_shape_1m with: [water_h::float(read("water_h"))] {
-				col <- world.color_of_water_height(water_h);
-			}
-		}
-		
+		}		
 		create Coastal_Border_Area from: coastline_shape {
 			line_shape <- shape;
 			shape <-  shape + coastBorderBuffer#m;
@@ -210,6 +199,16 @@ global {
 		ask Land_Use where (each.lu_code = LU_TYPE_U and each.population < MIN_POP_AREA) { // each U should have a min pop
 			population <- MIN_POP_AREA;
 		}
+		if river_flood_shape != nil {
+			create River_Flood_Cell from: river_flood_shape with: [water_h::float(read("water_h"))] {
+				col <- colors_of_water_height[world.class_of_water_height(water_h)];
+			}
+		}
+		if river_flood_shape_1m != nil {
+			create River_Flood_Cell_1m from: river_flood_shape_1m with: [water_h::float(read("water_h"))] {
+				col <- colors_of_water_height[world.class_of_water_height(water_h)];
+			}
+		}
 		//*****
 		do load_dem_and_rugosity;
 		ask Coastal_Defense {
@@ -219,6 +218,24 @@ global {
 			cells <- Cell overlapping self;
 			mean_alt <- cells mean_of(each.soil_height);
 		}
+		if river_flood_shape != nil {
+			ask Land_Use {
+				ask River_Flood_Cell inside self {
+				lu_type <- myself.lu_code;
+					if lu_type = LU_TYPE_U and myself.density_class = POP_DENSE {
+						lu_type <- LU_TYPE_Ui;
+					}
+				}
+			
+				ask River_Flood_Cell_1m inside self {
+					lu_type <- myself.lu_code;
+					if lu_type = LU_TYPE_U and myself.density_class = POP_DENSE {
+						lu_type <- LU_TYPE_Ui;
+					}
+				}
+			}
+		}
+		
 		ask districts_in_game{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
 			district_long_name <- world.dist_code_lname_correspondance_table at district_code;
@@ -228,6 +245,10 @@ global {
 			budget 	<- int(self.current_population() * tax_unit * (1 + initial_budget));
 			write MSG_COMMUNE + " " + district_name + " (" + district_code + ") " + MSG_POPULATION + ": " + current_population() + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
 			do calculate_indicators_t0;
+			
+			if river_flood_shape != nil {
+				do calculate_river_flood_results;
+			}
 		}
 		
 		do init_buttons;
@@ -245,7 +266,7 @@ global {
 		create Network_Control_Manager;
 	}
 	//------------------------------ End of init -------------------------------//
-	 	
+	
 	int getMessageID{
  		messageID <- messageID +1;
  		return messageID;
@@ -515,6 +536,19 @@ global {
 			ask Coastal_Defense {
 				do calculate_rupture;
 			}
+			//********* for Criel case only *//////////////*******
+			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_CORD) {
+				if status = STATUS_BAD {
+					list<Coastal_Defense> cordies <- Coastal_Defense where (each.is_protected_by_cord and !rupture);
+					write "Criel : " + length(cordies) + " digues sans ruptures.";
+					if length(cordies) = 3 {
+						ask one_of(cordies) {
+							rupture <- true;
+						}
+					}
+				}
+			}
+			/************* */
 			stateSimPhase <- SIM_EXEC_LISFLOOD;
 			write stateSimPhase;
 			do execute_lisflood;
@@ -725,7 +759,7 @@ global {
 			ask cells where(each.max_water_height > 0){
 				create Polycell{
 					loc <- myself.shape.location;
-					col <- world.color_of_water_height (myself.max_water_height);
+					col <- colors_of_water_height[world.class_of_water_height(myself.max_water_height)];
 				}
 			}
 		}
@@ -907,7 +941,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 		}
 		flood_results <-  text;
 			
-		write get_message('MSG_FLOODED_AREA_DISTRICT');
+		write get_message('MSG_FLOODED_AREA_DISTRICT') + " :";
 		ask districts_in_game {
 			flooded_area <- (U_0_5c + U_1c + U_maxc + Us_0_5c + Us_1c + Us_maxc + AU_0_5c + AU_1c + AU_maxc + N_0_5c + N_1c + N_maxc + A_0_5c + A_1c + A_maxc) with_precision 1;  
 			write ""+ district_name + " : " + flooded_area +" ha";
@@ -932,6 +966,9 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			}
 			ask first(cells where (each.max_water_height = maxwh)) {
 				myself.c_max_w_h_heights <- water_heights;
+			}
+			if river_flood_shape != nil {
+				do calculate_river_flood_results;
 			}
 		}
 		
@@ -1257,7 +1294,7 @@ species Network_Game_Manager skills: [network]{
 							self.draw_around				<- int (m_contents["draw_around"]);
 							if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
 								self.altit	<- float (m_contents["altit"]);
-								element_shape 	 <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
+								element_shape <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
 								shape 			 <- element_shape;
 								length_coast_def <- int(element_shape.perimeter);
@@ -1280,7 +1317,8 @@ species Network_Game_Manager skills: [network]{
 							if  self.element_shape intersects all_flood_risk_area 		 {	is_in_risk_area 		<- true;	}
 							if  self.element_shape intersects all_coastal_border_area    {	is_in_coast_border_area <- true;	}
 							if  self.element_shape intersects all_protected_area 		 {	is_in_protected_area 	<- true;	}
-							if command = ACTION_CREATE_DIKE and (self.element_shape.centroid overlaps first(Inland_Dike_Area))	{	is_inland_dike <- true;	}
+							if command in [ACTION_CREATE_DIKE,ACTION_REPAIR_DIKE,ACTION_RAISE_DIKE] 
+								and (self.element_shape.centroid overlaps first(Inland_Dike_Area))	{	is_inland_dike <- true;	}
 							ask districts_in_game first_with(each.dist_id = world.district_id (self.district_code)) {
 								budget <- int(budget - myself.cost);	// updating players payment (server side)
 								round_actions_cost <- int(round_actions_cost - myself.cost);
@@ -2010,17 +2048,17 @@ species Coastal_Defense {
 			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
 			
 			if is_protected_by_cord { // there is a pebble cord protecting the dike
-				/*map<string, int> probas_med <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD, STATUS_MEDIUM::int(PROBA_RUPTURE_DIKE_STATUS_BAD * 1.5),
-									STATUS_BAD::int(PROBA_RUPTURE_DIKE_STATUS_BAD * 2.5)];
-				map<string, int> probas_bad <- [STATUS_GOOD::PROBA_RUPTURE_DIKE_STATUS_BAD * 2, STATUS_MEDIUM::PROBA_RUPTURE_DIKE_STATUS_BAD * 3,
-									STATUS_BAD::100];*/
-				ask Coastal_Defense where (each.type=COAST_DEF_TYPE_CORD) closest_to self {
+				map<string, int> probas_good <-[STATUS_GOOD::0,  STATUS_MEDIUM::15, STATUS_BAD::30];
+				map<string, int> probas_med <- [STATUS_GOOD::30, STATUS_MEDIUM::45, STATUS_BAD::60];
+				map<string, int> probas_bad <- [STATUS_GOOD::60, STATUS_MEDIUM::90, STATUS_BAD::100];
+				
+				ask Coastal_Defense where (each.type = COAST_DEF_TYPE_CORD) closest_to self {
 					if status = STATUS_GOOD {
-						p <- 0;
+						p <- probas_good at myself.status;
 					} else if  status = STATUS_MEDIUM	{
-						p <- 50;
+						p <- probas_med at myself.status;
 					} else if status = STATUS_BAD {
-						p <- 100;
+						p <- probas_bad at myself.status;
 					}  
 				}
 			}
@@ -2147,8 +2185,8 @@ grid Cell width: GRID_NB_COLS height: GRID_NB_ROWS schedules:[] neighbors: 8 {
 		if cell_type = 0 or (show_max_water_height? max_water_height = 0 : water_height = 0){ // if sea and water level = 0
 			color <- soil_color;
 		}else {
-			if show_max_water_height { color <- world.color_of_water_height(max_water_height);	}
-			else					 { color <- world.color_of_water_height(water_height);		}
+			if show_max_water_height { color <- colors_of_water_height[world.class_of_water_height(max_water_height)];	}
+			else					 { color <- colors_of_water_height[world.class_of_water_height(water_height)];		}
 		}
 	}
 }
@@ -2195,13 +2233,21 @@ species Land_Use {
 		
 	action modify_LU (string new_lu_name) {
 		if (lu_code in [LU_TYPE_U,LU_TYPE_Us]) and new_lu_name = "N" {
-			population <-0; //expropriation
+			population <- 0; //expropriation
 		} 
 		lu_name <- new_lu_name;
 		lu_code <-  lu_type_names index_of lu_name;
 		// updating rugosity of related cells
 		float rug <- float((eval_gaml("RUGOSITY_" + lu_name)));
-		ask cells { rugosity <- rug; } 	
+		ask cells { rugosity <- rug; }
+		if river_flood_shape != nil {
+			ask River_Flood_Cell inside self {
+				lu_type <- myself.lu_code;
+			}
+			ask River_Flood_Cell_1m inside self {
+				lu_type <- myself.lu_code;
+			}
+		}
 	}
 	
 	action evolve_AU_to_U {
@@ -2267,7 +2313,6 @@ species Land_Use {
 		}
 	}
 	
-
 	aspect base {
 		draw shape color: my_color;
 		if is_adapted		  {	draw "A" color:#black anchor: #center;	}
@@ -2362,6 +2407,15 @@ species District {
 	float totA 		   <- 0.0;	list<float> data_totA 		 <- [];
 	list<float> district_max_w_h <- [];
 	list<float> c_max_w_h_heights <- [];
+	
+	// river flood | 0 : total | 1-7: lu_type
+	list<float> loth_0_5c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth_1c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth_maxc <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	
+	list<float> loth1m_0_5c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth1m_1c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth1m_maxc <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
 	
 	list<int> round_population <- [];
 	list<float> surface_N <- [];
@@ -2491,6 +2545,42 @@ species District {
 			luss <- luss where (each.density_class = POP_DENSE);
 		}
 		return empty (luss) ? 0 : luss accumulate each.cells max_of(each.max_water_height);	
+	}
+	
+	action calculate_river_flood_results { // for Normandie
+		float my_area <- 0.0;
+		loop i from: 0 to: 6 { // init tables
+			loth_0_5c [i] <- 0.0; 	loth_1c [i] <- 0.0;	loth_maxc [i] <- 0.0;
+			loth1m_0_5c [i] <- 0.0;	loth1m_1c [i] <- 0.0;	loth1m_maxc [i] <- 0.0;
+		}
+		
+		ask River_Flood_Cell where (each intersects self) {
+			my_area <- self.shape.area / 10000;
+			if water_h <= 0.5 { // flooded area by river inundation
+				myself.loth_0_5c[0] <- myself.loth_0_5c[0] + my_area;
+				myself.loth_0_5c[lu_type] <- myself.loth_0_5c[lu_type] + my_area;
+			} else if between (water_h ,0.5, 1.0) {
+				myself.loth_1c[0] <- myself.loth_1c[0] + my_area;
+				myself.loth_1c[lu_type] <- myself.loth_1c[lu_type] + my_area;
+			} else{
+				myself.loth_maxc[0] <- myself.loth_maxc[0] + my_area;
+				myself.loth_maxc[lu_type] <- myself.loth_maxc[lu_type] + my_area;
+			}
+		}
+
+		ask River_Flood_Cell_1m where (each intersects self) {
+			my_area <- self.shape.area / 10000;
+			if water_h <= 0.5 { // flooded area by river inundation
+				myself.loth1m_0_5c[0] <- myself.loth1m_0_5c[0] + my_area;
+				myself.loth1m_0_5c[lu_type] <- myself.loth1m_0_5c[lu_type] + my_area;
+			} else if between (water_h ,0.5, 1.0) {
+				myself.loth1m_1c[0] <- myself.loth1m_1c[0] + my_area;
+				myself.loth1m_1c[lu_type] <- myself.loth1m_1c[lu_type] + my_area;
+			} else{
+				myself.loth1m_maxc[0] <- myself.loth1m_maxc[0] + my_area;
+				myself.loth1m_maxc[lu_type] <- myself.loth1m_maxc[lu_type] + my_area;
+			}
+		}
 	}			
 }
 //------------------------------ End of District -------------------------------//
@@ -2655,6 +2745,7 @@ species Water_Gate { // a water gate for the case of Dieppe
 // river flood shapefile for dieppe
 species River_Flood_Cell {
 	float water_h;
+	int lu_type <- 0;
 	rgb col;
 	aspect base {
 		if show_river_flooded_area = 1 {
@@ -2663,7 +2754,7 @@ species River_Flood_Cell {
 	}
 }
 
-species River_Flood_Cell_1m parent: River_Flood_Cell{
+species River_Flood_Cell_1m parent: River_Flood_Cell {
 	aspect base {
 		if show_river_flooded_area = 2 {
 			draw shape color: col border:#transparent;	
@@ -3100,7 +3191,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 		}
 		
-		display "Dunes" {
+		/*display "Dunes" {
 			chart MSG_MEAN_ALT type: histogram size: {0.24,0.32} position: {0.0,0.01} style: stack background: #whitesmoke 
 				x_serie_labels: districts_in_game collect each.district_name {
 			 	data MSG_GOOD value: districts_in_game collect first(each.mean_alt_dunes_good) color: #green;
@@ -3175,97 +3266,139 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data MSG_MEDIUM value: districts_in_game[3].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-		}
+		}*/
 		
 		display "Flooded depth per area"{
 			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value: districts_in_game collect each.U_0_5c color: world.color_of_water_height(0.5);
-				data "1" value: districts_in_game collect each.U_1c color: world.color_of_water_height(0.9); 
-				data ">1" value: districts_in_game collect each.U_maxc color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.U_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_U] : each.loth1m_0_5c[LU_TYPE_U]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.U_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_U] : each.loth1m_1c[LU_TYPE_U]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.U_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_U] : each.loth1m_maxc[LU_TYPE_U]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.25, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.Udense_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.Udense_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.Udense_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.Udense_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_Ui] : each.loth1m_0_5c[LU_TYPE_Ui]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.Udense_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_Ui] : each.loth1m_1c[LU_TYPE_Ui]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.Udense_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_Ui] : each.loth1m_maxc[LU_TYPE_Ui]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" Us" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.51, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.Us_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.Us_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.Us_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.Us_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_Us] : each.loth1m_0_5c[LU_TYPE_Us]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.Us_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_Us] : each.loth1m_1c[LU_TYPE_Us]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.Us_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_Us] : each.loth1m_maxc[LU_TYPE_Us]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" AU" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.76, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.AU_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.AU_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.AU_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.AU_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_AU] : each.loth1m_0_5c[LU_TYPE_AU]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.AU_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_AU] : each.loth1m_1c[LU_TYPE_AU]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.AU_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_AU] : each.loth1m_maxc[LU_TYPE_AU]))) color: colors_of_water_height[2];
 			}
 			
 			chart MSG_AREA+" A" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.01, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.A_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.A_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.A_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.A_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_A] : each.loth1m_0_5c[LU_TYPE_A]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.A_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_A] : each.loth1m_1c[LU_TYPE_A]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.A_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_A] : each.loth1m_maxc[LU_TYPE_A]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" N" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.34, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.N_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.N_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.N_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.N_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_N] : each.loth1m_0_5c[LU_TYPE_N]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.N_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_N] : each.loth1m_1c[LU_TYPE_N]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.N_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_N] : each.loth1m_maxc[LU_TYPE_N]))) color: colors_of_water_height[2];
 			}
 			chart LDR_TOTAL type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.67, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.tot_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.tot_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.tot_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.tot_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[0] : each.loth1m_0_5c[0]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.tot_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[0] : each.loth1m_1c[0]))) color: colors_of_water_height[1]; 
+				data ">1" value: districts_in_game collect (each.tot_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[0] : each.loth1m_maxc[0]))) color: colors_of_water_height[2];
 			}
 		}
 		
 		display "Previous flooded depth per area"{
-			chart MSG_AREA+" U" type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0, 0}
+			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value: districts_in_game collect each.prev_U_0_5c color: world.color_of_water_height(0.5);
-				data "1" value: districts_in_game collect each.prev_U_1c color: world.color_of_water_height(0.9); 
-				data ">1" value: districts_in_game collect each.prev_U_maxc color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.prev_U_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_U] : each.loth1m_0_5c[LU_TYPE_U]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.prev_U_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_U] : each.loth1m_1c[LU_TYPE_U]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.prev_U_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_U] : each.loth1m_maxc[LU_TYPE_U]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0.25, 0}
+			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.25, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.prev_Udense_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.prev_Udense_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.prev_Udense_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.prev_Udense_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_Ui] : each.loth1m_0_5c[LU_TYPE_Ui]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.prev_Udense_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_Ui] : each.loth1m_1c[LU_TYPE_Ui]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.prev_Udense_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_Ui] : each.loth1m_maxc[LU_TYPE_Ui]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" Us" type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0.51, 0}
+			chart MSG_AREA+" Us" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.51, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.prev_Us_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.prev_Us_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.prev_Us_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.prev_Us_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_Us] : each.loth1m_0_5c[LU_TYPE_Us]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.prev_Us_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_Us] : each.loth1m_1c[LU_TYPE_Us]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.prev_Us_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_Us] : each.loth1m_maxc[LU_TYPE_Us]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" AU" type: histogram style: stack background: #whitesmoke size: {0.24,0.48} position: {0.76, 0}
+			chart MSG_AREA+" AU" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.76, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.prev_AU_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.prev_AU_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.prev_AU_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.prev_AU_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_AU] : each.loth1m_0_5c[LU_TYPE_AU]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.prev_AU_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_AU] : each.loth1m_1c[LU_TYPE_AU]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.prev_AU_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_AU] : each.loth1m_maxc[LU_TYPE_AU]))) color: colors_of_water_height[2];
 			}
 			
-			chart MSG_AREA+" A" type: histogram style: stack background: #whitesmoke size: {0.33,0.48} position: {0.01, 0.5}
+			chart MSG_AREA+" A" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.01, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.prev_A_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.prev_A_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.prev_A_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.prev_A_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_A] : each.loth1m_0_5c[LU_TYPE_A]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.prev_A_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_A] : each.loth1m_1c[LU_TYPE_A]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.prev_A_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_A] : each.loth1m_maxc[LU_TYPE_A]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" N" type: histogram style: stack background: #whitesmoke size: {0.33,0.48} position: {0.34, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name{
-				data "0.5" value:(districts_in_game collect each.prev_N_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.prev_N_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.prev_N_maxc) color: world.color_of_water_height(1.9); 
-			}
-			chart LDR_TOTAL type: histogram style: stack background: #whitesmoke size: {0.33,0.48} position: {0.67, 0.5}
+			chart MSG_AREA+" N" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.34, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
-				data "0.5" value:(districts_in_game collect each.prev_tot_0_5c) color: world.color_of_water_height(0.5);
-				data "1" value:(districts_in_game collect each.prev_tot_1c) color: world.color_of_water_height(0.9); 
-				data ">1" value:(districts_in_game collect each.prev_tot_maxc) color: world.color_of_water_height(1.9); 
+				data "0.5" value: districts_in_game collect (each.prev_N_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[LU_TYPE_N] : each.loth1m_0_5c[LU_TYPE_N]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.prev_N_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[LU_TYPE_N] : each.loth1m_1c[LU_TYPE_N]))) color: colors_of_water_height[1];
+				data ">1" value: districts_in_game collect (each.prev_N_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[LU_TYPE_N] : each.loth1m_maxc[LU_TYPE_N]))) color: colors_of_water_height[2];
+			}
+			chart LDR_TOTAL type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.67, 0.5}
+				x_serie_labels: districts_in_game collect each.district_name {
+				data "0.5" value: districts_in_game collect (each.prev_tot_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_0_5c[0] : each.loth1m_0_5c[0]))) color: colors_of_water_height[0];
+				data "1" value: districts_in_game collect (each.prev_tot_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_1c[0] : each.loth1m_1c[0]))) color: colors_of_water_height[1]; 
+				data ">1" value: districts_in_game collect (each.prev_tot_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
+							each.loth_maxc[0] : each.loth1m_maxc[0]))) color: colors_of_water_height[2];
 			}
 		}
 		
@@ -3309,7 +3442,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 		}
 		
-		display "Max water heights"{
+		/*display "Max water heights"{
 			chart districts_in_game[0].district_long_name type: histogram background: rgb("white") size: {0.24,0.48} position: {0, 0} {
 				data "N" value: districts_in_game[0].my_max_w_h("N",0) color: #green;
 				data "U" value: districts_in_game[0].my_max_w_h("U",0) color: #gray;
@@ -3356,6 +3489,6 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data districts_in_game[i].district_name value: districts_in_game[i].district_max_w_h color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
-		}
+		}*/
 	}
 }
