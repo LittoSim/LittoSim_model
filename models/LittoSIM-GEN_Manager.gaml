@@ -2025,9 +2025,9 @@ species Coastal_Defense {
 			else 							{ p <- PROBA_RUPTURE_DIKE_STATUS_GOOD;	 }
 			
 			if is_protected_by_cord { // there is a pebble cord protecting the dike
-				map<string, int> probas_good <-[STATUS_GOOD::0,  STATUS_MEDIUM::15, STATUS_BAD::30];
-				map<string, int> probas_med <- [STATUS_GOOD::30, STATUS_MEDIUM::45, STATUS_BAD::60];
-				map<string, int> probas_bad <- [STATUS_GOOD::60, STATUS_MEDIUM::90, STATUS_BAD::100];
+				map<string, int> probas_good <-[STATUS_GOOD::0,  STATUS_MEDIUM::30, STATUS_BAD::60];
+				map<string, int> probas_med <- [STATUS_GOOD::60, STATUS_MEDIUM::75, STATUS_BAD::90];
+				map<string, int> probas_bad <- [STATUS_GOOD::90, STATUS_MEDIUM::95, STATUS_BAD::100];
 				
 				ask Coastal_Defense where (each.type = COAST_DEF_TYPE_CORD) closest_to self {
 					if status = STATUS_GOOD {
@@ -2755,7 +2755,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- false;
+	parameter "Save data : " var: save_data <- true;
 	
 	output {
 		
