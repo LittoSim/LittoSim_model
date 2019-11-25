@@ -69,12 +69,12 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 				
 				// conditions on element
 				 if flip(float(data[BOT_ACTION_OUT_RISK_COAST])){ // out risk and coast areas
-					lus <- lus where (!(each.shape intersects all_coastal_area) and !(each.shape intersects all_flood_risk_area));
+					lus <- lus where (!(each.shape intersects union(Coastal_Border_Area)) and !(each.shape intersects union(Flood_Risk_Area)));
 				} else {
 					if flip(float(data[BOT_ACTION_IN_RISK])) { // in risk area
-						lus <- lus where (each.shape intersects all_flood_risk_area);
+						lus <- lus where (each.shape intersects union(Flood_Risk_Area));
 					} else if flip(float(data[BOT_ACTION_IN_COAST])) { // in coast area
-						lus <- lus where (each.shape intersects all_coastal_area);
+						lus <- lus where (each.shape intersects union(Coastal_Border_Area));
 					}
 				}
 				if length(lus) > 0 {
@@ -86,7 +86,7 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 			// action on coast def
 			else if data[BOT_ACTION_TYPE] = PLAYER_ACTION_TYPE_COAST_DEF {
 				if comm = ACTION_CREATE_DIKE {
-					previous_clicked_point <- any_location_in(local_shape inter all_coastal_area);
+					previous_clicked_point <- any_location_in(local_shape inter union(Coastal_Border_Area));
 					point loca <- previous_clicked_point + 200#m;
 					ask world {
 						do create_new_coast_def_action (Button first_with (each.command = comm), loca);
@@ -100,12 +100,12 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 					} 
 					
 					if flip(float(data[BOT_ACTION_OUT_RISK_COAST])){ // out risk and coast areas
-						codefs <- codefs where (!(each.shape intersects all_coastal_area) and !(each.shape intersects all_flood_risk_area));
+						codefs <- codefs where (!(each.shape intersects union(Coastal_Border_Area)) and !(each.shape intersects union(Flood_Risk_Area)));
 					} else {
 						if flip(float(data[BOT_ACTION_IN_RISK])) { // in risk area
-							codefs <- codefs where (each.shape intersects all_flood_risk_area);
+							codefs <- codefs where (each.shape intersects union(Flood_Risk_Area));
 						} else if flip(float(data[BOT_ACTION_IN_COAST])) { // in coast area
-							codefs <- codefs where (each.shape intersects all_coastal_area);
+							codefs <- codefs where (each.shape intersects union(Coastal_Border_Area));
 						}
 					}
 					if length(codefs) > 0 {

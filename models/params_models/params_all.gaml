@@ -26,6 +26,7 @@ global{
 	string OBJECT_TYPE_COASTAL_DEFENSE	<- "COASTAL_DEFENSE";
 	string OBJECT_TYPE_LAND_USE			<- "LAND_USE";
 	string OBJECT_TYPE_WINDOW_LOCKER	<- "WINDOW_LOCKER";
+	string OBJECT_TYPE_FLOOD_MARK		<- "FLOOD_MARK";
 
 	// Main-Leader network communication
 	string LEADER_COMMAND   	<- "LEADER_COMMAND";

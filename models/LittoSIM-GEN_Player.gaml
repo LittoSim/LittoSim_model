@@ -62,10 +62,6 @@ global{
 	bool dieppe_pebbles_allowed <- false;
 	float dieppe_pebbles_discount <- 1.0;
 	
-	geometry all_flood_risk_area; 
-	geometry all_protected_area;
-	geometry all_coastal_area;
-	
 	init{
 		MSG_WARNING 	<- get_message('MSG_WARNING');
 		MSG_ROUND		<- get_message('MSG_ROUND');
@@ -155,7 +151,6 @@ global{
 			shape <- shape - (union(District) + 200#m);
 		}
 		create Protected_Area from: protected_areas_shape;
-		all_protected_area <- union(Protected_Area);
 		
 		create Road from: roads_shape;
 		if water_shape != nil {
@@ -165,13 +160,11 @@ global{
 			create Isoline from: isolines_shape;
 		}
 		create Flood_Risk_Area from: rpp_area_shape;
-		all_flood_risk_area <- union(Flood_Risk_Area);
 		
 		create Coastal_Border_Area from: coastline_shape {
 			line_shape <- shape;
 			shape <-  shape + coastBorderBuffer#m;
 		}
-		all_coastal_area <- union(Coastal_Border_Area);
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::round(float(get("unit_pop")))]{
 			if self.dist_code = active_district_code {
@@ -248,17 +241,17 @@ global{
 		switch cmd {
 			match ACTION_MODIFY_LAND_COVER_A 	{return image_file("../images/ihm/S_agricole.png"); 			}
 			match ACTION_MODIFY_LAND_COVER_AU 	{return image_file("../images/ihm/S_urbanise.png");				}
-			match ACTION_MODIFY_LAND_COVER_AUs 	{return image_file("../images/ihm/S_urbanise_adapte.png");		}
-			match ACTION_MODIFY_LAND_COVER_Us 	{return image_file("../images/ihm/S_urbanise_adapte.png");		}
+			match_one[ACTION_MODIFY_LAND_COVER_Us,
+						ACTION_MODIFY_LAND_COVER_AUs]{return image_file("../images/ihm/S_urbanise_adapte.png");	}
 			match ACTION_MODIFY_LAND_COVER_Ui 	{return image_file("../images/ihm/S_urbanise_intensifie.png");	}
 			match ACTION_MODIFY_LAND_COVER_N 	{return image_file("../images/ihm/S_naturel.png");				}
 			match ACTION_CREATE_DIKE 			{return image_file("../images/ihm/S_creation_digue.png");		}
 			match ACTION_REPAIR_DIKE 			{return image_file("../images/ihm/S_reparation_digue.png");		}
 			match ACTION_RAISE_DIKE 			{return image_file("../images/ihm/S_elevation_digue.png");		}
 			match ACTION_DESTROY_DIKE			{return image_file("../images/ihm/S_suppression_digue.png");	}
-			match ACTION_INSTALL_GANIVELLE 		{return image_file("../images/ihm/S_ganivelle.png");			}
+			match_one [ACTION_INSTALL_GANIVELLE,
+					ACTION_ENHANCE_NATURAL_ACCR]{return image_file("../images/ihm/S_ganivelle.png");			}
 			match ACTION_CREATE_DUNE 			{return image_file("../images/ihm/S_dune.png");					}
-			match ACTION_ENHANCE_NATURAL_ACCR	{return image_file("../images/ihm/S_ganivelle.png");			}
 			match ACTION_MAINTAIN_DUNE			{return image_file("../images/ihm/S_maintain_d.png");			}
 			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/ihm/S_pebbles.png");				}
 		}
@@ -274,8 +267,18 @@ global{
 			match 2 {return image_file("../images/ihm/S_urbanise.png");	 }
 			match 4 {return image_file("../images/ihm/S_urbanise.png");  }
 			match 5 {return image_file("../images/ihm/S_agricole.png");	 }
-			match 6 {return image_file("../images/ihm/S_urbanise_adapte.png"); }
-			match 7 {return image_file("../images/ihm/S_urbanise_adapte.png"); }
+			match_one[6,7] {return image_file("../images/ihm/S_urbanise_adapte.png"); }
+		}
+		return nil;
+	}
+	
+	image_file get_flag_icon (int im) {
+		switch im {
+			match 0 {return image_file("../images/ihm/S_flag0.png");  }
+			match 1 {return image_file("../images/ihm/S_flag1.png");  }
+			match 2 {return image_file("../images/ihm/S_flag2.png");  }
+			match 3 {return image_file("../images/ihm/S_flag3.png");  }
+			match 4 {return image_file("../images/ihm/S_flag4.png");  }
 		}
 		return nil;
 	}
@@ -759,7 +762,7 @@ global{
 						cursor_taken <- false;
 						return;
 					}					
-					if (!empty(Protected_Area where (each intersects (circle(10, shape.centroid))))){
+					if !empty(Protected_Area where (each intersects (circle(10, shape.centroid)))) {
 						cursor_taken <- true;
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_PROTECTED_U')::true);
 						cursor_taken <- false;
@@ -800,6 +803,14 @@ global{
 					label <- world.get_message("MSG_EXPROPRIATION");
 				} else if previous_lu_name = "A" {
 					cost <- world.cost_of_action ('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') * element_shape.area / STANDARD_LU_AREA;
+					if application_name = "camargue" and mylu.flooded_times < 2 {
+						if empty(Protected_Area where (each intersects (circle(10, shape.centroid)))) //{ //TODO Elise : ??
+							and empty(Flood_Risk_Area where (each intersects (circle(10, shape.centroid))))
+								and empty(Coastal_Border_Area where (each intersects (circle(10, shape.centroid)))){
+							cost <- cost * 2;
+							initial_application_round <- game_round  + (world.delay_of_action(command) * 2);	
+						}
+					}
 				}
 			} 
 			else if command = ACTION_MODIFY_LAND_COVER_AUs {
@@ -1589,8 +1600,8 @@ species Network_Player skills:[network]{
 		do send to: GAME_MANAGER contents: mp;
 	}
 	
-	reflex wait_message{
-		loop while:has_more_message(){
+	reflex wait_message {
+		loop while:has_more_message() {
 			message msg <- fetch_message();
 			map<string, string> m_contents <- msg.contents;
 			switch m_contents["TOPIC"]{
@@ -1742,28 +1753,28 @@ species Network_Player skills:[network]{
 								}	
 							}				
 						}
+						match OBJECT_TYPE_FLOOD_MARK {
+							Land_Use mylu <- Land_Use first_with (each.id = int(m_contents['mylu']));
+							if mylu != nil {
+								do create_flood_mark (mylu, m_contents["sub_num"], m_contents["max_w_h"], m_contents["mean_w_h"], m_contents["max_w_h_per_cent"]);
+							}
+						}
 					}
 				}
 				match "NEW_SUBMERSION_EVENT" {
-					ask Flood_Mark {
-						do die;
-					}
 					ask Coastal_Defense where (each.district_code = active_district_code) {
 						rupture <- false;
 					}
+					ask Land_Use where (each.dist_code = active_district_code) {
+						int ftimes <- int(m_contents["ftimes"+id]);
+						if ftimes > 0 {
+							flooded_times <- ftimes;	
+						}
+					}
 					loop i from: 0 to: 4 {
 						Land_Use lu <- first(Land_Use where (each.id = int(m_contents["lu_id"+i])));
-						float max_wat_h	<- float(m_contents["max_w_h"+i]);
-						if lu != nil and max_wat_h > 0 {
-							create Flood_Mark {
-								location <- lu.location - {0,200#m};
-								max_w_h	<- max_wat_h;
-								max_w_h_per_cent <- float(m_contents["max_w_h_per_cent"+i]);
-								mean_w_h <- float(m_contents["mean_w_h"+i]);
-								floo1 <- PLY_MSG_WATER_H + " : " + string(max_w_h) + "m ("+ max_w_h_per_cent + "%)";
-								floo2 <- PLY_MSG_WATER_M + " : " + string(mean_w_h) + "m";
-								lu.mark <- self;
-							}
+						if lu != nil and lu.mark = nil {
+							do create_flood_mark (lu, m_contents["submersion_number"], m_contents["max_w_h"+i], m_contents["mean_w_h"+i], m_contents["max_w_h_per_cent"+i]);
 						}
 					}
 				}
@@ -1782,6 +1793,22 @@ species Network_Player skills:[network]{
 					}
 					write "Les portes de Dieppe ont été ouvertes!";	
 				}
+			}
+		}
+	}
+	
+	action create_flood_mark (Land_Use lulu, string sub_num, string maxwh, string meanwh, string maxwhpercent) {
+		float fmax_w_h	<- float(maxwh);
+		if fmax_w_h > 0 {
+			create Flood_Mark {
+				icon <- world.get_flag_icon(int(sub_num));
+				location <- lulu.location - {0,150#m};
+				max_w_h	<- fmax_w_h;
+				max_w_h_per_cent <- float(maxwhpercent);
+				mean_w_h <- float(meanwh);
+				floo1 <- PLY_MSG_WATER_H + " : " + string(max_w_h) + "m ("+ max_w_h_per_cent + "%)";
+				floo2 <- PLY_MSG_WATER_M + " : " + string(mean_w_h) + "m";
+				lulu.mark <- self;
 			}
 		}
 	}
@@ -1847,7 +1874,7 @@ species Player_Action {
 	string previous_lu_name <- nil;
 	bool is_expropriation 	<- false;
 	bool is_in_protected_area 	<- false;
-	bool is_in_coast_border_area 	<- false;
+	bool is_in_coast_border_area <- false;
 	bool is_in_risk_area 		<- false; 
 	bool is_inland_dike 		<- false;
 	bool has_activated_levers 				-> {!empty(activated_levers)};
@@ -2097,6 +2124,7 @@ species Land_Use {
 	bool focus_on_me <- false;
 	Flood_Mark mark <- nil;
 	list<Player_Action> actions_on_me <- [];
+	int flooded_times <- 0;
 
 	action init_lu_from_map(map<string, unknown> a ){
 		self.id 				 <- int   (a at "id");
@@ -2106,6 +2134,7 @@ species Land_Use {
 		self.population 		 <- int   (a at "population");
 		self.mean_alt			 <- float (a at "mean_alt");
 		self.is_in_densification <- bool  (a at "is_in_densification");
+		self.flooded_times		 <- int   (a at "flooded_times");
 		point pp  				 <- {float(a at "locationx"), float(a at "locationy")};
 		point mpp <- pp;
 		int i 	  <- 0;
@@ -2346,7 +2375,7 @@ species Protected_Area {
 	}
 }
 
-species Flood_Risk_Area{
+species Flood_Risk_Area {
 	aspect base {
 		if (Button_Map first_with(each.command = ACTION_DISPLAY_FLOODED_AREA)).is_selected {
 			draw shape color: rgb (160, 32, 240, 120) border:#black;
@@ -2364,10 +2393,11 @@ species Flood_Mark {
 	float mean_w_h;
 	string floo1 <- "";
 	string floo2 <- "";
-	geometry shape <- rectangle(200#m,400#m);
+	image_file icon <- nil;
+	geometry shape <- rectangle(150#m,300#m);
 	aspect base {
 		if (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected {
-			draw file("../images/ihm/S_flag.png") size: 400#m at: location;
+			draw icon size: 300#m at: location;
 		}
 	}
 }
@@ -2426,8 +2456,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500]);
-				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500])
+				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {

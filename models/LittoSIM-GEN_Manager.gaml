@@ -40,7 +40,6 @@ global {
 	string flood_results 	<- "";   		// text of flood results per district // saved as a txt file
 	list<int> submersions;
 	int sub_event <- 0;
-	int flooded_cells <- 0;
 	
 	// parameters for saving submersion results
 	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; 	// folder to save main model results
@@ -87,7 +86,6 @@ global {
 	point play_b;
 	point pause_b;
 	list<District> districts_in_game;
-	bool submersion_is_running <- false;
 	bool save_data <- false; // whether save or not data logs
 	bool display_ruptures <- false; // display or not ruptures
 	int event_ruptures <- 0;
@@ -224,6 +222,8 @@ global {
 					lu_type <- myself.lu_code;
 					if lu_type = LU_TYPE_U and myself.density_class = POP_DENSE {
 						lu_type <- LU_TYPE_Ui;
+					} else if lu_type = LU_TYPE_AUs {
+						lu_type <- LU_TYPE_Us;
 					}
 				}
 			
@@ -231,6 +231,8 @@ global {
 					lu_type <- myself.lu_code;
 					if lu_type = LU_TYPE_U and myself.density_class = POP_DENSE {
 						lu_type <- LU_TYPE_Ui;
+					} else if lu_type = LU_TYPE_AUs {
+						lu_type <- LU_TYPE_Us;
 					}
 				}
 			}
@@ -532,7 +534,6 @@ global {
 			ask Cell where (each.cell_type = 1) {
 				max_water_height <- 0.0; // reset of max_water_height
 			}
-			submersion_is_running <- true;
 			ask Coastal_Defense {
 				do calculate_rupture;
 			}
@@ -560,7 +561,6 @@ global {
 			sub_event <- 1;
 			stateSimPhase <- SIM_SHOWING_LISFLOOD;
 			write stateSimPhase;
-			submersion_is_running <- false;
 			ask districts_in_game{
 				ask Network_Game_Manager { do lock_user (myself, false); }
 			}
@@ -798,18 +798,31 @@ global {
 	}
 	
 	action send_flooding_results_to_district (District d){
-		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT"];
+		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT","submersion_number"::last_played_event];
 		string my_district <- d.district_code;
- 		int i <- 0;
- 		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0);
- 		int n_cells <- max([5, length(luss)]);
+ 		
+ 		string flooded_cells <- "";
+		ask d.LUs {
+			add string(flooded_times) at: "ftimes"+self.id to: nmap;
+		}
+		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0);
+		int i <- 0;
+ 		int n_cells <- min([5, length(luss)]);
  		ask n_cells among (shuffle(luss)) {
  			if flip(nb_watered_cells/length(cells)) {
-	 			add string(self.id) at: "lu_id"+i to: nmap;
-	 			float max_w_h <- cells max_of(each.max_water_height);
-				add string(max_w_h with_precision 1) at: "max_w_h"+i to: nmap;
-				add string(((length(cells where (each.max_water_height >= int(max_w_h*10)/10)) / length(cells)) * 100) with_precision 2) at: "max_w_h_per_cent"+i to: nmap;
-				add string(cells mean_of(each.max_water_height) with_precision 1) at: "mean_w_h"+i to: nmap;
+	 			add string(self.id) at: "lu_id"+i to: nmap;				
+				create Flood_Mark {
+					self.sub_num <- last_played_event;
+					self.mylu <- myself;
+					self.max_w_h <- myself.cells max_of(each.max_water_height);
+					self.mean_w_h <- myself.cells mean_of(each.max_water_height) with_precision 1;
+					self.max_w_h_per_cent <- ((length(myself.cells where (each.max_water_height >= int(max_w_h*10)/10)) / length(myself.cells)) * 100) with_precision 2;
+					add self to: d.flood_marks;
+					
+					add string(max_w_h with_precision 1) at: "max_w_h"+i to: nmap;
+					add string(max_w_h_per_cent) at: "max_w_h_per_cent"+i to: nmap;
+					add string(mean_w_h) at: "mean_w_h"+i to: nmap;
+				}
 				i <- i + 1;
 			}
  		}
@@ -840,10 +853,7 @@ global {
 			ask LUs{
 				nb_watered_cells <- 0;
 				ask cells where (each.max_water_height > 0) {
-					switch myself.lu_code{ //"U","Us","AU","N","A"    -> but not  "AUs"
-						match LU_TYPE_AUs {
-							write "STOP :  AUs " + world.get_message('MSG_IMPOSSIBLE_NORMALLY');
-						}
+					switch myself.lu_code{
 						match LU_TYPE_U {
 							if max_water_height <= 0.5 {
 								U_0_5 <- U_0_5 +1;
@@ -858,7 +868,7 @@ global {
 								if myself.density_class = POP_DENSE { Udense_0_5 <- Udense_0_5 +1; }
 							}
 						}
-						match LU_TYPE_Us {
+						match_one [LU_TYPE_Us, LU_TYPE_AUs] {
 							if max_water_height <= 0.5 { Us_0_5 <- Us_0_5 +1; }
 							else if between (max_water_height ,0.5, 1.0) { Us_1 <- Us_1 +1; }
 							else { Us_max <- Us_max +1; }
@@ -880,6 +890,9 @@ global {
 						}
 					}
 					myself.nb_watered_cells <- myself.nb_watered_cells + 1;
+				}
+				if nb_watered_cells > 0 {
+					flooded_times <- flooded_times + 1;
 				}
 			}
 			
@@ -1495,13 +1508,12 @@ species Network_Game_Manager skills: [network]{
 			put DATA_RETRIEVE at: "TOPIC" in: mp;
 			do send to: d.district_code contents: mp;
 		}
-		
-		if flood_results != "" {
-			ask world{
-				do send_flooding_results (d);	
-			}
-		}
-		
+		int xx <- 0;
+		loop tmp over: d.flood_marks {
+			map<string, string> mp <- tmp.build_map_from_fm_attributes();
+			put DATA_RETRIEVE at: "TOPIC" in: mp;
+			do send to: d.district_code contents: mp;
+		}		
 	}
 	
 	action lock_user (District d, bool lock){ // lock or unlock the player GUI
@@ -2057,7 +2069,7 @@ species Coastal_Defense {
 			int cIndex <- int(length(cells) / 2);
 			// rupture area is about RADIUS_RUPTURE m arount rupture point.
 			// if the dike is protected by a pebble cord, the radius is multiplied by 2
-			int rupture_radius <- is_protected_by_cord ? int(RADIUS_RUPTURE * 2) : RADIUS_RUPTURE; 
+			int rupture_radius <- is_protected_by_cord ? RADIUS_RUPTURE * 2 : RADIUS_RUPTURE; 
 			rupture_area <- circle(rupture_radius#m,(cells[cIndex]).location);
 			// rupture is applied on relevant area cells : circle of radius_rupture
 			float soil_height_after_rupture <- max([0, self.alt - self.height]);
@@ -2188,6 +2200,7 @@ species Land_Use {
 	list<Cell> cells;
 	float mean_alt <- 0.0;
 	int nb_watered_cells;
+	int flooded_times <- 0;
 	
 	map<string,unknown> build_map_from_lu_attributes {
 		map<string,string> res <- [
@@ -2198,7 +2211,8 @@ species Land_Use {
 			"population"::string(population),
 			"is_in_densification"::string(is_in_densification),
 			"locationx"::string(location.x),
-			"locationy"::string(location.y)];
+			"locationy"::string(location.y),
+			"flooded_times"::string(flooded_times)];
 			int i <- 0;
 			loop pp over:shape.points{
 				put string(pp.x) key:"locationx"+i in: res;
@@ -2337,6 +2351,7 @@ species District {
 	list<Land_Use> LUs;
 	list<Cell> cells;
 	map<int, int> buttons_states <- [];
+	list<Flood_Mark> flood_marks <- [];
 	
 	int budget;
 	float tax_unit;
@@ -2723,24 +2738,40 @@ species Water_Gate { // a water gate for the case of Dieppe
 	}
 }
 
+species Flood_Mark {
+	float max_w_h;
+	float max_w_h_per_cent;
+	float mean_w_h;
+	int sub_num <- 0;
+	Land_Use mylu <- nil;
+	
+	map<string,unknown> build_map_from_fm_attributes {
+		map<string,string> res <- [
+			"OBJECT_TYPE"::OBJECT_TYPE_FLOOD_MARK,
+			"max_w_h"::string(max_w_h with_precision 1),
+			"max_w_h_per_cent"::string(max_w_h_per_cent),
+			"mean_w_h"::string(mean_w_h),
+			"sub_num"::string(sub_num),
+			"mylu"::string(mylu.id)];
+		return res;
+	}
+}
+
 // river flood shapefile for dieppe
 species River_Flood_Cell {
 	float water_h;
 	int lu_type <- -1;
 	rgb col;
+	int display_me <- 1;
 	aspect base {
-		if show_river_flooded_area = 1 {
+		if show_river_flooded_area = display_me {
 			draw shape color: col border:#transparent;	
 		}
 	}
 }
 
 species River_Flood_Cell_1m parent: River_Flood_Cell {
-	aspect base {
-		if show_river_flooded_area = 2 {
-			draw shape color: col border:#transparent;	
-		}
-	}
+	int display_me <- 2;
 }
 
 //---------------------------- Experiment definiton -----------------------------//
@@ -2755,7 +2786,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- true;
+	parameter "Save data : " var: save_data <- false;
 	
 	output {
 		
@@ -2773,12 +2804,6 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
 				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #gray anchor:#center;
 				draw MSG_ROUND + " : " + game_round color: #black font: bold20 at: loc + {0,msize*0.66} anchor:#center;
-			}
-			graphics "A submersion is running" {
-				if submersion_is_running {
-					point loc 	<- {world.shape.width/2, world.shape.height/2};
-					draw image_file("../images/ihm/tempete.jpg") at: loc size: {world.shape.width, world.shape.height};
-				}
 			}	
 			event mouse_down action: button_click_master_control;
 		}
@@ -3172,7 +3197,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 		}
 		
-		/*display "Dunes" {
+		display "Dunes" {
 			chart MSG_MEAN_ALT type: histogram size: {0.24,0.32} position: {0.0,0.01} style: stack background: #whitesmoke 
 				x_serie_labels: districts_in_game collect each.district_name {
 			 	data MSG_GOOD value: districts_in_game collect first(each.mean_alt_dunes_good) color: #green;
@@ -3247,7 +3272,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data MSG_MEDIUM value: districts_in_game[3].length_dunes_medium_diff color: #orange marker_shape: marker_circle;
 					data MSG_BAD value: districts_in_game[3].length_dunes_bad_diff color: #red marker_shape: marker_circle;
 			}
-		}*/
+		}
 		
 		display "Flooded depth per area"{
 			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
