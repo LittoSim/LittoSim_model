@@ -407,8 +407,8 @@ global{
 		if(length(clicked_lu_button) > 0){
 			list<Button> current_active_button <- Button where (each.is_selected);
 			do clear_selected_button;
-			if ((length (current_active_button) = 1 and first(current_active_button).command != (first(clicked_lu_button)).command)) or length (current_active_button) = 0 {
-				ask (first(clicked_lu_button)){
+			if length (current_active_button) = 0 or last(current_active_button).command != (first(clicked_lu_button)).command {
+				ask first(clicked_lu_button) {
 					if state = B_DEACTIVATED { return; }
 					is_selected <- true;
 				}
@@ -491,7 +491,7 @@ global{
 		point loc 		<- #user_location;
 		explored_button <- (Button + Button_Map) first_with (each overlaps loc and each.display_name != COAST_DEF_DISPLAY); // for inspect
 		
-		Button current_active_button <- first(Button where (each.is_selected));
+		Button current_active_button <- first(Button where (!(each.command in [ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE]) and each.is_selected));
 		if current_active_button != nil  {
 			if hovered_lu != nil {
 				hovered_lu.focus_on_me <- false;
@@ -517,7 +517,7 @@ global{
 	action mouse_move_coast_def {
 		point loc <- #user_location;
 		explored_button <- (Button + Button_Map) first_with (each overlaps loc and each.display_name != LU_DISPLAY); // for inspect
-		Button current_active_button <- first(Button where (each.is_selected));
+		Button current_active_button <- first(Button where (!(each.command in [ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE]) and each.is_selected));
 		if current_active_button != nil and current_active_button.command in [ACTION_INSPECT, ACTION_HISTORY] {
 			explored_coast_def <- first(Coastal_Defense overlapping (loc buffer(15#m)));
 			if current_active_button.command = ACTION_INSPECT {
@@ -698,12 +698,12 @@ global{
 	action change_plu {
 		point loc <- #user_location;
 		Button selected_button <- Button first_with(each.is_selected);
-		if(selected_button != nil){
+		if selected_button != nil {
 			Land_Use cell_tmp <- first(Land_Use where (each overlaps loc));
 			if cell_tmp = nil {return;}
 			if basket_overflow() {return;}
 			ask cell_tmp {
-				if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY]	   {return;}	// inspect : do nothing
+				if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY, ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE] {return;}	// inspect : do nothing
 				if length(Player_Action collect(each.element_id = cell_tmp.id)) > 0  {return;}
 				if(		(lu_code = LU_TYPE_N 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_N)
 					 or (lu_code = LU_TYPE_A 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
@@ -2426,8 +2426,8 @@ experiment LittoSIM_GEN_Player type: gui{
 	}
 	
 	output{
-		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500])
-				tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
+		layout horizontal([vertical([0::6750,1::3250])::6500, vertical([2::5000,3::5000])::3500]);
+				//tabs: false parameters: false consoles: false navigator: false toolbars: false tray: false;
 		
 		display "Map" background: #black focus: active_district{
 			graphics "World" {

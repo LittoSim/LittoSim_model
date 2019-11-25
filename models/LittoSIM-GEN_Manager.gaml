@@ -2386,13 +2386,13 @@ species District {
 	list<float> c_max_w_h_heights <- [];
 	
 	// river flood | 0 : total | 1-7: lu_type
-	list<float> loth_0_5c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
-	list<float> loth_1c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
-	list<float> loth_maxc <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth_0_5c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth_1c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth_maxc <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0];
 	
-	list<float> loth1m_0_5c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
-	list<float> loth1m_1c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
-	list<float> loth1m_maxc <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth1m_0_5c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth1m_1c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0];
+	list<float> loth1m_maxc <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0];
 	
 	list<int> round_population <- [];
 	list<float> surface_N <- [];
