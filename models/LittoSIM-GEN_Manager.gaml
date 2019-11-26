@@ -805,7 +805,7 @@ global {
 		ask d.LUs {
 			add string(flooded_times) at: "ftimes"+self.id to: nmap;
 		}
-		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0);
+		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0 and !each.marked);
 		int i <- 0;
  		int n_cells <- min([5, length(luss)]);
  		ask n_cells among (shuffle(luss)) {
@@ -818,7 +818,7 @@ global {
 					self.mean_w_h <- myself.cells mean_of(each.max_water_height) with_precision 1;
 					self.max_w_h_per_cent <- ((length(myself.cells where (each.max_water_height >= int(max_w_h*10)/10)) / length(myself.cells)) * 100) with_precision 2;
 					add self to: d.flood_marks;
-					
+					self.mylu.marked <- true;
 					add string(max_w_h with_precision 1) at: "max_w_h"+i to: nmap;
 					add string(max_w_h_per_cent) at: "max_w_h_per_cent"+i to: nmap;
 					add string(mean_w_h) at: "mean_w_h"+i to: nmap;
@@ -2201,6 +2201,7 @@ species Land_Use {
 	float mean_alt <- 0.0;
 	int nb_watered_cells;
 	int flooded_times <- 0;
+	bool marked <- false;
 	
 	map<string,unknown> build_map_from_lu_attributes {
 		map<string,string> res <- [
