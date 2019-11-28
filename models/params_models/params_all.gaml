@@ -128,6 +128,7 @@ global{
 	int    POP_MEDIUM_NUMBER  <- int(eval_gaml(study_area_def["POP_MEDIUM_NUMBER"]));
 	int    POP_HIGH_NUMBER    <- int(eval_gaml(study_area_def["POP_HIGH_NUMBER"]));
 	int    MIN_POP_AREA 	  <- int(eval_gaml(study_area_def["MIN_POPU_AREA"]));
+	int    EXP_COST_IF_EMPTY   <- int(eval_gaml(study_area_def["EXP_COST_IF_EMPTY"]));
 	
 	// Building and raising dikes parameters
 	float BUILT_DIKE_HEIGHT <- float(study_area_def["BUILT_DIKE_HEIGHT"]);

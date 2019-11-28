@@ -2117,7 +2117,7 @@ species Land_Use {
 	float mean_alt;
 	string density_class-> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_VERY_LOW_DENSITY : (population < POP_MEDIUM_NUMBER ? POP_LOW_DENSITY : 
 								(population < POP_HIGH_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE)))};
-	int expro_cost 		 -> {round (population *400* population ^ (-0.5))};
+	int expro_cost 		 -> {population = 0 ? EXP_COST_IF_EMPTY : round (population *400* population ^ (-0.5))};
 	bool is_urban_type 	 -> {lu_code in [LU_TYPE_U,LU_TYPE_Us,LU_TYPE_AU,LU_TYPE_AUs]};
 	bool is_adapted_type -> {lu_code in [LU_TYPE_Us,LU_TYPE_AUs]};
 	bool is_in_densification <- false;
@@ -2576,8 +2576,9 @@ experiment LittoSIM_GEN_Player type: gui{
 					float increment <- active_district_name = DISTRICT_AT_TOP ? (-INFORMATION_BOX_SIZE.y #px) : 0.0;
 					point target 	<- world.button_box_location(my_button.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));
 					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x #px), target.y + increment};
-					float xxx <- active_display = COAST_DEF_DISPLAY ? 1.0 : 1.25; 
-					point target3 <- {target.x , target.y + xxx * (INFORMATION_BOX_SIZE.y #px) + increment};
+					float xxx <- active_display = COAST_DEF_DISPLAY ? 1.0 : 1.25;
+					int xmax <- application_name = "camargue" ? 20 : 0;
+					point target3 <- {target.x , target.y + xxx * (INFORMATION_BOX_SIZE.y #px + xmax#px) + increment};
 					
 					draw rectangle(target2,target3) border: #gold color: #gray ;
 					draw my_button.label    at: target2 + {5#px, 15#px} font: regular color: #yellow;
@@ -2587,11 +2588,20 @@ experiment LittoSIM_GEN_Player type: gui{
 							ACTION_DISPLAY_FLOODING,ACTION_CLOSE_OPEN_GATES,ACTION_CLOSE_OPEN_DIEPPE_GATE]) {
 						string txtt;
 						if active_display = LU_DISPLAY { txtt <- MSG_COST_APPLIED_PARCEL; }
+						int xpx <- 55;
 						switch my_button.command {	
 							match ACTION_MODIFY_LAND_COVER_N {
-								draw txtt + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + {10#px, 55#px} font: regular color: #white; 
-								draw txtt + " AU : " + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N') at: target2 + {10#px, 75#px} font: regular color: #white; 
-								draw txtt + " U : "  + MSG_COST_EXPROPRIATION at: target2 + {10#px, 95#px} font: regular color: #white;
+								if application_name = "camargue" {
+									draw txtt + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') * 2 at:   target2 + {10#px, xpx#px} font: regular color: #white;
+									xpx <- xpx + 20; 
+									draw txtt + " A vulnérable : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + {10#px, xpx#px} font: regular color: #white; 
+								} else {
+									draw txtt + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + {10#px, xpx#px} font: regular color: #white;	
+								}
+								xpx <- xpx + 20; 
+								draw txtt + " AU : " + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N') at: target2 + {10#px, xpx#px} font: regular color: #white; 
+								xpx <- xpx + 20; 
+								draw txtt + " U : "  + MSG_COST_EXPROPRIATION at: target2 + {10#px, xpx#px} font: regular color: #white;
 							}
 							match ACTION_MODIFY_LAND_COVER_AUs{
 								draw txtt + " AU : " + my_button.action_cost  at: target2 + {10#px, 55#px} font: regular color: #white;
