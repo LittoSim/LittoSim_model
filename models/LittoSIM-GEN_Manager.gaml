@@ -96,6 +96,15 @@ global {
 	font bold20 <- font('Helvetica Neue', 20, #bold);
 	font bold40 <- font('Helvetica Neue', 40, #bold);
 	
+	int pot_project_duration <- 5;
+	float pot_risk_agency_rate <- 0.3;
+	int pot_current_partition_index <- 0;
+	list<float> pot_current_partition<- [0.25,0.25,0.25,0.25];
+	list<int> pot_project_amounts <- [2000,2000,2000,2000];
+	list<int> pot_contributions <- [0,0,0,0];
+	list<int> pot_finances <- [0,0,0,0];
+	list<int> pot_balances <- [0,0,0,0];
+	
 	init{
 		MSG_SUBMERSION 	<- get_message('MSG_SUBMERSION');
 		MSG_ROUND 		<- get_message('MSG_ROUND');
@@ -243,6 +252,7 @@ global {
 			district_long_name <- world.dist_code_lname_correspondance_table at district_code;
 			LUs 	<- Land_Use where (each.dist_code = self.district_code);
 			cells 	<- LUs accumulate (each.cells);
+			dist_surface <- int(shape.area / 10000);
 			tax_unit  <- float(tax_unit_table at district_name);
 			budget 	<- int(self.current_population() * tax_unit * (1 + initial_budget));
 			write MSG_COMMUNE + " " + district_name + " (" + district_code + ") " + MSG_POPULATION + ": " + current_population() + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
@@ -260,12 +270,12 @@ global {
 		last_played_event <- 0;
 
 		create Legend_Planning;
-		//create Legend_Population;
 		create Legend_Map;
 		create Legend_Flood;
 		create Network_Game_Manager;
 		create Network_Listener_To_Leader;
 		create Network_Control_Manager;
+		do create_common_pot;
 	}
 	//------------------------------ End of init -------------------------------//
 	
@@ -375,6 +385,7 @@ global {
 		add sub_event to: submersions;
 		sub_event <- 0;
 		write MSG_GAME_DONE + " !";
+		do update_pot_populations;
 	}
 	
 	action clear_map {
@@ -1212,6 +1223,173 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				show_grid <- is_selected;
 				my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
 			}
+		}
+	}
+	
+	action create_common_pot {
+		loop i from: 0 to: 3 {
+			Grille_Pot[i+1,0].col <- #deepskyblue;
+			Grille_Pot[i+1,0].text <- districts_in_game[i].district_name + " :";
+		}
+		Grille_Pot[0,1].text <- "Population :";
+		Grille_Pot[0,2].text <- "Budget :";
+		Grille_Pot[0,3].text <- "Surface :";
+		
+		Grille_Pot[0,6].text <- "Répartition choisie :";
+		loop i from: 0 to: 3 {
+			Grille_Pot[i+1,6].col <- #moccasin;
+			Grille_Pot[i+1,6].text <- "25%";
+		}
+		
+		Grille_Pot[0,8].text <- "Montants des projets :";
+		loop i from: 0 to: 3 {
+			Grille_Pot[i+1,8].col <- #moccasin;
+			Grille_Pot[i+1,8].text <- ""+pot_project_amounts[i];
+		}
+		
+		Grille_Pot[0,11].text <- "Durée des projets :";
+		Grille_Pot[1,11].text <- ""+pot_project_duration;
+		Grille_Pot[1,11].col <- #moccasin;
+		Grille_Pot[2,11].text <- "% de l'agence du risque :";
+		Grille_Pot[3,11].text <- "" + pot_risk_agency_rate * 10 + "%";
+		Grille_Pot[3,11].col <- #moccasin;
+		Grille_Pot[0,13].text <- "Contribution annuelle :";
+		loop i from: 1 to: 4 {
+			Grille_Pot[i,13].text <- ""+pot_contributions[i-1];
+		}
+		Grille_Pot[0,14].text <- "Financement annuel :";
+		loop i from: 1 to: 4 {
+			Grille_Pot[i,14].text <- ""+pot_finances[i-1];
+		}
+		Grille_Pot[0,15].text <- "Solde annuel perçu :";
+		loop i from: 1 to: 4 {
+			Grille_Pot[i,15].text <- ""+pot_balances[i-1];
+			Grille_Pot[i,15].col <- #lightgreen;
+		}
+		
+		create Pot_Button {
+			command <- 0;
+			_name <- "Répartition égale";
+			loc <- Grille_Pot[1,5].location;
+			col <- #red;
+		}
+		create Pot_Button {
+			command <- 1;
+			_name <- "Réparti. Population";
+			loc <- Grille_Pot[2,5].location; 
+		}
+		create Pot_Button {
+			command <- 2;
+			_name <- "Réparti. Budget";
+			loc <- Grille_Pot[3,5].location; 
+		}
+		create Pot_Button {
+			command <- 3;
+			_name <- "Réparti. Surface";
+			loc <- Grille_Pot[4,5].location; 
+		}
+		
+		create Pot_Button {
+			command <- 4;
+			_name <- "Modifier les montants";
+			loc <- Grille_Pot[2,9].location; 
+		}
+		create Pot_Button {
+			col <- #orange;
+			command <- 5;
+			_name <- "Modifier la durée et le %";
+			loc <- Grille_Pot[4,11].location; 
+		}
+		create Pot_Button {
+			command <- 6;
+			col <- #lightgreen;
+			_name <- "Valider le pot";
+			loc <- Grille_Pot[2,17].location; 
+		}
+		
+		loop i from: 0 to: 3 {
+			Grille_Pot[i+1,2].text <- "" + districts_in_game[i].budget;
+			Grille_Pot[i+1,3].text <- ""+ districts_in_game[i].dist_surface;
+		}
+		do update_pot_populations;
+	}
+	
+	action update_paritionning (int ix) {
+		ask Pot_Button where (each.command = pot_current_partition_index) { col <- #lightyellow; }
+		ask Pot_Button where (each.command = ix) { col <- #red; }
+		pot_current_partition_index <- ix;
+		loop i from: 0 to: 3 {
+			Grille_Pot[i+1,6].text <- ""+ 100 * pot_current_partition[i] + "%";
+		}
+	}
+	
+	action update_pot{
+		float paid_by_ditrict <- (sum (pot_project_amounts) * (1 - pot_risk_agency_rate)) / pot_project_duration;
+		loop i from: 0 to: 3 {
+			pot_contributions [i] <- paid_by_ditrict * pot_current_partition [i];
+			pot_finances [i] <- pot_project_amounts [i] / pot_project_duration;
+			pot_balances [i] <- pot_finances[i] - pot_contributions[i];
+			
+			Grille_Pot[i+1,13].text <- ""+pot_contributions[i];
+			Grille_Pot[i+1,14].text <- ""+pot_finances[i];
+			Grille_Pot[i+1,15].text <- ""+pot_balances[i];
+		}
+	}
+	
+	action update_pot_populations {
+		loop i from: 0 to: 3 {
+			Grille_Pot[i+1,1].text <- "" + districts_in_game[i].current_population();
+		}
+	}
+	
+	action pot_buttons_click{
+		point loc <- #user_location;
+		Pot_Button but <- (Pot_Button) first_with (each overlaps loc);
+		if but != nil {
+			switch but.command {
+				match 0 {
+					loop i from: 0 to: 3 {
+						pot_current_partition [i] <- 0.25;
+					}
+					do update_paritionning (0);
+				}
+				match 1 {
+					loop i from: 0 to: 3 {
+						pot_current_partition [i] <- (districts_in_game[i].current_population() / max([1, districts_in_game sum_of (each.current_population())])) with_precision 2;
+					}
+					do update_paritionning (1);
+				}
+				match 2 {
+					loop i from: 0 to: 3 {
+						pot_current_partition [i]  <- (districts_in_game[i].budget / max([1, districts_in_game sum_of (each.budget)])) with_precision 2;
+					}
+					do update_paritionning (2);
+				}
+				match 3 {
+					loop i from: 0 to: 3 {
+						pot_current_partition [i] <-  (districts_in_game[i].dist_surface / max([1, districts_in_game sum_of (each.dist_surface)])) with_precision 2;
+					}
+					do update_paritionning (3);
+				}
+				match 4 {
+					map mpp <- user_input("Saisissez les nouveaux montants :",
+					[districts_in_game[0].district_name + " : "::pot_project_amounts [0], districts_in_game[1].district_name + " : "::pot_project_amounts [1],
+							districts_in_game[2].district_name + " : "::pot_project_amounts [2], districts_in_game[3].district_name + " : "::pot_project_amounts [3]]);
+					loop ix from: 0 to: 3 {
+						pot_project_amounts [ix] <- int(mpp.values [ix]);
+						Grille_Pot[ix+1,8].text <- ""+pot_project_amounts[ix];
+					}	
+				}
+				match 5 {
+					map mpp <- user_input("Saisissez les nouveaux paramètres :",
+					["Durée des projets : "::pot_project_duration, "Contribution de l'agence : " + " : "::pot_risk_agency_rate]);
+					pot_project_duration <- int(mpp.values [0]);
+					pot_risk_agency_rate <- float(mpp.values [1]);
+					Grille_Pot[1,11].text <- ""+pot_project_duration;
+					Grille_Pot[3,11].text <- ""+pot_risk_agency_rate  * 10 + "%";
+				}
+			}
+			do update_pot;	
 		}
 	}
 }
@@ -2351,6 +2529,7 @@ species District {
 	string district_long_name;
 	list<Land_Use> LUs;
 	list<Cell> cells;
+	int dist_surface <- 0;
 	map<int, int> buttons_states <- [];
 	list<Flood_Mark> flood_marks <- [];
 	
@@ -2773,6 +2952,29 @@ species River_Flood_Cell {
 
 species River_Flood_Cell_1m parent: River_Flood_Cell {
 	int display_me <- 2;
+}
+
+species Pot_Button {
+	int command;
+	string _name;
+	geometry shape <- first(Grille_Pot).shape * 0.9;
+	rgb col <- #lightyellow;
+	point loc;
+	
+	aspect {
+		draw shape color: col border: #black at: loc;
+		draw _name at: loc anchor: #center font: font("Arial", 12 , #bold) color: #black;
+	}
+}
+
+grid Grille_Pot width: 5 height: 20 schedules:[] {
+	string text;
+	rgb col <- #whitesmoke;
+		
+	aspect {
+		draw shape color: col;// border: #black;
+		draw text at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
+	}
 }
 
 //---------------------------- Experiment definiton -----------------------------//
@@ -3497,5 +3699,12 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				}			
 			}
 		}*/
+		
+		display Common_Pot {
+			species Grille_Pot;
+			species Pot_Button;
+			
+			event [mouse_down] action: pot_buttons_click;
+		}
 	}
 }

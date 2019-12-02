@@ -73,6 +73,7 @@ global{
 			}
 			district_name <- dist_code_sname_correspondance_table at district_code;
 			district_long_name <- dist_code_lname_correspondance_table at district_code;
+			surface <- round(shape.area / 10000);
 		}
 		int idx <- 1;
 		loop kk over: dist_code_sname_correspondance_table.keys {
@@ -286,6 +287,7 @@ global{
 			}
 		}
 	}
+	
 	action user_click{
 		point loc <- #user_location;
 		if selected_lever != nil {
@@ -520,6 +522,8 @@ species District{
 	string district_name;
 	string district_long_name;
 	int budget <- -1;
+	int population <- 0;
+	int surface <- 0;
 	bool is_builder -> {builder_score >= PROFILING_THRESHOLD};
 	bool is_soft_def -> {soft_def_score >= PROFILING_THRESHOLD};
 	bool is_withdrawal -> {withdrawal_score >= PROFILING_THRESHOLD};
@@ -1747,7 +1751,8 @@ species Network_Leader skills:[network] {
 								}
 							}
 							if pop != nil and game_round > 0{
-								add int(pop) to: districts_populations[dist_id-1]; 
+								population <- int(pop);
+								add population to: districts_populations[dist_id-1]; 
 							}
 							do calculate_scores(game_round);
 						}
@@ -1797,7 +1802,7 @@ species Network_Leader skills:[network] {
 							loop i from: 0 to: game_round - 1 {
 								add int(m_contents ["pop_round"+i]) to: districts_populations[dist_id-1];
 							}
-							
+							population <- last (districts_populations[dist_id-1]);
 							received_tax <- int(m_contents ["TAXES"]);
 							actions_cost <- int(m_contents ["ACTIONS"]);
 							given_money <- int(m_contents ["GIVEN"]);
@@ -1906,6 +1911,7 @@ grid Grille2 width: GRID_W+1 height: GRID_H+1 {
 		color <- #white ;
 	}
 }
+
 //------------------------------ end of Grille -------------------------------//
 
 species District_Action_Button parent: District_Name{
