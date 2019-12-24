@@ -12,7 +12,6 @@ global{
 	string active_district_code <- dist_code_sname_correspondance_table index_of active_district_name;
 	District active_district	<- nil;
 	
-	string log_file_name 		 <- "log_" + machine_time + "csv";
 	int game_round 		 		 <- 0;
 	
 	geometry shape 		 <- envelope(convex_hull_shape);
@@ -24,8 +23,6 @@ global{
 	string active_display 		<- LU_DISPLAY;
 	point previous_clicked_point<- nil;
 	float button_size 			<- 500#m;
-	float widX;
-	float widY;
 	bool cursor_taken <- false;
 		
 	// tax attributes
@@ -113,6 +110,7 @@ global{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
 			district_id <- 1 + world.dist_code_sname_correspondance_table.keys index_of district_code;
 		}
+ 
 		active_district <- District first_with (each.district_code = active_district_code);
 		local_shape 	<- envelope(active_district);
 		tax_unit  		<- float(tax_unit_table at active_district_name); 
@@ -130,7 +128,7 @@ global{
 
 		do create_tabs;		
 		do create_buttons;	
-										
+			
 		create Coastal_Defense from: coastal_defenses_shape with: [coast_def_id::int(read("ID")),type::string(read("type")),
 			status::string(read("status")), alt::float(read("alt")), height::float(get("height")), district_code::string(read("dist_code"))]{
 			if district_code = active_district_code {
@@ -147,6 +145,7 @@ global{
 				do die;
 			}
 		}
+		
 		create Sea from: convex_hull_shape {
 			shape <- shape - (union(District) + 200#m);
 		}

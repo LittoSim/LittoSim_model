@@ -453,7 +453,7 @@ global{
 		Grille_Pot[1,11].text <- ""+pot_project_duration;
 		Grille_Pot[1,11].col <- #moccasin;
 		Grille_Pot[2,11].text <- "% de l'agence du risque :";
-		Grille_Pot[3,11].text <- "" + pot_risk_agency_rate * 10 + "%";
+		Grille_Pot[3,11].text <- "" + pot_risk_agency_rate * 100 + "%";
 		Grille_Pot[3,11].col <- #moccasin;
 		Grille_Pot[0,13].text <- "Contribution annuelle :";
 		loop i from: 1 to: 4 {
