@@ -45,7 +45,6 @@ global {
 	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; 	// folder to save main model results
 	string shapes_export_path <- output_data_rep + "/shapes/"; // shapefiles to save
 	string csvs_export_path <- output_data_rep + "/csvs/"; // shapefiles to save
-	string log_export_filePath -> {output_data_rep + "/log_" + game_round + ".csv"}; 		// file to save user actions (main model and players actions)  
 	
 	// operation variables
 	geometry shape <- envelope(convex_hull_shape);	// world geometry
@@ -305,6 +304,13 @@ global {
 				add 0 to: mean_alt_dunes_good_diff;
 				add 0 to: mean_alt_dunes_medium_diff;
 				add 0 to: mean_alt_dunes_bad_diff;
+				
+				save ["dist_id","district_code","district_name","round","budget","received_tax","population","N_area","U_area","Udense_area","AU_area","A_area","Us_area",
+						"Usdense_area","AUs_area","length_dikes_all","length_dikes_good","length_dikes_medium","length_dikes_bad","mean_alt_dikes_all","mean_alt_dikes_good",
+						"mean_alt_dikes_medium","mean_alt_dikes_bad","min_alt_dikes_all","min_alt_dikes_good","min_alt_dikes_medium","min_alt_dikes_bad","length_dunes_all",
+						"length_dunes_good","length_dunes_medium","length_dunes_bad","mean_alt_dunes_all","mean_alt_dunes_good","mean_alt_dunes_medium","mean_alt_dunes_bad",
+						"min_alt_dunes_all","min_alt_dunes_good","min_alt_dunes_medium","min_alt_dunes_bad","actions_cost","given_money","taken_money","transferred_money",
+						"levers_cost"] to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;
 			}
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
@@ -410,6 +416,7 @@ global {
 			}
 			/**************** coastal defenses */
 			list<Coastal_Defense> my_dikes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DIKE);
+			add my_dikes sum_of (each.shape.perimeter) to: length_dikes_all;
 			add my_dikes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) to: length_dikes_good;
 			add my_dikes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) to: length_dikes_medium;
 			add my_dikes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) to: length_dikes_bad;
@@ -424,6 +431,7 @@ global {
 
 			list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
 			if length (my_dunes) > 0 {
+				add my_dunes sum_of (each.shape.perimeter) to: length_dunes_all;
 				add my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) to: length_dunes_good;
 				add my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) to: length_dunes_medium;
 				add my_dunes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) to: length_dunes_bad;
@@ -707,12 +715,12 @@ global {
 			int levers_costs <- districts_levers_costs[dist_id-1][num_round];
 			
 			save [dist_id,district_code,district_name,num_round,budget,received_tax,popul,N_area,U_area,Udense_area,AU_area,A_area,Us_area,Usdense_area,AUs_area,
-				last(length_dikes_good),last(length_dikes_medium),last(length_dikes_bad),last(mean_alt_all_dikes),last(mean_alt_dikes_good),last(mean_alt_dikes_medium),
-				last(mean_alt_dikes_bad),last(min_alt_all_dikes),last(min_alt_dikes_good),last(min_alt_dikes_medium),last(min_alt_dikes_bad),last(length_dunes_good),
-				last(length_dunes_medium),last(length_dunes_bad),last(mean_alt_all_dunes),last(mean_alt_dunes_good),last(mean_alt_dunes_medium),last(mean_alt_dunes_bad),
-				last(min_alt_all_dunes),last(min_alt_dunes_good),last(min_alt_dunes_medium),last(min_alt_dunes_bad),
+				last(length_dikes_all),last(length_dikes_good),last(length_dikes_medium),last(length_dikes_bad),last(mean_alt_all_dikes),last(mean_alt_dikes_good),
+				last(mean_alt_dikes_medium),last(mean_alt_dikes_bad),last(min_alt_all_dikes),last(min_alt_dikes_good),last(min_alt_dikes_medium),last(min_alt_dikes_bad),
+				last(length_dunes_all),last(length_dunes_good), last(length_dunes_medium),last(length_dunes_bad),last(mean_alt_all_dunes),last(mean_alt_dunes_good),
+				last(mean_alt_dunes_medium),last(mean_alt_dunes_bad), last(min_alt_all_dunes),last(min_alt_dunes_good),last(min_alt_dunes_medium),last(min_alt_dunes_bad),
 				actions_cost,given_money,taken_money,transferred_money,levers_costs]
-				to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;
+						to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;
 		}
 	}
 	   
@@ -1333,10 +1341,6 @@ species Network_Game_Manager skills: [network]{
 							ask districts_in_game first_with(each.dist_id = world.district_id (self.district_code)) {
 								budget <- int(budget - myself.cost);	// updating players payment (server side)
 								round_actions_cost <- int(round_actions_cost - myself.cost);
-							}
-							// saving data
-							if save_data {
-								save ([string(machine_time - EXPERIMENT_START_TIME), self.district_code] + m_contents.values) to: log_export_filePath rewrite: false type:"csv";	
 							}
 						} // end of create Player_Action
 					}
@@ -2424,7 +2428,8 @@ species District {
 	list<float> surface_Usdense <- [];
 	list<float> surface_Usdense_diff <- [];
 	list<float> surface_AUs <- [];
-				
+	
+	list<float> length_dikes_all <- [];
 	list<float> length_dikes_good <- [];
 	list<float> length_dikes_medium <- [];
 	list<float> length_dikes_bad <- [];
@@ -2444,7 +2449,8 @@ species District {
 	list<float> min_alt_dikes_good <- [];
 	list<float> min_alt_dikes_medium <- [];
 	list<float> min_alt_dikes_bad <- [];
-				
+	
+	list<float> length_dunes_all <- [];
 	list<float> length_dunes_good <- [];
 	list<float> length_dunes_medium <- [];
 	list<float> length_dunes_bad <- [];
