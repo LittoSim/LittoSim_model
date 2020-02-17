@@ -28,8 +28,6 @@ global{
 	string LEV_MAX;
 	string LEV_AT;
 	string LDR_MSG_ROUNDS;
-	string LEV_DIKES;
-	string LEV_DUNES;
 	string LEV_MSG_LEVER_HELP;
 	
 	float PROFILING_THRESHOLD <- 0.3;

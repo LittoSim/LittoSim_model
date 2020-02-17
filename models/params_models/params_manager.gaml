@@ -18,6 +18,12 @@ global{
 	string SIM_SHOWING_FLOOD_STATS 		<- 'SHOWING_FLOOD_STATS';
 	string INITIAL_SUBMERSION			<- '0';
 	
+	// LISFLOOD_SIMULATION_PARAMETERS
+	int LISFLOOD_SIM_TIME 		<- int(study_area_def["LISFLOOD_SIM_TIME"]);
+	int LISFLOOD_INIT_TSTEP  	<- int(study_area_def["LISFLOOD_INIT_TSTEP"]);
+	int LISFLOOD_MASSINT		<- int(study_area_def["LISFLOOD_MASSINT"]);
+	int LISFLOOD_SAVEINT		<- int(study_area_def["LISFLOOD_SAVEINT"]);
+	
 	// Network round manager & commands
 	string NEW_ROUND 				<- "NEW_ROUND";
 	string LOCK_USERS 				<- "LOCK_USERS";
@@ -86,7 +92,8 @@ global{
 	float land_color_interval;
 		
 	// User interface params
-	string LEGEND_POSITION <- study_area_def["LEGEND_POSITION"];
+	int LEGEND_POSITION_X <- int(study_area_def["LEGEND_POSITION_X"]);
+	int LEGEND_POSITION_Y <- int(study_area_def["LEGEND_POSITION_Y"]);
 	int LEGEND_SIZE 	   <- int(study_area_def["LEGEND_SIZE"]);
 	int font_size 		   <- int(shape.height/30); 	
 	int font_interleave    <- int(shape.width/60);
