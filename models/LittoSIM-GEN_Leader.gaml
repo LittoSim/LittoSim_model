@@ -69,6 +69,7 @@ global{
 		MSG_SOFT_DEF			<- get_message('MSG_SOFT_DEF');
 		MSG_WITHDRAWAL			<- get_message('MSG_WITHDRAWAL');
 		MSG_OTHER				<- get_message("MSG_OTHER");
+		LDR_LAST				<- get_message('LDR_LAST');
 		
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
 				Ganivelle_Lever, Enhance_Natural_Accr_Lever, Create_Dune_Lever, Maintain_Dune_Lever, Us_out_Coast_and_Risk_Area_Lever,
@@ -796,13 +797,7 @@ species District{
 	int taken_money  <- 0;
 	int levers_cost  <- 0;
 	int transferred_money <- 0;
-	
-	int build_actions 	<- 0;
-	int soft_actions  	<- 0;
-	int withdraw_actions<- 0;
-	int other_actions <- 0;
-	int sum_buil_sof_wit_actions <- 1;
-	
+		
 	int build_cost 	<- 0;
 	int soft_cost 	<- 0;
 	int withdraw_cost <- 0;
@@ -1413,7 +1408,7 @@ species Cost_Lever parent: Lever {
 		do send_lever_message(lev);
 		
 		last_lever_cost 	<- lev.added_cost;
-		activation_label_L1 <- world.get_message('LDR_LAST') + " "   + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : world.get_message('LDR_PAYMENT')) + " : " + abs(last_lever_cost) + ' By';
+		activation_label_L1 <- LDR_LAST + " "   + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : world.get_message('LDR_PAYMENT')) + " : " + abs(last_lever_cost) + ' By';
 		activation_label_L2 <- world.get_message('LDR_TOTAL') + " "  + (last_lever_cost >= 0 ? world.get_message('LDR_TAKEN') : world.get_message('LDR_GIVEN')) + " : " + abs(total_lever_cost()) + ' By';
 		ask world {
 			do record_leader_activity("Lever " + myself.lever_name + " validated at", myself.my_district.district_name, myself.lever_help_msg + " : " + lev.added_cost + "By" + "(" + lev.p_action + ")");
@@ -1767,7 +1762,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 		do send_lever_message(lev);
 		
 		last_lever_cost 	<- lev.added_cost;
-		activation_label_L1 <- world.get_message('LDR_LAST') + " "  + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : 
+		activation_label_L1 <- LDR_LAST + " "  + (last_lever_cost >= 0 ? world.get_message('LDR_LEVY') : 
 						world.get_message('LDR_PAYMENT')) + " : " + abs(last_lever_cost)   + ' By.';
 		activation_label_L2 <- world.get_message('LDR_TOTAL') + " " + (last_lever_cost >= 0 ? world.get_message('LDR_TAKEN'):
 						world.get_message('LDR_GIVEN')) + " : " + abs(total_lever_cost())+ ' By.';
@@ -2096,22 +2091,15 @@ species Network_Leader skills:[network] {
 					// classifying this action
 					switch myself.strategy_profile{
 						match BUILDER 		{
-							build_actions <- build_actions + 1;
 							build_cost <- build_cost + myself.cost;
-							sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + 1;
 						}
 						match SOFT_DEFENSE 	{
-							soft_actions <- soft_actions + 1;
 							soft_cost <- soft_cost + myself.cost;
-							sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + 1;
 						}
 						match WITHDRAWAL 	{
-							withdraw_actions <- withdraw_actions + 1;
 							withdraw_cost <- withdraw_cost + myself.cost;
-							sum_buil_sof_wit_actions <- sum_buil_sof_wit_actions + 1;
 						}
 						match OTHER 		{
-							other_actions <- other_actions + 1;
 							other_cost <- other_cost + myself.cost;
 						}
 					}
@@ -2404,27 +2392,18 @@ experiment LittoSIM_GEN_Leader {
 			 	data MSG_LEVERS value: districts collect each.levers_cost collect sum(each) color: color_lbls[4];		
 			}
 			
-			chart world.get_message('MSG_COST_ACTIONS') + " ("+ LDR_TOTAL +")" type: histogram size: {0.33,0.48} position: {0.01,0.51}
+			chart world.get_message('MSG_COST_ACTIONS') + " ("+ LDR_TOTAL +")" type: histogram size: {0.48,0.48} position: {0.01,0.51}
 				x_serie_labels: districts collect (each.district_name) style:stack {
 			 	data MSG_BUILDER value: districts collect (each.build_cost) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_cost) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_cost) color: color_lbls[0];
 			 	data MSG_OTHER value: districts collect (each.other_cost) color: color_lbls[3];
 			}
-			chart "% " + world.get_message('MSG_COST_ACTIONS') + " (2 " + LDR_MSG_ROUNDS + ")" type: histogram size: {0.33,0.48} position: {0.34,0.51}
+			chart "% " + world.get_message('MSG_COST_ACTIONS') + " (2 " + LDR_LAST + " " + LDR_MSG_ROUNDS + ")" type: histogram size: {0.48,0.48} position: {0.51,0.51}
 				x_serie_labels: districts collect (each.district_name) style:stack {
 			 	data MSG_BUILDER value: districts collect (each.builder_score * 100) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_def_score * 100) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdrawal_score * 100) color: color_lbls[0];
-			}
-			chart world.get_message('MSG_NUMBER_ACTIONS') type: radar size: {0.33,0.48} position: {0.67,0.51} 
-					x_serie_labels: [MSG_BUILDER,MSG_SOFT_DEF, MSG_WITHDRAWAL] {
-				loop i from: 0 to: 3{
-					data districts[i].district_name value: game_round = 0? [0.75,0.75,0.75] : [
-						districts[i].build_actions/districts[i].sum_buil_sof_wit_actions,
-						districts[i].soft_actions/districts[i].sum_buil_sof_wit_actions,
-						districts[i].withdraw_actions/districts[i].sum_buil_sof_wit_actions] color: dist_colors[i];
-				}		
 			}
 		}
 		

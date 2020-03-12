@@ -29,6 +29,7 @@ global{
 	string LEV_AT;
 	string LDR_MSG_ROUNDS;
 	string LEV_MSG_LEVER_HELP;
+	string LDR_LAST;
 	
 	float PROFILING_THRESHOLD <- 0.3;
 	
