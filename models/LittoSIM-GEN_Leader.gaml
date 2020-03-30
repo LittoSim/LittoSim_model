@@ -505,7 +505,7 @@ global{
 		create Pot_Button {
 			command <- 6;
 			col <- #lightgreen;
-			_name <- "Valider le pot";
+			_name <- "Valider le plan";
 			loc <- Grille_Pot[2,17].location; 
 		}
 		
@@ -629,7 +629,7 @@ global{
 					do update_pot;	
 				}
 				match 6 {
-					map<string,bool> vmap <- map<string,bool>(user_input("Confirmation","Voulez-vous valider le pot commun ?"::false));
+					map<string,bool> vmap <- map<string,bool>(user_input("Confirmation","Voulez-vous valider le plan de financement ?"::false));
 					if(vmap at vmap.keys[0]){
 						send_my_pot <- true;
 						do send_one_year_pot;
