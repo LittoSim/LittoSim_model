@@ -2407,7 +2407,7 @@ experiment LittoSIM_GEN_Leader {
 			}
 		}
 		
-		display Common_Pot {
+		display Financial_Plan {
 			species Grille_Pot;
 			species Pot_Button;
 			
