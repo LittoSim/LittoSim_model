@@ -6,18 +6,17 @@ model paramsall
 
 global{
 	// Configuration files
-	string config_file_name 				<- "../includes/config/littosim.conf"; 
-	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
-	map<string,string> study_area_def		<- read_configuration_file(configuration_file["STUDY_AREA_FILE"],";"); // Shapefiles data
-	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANGUAGE_FILE"],";"); // Languages
+	map<string,string> littosim_def 	<- read_configuration_file("../includes/config/littosim.conf",";"); // main file pointing to others
+	map<string,string> study_area_def		<- read_configuration_file(littosim_def["STUDY_AREA_FILE"],";"); // Shapefiles & data
+	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(littosim_def["LANGUAGE_FILE"],";"); // Languages
 	map<string,map> data_action 			<- store_csv_data_into_map_of_map(study_area_def["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
 	
 	// General
 	string application_name <- study_area_def["APPLICATION_NAME"];
-	bool IS_OSX <- bool(configuration_file["IS_OSX"]);
+	bool IS_OSX <- bool(littosim_def["IS_OSX"]);
 	
 	// Network 
-	string SERVER 			<- configuration_file["SERVER_ADDRESS"]; 
+	string SERVER 			<- littosim_def["SERVER_ADDRESS"]; 
 	string GAME_MANAGER 	<- "GAME_MANAGER";
 	string GAME_LEADER	    <- "GAME_LEADER";
 	string LISTENER_TO_LEADER<- "LISTENER_TO_LEADER";
@@ -151,7 +150,7 @@ global{
 	file river_flood_shape 		<- file(study_area_def["RIVER_FLOOD_SHAPE"]);
 	file river_flood_shape_1m 	<- file(study_area_def["RIVER_FLOOD_SHAPE_1M"]);
 	file rpp_area_shape 		<- file(study_area_def["RPP_SHAPE"]);
-	file coastline_shape 		<- file(study_area_def["COASTLINES_SHAPE"]);
+	file coastline_shape 		<- file(study_area_def["COASTLINE_SHAPE"]);
 	file coastal_defenses_shape <- file(study_area_def["COASTAL_DEFENSES_SHAPE"]);
 	file land_use_shape 		<- file(study_area_def["LAND_USE_SHAPE"]);	
 	file convex_hull_shape 		<- file(study_area_def["CONVEX_HULL_SHAPE"]); 
@@ -260,7 +259,7 @@ global{
 	}
 	
 	string get_message(string code_msg){
-		return code_msg = nil or code_msg = 'na' ? "" : (langs_def at code_msg != nil ? langs_def at code_msg at configuration_file["LANGUAGE"] : ''); // getting the right message from languages file
+		return code_msg = nil or code_msg = 'na' ? "" : (langs_def at code_msg != nil ? langs_def at code_msg at littosim_def["LANGUAGE"] : ''); // getting the right message from languages file
 	}
 	
 	string replace_strings(string s, list<string> lisa){

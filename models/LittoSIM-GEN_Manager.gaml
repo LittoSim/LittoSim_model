@@ -127,7 +127,7 @@ global {
 		LEV_DUNES		<- get_message('LEV_DUNES');
 		LEV_DIKES		<- get_message('LEV_DIKES');
 		
-		lisfloodPath <- IS_OSX ? configuration_file["LISFLOOD_PATH_OSX"] : configuration_file["LISFLOOD_PATH_WIN"];
+		lisfloodPath <- IS_OSX ? littosim_def["LISFLOOD_PATH_OSX"] : littosim_def["LISFLOOD_PATH_WIN"];
 		
 		// Create GIS agents
 		create District from: districts_shape with: [district_code::string(read("dist_code"))];
