@@ -134,7 +134,7 @@ global{
 	// Building and raising dikes parameters
 	float BUILT_DIKE_HEIGHT <- float(study_area_def["BUILT_DIKE_HEIGHT"]);
 	float RAISE_DIKE_HEIGHT <- float(study_area_def["RAISE_DIKE_HEIGHT"]);
-	string BUILT_DIKE_STATUS<- study_area_def["BUILT_DIKE_STATUS"];
+	string BUILT_DIKE_STATUS<- "GOOD";
 	float MIN_HEIGHT_DIKE 	<- float (eval_gaml(study_area_def["MIN_HEIGHT_DIKE"]));
 	float DUNE_TYPE_DISTANCE_COAST  <- float(study_area_def["DUNE_TYPE_DISTANCE_COAST"]);
 	float BUILT_DUNE_TYPE1_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE1_HEIGHT"]);
