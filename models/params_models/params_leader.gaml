@@ -15,7 +15,7 @@ global{
 	point MOUSE_LOC;
 	
 	int GRID_W <- 4;
-	int GRID_H <- int (study_area_def["LEADER_GRID_H"]);
+	int GRID_H <- 11 + int((length(levers_def) - 17)/2);
 	
 	// messages to display in multi-langs
 	string MSG_CHOOSE_MSG_TO_SEND;	
