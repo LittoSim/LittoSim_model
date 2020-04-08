@@ -9,11 +9,13 @@ global{
 	string config_file_name 				<- "../includes/config/littosim.conf"; 
 	map<string,string> configuration_file 	<- read_configuration_file(config_file_name,";"); // main file pointing to others
 	map<string,string> study_area_def		<- read_configuration_file(configuration_file["STUDY_AREA_FILE"],";"); // Shapefiles data
-	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANGUAGES_FILE"],";"); // Languages
+	map<string,map> langs_def 				<- store_csv_data_into_map_of_map(configuration_file["LANGUAGE_FILE"],";"); // Languages
 	map<string,map> data_action 			<- store_csv_data_into_map_of_map(study_area_def["ACTIONS_FILE"],";"); // Actions: to use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
 	
+	// General
 	string application_name <- study_area_def["APPLICATION_NAME"];
 	bool IS_OSX <- bool(configuration_file["IS_OSX"]);
+	
 	// Network 
 	string SERVER 			<- configuration_file["SERVER_ADDRESS"]; 
 	string GAME_MANAGER 	<- "GAME_MANAGER";
@@ -155,8 +157,9 @@ global{
 	file convex_hull_shape 		<- file(study_area_def["CONVEX_HULL_SHAPE"]); 
 	file dem_file 				<- file(study_area_def["DEM_FILE"]);
 	file buffer_in_100m_shape 	<- file(study_area_def["BUFFER_IN100M_SHAPE"]);
-	map dist_code_lname_correspondance_table	<- eval_gaml(study_area_def["MAP_DIST_CODE_LONG_NAME"]);
-	map dist_code_sname_correspondance_table 	<- eval_gaml(study_area_def["MAP_DIST_CODE_SHORT_NAME"]);
+	
+	map dist_code_lname_correspondance_table	<- eval_gaml(study_area_def["MAP_DIST_LNAMES"]);
+	map dist_code_sname_correspondance_table 	<- eval_gaml(study_area_def["MAP_DIST_SNAMES"]);
 	float coastBorderBuffer <- float(eval_gaml(study_area_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (<400m)
 	
 	bool AU_AND_AUs_TO_N	<- bool (study_area_def["AU_AND_AUs_TO_N"]); // should we replace AU and AUs by N ?

@@ -17,11 +17,11 @@ global {
 	
 	// sea heights file sent to Lisflood
 	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
-	string lisflood_start_file	<- study_area_def["LISFLOOD_START_FILE"];
-	string lisflood_bci_file	<- study_area_def["LISFLOOD_BCI_FILE"];
-	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING   ? study_area_def ["LISFLOOD_BDY_HIGH_FILENAME"]   // scenario1 : HIGH 
-								 :(floodEventType = LOW_FLOODING    ? study_area_def ["LISFLOOD_BDY_LOW_FILENAME"]    // scenario2 : LOW
-		  						 :(floodEventType = MEDIUM_FLOODING ? study_area_def ["LISFLOOD_BDY_MEDIUM_FILENAME"] // scenario3 : MEDIUM
+	string lisflood_start_file	<- study_area_def["LISFLOOD_START"];
+	string lisflood_bci_file	<- study_area_def["LISFLOOD_BCI"];
+	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING   ? study_area_def ["LISFLOOD_BDY_HIGH"]   // scenario1 : HIGH 
+								 :(floodEventType = LOW_FLOODING    ? study_area_def ["LISFLOOD_BDY_LOW"]    // scenario2 : LOW
+		  						 :(floodEventType = MEDIUM_FLOODING ? study_area_def ["LISFLOOD_BDY_MEDIUM"] // scenario3 : MEDIUM
 		  						 :get_message('MSG_FLOODING_TYPE_PROBLEM')))};
 	// paths to Lisflood
 	string lisfloodPath;		// absolute path to Lisflood ex: "C:/littosim/lisflood"
@@ -3073,7 +3073,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Previous flooded depth per area"{
-			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
+			chart MSG_AREA+" U" type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect (each.prev_U_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_U] : each.loth1m_0_5c[LU_TYPE_U]))) color: colors_of_water_height[0];
@@ -3082,7 +3082,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data ">1" value: districts_in_game collect (each.prev_U_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_maxc[LU_TYPE_U] : each.loth1m_maxc[LU_TYPE_U]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.25, 0}
+			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0.25, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect (each.prev_Udense_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_Ui] : each.loth1m_0_5c[LU_TYPE_Ui]))) color: colors_of_water_height[0];
@@ -3091,7 +3091,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data ">1" value: districts_in_game collect (each.prev_Udense_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_maxc[LU_TYPE_Ui] : each.loth1m_maxc[LU_TYPE_Ui]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" Us" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.51, 0}
+			chart MSG_AREA+" Us" type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0.51, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect (each.prev_Us_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_Us] : each.loth1m_0_5c[LU_TYPE_Us]))) color: colors_of_water_height[0];
@@ -3100,7 +3100,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data ">1" value: districts_in_game collect (each.prev_Us_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_maxc[LU_TYPE_Us] : each.loth1m_maxc[LU_TYPE_Us]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" AU" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.76, 0}
+			chart MSG_AREA+" AU" type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0.76, 0}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect (each.prev_AU_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_AU] : each.loth1m_0_5c[LU_TYPE_AU]))) color: colors_of_water_height[0];
@@ -3110,7 +3110,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_AU] : each.loth1m_maxc[LU_TYPE_AU]))) color: colors_of_water_height[2];
 			}
 			
-			chart MSG_AREA+" A" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.01, 0.5}
+			chart MSG_AREA+" A" type: histogram style: stack background: rgb("whitesmoke") size: {0.33,0.48} position: {0.01, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect (each.prev_A_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_A] : each.loth1m_0_5c[LU_TYPE_A]))) color: colors_of_water_height[0];
@@ -3119,7 +3119,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data ">1" value: districts_in_game collect (each.prev_A_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_maxc[LU_TYPE_A] : each.loth1m_maxc[LU_TYPE_A]))) color: colors_of_water_height[2];
 			}
-			chart MSG_AREA+" N" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.34, 0.5}
+			chart MSG_AREA+" N" type: histogram style: stack background: rgb("whitesmoke") size: {0.33,0.48} position: {0.34, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect (each.prev_N_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_N] : each.loth1m_0_5c[LU_TYPE_N]))) color: colors_of_water_height[0];
@@ -3128,7 +3128,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				data ">1" value: districts_in_game collect (each.prev_N_maxc + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_maxc[LU_TYPE_N] : each.loth1m_maxc[LU_TYPE_N]))) color: colors_of_water_height[2];
 			}
-			chart LDR_TOTAL type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.67, 0.5}
+			chart LDR_TOTAL type: histogram style: stack background: rgb("whitesmoke") size: {0.33,0.48} position: {0.67, 0.5}
 				x_serie_labels: districts_in_game collect each.district_name {
 				data "0.5" value: districts_in_game collect (each.prev_tot_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[0] : each.loth1m_0_5c[0]))) color: colors_of_water_height[0];
