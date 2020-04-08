@@ -130,7 +130,7 @@ global {
 		lisfloodPath <- IS_OSX ? configuration_file["LISFLOOD_PATH_OSX"] : configuration_file["LISFLOOD_PATH_WIN"];
 		
 		// Create GIS agents
-		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))];
+		create District from: districts_shape with: [district_code::string(read("dist_code"))];
 		int idx <- 1;
 		loop kk over: dist_code_sname_correspondance_table.keys {
 			add first(District where (each.district_code = kk)) to: districts_in_game;
