@@ -32,15 +32,15 @@ global{
 	list<list<int>> districts_populations <- [[],[],[],[]];
 	Action_Name last_updated <- nil;
 	
-	int pot_project_duration <- 5;
-	float pot_risk_agency_rate <- 0.3;
-	int pot_current_partition_index <- 0;
-	list<float> pot_current_partition<- [0.25,0.25,0.25,0.25];
-	list<int> pot_project_amounts <- [2000,2000,2000,2000];
-	list<int> pot_contributions <- [0,0,0,0];
-	list<int> pot_finances <- [0,0,0,0];
-	list<int> pot_balances <- [0,0,0,0];
-	bool send_my_pot <- false;
+	int plan_project_duration <- 5;
+	float plan_risk_agency_rate <- 0.3;
+	int plan_current_partition_index <- 0;
+	list<float> plan_current_partition<- [0.25,0.25,0.25,0.25];
+	list<int> plan_project_amounts <- [2000,2000,2000,2000];
+	list<int> plan_contributions <- [0,0,0,0];
+	list<int> plan_finances <- [0,0,0,0];
+	list<int> plan_balances <- [0,0,0,0];
+	bool send_my_plan <- false;
 	
 	init{
 		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
@@ -101,7 +101,7 @@ global{
 		create Lever_Window_Info;
 		create Lever_Window_Actions;
 		create Player_Button_Actions;
-		do create_common_pot;
+		do create_financial_plan;
 	}
 	//------------------------------ end of init -------------------------------//
 	
@@ -429,210 +429,210 @@ global{
 		return num = 0 ? BUILDER : (num = 1 ? SOFT_DEFENSE : WITHDRAWAL);
 	}
 	
-	action create_common_pot {
+	action create_financial_plan {
 		loop i from: 0 to: 3 {
-			Grille_Pot[i+1,0].col <- #deepskyblue;
-			Grille_Pot[i+1,0].text <- districts[i].district_name + " :";
+			F_Plan_Grid[i+1,0].col <- #deepskyblue;
+			F_Plan_Grid[i+1,0].text <- districts[i].district_name + " :";
 		}
-		Grille_Pot[0,1].text <- "Population :";
-		Grille_Pot[0,2].text <- "Budget :";
-		Grille_Pot[0,3].text <- "Surface :";
+		F_Plan_Grid[0,1].text <- world.get_message("MSG_POPULATION") + " :";
+		F_Plan_Grid[0,2].text <- world.get_message("MSG_BUDGETS") + " :";
+		F_Plan_Grid[0,3].text <- world.get_message("MSG_SURFACE") + " :";
 		
-		Grille_Pot[0,6].text <- "Répartition choisie :";
+		F_Plan_Grid[0,6].text <-  world.get_message("PLAN_CHOSEN_R") + " :";
 		loop i from: 0 to: 3 {
-			Grille_Pot[i+1,6].col <- #moccasin;
-			Grille_Pot[i+1,6].text <- "25%";
+			F_Plan_Grid[i+1,6].col <- #moccasin;
+			F_Plan_Grid[i+1,6].text <- "25%";
 		}
 		
-		Grille_Pot[0,8].text <- "Montants des projets :";
+		F_Plan_Grid[0,8].text <- world.get_message("PLAN_AMOUNT_P") + " :";
 		loop i from: 0 to: 3 {
-			Grille_Pot[i+1,8].col <- #moccasin;
-			Grille_Pot[i+1,8].text <- ""+pot_project_amounts[i];
+			F_Plan_Grid[i+1,8].col <- #moccasin;
+			F_Plan_Grid[i+1,8].text <- ""+plan_project_amounts[i];
 		}
 		
-		Grille_Pot[0,11].text <- "Durée des projets :";
-		Grille_Pot[1,11].text <- ""+pot_project_duration;
-		Grille_Pot[1,11].col <- #moccasin;
-		Grille_Pot[2,11].text <- "% de l'agence du risque :";
-		Grille_Pot[3,11].text <- "" + pot_risk_agency_rate * 100 + "%";
-		Grille_Pot[3,11].col <- #moccasin;
-		Grille_Pot[0,13].text <- "Contribution annuelle :";
+		F_Plan_Grid[0,11].text <- world.get_message("PLAN_DURATION_P") + " :";
+		F_Plan_Grid[1,11].text <- ""+plan_project_duration;
+		F_Plan_Grid[1,11].col <- #moccasin;
+		F_Plan_Grid[2,11].text <- world.get_message("PLAN_PER100_LEADER") + " :";
+		F_Plan_Grid[3,11].text <- "" + plan_risk_agency_rate * 100 + "%";
+		F_Plan_Grid[3,11].col <- #moccasin;
+		F_Plan_Grid[0,13].text <- world.get_message("PLAN_ANNUAL_C") + " :";
 		loop i from: 1 to: 4 {
-			Grille_Pot[i,13].text <- ""+pot_contributions[i-1];
+			F_Plan_Grid[i,13].text <- ""+plan_contributions[i-1];
 		}
-		Grille_Pot[0,14].text <- "Financement annuel :";
+		F_Plan_Grid[0,14].text <- world.get_message("PLAN_ANNUAL_F") + " :";
 		loop i from: 1 to: 4 {
-			Grille_Pot[i,14].text <- ""+pot_finances[i-1];
+			F_Plan_Grid[i,14].text <- ""+plan_finances[i-1];
 		}
-		Grille_Pot[0,15].text <- "Solde annuel perçu :";
+		F_Plan_Grid[0,15].text <- world.get_message("PLAN_ANNUAL_S") + " :";
 		loop i from: 1 to: 4 {
-			Grille_Pot[i,15].text <- ""+pot_balances[i-1];
-			Grille_Pot[i,15].col <- #lightgreen;
+			F_Plan_Grid[i,15].text <- ""+plan_balances[i-1];
+			F_Plan_Grid[i,15].col <- #lightgreen;
 		}
 		
-		create Pot_Button {
+		create plan_Button {
 			command <- 0;
-			_name <- "Répartition égale";
-			loc <- Grille_Pot[1,5].location;
+			_name <- world.get_message("PLAN_EGAL");
+			loc <- F_Plan_Grid[1,5].location;
 		}
-		create Pot_Button {
+		create plan_Button {
 			command <- 1;
-			_name <- "Réparti. Population";
-			loc <- Grille_Pot[2,5].location;
+			_name <- world.get_message("PLAN_POPUL");
+			loc <- F_Plan_Grid[2,5].location;
 		}
-		create Pot_Button {
+		create plan_Button {
 			command <- 2;
-			_name <- "Réparti. Budget";
-			loc <- Grille_Pot[3,5].location;
+			_name <- world.get_message("PLAN_BUDGET");
+			loc <- F_Plan_Grid[3,5].location;
 		}
-		create Pot_Button {
+		create plan_Button {
 			command <- 3;
-			_name <- "Réparti. Surface";
-			loc <- Grille_Pot[4,5].location;
+			_name <- world.get_message("PLAN_SURFACE");
+			loc <- F_Plan_Grid[4,5].location;
 		}
 		
-		create Pot_Button {
+		create plan_Button {
 			command <- 4;
-			_name <- "Modifier les montants";
-			loc <- Grille_Pot[2,9].location;
+			_name <- world.get_message("PLAN_AMOUNTS");
+			loc <- F_Plan_Grid[2,9].location;
 		}
-		create Pot_Button {
+		create plan_Button {
 			col <- #orange;
 			command <- 5;
-			_name <- "Modifier la durée et le %";
-			loc <- Grille_Pot[4,11].location; 
+			_name <- world.get_message('PLAN_TIME_PER100');
+			loc <- F_Plan_Grid[4,11].location; 
 		}
-		create Pot_Button {
+		create plan_Button {
 			command <- 6;
 			col <- #lightgreen;
-			_name <- "Valider le plan";
-			loc <- Grille_Pot[2,17].location; 
+			_name <- world.get_message("PLAN_VALIDATE");
+			loc <- F_Plan_Grid[2,17].location; 
 		}
 		
 		loop i from: 0 to: 3 {
-			Grille_Pot[i+1,3].text <- ""+ districts[i].surface;
+			F_Plan_Grid[i+1,3].text <- ""+ districts[i].surface;
 		}
 	}
 	
-	action init_pot_budget {
+	action init_plan_budget {
 		loop i from: 0 to: 3 {
 			districts[i].initial_budget <- first(districts_budgets[i]);
-			Grille_Pot[i+1,2].text <- "" + districts[i].initial_budget;
+			F_Plan_Grid[i+1,2].text <- "" + districts[i].initial_budget;
 		}
 	}
 	
 	action update_paritionning (int ix) {
-		ask Pot_Button where (each.command = pot_current_partition_index) { col <- #yellow; }
-		ask Pot_Button where (each.command = ix) { col <- #red; }
-		pot_current_partition_index <- ix;
+		ask plan_Button where (each.command = plan_current_partition_index) { col <- #yellow; }
+		ask plan_Button where (each.command = ix) { col <- #red; }
+		plan_current_partition_index <- ix;
 		loop i from: 0 to: 3 {
-			Grille_Pot[i+1,6].text <- ""+ 100 * pot_current_partition[i] + "%";
+			F_Plan_Grid[i+1,6].text <- ""+ 100 * plan_current_partition[i] + "%";
 		}
-		do update_pot;
+		do update_plan;
 	}
 	
-	action update_pot{
-		float paid_by_ditrict <- (sum (pot_project_amounts) * (1 - pot_risk_agency_rate)) / max([pot_project_duration,1]);
+	action update_plan{
+		float paid_by_ditrict <- (sum (plan_project_amounts) * (1 - plan_risk_agency_rate)) / max([plan_project_duration,1]);
 		loop i from: 0 to: 3 {
-			pot_contributions [i] <- paid_by_ditrict * pot_current_partition [i];
-			pot_finances [i] <- pot_project_amounts [i] / max([pot_project_duration,1]);
-			pot_balances [i] <- pot_finances[i] - pot_contributions[i];
+			plan_contributions [i] <- paid_by_ditrict * plan_current_partition [i];
+			plan_finances [i] <- plan_project_amounts [i] / max([plan_project_duration,1]);
+			plan_balances [i] <- plan_finances[i] - plan_contributions[i];
 			
-			Grille_Pot[i+1,13].text <- ""+pot_contributions[i];
-			Grille_Pot[i+1,14].text <- ""+pot_finances[i];
-			Grille_Pot[i+1,15].text <- ""+pot_balances[i];
+			F_Plan_Grid[i+1,13].text <- ""+plan_contributions[i];
+			F_Plan_Grid[i+1,14].text <- ""+plan_finances[i];
+			F_Plan_Grid[i+1,15].text <- ""+plan_balances[i];
 		}
 	}
 	
-	action update_pot_populations {
+	action update_plan_populations {
 		loop i from: 0 to: 3 {
-			Grille_Pot[i+1,1].text <- "" + districts[i].population;
+			F_Plan_Grid[i+1,1].text <- "" + districts[i].population;
 		}
 	}
 	
-	action send_one_year_pot {
-		if pot_project_duration > 0 {
-			pot_project_duration <- pot_project_duration - 1;
+	action send_one_year_plan {
+		if plan_project_duration > 0 {
+			plan_project_duration <- plan_project_duration - 1;
 			map<string, unknown> msg 	<-[];
 			string msg_player <- "";
 			int amount_value <- 0;
 			loop i from: 0 to: 3 {
-				amount_value <- pot_balances [i];
+				amount_value <- plan_balances [i];
 				put districts[i].district_code	key: DISTRICT_CODE in: msg;
 				if amount_value < 0 { // prélever
 					amount_value <- abs(amount_value);
 					put TAKE_MONEY_FROM 	key: LEADER_COMMAND 	in: msg;
-					msg_player <- "Prélèvement";
+					msg_player <- LDR_TAKEN;
 					districts[i].taken_money <- districts[i].taken_money - amount_value;
 				} else { // donner
 					put GIVE_MONEY_TO 	key: LEADER_COMMAND 	in: msg;
-					msg_player <- "Versement";
+					msg_player <- LDR_GIVEN;
 					districts[i].given_money <- districts[i].given_money + amount_value;
 				}
 				put amount_value	key: AMOUNT		in: msg;
-				put "Pot commun intercommunal / " + msg_player	key: MSG_TO_PLAYER	in: msg;
+				put world.get_message("PLAN_PLAN") + " / " + msg_player	key: MSG_TO_PLAYER	in: msg;
 				do send_message_from_leader(msg);
-				do record_leader_activity ("Pot commun intercommunal", districts[i].district_name, msg_player + " de : " + amount_value + " By");
+				do record_leader_activity ("Interdistrict financial plan", districts[i].district_name, msg_player + " : " + amount_value + " By");
 			}
 		}else {
-			send_my_pot <- false;
+			send_my_plan <- false;
 		}
 	}
 	
-	action pot_buttons_click{
-		if send_my_pot { return; }
+	action plan_buttons_click{
+		if send_my_plan { return; }
 		point loc <- #user_location;
-		Pot_Button but <- (Pot_Button) first_with (each overlaps loc);
+		plan_Button but <- (plan_Button) first_with (each overlaps loc);
 		if but != nil {
 			switch but.command {
 				match 0 {
 					loop i from: 0 to: 3 {
-						pot_current_partition [i] <- 0.25;
+						plan_current_partition [i] <- 0.25;
 					}
 					do update_paritionning (0);
 				}
 				match 1 {
 					loop i from: 0 to: 3 {
-						pot_current_partition [i] <- (districts[i].population / max([1, districts sum_of (each.population)])) with_precision 2;
+						plan_current_partition [i] <- (districts[i].population / max([1, districts sum_of (each.population)])) with_precision 2;
 					}
 					do update_paritionning (1);
 				}
 				match 2 {
 					loop i from: 0 to: 3 {
-						pot_current_partition [i]  <- (districts[i].initial_budget / max([1, districts sum_of (each.initial_budget)])) with_precision 2;
+						plan_current_partition [i]  <- (districts[i].initial_budget / max([1, districts sum_of (each.initial_budget)])) with_precision 2;
 					}
 					do update_paritionning (2);
 				}
 				match 3 {
 					loop i from: 0 to: 3 {
-						pot_current_partition [i] <-  (districts[i].surface / max([1, districts sum_of (each.surface)])) with_precision 2;
+						plan_current_partition [i] <-  (districts[i].surface / max([1, districts sum_of (each.surface)])) with_precision 2;
 					}
 					do update_paritionning (3);
 				}
 				match 4 {
-					map mpp <- user_input("Saisissez les nouveaux montants :",
-					[districts[0].district_name::pot_project_amounts [0], districts[1].district_name::pot_project_amounts [1],
-							districts[2].district_name::pot_project_amounts [2], districts[3].district_name::pot_project_amounts [3]]);
+					map mpp <- user_input(world.get_message("PLAN_AMOUNT_P") + " :",
+					[districts[0].district_name::plan_project_amounts [0], districts[1].district_name::plan_project_amounts [1],
+							districts[2].district_name::plan_project_amounts [2], districts[3].district_name::plan_project_amounts [3]]);
 					loop ix from: 0 to: 3 {
-						pot_project_amounts [ix] <- int(mpp at districts[ix].district_name);
-						Grille_Pot[ix+1,8].text <- ""+pot_project_amounts[ix];
+						plan_project_amounts [ix] <- int(mpp at districts[ix].district_name);
+						F_Plan_Grid[ix+1,8].text <- ""+plan_project_amounts[ix];
 					}
-					do update_pot;	
+					do update_plan;	
 				}
 				match 5 {
-					map mpp <- user_input("Saisissez la durée des projets et la contribution de l'agence du risque :",
-					["Durée"::pot_project_duration, "Contribution"::pot_risk_agency_rate]);
-					pot_project_duration <- int(mpp at "Durée");
-					pot_risk_agency_rate <- float(mpp at "Contribution");
-					Grille_Pot[1,11].text <- ""+pot_project_duration;
-					Grille_Pot[3,11].text <- ""+pot_risk_agency_rate  * 100 + "%";
-					do update_pot;	
+					map mpp <- user_input(world.get_message("PLAN_DURATION_P") + " + " + world.get_message("PLAN_PER100_LEADER") + " :",
+					["Durée"::plan_project_duration, "Contribution"::plan_risk_agency_rate]);
+					plan_project_duration <- int(mpp at "Durée");
+					plan_risk_agency_rate <- float(mpp at "Contribution");
+					F_Plan_Grid[1,11].text <- ""+plan_project_duration;
+					F_Plan_Grid[3,11].text <- ""+plan_risk_agency_rate  * 100 + "%";
+					do update_plan;	
 				}
 				match 6 {
-					map<string,bool> vmap <- map<string,bool>(user_input("Confirmation","Voulez-vous valider le plan de financement ?"::false));
+					map<string,bool> vmap <- map<string,bool>(user_input(world.get_message("MSG_WARNING"), world.get_message("PLAN_CONFIRM") + " ?"::false));
 					if(vmap at vmap.keys[0]){
-						send_my_pot <- true;
-						do send_one_year_pot;
+						send_my_plan <- true;
+						do send_one_year_plan;
 					}
 				}
 			}
@@ -1953,8 +1953,8 @@ species Network_Leader skills:[network] {
 					if save_data {
 						ask world { do save_leader_data; }
 					}
-					if send_my_pot {
-						ask world { do send_one_year_pot; }
+					if send_my_plan {
+						ask world { do send_one_year_plan; }
 					}
 					game_round <-int (m_contents[NUM_ROUND]);
 					write MSG_ROUND + " " + game_round;
@@ -1979,9 +1979,9 @@ species Network_Leader skills:[network] {
 						}
 					}
 					if game_round = 1 {
-						ask world { do init_pot_budget; }
+						ask world { do init_plan_budget; }
 					}
-					ask world { do update_pot_populations; }
+					ask world { do update_plan_populations; }
 					
 					loop lev over: all_levers{
 						ask lev.population { 
@@ -2036,8 +2036,8 @@ species Network_Leader skills:[network] {
 							transferred_money <- int(m_contents ["TRANSFER"]);
 							
 							ask world {
-								do init_pot_budget;
-								do update_pot_populations;
+								do init_plan_budget;
+								do update_plan_populations;
 							}
 						}	
 					}
@@ -2287,22 +2287,22 @@ species District_Name {
 species District_Name2 parent: District_Name {}
 //------------------------------ end of District_Name -------------------------------//
 
-species Pot_Button {
+species plan_Button {
 	int command;
 	string _name;
-	geometry shape <- first(Grille_Pot).shape * 0.9;
+	geometry shape <- first(F_Plan_Grid).shape * 0.9;
 	rgb col;
 	point loc;
 	
 	init { col <- #yellow; }
 	
 	aspect {
-		draw shape color: (send_my_pot ? #lightgray : col) border: #black at: loc;
+		draw shape color: (send_my_plan ? #lightgray : col) border: #black at: loc;
 		draw _name at: loc anchor: #center font: font("Arial", 12 , #bold) color: #black;
 	}
 }
 
-grid Grille_Pot width: 5 height: 20 schedules:[] {
+grid F_Plan_Grid width: 5 height: 20 schedules:[] {
 	string text;
 	rgb col <- #whitesmoke;
 		
@@ -2408,10 +2408,10 @@ experiment LittoSIM_GEN_Leader {
 		}
 		
 		display Financial_Plan {
-			species Grille_Pot;
-			species Pot_Button;
+			species F_Plan_Grid;
+			species plan_Button;
 			
-			event [mouse_down] action: pot_buttons_click;
+			event [mouse_down] action: plan_buttons_click;
 		}
 		
 		display Player_Buttons {
