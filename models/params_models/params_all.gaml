@@ -165,8 +165,8 @@ global{
 	int STANDARD_LU_AREA <- int(study_area_def["STANDARD_LU_AREA"]); // area of a standard cell to manage costs and populations
 		
 	// Taxes
-	map tax_unit_table 		<- eval_gaml(study_area_def["IMPOT_UNIT_TABLE"]); 				// received tax in Boyard for each inhabitant of the district 	
-	int initial_budget 		<- int(eval_gaml(study_area_def["INITIAL_BUDGET_BONUS"])); 			// at initialization, each district has a budget equal to an annual tax + %
+	map tax_unit_table 		<- eval_gaml(study_area_def["IMPOT_UNIT_TABLE"]); 			// received tax in Boyard for each inhabitant of the district 	
+	int initial_budget 		<- int(eval_gaml(study_area_def["INITIAL_BUDGET_BONUS"])); 	// at initialization, each district has a budget equal to an annual tax + %
 		
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	map<string, string> read_configuration_file(string fileName,string separator){

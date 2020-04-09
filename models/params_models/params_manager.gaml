@@ -44,15 +44,15 @@ global{
 	map<string, string> flooding_icons <- [HIGH_FLOODING::"high_event.png", MEDIUM_FLOODING::"medium_event.png", LOW_FLOODING::"low_event.png"];
 	
 	// Coastal defenses (dikes and dunes) evolution parameters
-	float H_MAX_GANIVELLE 				<- float(study_area_def["H_MAX_GANIVELLE"]); 				// A dune cannot exceed this height
-	float H_DELTA_GANIVELLE 			<- float(study_area_def["H_DELTA_GANIVELLE"]); 				// The height by which a ganivelle can raise a dune
-	int STEPS_DEGRAD_STATUS_DIKE	 	<- int  (study_area_def["STEPS_DEGRAD_STATUS_DIKE"]);	    // Number of years for a dike to change status
-	int STEPS_DEGRAD_STATUS_DUNE 		<- int  (study_area_def["STEPS_DEGRAD_STATUS_DUNE"]); 		// Number of years for a dune to change status
-	int STEPS_REGAIN_STATUS_GANIVELLE   <- int  (study_area_def["STEPS_REGAIN_STATUS_GANIVELLE"]); 	// With a ganivelle, a dune regenerates 2 times fatser than it degrades
-	int NB_SLICES_CORD_STATUS_BAD 		<- int  (study_area_def["NB_SLICES_CORD_STATUS_BAD"]); 		// Number of slices for a cord to become bad
-	int NB_SLICES_CORD_STATUS_MEDIUM	<- int  (study_area_def["NB_SLICES_CORD_STATUS_MEDIUM"]); 	// Number of slices for a cord to become medium
-	int NB_SLICES_LOST_PER_ROUND		<- int  (study_area_def["NB_SLICES_LOST_PER_ROUND"]); 		// Number of lost slices at each round 
-	int STEPS_FOR_AU_TO_U 				<- int  (study_area_def["STEPS_FOR_AU_TO_U"]);		    	// 2 years to change from AU to U)
+	float H_MAX_GANIVELLE 				<- float(study_area_def["H_MAX_GANIVELLE"]); 			// The maximum height added by a ganivelle
+	float H_DELTA_GANIVELLE 			<- float(study_area_def["H_DELTA_GANIVELLE"]); 			// The height by which a ganivelle can raise a dune
+	int STEPS_DEGRAD_STATUS_DIKE	 	<- int  (study_area_def["STEPS_DEGRADE_STATUS_DIKE"]);	// Number of years for a dike to change status
+	int STEPS_DEGRAD_STATUS_DUNE 		<- int  (study_area_def["STEPS_DEGRADE_STATUS_DUNE"]); 	// Number of years for a dune to change down status
+	int STEPS_REGAIN_STATUS_GANIVELLE   <- int  (study_area_def["STEPS_UPGRADE_STATUS_DUNE"]); // Number of years for a dune to change up status
+	int NB_SLICES_CORD_STATUS_BAD 		<- int  (study_area_def["NB_SLICES_CORD_BAD"]); 	// Number of slices for a cord to become bad
+	int NB_SLICES_CORD_STATUS_MEDIUM	<- int  (study_area_def["NB_SLICES_CORD_MEDIUM"]); 	// Number of slices for a cord to become medium
+	int NB_SLICES_LOST_PER_ROUND		<- int  (study_area_def["NB_SLICES_LOST_PER_ROUND"]); // Number of lost slices at each round 
+	int STEPS_FOR_AU_TO_U 				<- int  (study_area_def["STEPS_FOR_AU_TO_U"]);		  // 2 years to change from AU to U)
 	
 	// Coastal defenses rupture parameters
 	int PROBA_RUPTURE_DIKE_STATUS_BAD 		<- int(study_area_def["PROBA_RUPTURE_DIKE_BAD"]);
@@ -68,7 +68,7 @@ global{
 	int POP_FOR_U_DENSIFICATION <- int(study_area_def["POP_FOR_U_DENSIFICATION"]) ; 			// new population for densified cells
 	int POP_FOR_U_STANDARD 		<- int(study_area_def["POP_FOR_U_STANDARD"]) ; 					// new population for other cells types
 	float ANNUAL_POP_GROWTH_RATE<- float(eval_gaml(study_area_def["ANNUAL_POP_GROWTH_RATE"]));
-	int ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION<- int(eval_gaml(study_area_def["ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION"])); //counter population decreasing by densification (case of Dieppe-Criel)
+	int ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION<- int(eval_gaml(study_area_def["POP_IMMIGRATION_IF_DENSIF"])); //counter population decreasing by densification (case of Dieppe-Criel)
 	
 	// Rugosity parameters
 	float RUGOSITY_N 			<- float(study_area_def["RUGOSITY_N"]); 	

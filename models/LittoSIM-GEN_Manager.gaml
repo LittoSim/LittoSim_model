@@ -1993,7 +1993,7 @@ species Coastal_Defense {
 				if status = STATUS_BAD 		{ status <- STATUS_MEDIUM;}
 			}
 			if height < height_before_ganivelle + H_MAX_GANIVELLE {
-				height 	<- height + H_DELTA_GANIVELLE;  // the dune raises by H_DELTA_GANIVELLE until it reaches H_MAX_GANIVELLE
+				height 	<- height + H_DELTA_GANIVELLE;  // the dune raises by H_DELTA_GANIVELLE until it reaches +H_MAX_GANIVELLE
 				alt 	<- alt + H_DELTA_GANIVELLE;
 				ask cells {
 					soil_height <- soil_height + H_DELTA_GANIVELLE;
