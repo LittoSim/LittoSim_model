@@ -293,14 +293,14 @@ global {
 				add 0 to: surface_Us_diff;
 				add 0 to: surface_Usdense_diff;
 				
-				if save_data {
+				/*if save_data {
 					save ["dist_id","district_code","district_name","round","budget","received_tax","population","N_area","U_area","Udense_area","AU_area","A_area","Us_area",
 						"Usdense_area","AUs_area","length_dikes_all","length_dikes_good","length_dikes_medium","length_dikes_bad","mean_alt_dikes_all","mean_alt_dikes_good",
 						"mean_alt_dikes_medium","mean_alt_dikes_bad","min_alt_dikes_all","min_alt_dikes_good","min_alt_dikes_medium","min_alt_dikes_bad","length_dunes_all",
 						"length_dunes_good","length_dunes_medium","length_dunes_bad","mean_alt_dunes_all","mean_alt_dunes_good","mean_alt_dunes_medium","mean_alt_dunes_bad",
 						"min_alt_dunes_all","min_alt_dunes_good","min_alt_dunes_medium","min_alt_dunes_bad","actions_cost","given_money","taken_money","transferred_money",
 						"levers_cost"] to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;		
-				}
+				}*/
 			}
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
