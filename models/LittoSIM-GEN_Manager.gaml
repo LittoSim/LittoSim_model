@@ -292,15 +292,6 @@ global {
 				add 0 to: surface_A_diff;
 				add 0 to: surface_Us_diff;
 				add 0 to: surface_Usdense_diff;
-				
-				/*if save_data {
-					save ["dist_id","district_code","district_name","round","budget","received_tax","population","N_area","U_area","Udense_area","AU_area","A_area","Us_area",
-						"Usdense_area","AUs_area","length_dikes_all","length_dikes_good","length_dikes_medium","length_dikes_bad","mean_alt_dikes_all","mean_alt_dikes_good",
-						"mean_alt_dikes_medium","mean_alt_dikes_bad","min_alt_dikes_all","min_alt_dikes_good","min_alt_dikes_medium","min_alt_dikes_bad","length_dunes_all",
-						"length_dunes_good","length_dunes_medium","length_dunes_bad","mean_alt_dunes_all","mean_alt_dunes_good","mean_alt_dunes_medium","mean_alt_dunes_bad",
-						"min_alt_dunes_all","min_alt_dunes_good","min_alt_dunes_medium","min_alt_dunes_bad","actions_cost","given_money","taken_money","transferred_money",
-						"levers_cost"] to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;		
-				}*/
 			}
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
@@ -936,25 +927,25 @@ global {
 			tot_1c 	<- (U_1c + Us_1c + AU_1c + A_1c + N_1c) 			with_precision 1;
 			tot_maxc<- (U_maxc + Us_maxc + AU_maxc + A_maxc + N_maxc) 	with_precision 1;
 			
-			// csv structure file : game round;district;submersion_level;U;Us;Udense;AU;A;N\n
+			// structure of the csv file = game round;district;submersion_level;U;Us;Udense;AU;A;N\n
 			subs_csv <- subs_csv + game_round + ";" + district_name + ";1;" + U_0_5c + ";" + Us_0_5c + ";" + Udense_0_5c + ";" + AU_0_5c + ";" + A_0_5c + ";" + N_0_5c + "\n";
 			subs_csv <- subs_csv + game_round + ";" + district_name + ";2;" + U_1c + ";" + Us_1c + ";" + Udense_1c + ";" + AU_1c + ";" +  A_1c + ";" + N_1c + "\n";
 			subs_csv <- subs_csv + game_round + ";" + district_name + ";3;" + U_maxc + ";" + Us_maxc + ";" + Udense_maxc + ";" + AU_maxc + ";" + A_maxc + ";" + N_maxc + "\n";
 			
 			
-			text <- text + "Results for district : " + district_name +"
-Flooded U : < 50cm " + U_0_5c + " ha ("+ ((U_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + U_1c + " ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + U_maxc  + " ha (" + ((U_max / tot * 100) with_precision 1) +"%) 
-Flooded Us : < 50cm " + Us_0_5c + " ha ("+ ((Us_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + Us_1c  + " ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + Us_maxc + " ha (" + ((Us_max / tot * 100) with_precision 1) +"%) 
-Flooded Udense : < 50cm " + Udense_0_5c +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + Udense_1c + " ha ("+ ((Udense_1 / tot * 100) with_precision 1) + "%) | > 1m " + Udense_maxc  + " ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
-Flooded AU : < 50cm " + AU_0_5c +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + AU_1c  + " ha (" + ((AU_1 / tot * 100) with_precision 1) +"%) | > 1m " + AU_maxc+ " ha (" + ((AU_max / tot * 100) with_precision 1) +"%) 
-Flooded A : < 50cm " + A_0_5c +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + A_1c  + " ha (" + ((A_1 / tot * 100) with_precision 1) +"%) | > 1m " + A_maxc + " ha (" + ((A_max / tot * 100) with_precision 1) +"%) 
-Flooded N : < 50cm " + N_0_5c +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + N_1c + " ha (" + ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + N_maxc + " ha (" + ((N_max / tot * 100) with_precision 1) +"%) 
---------------------------------------------------------------------------------------------------------------------
-";	
+			text <- text + "Results for district : " + district_name + "\n" +
+					"Flooded U : < 50cm " + U_0_5c + " ha ("+ ((U_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + U_1c + " ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + U_maxc  + " ha (" + ((U_max / tot * 100) with_precision 1) +"%)\n" + 
+					"Flooded Us : < 50cm " + Us_0_5c + " ha ("+ ((Us_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + Us_1c  + " ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + Us_maxc + " ha (" + ((Us_max / tot * 100) with_precision 1) +"%)\n" + 
+					"Flooded Udense : < 50cm " + Udense_0_5c +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + Udense_1c + " ha ("+ ((Udense_1 / tot * 100) with_precision 1) + "%) | > 1m " + Udense_maxc  + " ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%)\n" +  
+					"Flooded AU : < 50cm " + AU_0_5c +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + AU_1c  + " ha (" + ((AU_1 / tot * 100) with_precision 1) +"%) | > 1m " + AU_maxc+ " ha (" + ((AU_max / tot * 100) with_precision 1) +"%)\n" +  
+					"Flooded A : < 50cm " + A_0_5c +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + A_1c  + " ha (" + ((A_1 / tot * 100) with_precision 1) +"%) | > 1m " + A_maxc + " ha (" + ((A_max / tot * 100) with_precision 1) +"%)\n" +  
+					"Flooded N : < 50cm " + N_0_5c +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + N_1c + " ha (" + ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + N_maxc + " ha (" + ((N_max / tot * 100) with_precision 1) +"%)\n" +  
+					"--------------------------------------------------------------------------------------------------------------------\n";	
 		}
+		
 		flood_results <-  text;
 		if save_data {
-			save subs_csv to: output_data_rep + "/flood_results/sub-" + game_round + ".csv" type: "text" rewrite: true;	
+			save subs_csv to: output_data_rep + "/flood_results/sub-R" + game_round + ".csv" type: "text" rewrite: true;	
 		}
 			
 		write get_message('MSG_FLOODED_AREA_DISTRICT') + " :";
