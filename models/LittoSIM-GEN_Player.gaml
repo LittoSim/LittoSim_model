@@ -2443,7 +2443,7 @@ experiment District4 type: gui parent: LittoSIM_GEN_Player {
 
 experiment LittoSIM_GEN_Player type: gui{
 	
-	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'STUDY_AREA_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_CODE_SHORT_NAME')) split_with ';' at 1)).values;
+	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'STUDY_AREA_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_SNAMES')) split_with ';' at 1)).values;
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 

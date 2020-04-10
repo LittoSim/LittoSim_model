@@ -15,8 +15,7 @@ import "params_models/params_manager.gaml"
 
 global {
 	
-	// sea heights file sent to Lisflood
-	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
+	// files sent to LISFLOOD
 	string lisflood_start_file	<- study_area_def["LISFLOOD_START"];
 	string lisflood_bci_file	<- study_area_def["LISFLOOD_BCI"];
 	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING   ? study_area_def ["LISFLOOD_BDY_HIGH"]   // scenario1 : HIGH 
@@ -406,50 +405,42 @@ global {
 			}
 			/**************** coastal defenses */
 			list<Coastal_Defense> my_dikes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DIKE);
-			if length (my_dikes) > 0 {
-				add my_dikes sum_of (each.shape.perimeter) to: length_dikes_all;
-				add my_dikes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) to: length_dikes_good;
-				add my_dikes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) to: length_dikes_medium;
-				add my_dikes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) to: length_dikes_bad;
-				add my_dikes mean_of(each.alt) to: mean_alt_dikes_all;
-				add my_dikes where (each.status=STATUS_GOOD) mean_of(each.alt) to: mean_alt_dikes_good;
-				add my_dikes where (each.status=STATUS_MEDIUM) mean_of(each.alt) to: mean_alt_dikes_medium;
-				add my_dikes where (each.status=STATUS_BAD) mean_of(each.alt) to: mean_alt_dikes_bad;
-				add my_dikes min_of(each.alt) to: min_alt_dikes_all;
-				add my_dikes where (each.status=STATUS_GOOD) min_of(each.alt) to: min_alt_dikes_good;
-				add my_dikes where (each.status=STATUS_MEDIUM) min_of(each.alt) to: min_alt_dikes_medium;
-				add my_dikes where (each.status=STATUS_BAD) min_of(each.alt) to: min_alt_dikes_bad;
-			}
+			add length(my_dikes) > 0 ? my_dikes sum_of (each.shape.perimeter) : 0 to: length_dikes_all;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) : 0 to: length_dikes_good;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) : 0 to: length_dikes_medium;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) : 0 to: length_dikes_bad;
+			add length(my_dikes) > 0 ? my_dikes mean_of(each.alt) : 0 to: mean_alt_dikes_all;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) mean_of(each.alt) : 0 to: mean_alt_dikes_good;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) mean_of(each.alt) : 0 to: mean_alt_dikes_medium;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) mean_of(each.alt) : 0 to: mean_alt_dikes_bad;
+			add length(my_dikes) > 0 ? my_dikes min_of(each.alt) : 0 to: min_alt_dikes_all;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) min_of(each.alt) : 0 to: min_alt_dikes_good;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) min_of(each.alt) : 0 to: min_alt_dikes_medium;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) min_of(each.alt) : 0 to: min_alt_dikes_bad;
 			
 			list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
-			if length (my_dunes) > 0 {
-				add my_dunes sum_of (each.shape.perimeter) to: length_dunes_all;
-				add my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) to: length_dunes_good;
-				add my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) to: length_dunes_medium;
-				add my_dunes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) to: length_dunes_bad;
-				add my_dunes mean_of(each.alt) to: mean_alt_dunes_all;
-				add my_dunes where (each.status=STATUS_GOOD) mean_of(each.alt) to: mean_alt_dunes_good;
-				add my_dunes where (each.status=STATUS_MEDIUM) mean_of(each.alt) to: mean_alt_dunes_medium;
-				add my_dunes where (each.status=STATUS_BAD) mean_of(each.alt) to: mean_alt_dunes_bad;
-				add my_dunes min_of(each.alt) to: min_alt_dunes_all;
-				add my_dunes where (each.status=STATUS_GOOD) min_of(each.alt) to: min_alt_dunes_good;
-				add my_dunes where (each.status=STATUS_MEDIUM) min_of(each.alt) to: min_alt_dunes_medium;
-				add my_dunes where (each.status=STATUS_BAD) min_of(each.alt) to: min_alt_dunes_bad;
-			}
+			add length(my_dunes) > 0 ? my_dunes sum_of (each.shape.perimeter) : 0 to: length_dunes_all;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) : 0 to: length_dunes_good;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) : 0 to: length_dunes_medium;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) : 0 to: length_dunes_bad;
+			add length(my_dunes) > 0 ? my_dunes mean_of(each.alt) : 0 to: mean_alt_dunes_all;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) mean_of(each.alt) : 0 to: mean_alt_dunes_good;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) mean_of(each.alt) : 0 to: mean_alt_dunes_medium;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) mean_of(each.alt) : 0 to: mean_alt_dunes_bad;
+			add length(my_dunes) > 0 ? my_dunes min_of(each.alt) : 0 to: min_alt_dunes_all;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) min_of(each.alt) : 0 to: min_alt_dunes_good;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) min_of(each.alt) : 0 to: min_alt_dunes_medium;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) min_of(each.alt) : 0 to: min_alt_dunes_bad;
 			
-
-			if length (my_dikes) > 0 {
-				add (length_dikes_good[game_round] * mean_alt_dikes_good[game_round]) / (
+			add length(my_dikes) > 0 ? (length_dikes_good[game_round] * mean_alt_dikes_good[game_round]) / (
 				(length_dikes_good[game_round] * mean_alt_dikes_good[game_round]) +
 				(length_dikes_medium[game_round] * mean_alt_dikes_medium[game_round]) +
-				(length_dikes_bad[game_round] * mean_alt_dikes_bad[game_round]) 	) to: stat_dikes_good;
-			}
-			if length (my_dunes) > 0 {
-				add (length_dunes_good[game_round] * mean_alt_dunes_good[game_round]) / (
+				(length_dikes_bad[game_round] * mean_alt_dikes_bad[game_round]) ) : 0 to: stat_dikes_good;
+
+			add length(my_dunes) > 0 ? (length_dunes_good[game_round] * mean_alt_dunes_good[game_round]) / (
 				(length_dunes_good[game_round] * mean_alt_dunes_good[game_round]) +
 				(length_dunes_medium[game_round] * mean_alt_dunes_medium[game_round]) +
-				(length_dunes_bad[game_round] * mean_alt_dunes_bad[game_round]) 	) to: stat_dunes_good;
-			}
+				(length_dunes_bad[game_round] * mean_alt_dunes_bad[game_round]) ) : 0 to: stat_dunes_good;
 		}
 	}
 	
@@ -837,6 +828,7 @@ global {
 	
 	action calculate_districts_results {
 		string text <- "";
+		string subs_csv <- "round;dist;sub_level;uu;us;udense;au;aa;nn\n";
 		ask districts_in_game {
 			int tot <- length(cells);
 			int myid <-  self.dist_id; 
@@ -916,39 +908,54 @@ global {
 			prev_tot_maxc <- tot_maxc;
 			
 			float to_hectar <- GRID_CELL_SIZE * GRID_CELL_SIZE / 10000; // transform m2 to hectar
-			U_0_5c <- U_0_5 * to_hectar; 
-			U_1c <- U_1 * to_hectar;
-			U_maxc <- U_max * to_hectar;
-			Us_0_5c <- Us_0_5 * to_hectar;
-			Us_1c <- Us_1 * to_hectar;
-			Us_maxc <- Us_max * to_hectar;
-			Udense_0_5c <- Udense_0_5 * to_hectar;
-			Udense_1c <- Udense_1 * to_hectar;
-			Udense_maxc <- Udense_max * to_hectar;
-			AU_0_5c <- AU_0_5 * to_hectar;
-			AU_1c <- AU_1 * to_hectar;
-			AU_maxc <- AU_max * to_hectar;
-			A_0_5c <- A_0_5 * to_hectar;
-			A_1c <- A_1 * to_hectar;
-			A_maxc <- A_max * to_hectar;
-			N_0_5c <- N_0_5 * to_hectar;
-			N_1c <- N_1 * to_hectar;
-			N_maxc <- N_max * to_hectar;
-			tot_0_5c <- U_0_5c + Us_0_5c + AU_0_5c + A_0_5c + N_0_5c;
-			tot_1c <- U_1c + Us_1c + AU_1c + A_1c + N_1c;
-			tot_maxc <- U_maxc + Us_maxc + AU_maxc + A_maxc + N_maxc;
+			U_0_5c 	<- (U_0_5 * to_hectar) 	with_precision 1; 
+			U_1c 	<- (U_1 * to_hectar) 	with_precision 1;
+			U_maxc 	<- (U_max * to_hectar) 	with_precision 1;
+			
+			Us_0_5c <- (Us_0_5 * to_hectar) with_precision 1;
+			Us_1c 	<- (Us_1 * to_hectar) 	with_precision 1;
+			Us_maxc <- (Us_max * to_hectar) with_precision 1;
+			
+			Udense_0_5c <- (Udense_0_5 * to_hectar) with_precision 1;
+			Udense_1c 	<- (Udense_1 * to_hectar) 	with_precision 1;
+			Udense_maxc <- (Udense_max * to_hectar) with_precision 1;
+			
+			AU_0_5c <- (AU_0_5 * to_hectar) with_precision 1;
+			AU_1c 	<- (AU_1 * to_hectar) 	with_precision 1;
+			AU_maxc <- (AU_max * to_hectar) with_precision 1;
+			
+			A_0_5c 	<- (A_0_5 * to_hectar) 	with_precision 1;
+			A_1c 	<- (A_1 * to_hectar) 	with_precision 1;
+			A_maxc 	<- (A_max * to_hectar) 	with_precision 1;
+			
+			N_0_5c 	<- (N_0_5 * to_hectar) 	with_precision 1;
+			N_1c 	<- (N_1 * to_hectar) 	with_precision 1;
+			N_maxc 	<- (N_max * to_hectar) 	with_precision 1;
+			
+			tot_0_5c<- (U_0_5c + Us_0_5c + AU_0_5c + A_0_5c + N_0_5c) 	with_precision 1;
+			tot_1c 	<- (U_1c + Us_1c + AU_1c + A_1c + N_1c) 			with_precision 1;
+			tot_maxc<- (U_maxc + Us_maxc + AU_maxc + A_maxc + N_maxc) 	with_precision 1;
+			
+			// csv structure file : game round;district;submersion_level;U;Us;Udense;AU;A;N\n
+			subs_csv <- subs_csv + game_round + ";" + district_name + ";1;" + U_0_5c + ";" + Us_0_5c + ";" + Udense_0_5c + ";" + AU_0_5c + ";" + A_0_5c + ";" + N_0_5c + "\n";
+			subs_csv <- subs_csv + game_round + ";" + district_name + ";2;" + U_1c + ";" + Us_1c + ";" + Udense_1c + ";" + AU_1c + ";" +  A_1c + ";" + N_1c + "\n";
+			subs_csv <- subs_csv + game_round + ";" + district_name + ";3;" + U_maxc + ";" + Us_maxc + ";" + Udense_maxc + ";" + AU_maxc + ";" + A_maxc + ";" + N_maxc + "\n";
+			
 			
 			text <- text + "Results for district : " + district_name +"
-Flooded U : < 50cm " + (U_0_5c with_precision 1) +" ha ("+ ((U_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (U_1c with_precision 1) +" ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + (U_maxc with_precision 1) +" ha ("+ ((U_max / tot * 100) with_precision 1) +"%) 
-Flooded Us : < 50cm " + (Us_0_5c with_precision 1) +" ha ("+ ((Us_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (Us_1c with_precision 1) +" ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + (Us_maxc with_precision 1) +" ha ("+ ((Us_max / tot * 100) with_precision 1) +"%) 
-Flooded Udense : < 50cm " + (Udense_0_5c with_precision 1) +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (Udense_1 with_precision 1) +" ha ("+ ((Udense_1 / tot * 100) with_precision 1) +"%) | > 1m " + (Udense_max with_precision 1) +" ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
-Flooded AU : < 50cm " + (AU_0_5c with_precision 1) +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (AU_1c with_precision 1) +" ha ("+ ((AU_1 / tot * 100) with_precision 1) +"%) | > 1m " + (AU_maxc with_precision 1) +" ha ("+ ((AU_max / tot * 100) with_precision 1) +"%) 
-Flooded A : < 50cm " + (A_0_5c with_precision 1) +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (A_1c with_precision 1) +" ha ("+ ((A_1 / tot * 100) with_precision 1) +"%) | > 1m " + (A_maxc with_precision 1) +" ha ("+ ((A_max / tot * 100) with_precision 1) +"%) 
-Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) +"%) | between 50cm and 1m " + (N_1c with_precision 1) +" ha ("+ ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + (N_maxc with_precision 1) +" ha ("+ ((N_max / tot * 100) with_precision 1) +"%) 
+Flooded U : < 50cm " + U_0_5c + " ha ("+ ((U_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + U_1c + " ha ("+ ((U_1 / tot * 100) with_precision 1) +"%) | > 1m " + U_maxc  + " ha (" + ((U_max / tot * 100) with_precision 1) +"%) 
+Flooded Us : < 50cm " + Us_0_5c + " ha ("+ ((Us_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + Us_1c  + " ha ("+ ((Us_1 / tot * 100) with_precision 1) +"%) | > 1m " + Us_maxc + " ha (" + ((Us_max / tot * 100) with_precision 1) +"%) 
+Flooded Udense : < 50cm " + Udense_0_5c +" ha ("+ ((Udense_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + Udense_1c + " ha ("+ ((Udense_1 / tot * 100) with_precision 1) + "%) | > 1m " + Udense_maxc  + " ha ("+ ((Udense_max / tot * 100) with_precision 1) +"%) 
+Flooded AU : < 50cm " + AU_0_5c +" ha ("+ ((AU_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + AU_1c  + " ha (" + ((AU_1 / tot * 100) with_precision 1) +"%) | > 1m " + AU_maxc+ " ha (" + ((AU_max / tot * 100) with_precision 1) +"%) 
+Flooded A : < 50cm " + A_0_5c +" ha ("+ ((A_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + A_1c  + " ha (" + ((A_1 / tot * 100) with_precision 1) +"%) | > 1m " + A_maxc + " ha (" + ((A_max / tot * 100) with_precision 1) +"%) 
+Flooded N : < 50cm " + N_0_5c +" ha ("+ ((N_0_5 / tot * 100) with_precision 1) + "%) | between 50cm and 1m " + N_1c + " ha (" + ((N_1 / tot * 100) with_precision 1) +"%) | > 1m " + N_maxc + " ha (" + ((N_max / tot * 100) with_precision 1) +"%) 
 --------------------------------------------------------------------------------------------------------------------
 ";	
 		}
 		flood_results <-  text;
+		if save_data {
+			save subs_csv to: output_data_rep + "/flood_results/sub-" + game_round + ".csv" type: "text" rewrite: true;	
+		}
 			
 		write get_message('MSG_FLOODED_AREA_DISTRICT') + " :";
 		ask districts_in_game {
@@ -962,9 +969,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 			totN <- (N_0_5c + N_1c + N_maxc) with_precision 1;
 			totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1;
 			
-			float maxwh <- LUs accumulate each.cells max_of (each.max_water_height);
 			if length(data_flooded_area) < length (list_flooding_events) {
-				add maxwh to: district_max_w_h;
 				add flooded_area to: data_flooded_area;
 				add totU to: data_totU;
 				add totUs to: data_totUs;
@@ -972,9 +977,6 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 				add totAU to: data_totAU;
 				add totN to: data_totN;
 				add totA to: data_totA;
-			}
-			ask first(cells where (each.max_water_height = maxwh)) {
-				myself.c_max_w_h_heights <- water_heights;
 			}
 			if river_flood_shape != nil {
 				do calculate_river_flood_results;
@@ -990,7 +992,7 @@ Flooded N : < 50cm " + (N_0_5c with_precision 1) +" ha ("+ ((N_0_5 / tot * 100) 
 		}
 		// saving ruptures file
 		if sub_event = 1 {
-			save rupt to: "../"+results_lisflood_rep + "/ruptures.txt" type: "text";
+			save rupt to: "../" +results_lisflood_rep + "/ruptures.txt" type: "text";
 		}
 	}
 	
@@ -2390,8 +2392,6 @@ species District {
 	float totAU 	   <- 0.0;	list<float> data_totAU 		 <- [];
 	float totN 		   <- 0.0;	list<float> data_totN 		 <- [];
 	float totA 		   <- 0.0;	list<float> data_totA 		 <- [];
-	list<float> district_max_w_h <- [];
-	list<float> c_max_w_h_heights <- [];
 	
 	// river flood | 0 : total | 1-7: lu_type
 	list<float> loth_0_5c <- [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0];

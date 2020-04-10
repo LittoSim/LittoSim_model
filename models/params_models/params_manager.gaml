@@ -19,10 +19,12 @@ global{
 	string INITIAL_SUBMERSION			<- '0';
 	
 	// LISFLOOD_SIMULATION_PARAMETERS
-	int LISFLOOD_SIM_TIME 		<- int(study_area_def["LISFLOOD_SIM_TIME"]);
-	int LISFLOOD_INIT_TSTEP  	<- int(study_area_def["LISFLOOD_INIT_TSTEP"]);
-	int LISFLOOD_MASSINT		<- int(study_area_def["LISFLOOD_MASSINT"]);
-	int LISFLOOD_SAVEINT		<- int(study_area_def["LISFLOOD_SAVEINT"]);
+	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
+	map<string,string> lisflood_param_def <- read_configuration_file("../../" + my_flooding_path + study_area_def["LISFLOOD_PARAMS"],";");
+	int LISFLOOD_SIM_TIME 		<- int(lisflood_param_def["LISFLOOD_SIM_TIME"]);
+	int LISFLOOD_INIT_TSTEP  	<- int(lisflood_param_def["LISFLOOD_INIT_TSTEP"]);
+	int LISFLOOD_MASSINT		<- int(lisflood_param_def["LISFLOOD_MASSINT"]);
+	int LISFLOOD_SAVEINT		<- int(lisflood_param_def["LISFLOOD_SAVEINT"]);
 	
 	// Network round manager & commands
 	string NEW_ROUND 				<- "NEW_ROUND";
