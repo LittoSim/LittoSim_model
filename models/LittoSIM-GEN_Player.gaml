@@ -755,7 +755,7 @@ global{
 					return;
 				}
 				if lu_code in [LU_TYPE_A,LU_TYPE_N] and selected_button.command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs] {
-					if empty(Land_Use at_distance 100 where (each.is_urban_type)){
+					if empty(Land_Use at_distance URBAN_RING where (each.is_urban_type)){
 						cursor_taken <- true;
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_OUTSIDE_U')::true);
 						cursor_taken <- false;

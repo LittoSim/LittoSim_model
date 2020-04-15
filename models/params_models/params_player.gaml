@@ -8,6 +8,7 @@ model paramsmain
 import "params_all.gaml"
 
 global{
+	// Interface
 	string my_language;
 	string DISTRICT_AT_TOP 	 <- study_area_def["DISTRICT_AT_TOP"];
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
@@ -37,9 +38,12 @@ global{
 	string BUDGET_MESSAGE 		<- "BUDGET_MESSAGE";
 	string POPULATION_MESSAGE 	<- "POPULATION_MESSAGE";
 	
+	// Interface components parameters
 	int BASKET_MAX_SIZE 		<- 15;
 	int MAX_HISTORY_VIEW_SIZE 	<- 10;
 	point INFORMATION_BOX_SIZE 	<- {200,80};
+	
+	int URBAN_RING 	 <- int(study_area_def["URBAN_RING"]);
 
 	// Multi-langs
 	string MSG_WARNING;

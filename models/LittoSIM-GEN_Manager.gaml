@@ -462,7 +462,7 @@ global {
 	reflex show_lisflood when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_LISFLOOD {
 		if !submersion_ok or length(one_of(Cell where (each.cell_type = 1)).water_heights) < 14 {
 			write "Error in submersion process!";
-			remove key: ""+game_round from: list_flooding_events;
+			remove key: "" + game_round from: list_flooding_events;
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
 			return;
