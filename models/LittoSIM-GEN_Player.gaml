@@ -610,7 +610,7 @@ global{
 		if mybut.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR] {
 			if !empty(Protected_Area where (each intersects current_action.shape)){
 				current_action.is_in_protected_area <- true;
-				if application_name = "camargue" and current_action.command = ACTION_ENHANCE_NATURAL_ACCR {
+				if DUNES_TYPE2 and current_action.command = ACTION_ENHANCE_NATURAL_ACCR {
 					action_delay <- action_delay * 2;
 				}
 			}
@@ -654,7 +654,7 @@ global{
 			draw_around <- 15;
 			if coast_def_type = COAST_DEF_TYPE_DUNE {
 				draw_around <- 45;
-				if application_name = "camargue" {// if it's a dune of 2nd range (camargue only)
+				if DUNES_TYPE2 {// if it's a dune of 2nd range (camargue only)
 					geometry my_line <- line (centroid(element_shape), (first(Sea).shape.points) closest_to (self));
 					ask Coastal_Defense {
 						if self overlaps my_line {
@@ -685,7 +685,7 @@ global{
 		current_action<- first(action_list);
 		if !empty(Protected_Area overlapping (current_action.shape)){
 			current_action.is_in_protected_area <- true;
-			if application_name = "camargue" and current_action.command = ACTION_CREATE_DUNE { // if in protected area for camargue, we double the delay
+			if DUNES_TYPE2 and current_action.command = ACTION_CREATE_DUNE { // if in protected area for camargue, we double the delay
 				action_delay <- action_delay * 2;
 			}
 		}
@@ -802,7 +802,7 @@ global{
 					label <- world.get_message("MSG_EXPROPRIATION");
 				} else if previous_lu_name = "A" {
 					cost <- world.cost_of_action ('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') * element_shape.area / STANDARD_LU_AREA;
-					if application_name = "camargue" and mylu.flooded_times < 2 {
+					if DUNES_TYPE2 and mylu.flooded_times < 2 {
 						if empty(Protected_Area where (each intersects (circle(10, shape.centroid)))) //{ //TODO Elise : ??
 							and empty(Flood_Risk_Area where (each intersects (circle(10, shape.centroid))))
 								and empty(Coastal_Border_Area where (each intersects (circle(10, shape.centroid)))){
@@ -2461,7 +2461,7 @@ experiment LittoSIM_GEN_Player type: gui{
 		display "Map" background: #black focus: active_district{
 			graphics "World" {
 				draw shape color: rgb(0,188,196);
-				if application_name = "camargue" {
+				if DUNES_TYPE2 {
 					draw rectangle(2*world.shape.width, world.shape.height) at: {0,0} color: #black;
 				}
 			}
@@ -2576,7 +2576,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					point target 	<- world.button_box_location(my_button.location, int(2 * (INFORMATION_BOX_SIZE.x #px)));
 					point target2 	<- {target.x - 2 * (INFORMATION_BOX_SIZE.x #px), target.y + increment};
 					float xxx <- active_display = COAST_DEF_DISPLAY ? 1.0 : 1.25;
-					int xmax <- application_name = "camargue" ? 20 : 0;
+					int xmax <- DUNES_TYPE2 ? 20 : 0;
 					point target3 <- {target.x , target.y + xxx * (INFORMATION_BOX_SIZE.y #px + xmax#px) + increment};
 					
 					draw rectangle(target2,target3) border: #gold color: #gray ;
@@ -2590,7 +2590,7 @@ experiment LittoSIM_GEN_Player type: gui{
 						int xpx <- 55;
 						switch my_button.command {	
 							match ACTION_MODIFY_LAND_COVER_N {
-								if application_name = "camargue" {
+								if DUNES_TYPE2 {
 									draw txtt + " A : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') * 2 at:   target2 + {10#px, xpx#px} font: regular color: #white;
 									xpx <- xpx + 20; 
 									draw txtt + " A vulnérable : "  + world.cost_of_action('ACTON_MODIFY_LAND_COVER_FROM_A_TO_N') at:   target2 + {10#px, xpx#px} font: regular color: #white; 

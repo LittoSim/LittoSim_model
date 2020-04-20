@@ -1913,7 +1913,7 @@ species Destroy_Dike_Lever parent: Cost_Lever{
 }
 //------------------------------ end of Destroy_Dike_Lever -------------------------------//
 
-species Give_Pebbles_Lever /* parent: Manual_Lever */ parent: Cost_Lever{
+species Give_Pebbles_Lever parent: Cost_Lever{
 	string progression_bar <- "Levier manuel (Activer/Désactiver)";
 	init{
 		lever_name 	<- world.get_lever_name('LEVER_GIVE_PEBBLES');

@@ -137,6 +137,7 @@ global{
 	string BUILT_DIKE_STATUS<- "GOOD";
 	float MIN_HEIGHT_DIKE 	<- float (eval_gaml(study_area_def["MIN_HEIGHT_DIKE"]));
 	float DUNE_TYPE_DISTANCE_COAST  <- float(study_area_def["DUNE_TYPE_DISTANCE_COAST"]);
+	bool DUNES_TYPE2 <- bool(study_area_def["DUNES_TYPE2"]);
 	float BUILT_DUNE_TYPE1_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE1_HEIGHT"]);
 	float BUILT_DUNE_TYPE2_HEIGHT <- float(study_area_def["BUILT_DUNE_TYPE2_HEIGHT"]);
 	int MAINTAIN_STATUS_DUNE_STEPS	<- int(study_area_def["MAINTAIN_STATUS_DUNE_STEPS"]);

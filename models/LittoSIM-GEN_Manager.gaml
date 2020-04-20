@@ -2598,7 +2598,7 @@ species Legend_Planning{
 	list<string> texts <- [];
 	point start_location;
 	point rect_size <- {300, 400};
-	rgb text_color  <- application_name = "camargue" ? #white : #black;
+	rgb text_color  <- DUNES_TYPE2 ? #white : #black;
 	
 	init{
 		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
@@ -2654,7 +2654,7 @@ species Legend_Flood_Map parent: Legend_Planning {
 
 species Legend_Flood_Plan parent: Legend_Flood_Map {
 	init{
-		text_color <- application_name = "camargue" ? #white : #black;
+		text_color <- DUNES_TYPE2 ? #white : #black;
 		start_location <- {LEGEND_POSITION_X + 350, LEGEND_POSITION_Y};
 	}
 	
@@ -2815,7 +2815,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		display "Planning" background: #black{
 			graphics "World" {
 				draw shape color: rgb(230,251,255);
-				if application_name = "camargue" {
+				if DUNES_TYPE2 {
 					draw rectangle(2*world.shape.width, world.shape.height) at: {0,0} color: #black;
 				}
 			}
