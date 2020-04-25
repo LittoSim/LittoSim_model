@@ -136,7 +136,7 @@ global {
 			last(districts_in_game).dist_id <- idx;
 			idx <- idx + 1;
 		}
-				
+		
 		create Coastal_Defense from: coastal_defenses_shape with: [
 			coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
 			alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))] {
@@ -3131,40 +3131,42 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		}
 		
 		display "Flooded area per district"{
-			chart MSG_ALL_AREAS type: series size: {0.48,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
-				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i] marker_shape: marker_circle;
-				}			
-			}
-			chart MSG_AREA+" U" type: series size: {0.24,0.45} position: {0.5, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
+
+			chart MSG_AREA+" U" type: series size: {0.24,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
-			chart MSG_AREA+" U "+ MSG_DENSE type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.75, 0} 
+			chart MSG_AREA+" U "+ MSG_DENSE type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.25, 0} 
 					x_label: MSG_SUBMERSION x_range:[0,5]{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
-			chart MSG_AREA+" Us" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
+			chart MSG_AREA+" Us" type: series size: {0.24,0.45} position: {0.5, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
-			chart MSG_AREA+" AU" type: series size: {0.24,0.45} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
+			chart MSG_AREA+" AU" type: series size: {0.24,0.45} position: {0.75, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
-			chart MSG_AREA+" N" type: series size: {0.24,0.45} position: {0.50, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
+			
+			chart MSG_AREA+" A" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
+				loop i from: 0 to: 3{
+					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i] marker_shape: marker_circle;
+				}			
+			}
+			chart MSG_AREA+" N" type: series size: {0.24,0.45} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
-			chart MSG_AREA+" A" type: series size: {0.24,0.45} position: {0.75, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
+			chart MSG_ALL_AREAS type: series size: {0.48,0.45} position: {0.5, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: 3{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 		}
