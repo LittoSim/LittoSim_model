@@ -654,7 +654,7 @@ global{
 			draw_around <- 15;
 			if coast_def_type = COAST_DEF_TYPE_DUNE {
 				draw_around <- 45;
-				if DUNES_TYPE2 {// if it's a dune of 2nd range (camargue only)
+				if DUNES_TYPE2 {// if it's a dune of 2nd range
 					geometry my_line <- line (centroid(element_shape), (first(Sea).shape.points) closest_to (self));
 					ask Coastal_Defense {
 						if self overlaps my_line {
@@ -685,7 +685,7 @@ global{
 		current_action<- first(action_list);
 		if !empty(Protected_Area overlapping (current_action.shape)){
 			current_action.is_in_protected_area <- true;
-			if DUNES_TYPE2 and current_action.command = ACTION_CREATE_DUNE { // if in protected area for camargue, we double the delay
+			if DUNES_TYPE2 and current_action.command = ACTION_CREATE_DUNE { // if in protected area for dunes 2, we double the delay
 				action_delay <- action_delay * 2;
 			}
 		}
@@ -2461,7 +2461,7 @@ experiment LittoSIM_GEN_Player type: gui{
 		display "Map" background: #black focus: active_district{
 			graphics "World" {
 				draw shape color: rgb(0,188,196);
-				if DUNES_TYPE2 {
+				if application_name = "overflow_coast_h" {
 					draw rectangle(2*world.shape.width, world.shape.height) at: {0,0} color: #black;
 				}
 			}
