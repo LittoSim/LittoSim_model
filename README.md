@@ -13,19 +13,25 @@ LittoSIM-GEN
   │     │     └── littosim.com
   │     ├── cliff_coast
   │     │     ├── floodfiles
+  │     │     │     ├── inputs
+  │     │     │     │     ├── cliff_coast_dem_RN_tX.XXXXXXXXXXXX.asc
+  │     │     │     │     ├── cliff_coast_rug_RN_tX.XXXXXXXXXXXX.asc
+  │     │     │     │     └── cliff_coast_par_RN_tX.XXXXXXXXXXXX.par
   │     │     │     ├── results
-                          ├── res.dem
-                          ├── res.max
-                          ├── res.mass
-                          ├── res-00**.wd
-                          ├── ruptures.txt
-                          └── submersion_type.txt
-                    ├── cliff_coast.bci
-                    ├── cliff_coast.bdy
-                    ├── cliff_coast.param
-                    ├── cliff_coast.start
-                    ├── cliff_coast+24cm.bdy
-                    └── cliff_coast+80cm.bdy
+  │     │     │     │     ├── res.dem
+  │     │     │     │     ├── res.max
+  │     │     │     │     ├── res.mass
+  │     │     │     │     ├── res-00**.wd
+  │     │     │     │     ├── res-00**.wdfp
+  │     │     │     │     ├── ruptures.txt
+  │     │     │     │     └── submersion_type.txt
+  │     │     │     ├── results_RN_tX.XXXXXXXXXXXX
+  │     │     │     ├── cliff_coast.bci
+  │     │     │     ├── cliff_coast.bdy
+  │     │     │     ├── cliff_coast.param
+  │     │     │     ├── cliff_coast.start
+  │     │     │     ├── cliff_coast+24cm.bdy
+  │     │     │     └── cliff_coast+80cm.bdy
   │     │     ├── shapefiles
   │     │     │     ├── *.shp
   │     │     │     └── *.asc
