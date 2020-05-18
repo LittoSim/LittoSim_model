@@ -13,7 +13,19 @@ LittoSIM-GEN
   │     │     └── littosim.com
   │     ├── cliff_coast
   │     │     ├── floodfiles
-  │     │     │     ├──
+  │     │     │     ├── results
+                          ├── res.dem
+                          ├── res.max
+                          ├── res.mass
+                          ├── res-00**.wd
+                          ├── ruptures.txt
+                          └── submersion_type.txt
+                    ├── cliff_coast.bci
+                    ├── cliff_coast.bdy
+                    ├── cliff_coast.param
+                    ├── cliff_coast.start
+                    ├── cliff_coast+24cm.bdy
+                    └── cliff_coast+80cm.bdy
   │     │     ├── shapefiles
   │     │     │     ├── *.shp
   │     │     │     └── *.asc
