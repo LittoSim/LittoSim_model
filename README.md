@@ -1,4 +1,6 @@
-# File structure
+# LittoSIM-GEN
+
+## File structure
 
 ```
 LittoSIM-GEN
@@ -32,23 +34,23 @@ LittoSIM-GEN
   │     │     │     ├── cliff_coast.start
   │     │     │     ├── cliff_coast+24cm.bdy
   │     │     │     └── cliff_coast+80cm.bdy
-              ├── leader_data-X.xxxxxxxxxxxxx
-                    ├── activated_levers_roundN.csv
-                    ├── all_levers_roundN.csv
-                    ├── leader_activities_roundN.txt
-                    └── player_actions_roundN.csv
-              ├── manager_data-X.xxxxxxxxxxxxx
-                    ├── csvs
-                          ├── district1.csv
-                          ├── district2.csv
-                          ├── district3.csv
-                          └── district4.csv
-                    ├── flood_results
-                          ├── flooding-X.xxxxxxxxxxxxx-RN.txt
-                          └── sub-RN.csv
-                    └── shapes
-                          ├── Coastal_Defense_N.shp
-                          └── Land_Use_N.shp
+  │     │     ├── leader_data-X.xxxxxxxxxxxxx
+  │     │     │     ├── activated_levers_roundN.csv
+  │     │     │     ├── all_levers_roundN.csv
+  │     │     │     ├── leader_activities_roundN.txt
+  │     │     │     └── player_actions_roundN.csv
+  │     │     ├── manager_data-X.xxxxxxxxxxxxx
+  │     │     │     ├── csvs
+  │     │     │     │     ├── district1.csv
+  │     │     │     │     ├── district2.csv
+  │     │     │     │     ├── district3.csv
+  │     │     │     │     └── district4.csv
+  │     │     │     ├── flood_results
+  │     │     │     │     ├── flooding-X.xxxxxxxxxxxxx-RN.txt
+  │     │     │     │     └── sub-RN.csv
+  │     │     │     └── shapes
+  │     │     │           ├── Coastal_Defense_N.shp
+  │     │     │           └── Land_Use_N.shp
   │     │     ├── shapefiles
   │     │     │     ├── *.shp
   │     │     │     └── *.asc
