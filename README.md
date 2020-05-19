@@ -93,12 +93,18 @@ LittoSIM-GEN
       - cliff_coast.param : additional parameters required to run LISFLOOD.
       - cliff_coast.start : an empty (0) raster grid representing the initial state of the territory.
       
-    - *shapefiles* :
-    - *actions.conf* :
-    - *levers.conf* :
-    - *study_area.conf* :
+    - *shapefiles* : this folder contains the shapefiles [districts, coastal defenses, ...] (.shp) and rasters [dem and rugosity] (.asc) related to the study area.
+    
+    - *study_area.conf* : this file contains paths towards shaepfiles and all specific parameters to the case study.
+    - *actions.conf* : this file lists all actions related to the case study.
+    - *levers.conf* : this file lists all levers related to the case study.
+
     - *leader_data-X.xxxxxxxxxxxxx* :
+    
     - *manager_data-X.xxxxxxxxxxxxx* :
+      - csvs : contains 4 csv files, each one corresponding to a district. These files store the state of the study area at each round.
+      - flood_results : for each flooding event, this folder will contain two files : a txt file (flooding-X.xxxxxxxxxxxxx-RN.txt) corresponding to textual results of the submersion of round N, and a csv file (sub-RN.csv) storing the same result as a csv table.
+      - shapes : for each round N, this folder will contain two shape files representing the current state of coastal defenses and land use grid (Coastal_Defense_N.shpa and Land_Use_N.shp).
   
   - ***esturay_coast*** : study area folder of the estuary coast case study.
   - ***overflow_coast_h*** : study area folder of the horizontal overflow coast case study.
