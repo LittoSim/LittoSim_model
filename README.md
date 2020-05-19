@@ -70,3 +70,21 @@ LittoSIM-GEN
         ├── LittoSIM-GEN_Manager.gaml
         └── LittoSIM-GEN_Player.gaml
 ```
+- **images** : this folder has two subdirectories that contain images related to actions (icons) and to the interface (ihm).
+
+- **includes** : this folder contains the configuration of the model and the files of different case studies.
+  - ***config*** :
+    - *langs.conf* : supported languages configuration file.
+    - *littosim.cong* : general settings of LittoSIM-GEN (server address, default language, paths towards study area files).
+    
+  - ***cliff_coast*** : study area folder of the cliff coast case study.
+  
+  - ***esturay_coast*** : study area folder of the estuary coast case study.
+  - ***overflow_coast_h*** : study area folder of the horizontal overflow coast case study.
+  - ***overflow_coast_v*** : study area folder of the vertical overflow coast case study.
+  
+- **models** :
+  - ***params_models*** : this folder contain 4 param files englobing general parameters (params_all) and other parameters specific to each module (params_leader, params_manager, params_player).
+  - ***LittoSIM-GEN_Leader*** : model file to execute the Leader.
+  - ***LittoSIM-GEN_Manager*** : model file to execute the Manager.
+  - ***LittoSIM-GEN_Player*** : model file to execute the Player.
