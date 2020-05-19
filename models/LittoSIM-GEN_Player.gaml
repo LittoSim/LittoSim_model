@@ -116,10 +116,10 @@ global{
 		tax_unit  		<- float(tax_unit_table at active_district_name); 
 		
 		create History_Left_Icon {
-			do lock_agent_at ui_location: {0.075,0.5} display_name: GAMA_HISTORY_DISPLAY ui_width: 0.15 ui_height: 1.0;
+			do lock_agent_at ui_location: {0.075,0.5} display_name: HISTORY_DISPLAY ui_width: 0.15 ui_height: 1.0;
 		}
 		create Message_Left_Icon {
-			do lock_agent_at ui_location: {0.075,0.5} display_name: GAMA_MESSAGES_DISPLAY ui_width: 0.15 ui_height: 1.0;
+			do lock_agent_at ui_location: {0.075,0.5} display_name: MESSAGES_DISPLAY ui_width: 0.15 ui_height: 1.0;
 		}
 		
 		create Basket  			{game_basket  <- self;}
@@ -289,19 +289,19 @@ global{
 			point p 		<- {0.25, increment + 0.03};
 			legend_name 	<- world.get_message('LEGEND_DYKE');
 			display_name 	<- COAST_DEF_DISPLAY;
-			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 0.5 ui_height: 0.06;
+			do lock_agent_at ui_location: p display_name: MAP_DISPLAY ui_width: 0.5 ui_height: 0.06;
 		}
 		
 		create Tab {
 			point p 		<- {0.75,increment + 0.03};
 			legend_name 	<- world.get_message('LEGEND_PLU');
 			display_name 	<- LU_DISPLAY;
-			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 0.5 ui_height: 0.06;
+			do lock_agent_at ui_location: p display_name: MAP_DISPLAY ui_width: 0.5 ui_height: 0.06;
 		}	
 		
 		create Tab_Background {
 			point p <- {0.0, 0};
-			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 1.0 ui_height: 1.0;
+			do lock_agent_at ui_location: p display_name: MAP_DISPLAY ui_width: 1.0 ui_height: 1.0;
 		}
 	}
 	
@@ -370,7 +370,7 @@ global{
 		}
 
 		ask Button + Button_Map	{
-			do lock_agent_at ui_location: p display_name: GAMA_MAP_DISPLAY ui_width: 0.1 ui_height: 0.1;
+			do lock_agent_at ui_location: p display_name: MAP_DISPLAY ui_width: 0.1 ui_height: 0.1;
 			do init_button;
 		}
 	}
@@ -949,21 +949,21 @@ species List_of_Elements parent: Displayed_List_Element {
 	}
 	
 	aspect dossier {
-		if(is_displayed and my_parent.display_name = GAMA_HISTORY_DISPLAY){
+		if(is_displayed and my_parent.display_name = HISTORY_DISPLAY){
 			do draw_item;
 			do draw_element;
 		}
 	}
 	
 	aspect basket {
-		if(is_displayed and my_parent.display_name = GAMA_BASKET_DISPLAY){
+		if(is_displayed and my_parent.display_name = BASKET_DISPLAY){
 			do draw_item;
 			do draw_element;
 		}
 	}
 	
 	aspect message {
-		if(is_displayed and my_parent.display_name = GAMA_MESSAGES_DISPLAY){
+		if(is_displayed and my_parent.display_name = MESSAGES_DISPLAY){
 			do draw_item;
 			do draw_element;
 		}
@@ -1146,7 +1146,7 @@ species Displayed_List skills: [UI_location] {
 //------------------------------ End of Displayed_List -------------------------------//
 
 species Basket parent: Displayed_List {
-	string display_name <- GAMA_BASKET_DISPLAY;
+	string display_name <- BASKET_DISPLAY;
 	int budget 		   -> {world.budget};
 	float final_budget -> {world.budget - sum(elements collect((Basket_Element(each).current_action).actual_cost))};
 	string init_budget_label;
@@ -1280,7 +1280,7 @@ species History parent: Displayed_List { //schedules:[]{
 	init{
 		max_size 	<- 12;
 		show_header <- false;
-		display_name<- GAMA_HISTORY_DISPLAY;
+		display_name<- HISTORY_DISPLAY;
 		do lock_agent_at ui_location: {0.15,0.0} display_name: display_name ui_width: 0.85 ui_height: 1.0 ;
 		do create_navigation_items;
 	}
@@ -1322,7 +1322,7 @@ species Message_Console parent: Displayed_List { //schedules:[]{
 		font_size 	<- 11;
 		max_size 	<- 12;
 		show_header <- false;
-		display_name<- GAMA_MESSAGES_DISPLAY;
+		display_name<- MESSAGES_DISPLAY;
 		do lock_agent_at ui_location: {0.15,0.0} display_name: display_name ui_width: 0.85 ui_height: 1.0;
 		do create_navigation_items;
 	}

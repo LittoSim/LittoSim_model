@@ -10,26 +10,27 @@ import "params_all.gaml"
 global{
 	// Interface
 	string my_language;
+	// defines the top district of visualizing the commands in the rights place (top or bottom)
 	string DISTRICT_AT_TOP 	 <- study_area_def["DISTRICT_AT_TOP"];
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
 	int DISPLAY_FONT_SIZE 	 <- 16;
 	
-	// Player actions
+	// Player specific actions
 	int ACTION_DISPLAY_PROTECTED_AREA 	<- int(data_action at 'ACTION_DISPLAY_PROTECTED_AREA' at 'action_code');
 	int ACTION_DISPLAY_FLOODED_AREA 	<- int(data_action at 'ACTION_DISPLAY_FLOODED_AREA'   at 'action_code');
 	int ACTION_DISPLAY_FLOODING 		<- int(data_action at 'ACTION_DISPLAY_FLOODING' 	  at 'action_code');
 	int ACTION_INSPECT		  			<- int(data_action at 'ACTION_INSPECT' 		  		  at 'action_code');
 	int ACTION_HISTORY		  			<- int(data_action at 'ACTION_HISTORY' 		  		  at 'action_code');
 	
-	// map tab displays
+	// Map tab displays
 	string LU_DISPLAY 		 <- "LU_DISPLAY";
 	string COAST_DEF_DISPLAY <- "COAST_DEF_DISPLAY";
 	string BOTH_DISPLAYS 	 <- "BOTH_DISPLAYS";
-	// gama displays
-	string GAMA_BASKET_DISPLAY 	<- "Basket";
-	string GAMA_MAP_DISPLAY		<- "Map";
-	string GAMA_HISTORY_DISPLAY <- "History";
-	string GAMA_MESSAGES_DISPLAY<- "Messages";
+	// Player displays
+	string BASKET_DISPLAY 	<- "Basket";
+	string MAP_DISPLAY		<- "Map";
+	string HISTORY_DISPLAY <- "History";
+	string MESSAGES_DISPLAY<- "Messages";
 	
 	image_file TRANSPARENT <- image_file("../images/icons/transparent.png");
 
@@ -43,6 +44,7 @@ global{
 	int MAX_HISTORY_VIEW_SIZE 	<- 10;
 	point INFORMATION_BOX_SIZE 	<- {200,80};
 	
+	// width of urban ring to allow urbanization
 	int URBAN_RING 	 <- int(study_area_def["URBAN_RING"]);
 
 	// Multi-langs
@@ -91,6 +93,7 @@ global{
 	string MSG_INHABITANTS;
 	string PLY_MSG_DOSSIER;
 	
+	// reads translation from langs.conf
 	string get_message(string code_msg){
 		return code_msg = nil or code_msg = 'na'? "" : (langs_def at code_msg != nil ? langs_def at code_msg at my_language : '');
 	}

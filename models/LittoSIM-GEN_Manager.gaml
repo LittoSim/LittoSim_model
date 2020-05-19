@@ -600,7 +600,7 @@ global {
 		list<string> dem_data <- [];
 		list<string> rug_data <- [];
 		file dem_grid <- text_file(dem_file);
-		file rug_grid <- text_file(RUGOSITY_DEFAULT);
+		file rug_grid <- text_file(rugosity_file);
 		
 		GRID_XLLCORNER <- float((dem_grid[2] split_with " ")[1]);
 		GRID_YLLCORNER <- float((dem_grid[3] split_with " ")[1]);
