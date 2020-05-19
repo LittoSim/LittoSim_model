@@ -103,7 +103,7 @@ LittoSIM-GEN
     
     - *manager_data-X.xxxxxxxxxxxxx* :
       - csvs : contains 4 csv files, each one corresponding to a district. These files store the state of the study area at each round.
-      - flood_results : for each flooding event, this folder will contain two files : a txt file (flooding-X.xxxxxxxxxxxxx-RN.txt) corresponding to textual results of the submersion of round N, and a csv file (sub-RN.csv) storing the same result as a csv table.
+      - flood_results : for each flooding event, this folder will contain two files : a txt file (flooding-X.xxxxxxxxxxxxx-RN.txt) corresponding to textual results of the submersion of round N, and a csv file (`sub-RN.csv`) storing the same result as a csv table.
       - shapes : for each round N, this folder will contain two shape files representing the current state of coastal defenses and land use grid (Coastal_Defense_N.shpa and Land_Use_N.shp).
   
   - ***esturay_coast*** : study area folder of the estuary coast case study.
