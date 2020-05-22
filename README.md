@@ -93,7 +93,7 @@ LittoSIM-GEN
       - `cliff_coast.param` : additional parameters required to run LISFLOOD.
       - `cliff_coast.start` : an empty (0) raster grid representing the initial state of the territory.
       
-    - *shapefiles* : this folder contains the shapefiles [districts, coastal defenses, ...] (.shp) and rasters [dem and rugosity] (.asc) related to the study area.
+    - *shapefiles* : this folder contains the shapefiles {districts, coastal defenses, ...} (.shp) and rasters {dem and rugosity} (.asc) related to the study area.
     
     - *study_area.conf* : this file contains paths towards shaepfiles and all specific parameters to the case study.
     - *actions.conf* : this file lists all actions related to the case study.

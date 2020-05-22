@@ -1,7 +1,12 @@
-//
 /**
- *  LittoSIM_GEN_Leader
- *  Authors: Ahmed, Benoit, Brice, Cécilia, Elise, Etienne, Fredéric, Marion, Nicolas B, Nicolas M, Xavier  
+ *  LittoSIM_GEN
+ *  Authors: Ahmed, Benoit, Brice, Cécilia, Elise, Etienne, Fredéric, Marion, Nicolas B, Nicolas M, Xavier 
+ * 
+ *  Description : LittoSIM_GEN is a participatory simulation platform implementing a serious playing-game for local authorities.
+ * 				  The project aims at modeling effects of coastal flooding on urban areas and at enabling the transfer of scientific
+ * 				  findings to risk managers, as well as awareness of those concerned by the risk of coastal flooding.
+ * 
+ * LittoSIM_GEN_Leader : this module reprsents the game leader.
  */
 
 model Leader

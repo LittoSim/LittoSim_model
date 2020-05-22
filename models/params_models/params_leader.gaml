@@ -1,7 +1,13 @@
 /**
-* Name: params_leader
-* Author: 
-*/
+ *  LittoSIM_GEN
+ *  Authors: Ahmed, Benoit, Brice, Cécilia, Elise, Etienne, Fredéric, Marion, Nicolas B, Nicolas M, Xavier 
+ * 
+ *  Description : LittoSIM_GEN is a participatory simulation platform implementing a serious playing-game for local authorities.
+ * 				  The project aims at modeling effects of coastal flooding on urban areas and at enabling the transfer of scientific
+ * 				  findings to risk managers, as well as awareness of those concerned by the risk of coastal flooding.
+ * 
+ * params_leader : this file contains parameters related to leader module.
+ */
 
 model paramsleader
 

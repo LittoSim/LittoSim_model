@@ -1,52 +1,62 @@
-//
 /**
- *  LittoSIM_GEN_Player
- *  Authors: Ahmed, Benoit, Brice, Cécilia, Elise, Etienne, Fredéric, Marion, Nicolas B, Nicolas M, Xavier  
+ *  LittoSIM_GEN
+ *  Authors: Ahmed, Benoit, Brice, Cécilia, Elise, Etienne, Fredéric, Marion, Nicolas B, Nicolas M, Xavier 
+ * 
+ *  Description : LittoSIM_GEN is a participatory simulation platform implementing a serious playing-game for local authorities.
+ * 				  The project aims at modeling effects of coastal flooding on urban areas and at enabling the transfer of scientific
+ * 				  findings to risk managers, as well as awareness of those concerned by the risk of coastal flooding.
+ * 
+ * LittoSIM_GEN_Player : this module reprsents the game player.
  */
+ 
 model Player
 
 import "params_models/params_player.gaml"
 
 global{
+	// the active district
 	string active_district_name <- "";
 	string active_district_code <- dist_code_sname_correspondance_table index_of active_district_name;
 	District active_district	<- nil;
 	
 	int game_round 		 		 <- 0;
 	
-	geometry shape 		 <- envelope(convex_hull_shape);
-	geometry local_shape <- nil;
+	geometry shape <- envelope(convex_hull_shape); // shape of the world
+	geometry local_shape <- nil; // shape of the current district 
 	
-	// GUI
-	list<float> basket_location <- [];
-	bool is_active_gui 			<- true;
+	// GUI components
+	bool is_active_gui 			<- true; // to boolean to disable user events when the game is paused
 	string active_display 		<- LU_DISPLAY;
 	point previous_clicked_point<- nil;
-	float button_size 			<- 500#m;
-	bool cursor_taken <- false;
+	float button_size 	<- 500#m;
+	
+	bool cursor_taken <- false; // to make the interface modal : prevent mouse click when a confirmation window (user_input) is open
+	bool validate_clicked <- false; // prevent double click on validate button
+	bool validate_allow_click <- true;
 		
 	// tax attributes
-	int budget 			<- 0;
-	int received_tax	<- 0;
-	float tax_unit  	<- 0.0;
+	int budget <- 0;
+	int received_tax <- 0;
+	float tax_unit  <- 0.0;
 	
-	int previous_population			<- 0;
-	int current_population 			<- 0;
+	int previous_population	<- 0;
+	int current_population 	<- 0;
+	geometry population_area <- nil; // to color the geometry of urban areas in CODEF tab
+	
 	list<Player_Action> my_basket <-[];
 	list<Player_Action> my_history	<- [];
+	Basket game_basket 			<-nil;
+	Message_Console game_console<-nil;
+	History game_history 		<- nil; 
 	
+	// managing clicks and mouse actions
 	Button explored_button <- nil;
-	geometry population_area <- nil;
 	Coastal_Defense explored_coast_def <- nil;
 	Land_Use explored_lu <- nil;
 	Land_Use hovered_lu <- nil;
 	Flood_Mark explored_flood_mark <- nil;
 	Land_Use_Action explored_land_use_action<- nil;
 	Coastal_Defense_Action explored_coast_def_action<- nil;
-	
-	Basket game_basket 			<-nil;
-	Message_Console game_console<-nil;
-	History game_history 		<- nil; 
 	Player_Action highlighted_action<- nil;
 	Player_Action current_action 	<- nil;
 	
@@ -54,12 +64,12 @@ global{
 	font f1 <- font('Helvetica Neue', DISPLAY_FONT_SIZE, #bold);
 	font regular <- font("Helvetica", 14, # bold);
 	
-	bool validate_clicked <- false;
-	bool validate_allow_click <- true;
+	// to manage pebbles lever in the cliff_coast case study
 	bool dieppe_pebbles_allowed <- false;
 	float dieppe_pebbles_discount <- 1.0;
 	
 	init{
+		// reading repetitive messages to display in the interface
 		MSG_WARNING 	<- get_message('MSG_WARNING');
 		MSG_ROUND		<- get_message('MSG_ROUND');
 		PLY_MSG_INFO_AB <- get_message('PLY_MSG_INFO_AB');
@@ -106,15 +116,16 @@ global{
 		MSG_INHABITANTS <- get_message('MSG_INHABITANTS');
 		PLY_MSG_DOSSIER <- get_message('PLY_MSG_DOSSIER');
 		
+		// creating districts and focusing on the active district
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
 			district_id <- 1 + world.dist_code_sname_correspondance_table.keys index_of district_code;
 		}
- 
 		active_district <- District first_with (each.district_code = active_district_code);
 		local_shape 	<- envelope(active_district);
 		tax_unit  		<- float(tax_unit_table at active_district_name); 
 		
+		// other components of the interface
 		create History_Left_Icon {
 			do lock_agent_at ui_location: {0.075,0.5} display_name: HISTORY_DISPLAY ui_width: 0.15 ui_height: 1.0;
 		}
@@ -134,7 +145,7 @@ global{
 			if district_code = active_district_code {
 				if type in [COAST_DEF_TYPE_DIKE, COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CORD] {
 					do init_coastal_def;
-				} else if type = WATER_GATE {
+				} else if type = WATER_GATE { // if the coastal defense is a port gate (cliff_coast/Normandie)
 					create Water_Gate {
 						id <- myself.coast_def_id;
 						shape <- myself.shape;
@@ -146,23 +157,22 @@ global{
 			}
 		}
 		
-		create Sea from: convex_hull_shape {
-			shape <- shape - (union(District) + 200#m);
-		}
+		create Flood_Risk_Area from: rpp_area_shape;
 		create Protected_Area from: protected_areas_shape;
-		
 		create Road from: roads_shape;
+		
+		create Coastal_Border_Area from: coastline_shape {
+			line_shape <- shape;
+			shape <-  shape + coastBorderBuffer#m;
+		}
+		create Sea from: convex_hull_shape {
+			shape <- shape - (union(District) + 200#m); // creating the see zone 
+		}
 		if water_shape != nil {
 			create Water from: water_shape;
 		}
 		if isolines_shape != nil {
 			create Isoline from: isolines_shape;
-		}
-		create Flood_Risk_Area from: rpp_area_shape;
-		
-		create Coastal_Border_Area from: coastline_shape {
-			line_shape <- shape;
-			shape <-  shape + coastBorderBuffer#m;
 		}
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), dist_code::string(read("dist_code")), lu_code::int(read("unit_code")), population::round(float(get("unit_pop")))]{
@@ -173,7 +183,7 @@ global{
 					lu_code <- lu_type_names index_of lu_name;
 				}
 				my_color <- cell_color();
-			} else {do die;}
+			} else { do die; }
 		}
 
 		population_area <- union(Land_Use where(each.lu_code = LU_TYPE_U or each.lu_code = LU_TYPE_AU));
@@ -182,12 +192,8 @@ global{
 	}
 	//------------------------------ End of init -------------------------------//
 	
-	user_command "Refresh All" {
-		write "Refreshing all...";
-		do refresh_all;
-	}
-	
-	action close_or_open_dieppe_water_gate (bool close){
+	// these two actions are relevant in the cliff_coast only
+	action close_or_open_dieppe_water_gate (bool close){ 
 		ask first(Water_Gate where (each.id = 9999)) {
 			display_me <- close;
 		}
@@ -196,7 +202,6 @@ global{
 			do send to: GAME_MANAGER contents: mp;
 		}
 	}
-	
 	action close_or_open_dieppe_flood_gates (bool close){
 		ask Water_Gate where (each.id != 9999) {
 			display_me <- close;
@@ -205,6 +210,12 @@ global{
 		ask Network_Player {
 			do send to: GAME_MANAGER contents: mp;
 		}
+	}
+	
+	// refreshing (reloading from the server) all agents
+	user_command "Refresh All" {
+		write "Refreshing all...";
+		do refresh_all;
 	}
 	
 	action refresh_all{
@@ -218,7 +229,7 @@ global{
 			do send to: GAME_MANAGER contents: mp;
 		}
 	}
-	
+	// information box to explore buttons
 	point button_box_location (point my_button, int box_width){
 		if my_button.x < first(Tab_Background).location.x + (first(Tab_Background).ui_width*0.55)  {
 			return {my_button.x + box_width, my_button.y};
@@ -226,14 +237,14 @@ global{
 		return my_button;
 	}
 	
-	int id_number_of_action_id (string act_id){
-		return act_id = "" ? 0 : int ((act_id split_with "_")[1]);
-	}
-	
+	// create an ID for the new player action
 	string get_action_id {
 		list<int> ids1 <- Coastal_Defense_Action collect(id_number_of_action_id (each.id));
 		list<int> ids2 <- Land_Use_Action 		 collect(id_number_of_action_id (each.id));
 		return active_district_code + "_" + (max(ids1 + ids2) + 1);
+	}
+	int id_number_of_action_id (string act_id){
+		return act_id = "" ? 0 : int ((act_id split_with "_")[1]);
 	}
 	
 	image_file get_action_icon (int cmd){
