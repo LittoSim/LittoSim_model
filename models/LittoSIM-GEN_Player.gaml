@@ -1510,6 +1510,7 @@ species Message_Left_Icon parent: History_Left_Icon {
 }
 //------------------------------ End of Message_Left_Icon -------------------------------//
 
+// activated levers by leader
 species Activated_Lever {
 	Player_Action ply_act;
 	map<string, string> my_map <- []; // contains attributes sent through network
@@ -1521,9 +1522,10 @@ species Activated_Lever {
 }
 //------------------------------ End of Activated_Lever -------------------------------//
 
+// receives messages and financial transactions from the leader
 species Network_Listener_To_Leader skills: [network] {
 	
-	init{do connect to: SERVER with_name: LISTENER_TO_LEADER;}
+	init{ do connect to: SERVER with_name: LISTENER_TO_LEADER; }
 	
 	reflex wait_message {
 		loop while: has_more_message(){
@@ -1539,7 +1541,7 @@ species Network_Listener_To_Leader skills: [network] {
 			}
 			else if m_contents[DISTRICT_CODE] = active_district_code {
 				switch m_contents[LEADER_COMMAND] {
-					match EXCHANGE_MONEY {
+					match EXCHANGE_MONEY { // I will make a money transfer to another district
 						int amount 	<- int(m_contents[AMOUNT]);
 						string target_dist <- (District first_with(each.district_code = m_contents['TARGET_DIST'])).district_name;
 						budget 		<- budget - amount;
@@ -1567,6 +1569,7 @@ species Network_Listener_To_Leader skills: [network] {
 							do user_msg(string(m_contents[MSG_TO_PLAYER]), INFORMATION_MESSAGE);
 						}
 					}
+					// a lever has been canceled on the action
 					match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
 						Player_Action aAct <- (Land_Use_Action + Coastal_Defense_Action) first_with (each.id = m_contents[PLAYER_ACTION_ID]);
 						if aAct != nil {
@@ -1575,6 +1578,7 @@ species Network_Listener_To_Leader skills: [network] {
 					}
 					match NEW_ACTIVATED_LEVER {
 						Activated_Lever al <- Activated_Lever first_with (each.my_map["id"] = int(m_contents["id"]));
+						// a new lever has been activated on an action
 						if al = nil {
 							create Activated_Lever {
 								do init_activ_lever_from_map (m_contents);
@@ -1607,12 +1611,15 @@ species Network_Listener_To_Leader skills: [network] {
 									add self to: ply_act.activated_levers;	
 								}
 							}
-						} else {
+						}
+						// a lever has been applied
+						else {
 							ask al.ply_act {
 								should_wait_lever_to_activate <- false;
 							}
 						}
 					}
+					// exchange pebbles between districts (cliff_coast)
 					match 'DIEPPE_CRIEL_PEBBLES' {
 						dieppe_pebbles_allowed <- bool(m_contents['ALLOWED']);
 						ask world {
@@ -1624,6 +1631,7 @@ species Network_Listener_To_Leader skills: [network] {
 							}	
 						}
 					}
+					// a player button has been activated/deactivated of hidded
 					match 'TOGGLE_BUTTON' {
 						ask Button where (each.command = int(m_contents['COMMAND'])) {
 							do toggle (int(m_contents["STATE"]));
@@ -1642,12 +1650,13 @@ species Network_Player skills:[network]{
 		map<string,string> mp <- ["REQUEST"::string(CONNECTION_MESSAGE)];
 		do send to: GAME_MANAGER contents: mp;
 	}
-	
+	// messages received from the manager
 	reflex wait_message {
 		loop while:has_more_message() {
 			message msg <- fetch_message();
 			map<string, string> m_contents <- msg.contents;
 			switch m_contents["TOPIC"]{
+				// a player action has been applied
 				match PLAYER_ACTION_IS_APPLIED {
 					string act_id <- m_contents["id"];
 					ask (Coastal_Defense_Action + Land_Use_Action) first_with (each.id = act_id){
@@ -1656,11 +1665,13 @@ species Network_Player skills:[network]{
 						should_wait_lever_to_activate <- false;
 					}
 				}
+				// the manager has launched a new round
 				match INFORM_NEW_ROUND {
 					game_round	<- game_round + 1;
 					previous_population <- current_population;
 					current_population <- int(m_contents[POPULATION]);
 					budget <- int(m_contents[BUDGET]);
+					// update the round of actions not yet sent/validated
 					ask (Land_Use_Action + Coastal_Defense_Action) where (!each.is_sent) {
 						initial_application_round <- initial_application_round + 1;
 					}
@@ -1672,6 +1683,7 @@ species Network_Player skills:[network]{
 								do user_msg (MSG_YOUR_BUDGET + " " + thousands_separator(budget) + ' By', BUDGET_MESSAGE);
 							}
 						}
+						// if round > 1
 						default {
 							ask world {
 								do user_msg(MSG_ROUND + " " + game_round + " " + MSG_HAS_STARTED, INFORMATION_MESSAGE);
@@ -1687,6 +1699,7 @@ species Network_Player skills:[network]{
 						}
 					}
 				}
+				// if a player (re)connect, it is informed with the state of the game
 				match INFORM_CURRENT_ROUND {
 					game_round <- int(m_contents[NUM_ROUND]);
 					current_population <- int(m_contents[POPULATION]);
@@ -1702,6 +1715,7 @@ species Network_Player skills:[network]{
 						}
 					}
 					if game_round = 0 {
+						// receives the list of buttons activated for this player
 						list<int> buts <- [];
 						ask Button where (each.display_name != BOTH_DISPLAYS) {
 							add command to: buts;
@@ -1710,6 +1724,7 @@ species Network_Player skills:[network]{
 						do send to: GAME_MANAGER contents: mp;
 					}
 					else {
+						// receives the state of buttons
 						ask Button where (each.display_name != BOTH_DISPLAYS) {
 							string etat <- m_contents ["button_"+command];
 							if etat != nil {
@@ -1718,15 +1733,15 @@ species Network_Player skills:[network]{
 						}
 					}
 				}
-				match ACTION_COAST_DEF_CREATED {
+				match ACTION_COAST_DEF_CREATED { // a codef has been applied/created by manager
 					do coast_def_create_action(m_contents);
 				}
-				match NEW_COAST_DEF_ALT {
+				match NEW_COAST_DEF_ALT { // getting the altitude of a newly created codef
 					ask Coastal_Defense_Action where (each.id = m_contents["act_id"]){
 						altit <- float(m_contents["altit"]);
 					}
 				}
-				match ACTION_COAST_DEF_UPDATED {
+				match ACTION_COAST_DEF_UPDATED { // a coastal defense has been updated
 					if length(Coastal_Defense where(each.coast_def_id = int(m_contents["coast_def_id"]))) = 0{
 						do coast_def_create_action(m_contents);
 					}
@@ -1740,12 +1755,12 @@ species Network_Player skills:[network]{
 						maintained	<- bool(m_contents["maintained"]);
 					}
 				}
-				match ACTION_COAST_DEF_DROPPED {
+				match ACTION_COAST_DEF_DROPPED { // a coastl defense has been dismanteled
 					ask Coastal_Defense where (each.coast_def_id = int(m_contents["coast_def_id"])) {
 						do die;
 					}
 				}
-				match ACTION_LAND_COVER_UPDATED {	
+				match ACTION_LAND_COVER_UPDATED {// a LU cell has been changed
 					ask Land_Use where(each.id = int(m_contents["id"])){
 						lu_code 	<- int(m_contents["lu_code"]);
 						lu_name 	<- lu_type_names[lu_code];
@@ -1753,6 +1768,7 @@ species Network_Player skills:[network]{
 						is_in_densification <- bool(m_contents["is_in_densification"]);
 					}
 				}
+				// getting data from manager
 				match DATA_RETRIEVE {
 					switch m_contents["OBJECT_TYPE"] {
 						match OBJECT_TYPE_WINDOW_LOCKER {
@@ -1804,6 +1820,7 @@ species Network_Player skills:[network]{
 						}
 					}
 				}
+				// receiving results of the flood events : land marks
 				match "NEW_SUBMERSION_EVENT" {
 					ask Coastal_Defense where (each.district_code = active_district_code) {
 						rupture <- false;
@@ -1821,12 +1838,14 @@ species Network_Player skills:[network]{
 						}
 					}
 				}
+				// receiving ruptures of codefs due to the last event
 				match "NEW_RUPTURES" {
 					ask Coastal_Defense where (each.district_code = active_district_code) {
 						bool is_ruptured <- bool (m_contents[string(coast_def_id)]);
 						rupture <- is_ruptured != nil ? is_ruptured : rupture;
 					}
 				}
+				// the manager request openning Dieppe gates (cliff_coast)
 				match 'OPEN_DIEPPE_GATES' {
 					ask Water_Gate {
 						display_me <- false;
@@ -1839,7 +1858,7 @@ species Network_Player skills:[network]{
 			}
 		}
 	}
-	
+	// creating flood marks of the submersion
 	action create_flood_mark (Land_Use lulu, string sub_num, string maxwh, string meanwh, string maxwhpercent) {
 		float fmax_w_h	<- float(maxwh);
 		if fmax_w_h > 0 {
@@ -1855,7 +1874,7 @@ species Network_Player skills:[network]{
 			}
 		}
 	}
-	
+	// a coastal defense has been created by the manager
 	action coast_def_create_action(map<string, string> msg){
 		create Coastal_Defense {
 			coast_def_id <- int(msg at "coast_def_id");
@@ -1875,8 +1894,8 @@ species Network_Player skills:[network]{
 			}
 		}			
 	}
-	
-	action send_basket{
+	// send the content of the basket to the manager
+	action send_basket {
 		Player_Action act <-nil;
 		loop bsk_el over: game_basket.elements {
 			act <- Basket_Element(bsk_el).current_action;
@@ -1898,13 +1917,14 @@ species Network_Player skills:[network]{
 //------------------------------ End of Network_Player -------------------------------//
 
 species Player_Action {
-	string id 		<- "";
+	string id 	<- "";
 	int element_id	<- 0;
 	geometry element_shape;
-	int command 		<- -1;
-	string label 		<- "";
+	int command <- -1;
+	string label <- "";
 	int initial_application_round <- -1; // round where the action is supposed to be executed
 	int added_delay -> {activated_levers sum_of int(each.my_map["added_delay"])};
+	// the real application round after applying levers
 	int effective_application_round -> {initial_application_round + added_delay};
 	float cost 		<- 0.0;
 	int added_cost 		-> {activated_levers sum_of int(each.my_map["added_cost"])};
@@ -1916,18 +1936,21 @@ species Player_Action {
 	string action_type 		<- PLAYER_ACTION_TYPE_COAST_DEF ;
 	string previous_lu_name <- nil;
 	bool is_expropriation 	<- false;
-	bool is_in_protected_area 	<- false;
+	bool is_in_protected_area <- false;
 	bool is_in_coast_border_area <- false;
-	bool is_in_risk_area 		<- false; 
-	bool is_inland_dike 		<- false;
-	bool has_activated_levers 				-> {!empty(activated_levers)};
+	bool is_in_risk_area <- false; 
+	bool is_inland_dike <- false;
+	bool has_activated_levers -> {!empty(activated_levers)};
 	list<Activated_Lever> activated_levers 	<-[];
 	bool should_wait_lever_to_activate 		<- false;
-	float altit <- 0.0; // coastal defenses
+	
+	// variables used for codefs
+	float altit <- 0.0; // altitude of a coastal defense
 	string coast_def_type;
 	float height;
-	int draw_around <- 15;
+	int draw_around <- 15; // thickness of the coastl defense
 	
+	// creating a player action from the received map
 	action init_action_from_map(map<string, unknown> mp){
 		self.id			 	<- string(mp at "id");
 		self.element_id 	<- int(mp at "element_id");
@@ -1948,6 +1971,7 @@ species Player_Action {
 		location <- {float(mp at "locationx"), float(mp at "locationy")};
 		bool loop_again <- true;
 		int i <- 0;
+		// shape of the object
 		list<point> all_points <- [];
 		loop while: loop_again{
 			string xd <- mp at ("locationx" + i);
@@ -1958,7 +1982,7 @@ species Player_Action {
 				loop_again <- false;
 			}
 		}
-		
+		// if it is a codef
 		if self.action_type = PLAYER_ACTION_TYPE_COAST_DEF {
 			self.draw_around <- int (mp at "draw_around");
 			self.altit	<- float (mp at "altit");
@@ -1971,12 +1995,13 @@ species Player_Action {
 				shape <- element_shape + 15;
 			}
 		}
+		// if it is a LU cell
 		else{
 			element_shape <- polygon(all_points);
 			shape <- element_shape;
 		}
 	}
-	
+	// number of remaining rounds to be applied
 	int nb_rounds_before_activation_and_waiting_for_lever_to_activate {
 		int nb_rounds <- effective_application_round - game_round;
 		if nb_rounds < 0 {
@@ -1988,7 +2013,7 @@ species Player_Action {
 		}
 		return nb_rounds;
 	}
-	
+	// build a map from the player action to send it over the network
 	map<string,string> build_data_map {
 		map<string,string> mp <- ["command"::command,"id"::id,
 			"initial_application_round"::initial_application_round,
@@ -2055,6 +2080,7 @@ species Land_Use_Action parent: Player_Action {
 	}
 	
 	aspect map {
+		// showing land use actions if the hitory button is not selected
 		if active_display = LU_DISPLAY and !is_applied and !(Button first_with (each.command = ACTION_HISTORY)).is_selected{
 			list<geometry> trs <- to_triangles(shape);
 			draw first(trs where (each.area = max(trs collect (each.area)))) color: define_color() border: define_color();
@@ -2079,19 +2105,20 @@ species Button skills:[UI_location] {
 	string display_name;
 	string label;
 	float action_cost;
-	bool is_selected  	<- false;
-	geometry shape 		<- square(button_size);
+	bool is_selected <- false;
+	geometry shape 	<- square(button_size);
 	point p;
 	image_file my_icon;
 	string help_msg;
 	float select_size <- 0.0 update: min([ui_width,ui_height]);
-	int state <- B_ACTIVATED;
+	int state <- B_ACTIVATED; // buttons are activated by default
 	
 	reflex update{
 		shape <- rectangle(select_size, select_size);
 		do refresh_me;
 	}
-		
+	
+	// init buttons from the actions.conf file
 	action init_button {
 		command 	<- int(data_action at action_name at 'action_code');
 		label 		<- world.label_of_action(command);
@@ -2100,6 +2127,7 @@ species Button skills:[UI_location] {
 		my_icon 	<-  image_file(data_action at action_name at 'button_icon_file') ;
 	}
 	
+	// changing the state of a button (by the leader)
 	action toggle (int etat) {
 		state <- etat;
 		if state = B_ACTIVATED {
@@ -2130,6 +2158,7 @@ species Button skills:[UI_location] {
 }
 //------------------------------ End of Button -------------------------------//
 
+// right buttons shared between both displays (show ppr, inspect, ..)
 species Button_Map parent: Button {
 	geometry shape <- square(850#m);
 	
@@ -2164,11 +2193,13 @@ species Land_Use {
 	bool is_urban_type 	 -> {lu_code in [LU_TYPE_U,LU_TYPE_Us,LU_TYPE_AU,LU_TYPE_AUs]};
 	bool is_adapted_type -> {lu_code in [LU_TYPE_Us,LU_TYPE_AUs]};
 	bool is_in_densification <- false;
-	bool focus_on_me <- false;
+	
+	bool focus_on_me <- false; // the highlighted land use cell
 	Flood_Mark mark <- nil;
-	list<Player_Action> actions_on_me <- [];
-	int flooded_times <- 0;
+	list<Player_Action> actions_on_me <- []; // the list a previous actions done on this land use (history)
+	int flooded_times <- 0; // the number of times that the cell has been flooded
 
+	// initialize the land use cell from the received map
 	action init_lu_from_map(map<string, unknown> a ){
 		self.id 				 <- int   (a at "id");
 		self.lu_code 			 <- int   (a at "lu_code");
@@ -2201,7 +2232,7 @@ species Land_Use {
 			match	  	LU_TYPE_A 			 {return #orange;} // agricultural
 			match_one [LU_TYPE_AU,LU_TYPE_AUs]{return #yellow;} // to urbanize
 			match_one [LU_TYPE_U,LU_TYPE_Us] {				  // urbanised
-				switch density_class 		  {
+				switch density_class 		  {	// grayscale
 					match POP_EMPTY 		  { return rgb(250,250,250);}
 					match POP_VERY_LOW_DENSITY{ return rgb(225,225,225);}
 					match POP_LOW_DENSITY	  { return rgb(190,190,190);}
@@ -2213,7 +2244,8 @@ species Land_Use {
 		}
 		return #black;
 	}
-
+	
+	// the normal aspect of land use (colored by PLU type)
 	aspect map {
 		if active_display = LU_DISPLAY and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			draw shape color: my_color;	
@@ -2224,12 +2256,12 @@ species Land_Use {
 			}
 		}			
 	}
-	
+	// the historical aspect, when the button history is selected
 	aspect historical {
 		if (Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			if active_display = LU_DISPLAY {
 				draw shape color: #lightgray;
-				int acts <- length(actions_on_me);
+				int acts <- length(actions_on_me); // showing previous player actions on the cell
 				if acts > 0 {
 					draw shape color: #gray border: #gold;
 					draw ""+acts font: f1 color: #yellow anchor:#center;
@@ -2247,7 +2279,7 @@ species Coastal_Defense {
 	rgb color <- #pink;
 	float height;
 	bool ganivelle <- false;
-	bool maintained	<- false; // if DUNE (Camargue)
+	bool maintained	<- false; // for DUNES (Camargue)
 	int slices <- 4;
 	float alt <- 0.0;
 	string status;
@@ -2257,6 +2289,7 @@ species Coastal_Defense {
 	list<Player_Action> actions_on_me <- [];
 	int draw_around;
 	
+	// initialize the codef from the received map
 	action init_coastal_def_from_map(map<string, unknown> a ){
 		self.coast_def_id<- int(a at "coast_def_id");
 		self.type 		<- string(a at "type");
@@ -2282,11 +2315,12 @@ species Coastal_Defense {
 		draw_around <- type = COAST_DEF_TYPE_DUNE ? (dune_type = 2 ? 30 : 45) : 15;
 	}
 	
-	action init_coastal_def {
+	action init_coastal_def { // init a new codef
 		if status = ""  {status <- STATUS_GOOD;	    } 
 		if type = '' 	{type 	 <- COAST_DEF_TYPE_DIKE;}
 		if height = 0.0 {height <- MIN_HEIGHT_DIKE;    }
 		length_coast_def <- int(shape.perimeter);
+		// drawn line depends on the codef type : dike (15), dune1 (45), dune2 (30)
 		draw_around <- type = COAST_DEF_TYPE_DUNE ? (dune_type = 2 ? 30 : 45) : 15;
 	}
 	
@@ -2304,17 +2338,17 @@ species Coastal_Defense {
 			draw draw_around#m around shape color: color;
 			draw shape color: #black;
 			
-			if type = COAST_DEF_TYPE_DUNE{
-				if maintained {
+			if type = COAST_DEF_TYPE_DUNE{ 
+				if maintained { // if the dune is mantained we draw white line inside of it
 					draw shape+15#m color: #whitesmoke;
 				}
-				if ganivelle {
+				if ganivelle { // if it's on ganivelle (accretion), we draw black points inside of it
 					loop i over: points_on(shape, 30#m) {
 						draw circle(10,i) color: #black;
 					}
 				}
 			}
-			else if type = COAST_DEF_TYPE_CORD {
+			else if type = COAST_DEF_TYPE_CORD { // if it's a pebble dike, wa draw slices as squares
 				list<point> pebbles <- points_on(shape, 10#m);
 				float ix <- length(pebbles)/11;
 				loop i from: 1 to: slices {
@@ -2323,7 +2357,7 @@ species Coastal_Defense {
 			}
 		}
 	}
-	
+	// the historical aspect showing pas player actions
 	aspect historical {
 		if (Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			if(active_display = COAST_DEF_DISPLAY) {
@@ -2486,8 +2520,9 @@ experiment District4 type: gui parent: LittoSIM_GEN_Player {
 }
 
 experiment LittoSIM_GEN_Player type: gui{
-	
+	// read the list of districts of study_area.conf
 	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'STUDY_AREA_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_SNAMES')) split_with ';' at 1)).values;
+	// read language params from littosim.conf
 	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
 	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 
@@ -2512,7 +2547,7 @@ experiment LittoSIM_GEN_Player type: gui{
 				}
 			}
 			species District aspect: base;
-			graphics "Population" {
+			graphics "Population" { // population geometry is colored in the codef tab
 				draw population_area color: rgb(105,105,105) ;
 			}
 			species Land_Use 				aspect: map;
@@ -2531,7 +2566,8 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Tab 					aspect: base;
 			species Button 					aspect: map;
 			species Button_Map				aspect: map;
-
+			
+			// showing information box on a codef when it is ispected
 			graphics "Coast Def Info" {
 				if explored_coast_def != nil and (Button first_with (each.command = ACTION_INSPECT)).is_selected and explored_button = nil
 							and (!(Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected or explored_flood_mark = nil) {
@@ -2565,7 +2601,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					}
 				}
 			}
-			// Display Coast Def History
+			// showing information box on a codef in the history mode
 			graphics "Coast Def History" {
 				if explored_coast_def != nil and (Button first_with (each.command = ACTION_HISTORY)).is_selected {
 					Coastal_Defense my_codef <- explored_coast_def;
@@ -2583,8 +2619,8 @@ experiment LittoSIM_GEN_Player type: gui{
 					}
 				}
 			}
-		
-			graphics "Coast Def Action" {// explore coast def action 
+			// showing information box on a codef when there is a player action in process
+			graphics "Coast Def Action" { 
 				if explored_coast_def_action != nil and !explored_coast_def_action.is_applied and explored_coast_def_action.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
 					Coastal_Defense_Action my_codef_action <- explored_coast_def_action;
 					point target <- {my_codef_action.location.x  ,my_codef_action.location.y};
@@ -2603,8 +2639,8 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw PLY_MSG_APP_ROUND + " : " + string(my_codef_action.initial_application_round) at: target + {10#px, xpx#px +55#px} font: regular color: #white;
 				}
 			}
-			
-			graphics "Flood Mark Info" {// flooding mark info
+			// showing information box on a flood mark
+			graphics "Flood Mark Info" {
 				if explored_flood_mark != nil and (Button_Map first_with (each.command = ACTION_DISPLAY_FLOODING)).is_selected and explored_button = nil{
 					Flood_Mark fm <- explored_flood_mark;
 					point target <- {fm.location.x  ,fm.location.y};
@@ -2614,7 +2650,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw fm.floo2 at: target + {10#px, 35#px} font: regular color: #black;
 				}
 			}
-			
+			// showing information box on a button when it is hovered
 			graphics "Button Info" {
 				if explored_button != nil and explored_button.state != B_HIDDEN {
 					Button my_button <- explored_button;
@@ -2660,7 +2696,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					}
 				}
 			}
-			// Inspect LU info
+			// showing information box on a lu cell when it is ispected
 			graphics "LU Info" {
 				if explored_lu != nil and (explored_land_use_action = nil or explored_land_use_action.is_applied) and
 						(Button first_with (each.command = ACTION_INSPECT)).is_selected and explored_button = nil{
@@ -2731,8 +2767,8 @@ experiment LittoSIM_GEN_Player type: gui{
 					}
 				}
 			}
-			
-			graphics "Lock Window" transparency: 0.3 {// lock user interface
+			// locking user interface
+			graphics "Lock Window" transparency: 0.3 {
 				if(!is_active_gui){
 					ask world{do lock_window;}
 				}
@@ -2741,6 +2777,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			event mouse_move 	action: mouse_move_general;
 		}
 		// end of "Map" display
+		
 		display "Messages" background:#black {
 			species Message_Left_Icon 	aspect: base;
 			species Messages 			aspect: base;
