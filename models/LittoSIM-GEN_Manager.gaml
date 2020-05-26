@@ -33,12 +33,12 @@ global {
 	// variables for Lisflood calculs 
 	map<string,string> list_flooding_events;  // list of submersions of a round
 	string floodEventType <- LOW_FLOODING;
-	int lisfloodReadingStep <- 9999; 		// to indicate to which step of Lisflood results, the current cycle corresponds 
-	int last_played_event <- -1;
-	string timestamp 		<- ""; 			// used to specify a unique name to the folder of flooding results
-	string flood_results 	<- "";   		// text of flood results per district // saved as a txt file
-	list<int> submersions;
-	int sub_event <- 0;
+	int lisfloodReadingStep <- 9999; // to indicate to which step of Lisflood results, the current cycle corresponds 
+	int last_played_event <- -1; // number of the last played submersion event 
+	string timestamp 		<- ""; 	// used to specify a unique name to the folder of flooding results
+	string flood_results 	<- "";  // text of flood results per district // saved as a txt file
+	list<int> submersions; // list of events 
+	int sub_event <- 0; // if it's a new flooding event or an existing one (to add it to populations/budgets graphs and to save or not ruptures file)
 	
 	// parameters for saving submersion results
 	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; 	// folder to save main model results
@@ -71,16 +71,16 @@ global {
 	list<list<float>> districts_withdraw_costs<- [[0],[0],[0],[0]];
 	list<list<float>> districts_other_costs <- [[0],[0],[0],[0]];
 
-	int population_still_to_dispatch <- 0;	// population dynamics
+	int population_still_to_dispatch <- 0;	// remaining population to distribute to districts
 	// other variables 
-	bool show_max_water_height	<- false;			// defines if the water_height displayed on the map should be the max one or the current one
+	bool show_max_water_height	<- false;	// defines if the water_height displayed on the map should be the max one or the current one
 	bool show_protected_areas	<- false;
 	int show_river_flooded_area <- 0;
 	bool show_risked_areas	<- false;
 	bool show_grid <- false;
-	string stateSimPhase 		<- SIM_NOT_STARTED; // state variable of current simulation state 
-	int game_round 				<- 0;
-	bool game_paused			<- false;
+	string stateSimPhase 	<- SIM_NOT_STARTED; // state variable of current simulation state 
+	int game_round 	<- 0;
+	bool game_paused <- false;
 	point play_b;
 	point pause_b;
 	list<District> districts_in_game;
@@ -95,6 +95,7 @@ global {
 	font bold40 <- font('Helvetica Neue', 40, #bold);
 	
 	init{
+		// repetitive messages loaded once only
 		MSG_SUBMERSION 	<- get_message('MSG_SUBMERSION');
 		MSG_ROUND 		<- get_message('MSG_ROUND');
 		MSG_BUILDER		<- get_message('MSG_BUILDER');
@@ -126,9 +127,12 @@ global {
 		LEV_DUNES		<- get_message('LEV_DUNES');
 		LEV_DIKES		<- get_message('LEV_DIKES');
 		
+		// the lisflood path depends on the OS
 		lisfloodPath <- IS_OSX ? littosim_def["LISFLOOD_PATH_OSX"] : littosim_def["LISFLOOD_PATH_WIN"];
 		
 		// Create GIS agents
+		// only the disctrict code is read from the districts file, other variables are read from the
+		// study_area.conf (names) and population from the land_use file
 		create District from: districts_shape with: [district_code::string(read("dist_code"))];
 		int idx <- 1;
 		loop kk over: dist_code_sname_correspondance_table.keys {
@@ -140,6 +144,7 @@ global {
 		create Coastal_Defense from: coastal_defenses_shape with: [
 			coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
 			alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))] {
+				// if its a water_gate and not a coastal defense (cliff_coast only)
 				if type = WATER_GATE {
 					create Water_Gate {
 						id <- myself.coast_def_id;
@@ -150,7 +155,7 @@ global {
 					do die;
 				}							
 		}
-		
+
 		create Protected_Area from: protected_areas_shape;
 		all_protected_area <- union(Protected_Area);
 		create Inland_Dike_Area from: buffer_in_100m_shape;
@@ -171,8 +176,8 @@ global {
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
 			lu_name <- lu_type_names[lu_code];
-			if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] { // if true, convert all AU and AUs to N (AU should not be imposed to players !)
-				if AU_AND_AUs_TO_N {
+			if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] { 
+				if AU_AND_AUs_TO_N {// if true, convert all AU and AUs to N (AU should not be imposed to players !)
 					lu_name <- "N";
 					lu_code <- LU_TYPE_N;
 				} else {
@@ -197,6 +202,18 @@ global {
 		ask Land_Use where (each.lu_code = LU_TYPE_U and each.population < MIN_POP_AREA) { // each U should have a min pop
 			population <- MIN_POP_AREA;
 		}
+		//*****
+		do load_dem_and_rugosity;
+		// build coastal defenses
+		ask Coastal_Defense {
+			do init_coastal_def;
+		}
+		// initialize lu cells
+		ask Land_Use {
+			cells <- Cell overlapping self;
+			mean_alt <- cells mean_of(each.soil_height);
+		}
+		// rivers (cliff_coast only)
 		if river_flood_shape != nil {
 			create River_Flood_Cell from: river_flood_shape with: [water_h::float(read("water_h"))] {
 				col <- colors_of_water_height[world.class_of_water_height(water_h)];
@@ -207,15 +224,7 @@ global {
 				col <- colors_of_water_height[world.class_of_water_height(water_h)];
 			}
 		}
-		//*****
-		do load_dem_and_rugosity;
-		ask Coastal_Defense {
-			do init_coastal_def;
-		}
-		ask Land_Use {
-			cells <- Cell overlapping self;
-			mean_alt <- cells mean_of(each.soil_height);
-		}
+		// giving LU type to river inundation cells 
 		if river_flood_shape != nil {
 			ask Land_Use {
 				ask River_Flood_Cell inside self {
@@ -237,7 +246,7 @@ global {
 				}
 			}
 		}
-		
+		// initializing districts
 		ask districts_in_game{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
 			district_long_name <- world.dist_code_lname_correspondance_table at district_code;
@@ -255,7 +264,7 @@ global {
 		
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
-		do read_lisflood_files (true);
+		do read_lisflood_files (true); // read sumbersion 0 files
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		last_played_event <- 0;
 
@@ -272,8 +281,14 @@ global {
 	int getMessageID{
  		messageID <- messageID +1;
  		return messageID;
- 	} 
+ 	}
+ 	
+	int district_id (string dist_code){
+		District d <- first(District first_with (each.district_code = dist_code));
+		return d != nil ? d.dist_id : 0;
+	}
 	
+	// the number of people to distibute on districts
 	int population_to_dispatch {
 		return round(sum(districts_in_game accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE) +
 					(length(Land_Use where(each.is_in_densification)) * ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION);
@@ -281,7 +296,7 @@ global {
 
 	action new_round {
 		write MSG_NEW_ROUND + " : " + (game_round + 1);
-		do clear_map;
+		do clear_map; // we unselect buttons and hide water heights
 		if game_round = 0 { // round 0
 			ask districts_in_game{
 				add budget to: districts_taxes[dist_id-1];
@@ -297,11 +312,12 @@ global {
 			write stateSimPhase;
 		}
 		else {
+			// distribute populations
 			population_still_to_dispatch <- population_to_dispatch();
 			ask shuffle(Land_Use){ pop_updated <- false; do evolve_AU_to_U; }
 			ask shuffle(Land_Use){ do evolve_pop_U_densification; 			}
 			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				}
-			ask Coastal_Defense where (each.rupture){
+			ask Coastal_Defense where (each.rupture){ // remove ruptures after the new round
 				do remove_rupture;
 			}
 			ask districts_in_game{
@@ -357,11 +373,12 @@ global {
 			do inform_new_round;
 			add budget to: districts_budgets[dist_id-1];
 		}
-		add sub_event to: submersions;
-		sub_event <- 0;
+		add sub_event to: submersions; // submersions contains the events to display as bars in populations/budgets displays
+		sub_event <- 0; // prevent readding the event to the graph when it's replayed
 		write MSG_GAME_DONE + " !";
 	}
 	
+	// unselect buttons, hide water heights and ruptures
 	action clear_map {
 		ask Button where (each.nb_button in [7,8]) {
 			self.is_selected <- false;
@@ -372,142 +389,39 @@ global {
 			water_height <- 0.0; 
 		}
 	}
-	
-	action calculate_lu_coast_def_data{
-		ask districts_in_game{
-			add current_population() to: round_population;
-			/****************** LUs */
-			add sum(LUs where(each.lu_code = 1) accumulate each.shape.area) /10000 to: surface_N;
-			add sum(LUs where(each.lu_code = 2) accumulate each.shape.area) /10000 to: surface_U;
-			add sum(LUs where(each.lu_code = 2 and each.density_class = POP_DENSE) accumulate each.shape.area)/10000 to: surface_Udense;
-			add sum(LUs where(each.lu_code = 4) accumulate each.shape.area)/10000 to: surface_AU;
-			add sum(LUs where(each.lu_code = 5) accumulate each.shape.area)/10000 to: surface_A;
-			add sum(LUs where(each.lu_code = 6) accumulate each.shape.area)/10000 to: surface_Us;
-			add sum(LUs where(each.lu_code = 6 and each.density_class = POP_DENSE) accumulate each.shape.area)/10000 to: surface_Usdense;
-			add sum(LUs where(each.lu_code = 7) accumulate each.shape.area)/10000 to: surface_AUs;
-			
-			if game_round != 0 {
-				add surface_N[game_round] - surface_N[game_round-1] + surface_N_diff[game_round-1] to: surface_N_diff;
-				add surface_U[game_round] - surface_U[game_round-1] + surface_U_diff[game_round-1] to: surface_U_diff;
-				add surface_Udense[game_round] - surface_Udense[game_round-1] + surface_Udense_diff[game_round-1] to: surface_Udense_diff;
-				add surface_A[game_round] - surface_A[game_round-1] + surface_A_diff[game_round-1] to: surface_A_diff;
-				add surface_Us[game_round] - surface_Us[game_round-1] + surface_Us_diff[game_round-1] to: surface_Us_diff;
-				add surface_Usdense[game_round] - surface_Usdense[game_round-1] + surface_Usdense_diff[game_round-1] to: surface_Usdense_diff;
-			}
-			/**************** coastal defenses */
-			list<Coastal_Defense> my_dikes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DIKE);
-			add length(my_dikes) > 0 ? my_dikes sum_of (each.shape.perimeter) : 0 to: length_dikes_all;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) : 0 to: length_dikes_good;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) : 0 to: length_dikes_medium;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) : 0 to: length_dikes_bad;
-			add length(my_dikes) > 0 ? my_dikes mean_of(each.alt) : 0 to: mean_alt_dikes_all;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) mean_of(each.alt) : 0 to: mean_alt_dikes_good;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) mean_of(each.alt) : 0 to: mean_alt_dikes_medium;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) mean_of(each.alt) : 0 to: mean_alt_dikes_bad;
-			add length(my_dikes) > 0 ? my_dikes min_of(each.alt) : 0 to: min_alt_dikes_all;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) min_of(each.alt) : 0 to: min_alt_dikes_good;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) min_of(each.alt) : 0 to: min_alt_dikes_medium;
-			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) min_of(each.alt) : 0 to: min_alt_dikes_bad;
-			
-			list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
-			add length(my_dunes) > 0 ? my_dunes sum_of (each.shape.perimeter) : 0 to: length_dunes_all;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) : 0 to: length_dunes_good;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) : 0 to: length_dunes_medium;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) : 0 to: length_dunes_bad;
-			add length(my_dunes) > 0 ? my_dunes mean_of(each.alt) : 0 to: mean_alt_dunes_all;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) mean_of(each.alt) : 0 to: mean_alt_dunes_good;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) mean_of(each.alt) : 0 to: mean_alt_dunes_medium;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) mean_of(each.alt) : 0 to: mean_alt_dunes_bad;
-			add length(my_dunes) > 0 ? my_dunes min_of(each.alt) : 0 to: min_alt_dunes_all;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) min_of(each.alt) : 0 to: min_alt_dunes_good;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) min_of(each.alt) : 0 to: min_alt_dunes_medium;
-			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) min_of(each.alt) : 0 to: min_alt_dunes_bad;
-			
-			add length(my_dikes) > 0 ? (length_dikes_good[game_round] * mean_alt_dikes_good[game_round]) / (
-				(length_dikes_good[game_round] * mean_alt_dikes_good[game_round]) +
-				(length_dikes_medium[game_round] * mean_alt_dikes_medium[game_round]) +
-				(length_dikes_bad[game_round] * mean_alt_dikes_bad[game_round]) ) : 0 to: stat_dikes_good;
-
-			add length(my_dunes) > 0 ? (length_dunes_good[game_round] * mean_alt_dunes_good[game_round]) / (
-				(length_dunes_good[game_round] * mean_alt_dunes_good[game_round]) +
-				(length_dunes_medium[game_round] * mean_alt_dunes_medium[game_round]) +
-				(length_dunes_bad[game_round] * mean_alt_dunes_bad[game_round]) ) : 0 to: stat_dunes_good;
-		}
-	}
-	
-	int district_id (string dist_code){
-		District d <- first(District first_with (each.district_code = dist_code));
-		return d != nil ? d.dist_id : 0;
-	}
-
-	reflex show_flood_stats when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_FLOOD_STATS {			// end of flooding
-		write flood_results;
-		if save_data {
-			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";
-		}
-		if send_flood_results {
-			do send_flooding_results (nil); // to districts
-			send_flood_results <- false;
-		}
-		stateSimPhase <- SIM_GAME;
-		write stateSimPhase + " - " + MSG_ROUND + " " + game_round;
-	}
-	
-	reflex calculate_flood_stats when: stateSimPhase != nil and stateSimPhase = SIM_CALCULATING_FLOOD_STATS{			// end of a flooding event
-		do calculate_districts_results; 													// calculating results
-		stateSimPhase <- SIM_SHOWING_FLOOD_STATS;
-		write stateSimPhase;
-	}
-	
-	reflex show_lisflood when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_LISFLOOD {
-		if !submersion_ok or length(one_of(Cell where (each.cell_type = 1)).water_heights) < 14 {
-			write "Error in submersion process!";
-			remove key: "" + game_round from: list_flooding_events;
-			stateSimPhase <- SIM_GAME;
-			write stateSimPhase;
-			return;
-		}
-		ask Cell where (each.cell_type = 1){
-			water_height <- water_heights[lisfloodReadingStep];
-		}
-		write "Step " + lisfloodReadingStep;
-		if lisfloodReadingStep < 14 {
-			lisfloodReadingStep <- lisfloodReadingStep + 1;
-		}
-		else{
-     		stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
-     		write stateSimPhase;
-     		display_ruptures <- true;
-     		first(Button where (each.nb_button = 8)).is_selected <- true;
-     	}
-	} 
-	
-	action replay_flood_event (int fe) {
-		if fe >= length(list_flooding_events) {
-			write "Trying to replay a non existing event!";
-			return;
-		}
-		do clear_map;
-		if last_played_event != fe {
-			last_played_event <- fe;
-			results_lisflood_rep <- list_flooding_events at list_flooding_events.keys[fe];
-			ask Cell {
-				max_water_height <- 0.0; // reset of max_water_height
-			} 
-			do read_lisflood_files (true);
-			send_flood_results <- true;
-		}
-		lisfloodReadingStep <- 0;
-		stateSimPhase <- SIM_SHOWING_LISFLOOD;
-		write stateSimPhase;
-	}
 		
+	/************************************************************************************************************************************************
+	 ***************************************************** submersion actions and reflexes **********************************************************
+	 ************************************************************************************************************************************************/
+	
+	action execute_lisflood{
+		// pause players
+		ask districts_in_game{
+			ask Network_Game_Manager { do lock_user (myself, true); }
+		}
+		game_paused <- true;
+		timestamp <- "_R" + game_round + "_t" + machine_time;
+		results_lisflood_rep <- "includes/" + application_name + "/floodfiles/results" + timestamp;
+		do save_dem_and_rugosity; // prepare grids (dem + rug)
+		do save_lf_launch_files; // prepare par file (parameters)
+		do add_element_in_list_flooding_events("" + game_round , results_lisflood_rep);
+		save floodEventType to: "../"+results_lisflood_rep + "/submersion_type.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by itself
+		ask Network_Game_Manager {
+			if IS_OSX {
+				do execute command: "sh " + lisfloodPath + lisflood_bat_file;
+			}
+			else{
+				do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
+			}
+		}
+ 	}
+	
 	action launchFlood_event{
 		if game_round = 0 {
 			map values <- user_input(get_message('MSG_WARNING'), get_message('MSG_SIM_NOT_STARTED')::true);
 	     	write stateSimPhase;
 		}
-		else{	// excuting Lisflood
+		else{	// excuting lisflood
 			do new_round;
 			ask Cell where (each.cell_type = 1) {
 				max_water_height <- 0.0; // reset of max_water_height
@@ -516,6 +430,7 @@ global {
 				do calculate_rupture;
 			}
 			//********* for Criel case only *//////////////*******
+			// forcing the rupture of one of dikes protected by pebbles (cliff_coast)
 			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_CORD) {
 				if status = STATUS_BAD {
 					list<Coastal_Defense> cordies <- Coastal_Defense where (each.is_protected_by_cord and !each.rupture);
@@ -545,7 +460,79 @@ global {
 			game_paused <- false;
 		}
 	}
+	
+	reflex show_lisflood when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_LISFLOOD {
+		// if lisflood was interrupted or files are not well parametered
+		if !submersion_ok or length(one_of(Cell where (each.cell_type = 1)).water_heights) < 14 {
+			write "Error in submersion process!";
+			// remove this event from the list
+			remove key: "" + game_round from: list_flooding_events;
+			stateSimPhase <- SIM_GAME;
+			write stateSimPhase;
+			return;
+		}
+		// all is good
+		// display flooding on the land cells
+		ask Cell where (each.cell_type = 1){
+			water_height <- water_heights[lisfloodReadingStep];
+		}
+		write "Step " + lisfloodReadingStep;
+		if lisfloodReadingStep < 14 {
+			lisfloodReadingStep <- lisfloodReadingStep + 1;
+		}
+		else{
+     		stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
+     		write stateSimPhase;
+     		display_ruptures <- true;
+     		first(Button where (each.nb_button = 8)).is_selected <- true;
+     	}
+	} 
+	
+	reflex calculate_flood_stats when: stateSimPhase != nil and stateSimPhase = SIM_CALCULATING_FLOOD_STATS{// end of a flooding event
+		do calculate_districts_results; // calculating results
+		stateSimPhase <- SIM_SHOWING_FLOOD_STATS;
+		write stateSimPhase;
+	}
+	
+	// the end of flooding, show stats
+	reflex show_flood_stats when: stateSimPhase != nil and stateSimPhase = SIM_SHOWING_FLOOD_STATS {//TODO:  BUG under Mac OS		
+		write flood_results;
+		if save_data {
+			save flood_results to: output_data_rep + "/flood_results/flooding-" + machine_time + "-R" + game_round + ".txt" type: "text";
+		}
+		if send_flood_results {
+			do send_flooding_results (nil); // to districts
+			send_flood_results <- false;
+		}
+		stateSimPhase <- SIM_GAME;
+		write stateSimPhase + " - " + MSG_ROUND + " " + game_round;
+	}
+	
 
+	// replay a submersion
+	action replay_flood_event (int fe) {
+		if fe >= length(list_flooding_events) {
+			write "Trying to replay a non existing event!";
+			return;
+		}
+		do clear_map;
+		// if the requested event is the last one played (already in memory), ok, we just display it
+		// if not, we read flood files
+		if last_played_event != fe {
+			last_played_event <- fe;
+			results_lisflood_rep <- list_flooding_events at list_flooding_events.keys[fe];
+			ask Cell {
+				max_water_height <- 0.0; // reset of max_water_height
+			} 
+			do read_lisflood_files (true);
+			send_flood_results <- true;
+		}
+		lisfloodReadingStep <- 0;
+		stateSimPhase <- SIM_SHOWING_LISFLOOD;
+		write stateSimPhase;
+	}
+	
+	// add the new executed event to the list + icon to the interface
 	action add_element_in_list_flooding_events (string sub_name, string sub_rep){
 		put sub_rep key: sub_name in: list_flooding_events;
 		// updating the button that displays this submersion
@@ -554,32 +541,11 @@ global {
 			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " (" + sub_name + ")";
 		}
 
-		ask Network_Control_Manager{
+		ask Network_Control_Manager {
 			do update_submersion_list;
 		}
 	}
 		
-	action execute_lisflood{
-		ask districts_in_game{
-			ask Network_Game_Manager { do lock_user (myself, true); }
-		}
-		game_paused <- true;
-		timestamp <- "_R" + game_round + "_t" + machine_time;
-		results_lisflood_rep <- "includes/" + application_name + "/floodfiles/results" + timestamp;
-		do save_dem_and_rugosity;
-		do save_lf_launch_files;
-		do add_element_in_list_flooding_events("" + game_round , results_lisflood_rep);
-		save floodEventType to: "../"+results_lisflood_rep + "/submersion_type.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by itself
-		ask Network_Game_Manager {
-			if IS_OSX {
-				do execute command: "sh " + lisfloodPath + lisflood_bat_file;
-			}
-			else{
-				do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
-			}
-		}
- 	}
- 		
 	action save_lf_launch_files {
 		save ("DEMfile         ../workspace/LittoSIM-GEN/" + lisflood_DEM_file + 
 				"\nresroot         res\ndirroot         results\nsim_time        " + LISFLOOD_SIM_TIME + "\ninitial_tstep   " + LISFLOOD_INIT_TSTEP + 
@@ -595,13 +561,13 @@ global {
 			save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 		}		
 	}
-	
+	// read dem and rugosity from files to the GAMA grid (Cell)
 	action load_dem_and_rugosity {
 		list<string> dem_data <- [];
 		list<string> rug_data <- [];
 		file dem_grid <- text_file(dem_file);
 		file rug_grid <- text_file(rugosity_file);
-		
+		// reading header, to rewrite it again if grids are saved
 		GRID_XLLCORNER <- float((dem_grid[2] split_with " ")[1]);
 		GRID_YLLCORNER <- float((dem_grid[3] split_with " ")[1]);
 		GRID_CELL_SIZE <- int((dem_grid[4] split_with " ")[1]);
@@ -623,6 +589,7 @@ global {
 				soil_color <- #black;
 			}
 		}
+		// variables to golor the flooding display
 		land_max_height <- Cell max_of(each.soil_height);
 		land_color_interval <- land_max_height / LEGEND_SIZE;
 		cells_max_depth <- abs(min(Cell where (each.cell_type = 0 and each.soil_height != no_data_value) collect each.soil_height));
@@ -630,15 +597,16 @@ global {
 			do init_cell_color;
 		}
 	}    
-
+	// write dem and rugosity grids to files (in inputs folder)
 	action save_dem_and_rugosity {
 		string dem_filename <- "../"+lisflood_DEM_file;
 		string rug_filename <- "../"+lisflood_rugosity_file;
 		string h_txt <- 'ncols         ' + GRID_NB_COLS + '\nnrows         ' + GRID_NB_ROWS + '\nxllcorner     ' + GRID_XLLCORNER
 							+ '\nyllcorner     ' + GRID_YLLCORNER + '\ncellsize      ' + GRID_CELL_SIZE + '\nNODATA_value  -9999';
-		
+		// headers
 		save h_txt rewrite: true to: dem_filename type: "text";
 		save h_txt rewrite: true to: rug_filename type: "text";
+		// body
 		string dem_data;
 		string rug_data;
 		loop rw from: 0 to: GRID_NB_ROWS - 1 {
@@ -653,49 +621,7 @@ global {
 		}
 	}
 	
-	action save_round_data {
-		int num_round <- game_round;
-		save Land_Use type:"shp" to: shapes_export_path+"Land_Use_" + num_round + ".shp"
-				attributes: ['id'::id, 'lu_code'::lu_code, 'dist_code'::dist_code, 'density_class'::density_class, 'population'::population];
-		save Coastal_Defense type: "shp" to: shapes_export_path+"Coastal_Defense_" + num_round + ".shp"
-				attributes: ['id'::coast_def_id, 'dist_code'::district_code, 'type'::type, 'status'::status, 'height'::height, 'alt'::alt];
-
-		ask districts_in_game {
-			int popul <- round_population[num_round];
-			float N_area <- surface_N[num_round];
-			float U_area <- surface_U[num_round];
-			float Udense_area <- surface_Udense[num_round];
-			float AU_area <- surface_AU[num_round];
-			float A_area <- surface_A[num_round];
-			float Us_area <- surface_Us[num_round];
-			float Usdense_area <- surface_Usdense[num_round];
-			float AUs_area <- surface_AUs[num_round];
-			
-			float min_alt_all_dikes <- min_alt_dikes_all[num_round];
-			float mean_alt_all_dikes <- mean_alt_dikes_all[num_round];
-			float min_alt_all_dunes <- 0.0;
-			float mean_alt_all_dunes <- 0.0;
-			if length(min_alt_dunes_all) > 0 {
-				float min_alt_all_dunes <- min_alt_dunes_all[num_round];
-				float mean_alt_all_dunes <- mean_alt_dunes_all[num_round];
-			}
-			
-			int actions_cost <- districts_actions_costs[dist_id-1][num_round];
-			int given_money <- districts_given_money[dist_id-1][num_round];
-			int taken_money <- districts_taken_money[dist_id-1][num_round];
-			int transferred_money <- districts_transferred_money[dist_id-1][num_round];
-			int levers_costs <- districts_levers_costs[dist_id-1][num_round];
-			
-			save [dist_id,district_code,district_name,num_round,budget,received_tax,popul,N_area,U_area,Udense_area,AU_area,A_area,Us_area,Usdense_area,AUs_area,
-				last(length_dikes_all),last(length_dikes_good),last(length_dikes_medium),last(length_dikes_bad),last(mean_alt_all_dikes),last(mean_alt_dikes_good),
-				last(mean_alt_dikes_medium),last(mean_alt_dikes_bad),last(min_alt_all_dikes),last(min_alt_dikes_good),last(min_alt_dikes_medium),last(min_alt_dikes_bad),
-				last(length_dunes_all),last(length_dunes_good), last(length_dunes_medium),last(length_dunes_bad),last(mean_alt_all_dunes),last(mean_alt_dunes_good),
-				last(mean_alt_dunes_medium),last(mean_alt_dunes_bad), last(min_alt_all_dunes),last(min_alt_dunes_good),last(min_alt_dunes_medium),last(min_alt_dunes_bad),
-				actions_cost,given_money,taken_money,transferred_money,levers_costs]
-						to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;
-		}
-	}
-	   
+	// read flooding files in results_lisflood_rep with or without ruptures
 	action read_lisflood_files (bool read_also_ruptures){
 		write "reading flood files ...";
 		ask Cell where (each.cell_type = 1){ // reset water heights
@@ -762,61 +688,7 @@ global {
 			}	
 		}
 	}
-	
-	// sending flood results to players
-	action send_flooding_results (District d){
-		write "Sending flood results to players ...";
-		if d != nil {
-			do send_flooding_results_to_district(d);
-		} else{
-			loop dd over: districts_in_game{
-     			do send_flooding_results_to_district (dd);
-     		}
-		}
-     	write "Flooding results sent!";
-	}
-	
-	action send_flooding_results_to_district (District d){
-		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT","submersion_number"::last_played_event];
-		string my_district <- d.district_code;
- 		
- 		string flooded_cells <- "";
-		ask d.LUs {
-			add string(flooded_times) at: "ftimes"+self.id to: nmap;
-		}
-		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0 and !each.marked);
-		int i <- 0;
- 		int n_cells <- min([5, length(luss)]);
- 		ask n_cells among (shuffle(luss)) {
- 			if flip(nb_watered_cells/length(cells)) {
-	 			add string(self.id) at: "lu_id"+i to: nmap;				
-				create Flood_Mark {
-					self.sub_num <- last_played_event;
-					self.mylu <- myself;
-					self.max_w_h <- myself.cells max_of(each.max_water_height);
-					self.mean_w_h <- myself.cells mean_of(each.max_water_height) with_precision 1;
-					self.max_w_h_per_cent <- ((length(myself.cells where (each.max_water_height >= int(max_w_h*10)/10)) / length(myself.cells)) * 100) with_precision 2;
-					add self to: d.flood_marks;
-					self.mylu.marked <- true;
-					add string(max_w_h with_precision 1) at: "max_w_h"+i to: nmap;
-					add string(max_w_h_per_cent) at: "max_w_h_per_cent"+i to: nmap;
-					add string(mean_w_h) at: "mean_w_h"+i to: nmap;
-				}
-				i <- i + 1;
-			}
- 		}
- 		ask Network_Game_Manager{
-			do send to: my_district contents: nmap;
-		}
-		nmap <- ["TOPIC"::"NEW_RUPTURES"];
-		ask Coastal_Defense where (each.district_code = my_district) {
-			add string(rupture and flooded) at: string(coast_def_id) to: nmap;
-		}
-		ask Network_Game_Manager{
-			do send to: my_district contents: nmap;
-		}
-	}
-	
+
 	action calculate_districts_results {
 		string text <- "";
 		string subs_csv <- "round;dist;sub_level;uu;us;udense;au;aa;nn\n";
@@ -898,7 +770,8 @@ global {
 			prev_tot_1c <- tot_1c;
 			prev_tot_maxc <- tot_maxc;
 			
-			float to_hectar <- GRID_CELL_SIZE * GRID_CELL_SIZE / 10000; // transform m2 to hectar
+			// to transform m2 to hectar
+			float to_hectar <- GRID_CELL_SIZE * GRID_CELL_SIZE / 10000;
 			U_0_5c 	<- (U_0_5 * to_hectar) 	with_precision 1; 
 			U_1c 	<- (U_1 * to_hectar) 	with_precision 1;
 			U_maxc 	<- (U_max * to_hectar) 	with_precision 1;
@@ -960,6 +833,7 @@ global {
 			totN <- (N_0_5c + N_1c + N_maxc) with_precision 1;
 			totA <-  (A_0_5c + A_1c + A_maxc) with_precision 1;
 			
+			// it's a new event, add it to the last display (Flooded area per district)
 			if length(data_flooded_area) < length (list_flooding_events) {
 				add flooded_area to: data_flooded_area;
 				add totU to: data_totU;
@@ -976,14 +850,182 @@ global {
 		
 		string rupt <- "";
 		ask Coastal_Defense {
+			// we see if the codef has been submerged too
 			if length(cells where (each.max_water_height > 0)) > 0 {
 				flooded <- true;
 			}
+			// we considere only ruptures if they were attained by water
 			rupt <- rupt + ""+ coast_def_id +","+ int(rupture and flooded) +"\n";
 		}
 		// saving ruptures file
 		if sub_event = 1 {
 			save rupt to: "../" +results_lisflood_rep + "/ruptures.txt" type: "text";
+		}
+	}
+	/***************************************************************************************************************
+	 ****************************************************************************************************************
+	 ****************************************************************************************************************/
+	
+	// calculate lu and coastal defenses data to save : A surface, dikes min_height, dunes mean_length, ...
+	action calculate_lu_coast_def_data{
+		ask districts_in_game{
+			add current_population() to: round_population;
+			/****************** LUs */
+			add sum(LUs where(each.lu_code = 1) accumulate each.shape.area) /10000 to: surface_N;
+			add sum(LUs where(each.lu_code = 2) accumulate each.shape.area) /10000 to: surface_U;
+			add sum(LUs where(each.lu_code = 2 and each.density_class = POP_DENSE) accumulate each.shape.area)/10000 to: surface_Udense;
+			add sum(LUs where(each.lu_code = 4) accumulate each.shape.area)/10000 to: surface_AU;
+			add sum(LUs where(each.lu_code = 5) accumulate each.shape.area)/10000 to: surface_A;
+			add sum(LUs where(each.lu_code = 6) accumulate each.shape.area)/10000 to: surface_Us;
+			add sum(LUs where(each.lu_code = 6 and each.density_class = POP_DENSE) accumulate each.shape.area)/10000 to: surface_Usdense;
+			add sum(LUs where(each.lu_code = 7) accumulate each.shape.area)/10000 to: surface_AUs;
+			
+			// lu differential surfaces is not calculated in round 0
+			if game_round != 0 {
+				add surface_N[game_round] - surface_N[game_round-1] + surface_N_diff[game_round-1] to: surface_N_diff;
+				add surface_U[game_round] - surface_U[game_round-1] + surface_U_diff[game_round-1] to: surface_U_diff;
+				add surface_Udense[game_round] - surface_Udense[game_round-1] + surface_Udense_diff[game_round-1] to: surface_Udense_diff;
+				add surface_A[game_round] - surface_A[game_round-1] + surface_A_diff[game_round-1] to: surface_A_diff;
+				add surface_Us[game_round] - surface_Us[game_round-1] + surface_Us_diff[game_round-1] to: surface_Us_diff;
+				add surface_Usdense[game_round] - surface_Usdense[game_round-1] + surface_Usdense_diff[game_round-1] to: surface_Usdense_diff;
+			}
+			/**************** coastal defenses */
+			list<Coastal_Defense> my_dikes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DIKE);
+			add length(my_dikes) > 0 ? my_dikes sum_of (each.shape.perimeter) : 0 to: length_dikes_all;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) : 0 to: length_dikes_good;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) : 0 to: length_dikes_medium;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) : 0 to: length_dikes_bad;
+			add length(my_dikes) > 0 ? my_dikes mean_of(each.alt) : 0 to: mean_alt_dikes_all;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) mean_of(each.alt) : 0 to: mean_alt_dikes_good;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) mean_of(each.alt) : 0 to: mean_alt_dikes_medium;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) mean_of(each.alt) : 0 to: mean_alt_dikes_bad;
+			add length(my_dikes) > 0 ? my_dikes min_of(each.alt) : 0 to: min_alt_dikes_all;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_GOOD) min_of(each.alt) : 0 to: min_alt_dikes_good;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_MEDIUM) min_of(each.alt) : 0 to: min_alt_dikes_medium;
+			add length(my_dikes) > 0 ? my_dikes where (each.status=STATUS_BAD) min_of(each.alt) : 0 to: min_alt_dikes_bad;
+			
+			list<Coastal_Defense> my_dunes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DUNE);
+			add length(my_dunes) > 0 ? my_dunes sum_of (each.shape.perimeter) : 0 to: length_dunes_all;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) sum_of (each.shape.perimeter) : 0 to: length_dunes_good;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) sum_of (each.shape.perimeter) : 0 to: length_dunes_medium;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) sum_of (each.shape.perimeter) : 0 to: length_dunes_bad;
+			add length(my_dunes) > 0 ? my_dunes mean_of(each.alt) : 0 to: mean_alt_dunes_all;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) mean_of(each.alt) : 0 to: mean_alt_dunes_good;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) mean_of(each.alt) : 0 to: mean_alt_dunes_medium;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) mean_of(each.alt) : 0 to: mean_alt_dunes_bad;
+			add length(my_dunes) > 0 ? my_dunes min_of(each.alt) : 0 to: min_alt_dunes_all;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_GOOD) min_of(each.alt) : 0 to: min_alt_dunes_good;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_MEDIUM) min_of(each.alt) : 0 to: min_alt_dunes_medium;
+			add length(my_dunes) > 0 ? my_dunes where (each.status=STATUS_BAD) min_of(each.alt) : 0 to: min_alt_dunes_bad;
+			
+			add length(my_dikes) > 0 ? (length_dikes_good[game_round] * mean_alt_dikes_good[game_round]) / (
+				(length_dikes_good[game_round] * mean_alt_dikes_good[game_round]) +
+				(length_dikes_medium[game_round] * mean_alt_dikes_medium[game_round]) +
+				(length_dikes_bad[game_round] * mean_alt_dikes_bad[game_round]) ) : 0 to: stat_dikes_good;
+
+			add length(my_dunes) > 0 ? (length_dunes_good[game_round] * mean_alt_dunes_good[game_round]) / (
+				(length_dunes_good[game_round] * mean_alt_dunes_good[game_round]) +
+				(length_dunes_medium[game_round] * mean_alt_dunes_medium[game_round]) +
+				(length_dunes_bad[game_round] * mean_alt_dunes_bad[game_round]) ) : 0 to: stat_dunes_good;
+		}
+	}
+	
+	action save_round_data {
+		int num_round <- game_round;
+		save Land_Use type:"shp" to: shapes_export_path+"Land_Use_" + num_round + ".shp"
+				attributes: ['id'::id, 'lu_code'::lu_code, 'dist_code'::dist_code, 'density_class'::density_class, 'population'::population];
+		save Coastal_Defense type: "shp" to: shapes_export_path+"Coastal_Defense_" + num_round + ".shp"
+				attributes: ['id'::coast_def_id, 'dist_code'::district_code, 'type'::type, 'status'::status, 'height'::height, 'alt'::alt];
+
+		ask districts_in_game {
+			int popul <- round_population[num_round];
+			float N_area <- surface_N[num_round];
+			float U_area <- surface_U[num_round];
+			float Udense_area <- surface_Udense[num_round];
+			float AU_area <- surface_AU[num_round];
+			float A_area <- surface_A[num_round];
+			float Us_area <- surface_Us[num_round];
+			float Usdense_area <- surface_Usdense[num_round];
+			float AUs_area <- surface_AUs[num_round];
+			
+			float min_alt_all_dikes <- min_alt_dikes_all[num_round];
+			float mean_alt_all_dikes <- mean_alt_dikes_all[num_round];
+			float min_alt_all_dunes <- 0.0;
+			float mean_alt_all_dunes <- 0.0;
+			if length(min_alt_dunes_all) > 0 {
+				float min_alt_all_dunes <- min_alt_dunes_all[num_round];
+				float mean_alt_all_dunes <- mean_alt_dunes_all[num_round];
+			}
+			
+			int actions_cost <- districts_actions_costs[dist_id-1][num_round];
+			int given_money <- districts_given_money[dist_id-1][num_round];
+			int taken_money <- districts_taken_money[dist_id-1][num_round];
+			int transferred_money <- districts_transferred_money[dist_id-1][num_round];
+			int levers_costs <- districts_levers_costs[dist_id-1][num_round];
+			
+			save [dist_id,district_code,district_name,num_round,budget,received_tax,popul,N_area,U_area,Udense_area,AU_area,A_area,Us_area,Usdense_area,AUs_area,
+				last(length_dikes_all),last(length_dikes_good),last(length_dikes_medium),last(length_dikes_bad),last(mean_alt_all_dikes),last(mean_alt_dikes_good),
+				last(mean_alt_dikes_medium),last(mean_alt_dikes_bad),last(min_alt_all_dikes),last(min_alt_dikes_good),last(min_alt_dikes_medium),last(min_alt_dikes_bad),
+				last(length_dunes_all),last(length_dunes_good), last(length_dunes_medium),last(length_dunes_bad),last(mean_alt_all_dunes),last(mean_alt_dunes_good),
+				last(mean_alt_dunes_medium),last(mean_alt_dunes_bad), last(min_alt_all_dunes),last(min_alt_dunes_good),last(min_alt_dunes_medium),last(min_alt_dunes_bad),
+				actions_cost,given_money,taken_money,transferred_money,levers_costs]
+						to: csvs_export_path + district_name + ".csv" type:"csv" rewrite: false;
+		}
+	}
+	
+	// sending flood results to players
+	action send_flooding_results (District d){
+		write "Sending flood results to players ...";
+		if d != nil {
+			do send_flooding_results_to_district(d);
+		} else{
+			loop dd over: districts_in_game{
+     			do send_flooding_results_to_district (dd);
+     		}
+		}
+     	write "Flooding results sent!";
+	}
+	
+	action send_flooding_results_to_district (District d){
+		map<string,string> nmap <- ["TOPIC"::"NEW_SUBMERSION_EVENT","submersion_number"::last_played_event];
+		string my_district <- d.district_code;
+ 		
+ 		string flooded_cells <- "";
+		ask d.LUs {
+			add string(flooded_times) at: "ftimes"+self.id to: nmap;
+		}
+		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0 and !each.marked);
+		int i <- 0;
+ 		int n_cells <- min([5, length(luss)]);
+ 		ask n_cells among (shuffle(luss)) { // sending 5 (maximum) flooded lu cells to players as flood marks
+ 			if flip(nb_watered_cells/length(cells)) {
+	 			add string(self.id) at: "lu_id"+i to: nmap;				
+				create Flood_Mark {
+					self.sub_num <- last_played_event;
+					self.mylu <- myself;
+					self.max_w_h <- myself.cells max_of(each.max_water_height);
+					self.mean_w_h <- myself.cells mean_of(each.max_water_height) with_precision 1;
+					// percentage of cells flooded max_w_h
+					self.max_w_h_per_cent <- ((length(myself.cells where (each.max_water_height >= int(max_w_h*10)/10)) / length(myself.cells)) * 100) with_precision 2;
+					add self to: d.flood_marks;
+					self.mylu.marked <- true;
+					add string(max_w_h with_precision 1) at: "max_w_h"+i to: nmap;
+					add string(max_w_h_per_cent) at: "max_w_h_per_cent"+i to: nmap;
+					add string(mean_w_h) at: "mean_w_h"+i to: nmap;
+				}
+				i <- i + 1;
+			}
+ 		}
+ 		ask Network_Game_Manager{
+			do send to: my_district contents: nmap;
+		}
+		// sending ruptures
+		nmap <- ["TOPIC"::"NEW_RUPTURES"];
+		ask Coastal_Defense where (each.district_code = my_district) {
+			add string(rupture and flooded) at: string(coast_def_id) to: nmap;
+		}
+		ask Network_Game_Manager{
+			do send to: my_district contents: nmap;
 		}
 	}
 	
@@ -1022,7 +1064,7 @@ global {
 			display_text <- text_label split_with ' ' at 0;
 			display_text2 <- text_label split_with ' ' at 1;
 		}
-		if study_area_def ["LISFLOOD_BDY_MEDIUM_FILENAME"] != nil {
+		if study_area_def ["LISFLOOD_BDY_MEDIUM_FILENAME"] != nil { // if there's a medium submersion
 			create Button{
 				nb_button 	<- 55;
 				command	 	<- MEDIUM_FLOODING;
@@ -1032,7 +1074,7 @@ global {
 				display_text <- text_label split_with ' ' at 0;
 				display_text2 <- text_label split_with ' ' at 1;
 			}	
-		} else if first(Water_Gate) != nil {
+		} else if first(Water_Gate) != nil { // if water gates (cliff_coast)
 			create Button{
 				nb_button 	<- 57;
 				command	 	<- "OPEN_DIEPPE_GATES";
@@ -1192,7 +1234,7 @@ global {
 		}
 	}
 	
-	// the two buttons of the first map display
+	// the button of the map (flooding) display (show/hide grid)
 	action button_click_map {
 		point loc <- #user_location;
 		Button a_button <- first((Button where (each.nb_button = 4 and each overlaps loc)));
@@ -1268,6 +1310,7 @@ species Network_Game_Manager skills: [network]{
 						write world.get_message('MSG_CONNECTION_FROM') + " " + m_sender + " " + district_name + " (" + id_dist + ")";
 					}
 				}
+				// a player request the altitude of a newly built codef
 				match NEW_COAST_DEF_ALT {
 					geometry new_tmp_dike <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
@@ -1279,8 +1322,8 @@ species Network_Game_Manager skills: [network]{
 						do send to: m_sender contents: mpp;
 					}
 				}
-				match PLAYER_ACTION {  // another player action
-				if(game_round > 0) {
+				match PLAYER_ACTION {  // a new player action
+				if game_round > 0 {
 					if(int(m_contents["command"]) in ACTION_LIST) {
 						create Player_Action {
 							self.command 					<- int(m_contents["command"]);
@@ -1333,9 +1376,10 @@ species Network_Game_Manager skills: [network]{
 			}				
 		}
 	}
-
-	reflex apply_player_action when: length(Player_Action where (each.is_alive)) > 0{
-		ask Player_Action where (each.is_alive){
+	
+	// applying player actions that are ready to be applied
+	reflex apply_player_action when: length(Player_Action where !each.is_applied) > 0{
+		ask Player_Action where !each.is_applied{
 			if self.should_be_applied and !self.should_wait_lever_to_activate {
 				int id_dist <- world.district_id (district_code);
 				bool acknowledge <- false;
@@ -1430,18 +1474,17 @@ species Network_Game_Manager skills: [network]{
 				}
 				if acknowledge {
 					ask Network_Game_Manager { do acknowledge_application_of_player_action(myself); }
-				}
-				is_alive 	<- false; 
+				} 
 				is_applied 	<- true;
 			}
 		}		
 	}
-	
+	// a player action is applied, notify the player
 	action acknowledge_application_of_player_action (Player_Action act){
 		map<string,string> msg <- ["TOPIC"::PLAYER_ACTION_IS_APPLIED,"id"::act.act_id];
 		do send to: act.district_code contents: msg;
 	}
-	
+	// send updates on lu cells to player
 	reflex update_LU when: length (Land_Use where(each.not_updated)) > 0 {
 		string msg <- "";
 		ask Land_Use where(each.not_updated) {
@@ -1453,7 +1496,7 @@ species Network_Game_Manager skills: [network]{
 			}
 		}
 	}
-	
+	// send updates on codefs to player
 	reflex update_coast_def when: length (Coastal_Defense where(each.not_updated)) > 0 {
 		map<string,string> msg;
 		point p1	<- nil;
@@ -1471,7 +1514,7 @@ species Network_Game_Manager skills: [network]{
 			}
 		}
 	}
-	
+	// send all data to a player after requesting data retrieve (refresh all or reconnect)
 	action send_data_to_district (District d){
 		write world.get_message('MSG_SEND_DATA_TO') + " " + d.district_code;
 		loop tmp over: Coastal_Defense where(each.district_code = d.district_code){
@@ -1501,8 +1544,8 @@ species Network_Game_Manager skills: [network]{
 			do send to: d.district_code contents: mp;
 		}		
 	}
-	
-	action lock_user (District d, bool lock){ // lock or unlock the player GUI
+	 // lock or unlock the player GUI
+	action lock_user (District d, bool lock){
 		string val <- lock = true? "LOCK":"UNLOCK";
 		map<string,string> mp <- ["OBJECT_TYPE" ::OBJECT_TYPE_WINDOW_LOCKER,
 								  "LOCK_REQUEST"::val, "TOPIC"::DATA_RETRIEVE];
@@ -1572,7 +1615,7 @@ species Network_Listener_To_Leader skills:[network]{
 			message msg <- fetch_message();
 			map<string, unknown> m_contents <- msg.contents;
 			switch m_contents[LEADER_COMMAND] {
-				match EXCHANGE_MONEY {
+				match EXCHANGE_MONEY { // money exchange between district
 					int money <- int(m_contents[AMOUNT]);
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]) {
 						budget 	<- budget - money;
@@ -1597,11 +1640,13 @@ species Network_Listener_To_Leader skills:[network]{
 						round_taken_money <- round_taken_money - money;
 					}
 				}
+				// the leader connects or reconnects
 				match ASK_NUM_ROUND 		 {	do inform_leader_round_number;	}
 				match ASK_INDICATORS_T0 	 {	do inform_leader_indicators_t0;	}
 				match ASK_ACTION_STATE  	 {
 					ask Player_Action { is_sent_to_leader <- false; }
 				}
+				// a lever has been triggered or canceled
 				match ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE {
 					Player_Action act <- Player_Action first_with (each.act_id = string(m_contents[PLAYER_ACTION_ID]));
 					if act!= nil {
@@ -1612,6 +1657,7 @@ species Network_Listener_To_Leader skills:[network]{
 						}
 					}	
 				}
+				// a lever is applied by leader
 				match NEW_ACTIVATED_LEVER {
 					if empty(Activated_Lever where (int(each.my_map["id"]) = int(m_contents["id"]))){
 						create Activated_Lever{
@@ -1633,7 +1679,7 @@ species Network_Listener_To_Leader skills:[network]{
 						}
 					}
 				}
-				
+				// an action if profiled by the leader
 				match NEW_REQUESTED_ACTION {
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]){
 						ask Player_Action first_with (each.act_id = m_contents[PLAYER_ACTION_ID]) {
@@ -1660,7 +1706,7 @@ species Network_Listener_To_Leader skills:[network]{
 						}
 					}
 				}
-				
+				// a button state is modified by the leader 
 				match "TOGGLE_BUTTON" {
 					ask districts_in_game first_with(each.district_code = m_contents[DISTRICT_CODE]){
 						put int(m_contents["STATE"]) in: buttons_states at: int(m_contents["COMMAND"]);
@@ -1685,12 +1731,13 @@ species Network_Listener_To_Leader skills:[network]{
 		put NUM_ROUND 			key: RESPONSE_TO_LEADER in: msg;
 		put string(game_round) 	key: NUM_ROUND in: msg;
 		ask districts_in_game {
+			// inform also about budget/population for graphs
 			put string(budget)  key: district_code+"_bud"	in: msg;
 			put string(current_population()) key: district_code+"_pop"  in: msg;
 		}
 		do send to: GAME_LEADER contents: msg;
 	}
-				
+	// the game state ion round 0
 	action inform_leader_indicators_t0  {
 		ask districts_in_game {
 			map<string,string> msg <- self.my_indicators_t0;
@@ -1766,7 +1813,6 @@ species Player_Action schedules:[]{
 	bool is_in_coast_border_area	 	<- false; 				// for LU action  // 400m to coast line
 	bool is_in_risk_area 				<- false; 				// for LU action  // risk read = rpp.shp
 	bool is_inland_dike					<- false; 				// for COAST_DEF action // retro dikes
-	bool is_alive 						<- true;
 	bool should_wait_lever_to_activate  <- false;
 	bool a_lever_has_been_applied		<- false;
 	list<Activated_Lever> activated_levers <-[]; // activated and validated levers
@@ -1774,6 +1820,7 @@ species Player_Action schedules:[]{
 	int draw_around;
 	float altit;
 
+	// build a map to send over network
 	map<string,string> build_map_from_action_attributes{
 		map<string,string> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_PLAYER_ACTION,
@@ -1810,7 +1857,7 @@ species Player_Action schedules:[]{
 			}
 		return res;
 	}
-	
+	// crea codef action is applied : create the coastal defense
 	Coastal_Defense create_coast_def (Player_Action act, int comm){
 		int next_coast_def_id <- max(Coastal_Defense collect(each.coast_def_id)) +1;
 		create Coastal_Defense returns: tmp_coast_def{
@@ -1833,11 +1880,12 @@ species Player_Action schedules:[]{
 			}
 		}
 		Coastal_Defense new_coast_def <- first (tmp_coast_def);
-		act.element_id 		<-  new_coast_def.coast_def_id;
+		act.element_id 	<-  new_coast_def.coast_def_id;
 		ask Network_Game_Manager {
 			new_coast_def.shape  <- myself.element_shape;
 			point p1 		<- first(myself.element_shape.points);
 			point p2 		<- last(myself.element_shape.points);
+			// notify the district about the creation
 			map<string,string> msg <- ["TOPIC"::ACTION_COAST_DEF_CREATED,
 				 "coast_def_id"::new_coast_def.coast_def_id,"action_id"::myself.act_id,
 				 "p1.x"::p1.x, "p1.y"::p1.y, "p2.x"::p2.x, "p2.y"::p2.y, "dune_type"::new_coast_def.dune_type,
@@ -1871,8 +1919,9 @@ species Coastal_Defense {
 	bool is_protected_by_cord <- false;
 	list<Cell> cells;
 	int draw_around <- 50;
-	bool flooded <- false;
+	bool flooded <- false; // if water has atttained the codef
 	
+	// build a map to send over network
 	map<string,unknown> build_map_from_coast_def_attributes{
 		map<string,unknown> res <- [
 			"OBJECT_TYPE"::OBJECT_TYPE_COASTAL_DEFENSE,
@@ -1897,7 +1946,7 @@ species Coastal_Defense {
 		add string(i) at: "tot_points" to: res;
 		return res;
 	}
-	
+	// initialize a coastal defense at initialization frim the shapefile
 	action init_coastal_def {
 		if status = ""  { status <- STATUS_GOOD; } 
 		if type = '' 	{ type 	<- "Unknown"; }
@@ -1914,7 +1963,7 @@ species Coastal_Defense {
 			do build_coast_def;
 		}
 	}
-	
+	// build the coastal defense : modify relevant dem cells
 	action build_coast_def {
 		ask cells  {
 			soil_height <- myself.alt;
@@ -1927,7 +1976,7 @@ species Coastal_Defense {
 		status <- STATUS_GOOD;
 		counter_status <- 0;
 	}
-
+	// raising a dike always repair it
 	action raise_dike {
 		do repaire_dike;
 		height 	<- height + RAISE_DIKE_HEIGHT; 
@@ -1938,7 +1987,7 @@ species Coastal_Defense {
 			do init_cell_color();
 		}
 	}
-	
+	// dismanteling a codef
 	action destroy_coast_def {
 		ask Network_Game_Manager {
 			map<string,string> msg <- ["TOPIC"::ACTION_COAST_DEF_DROPPED, "coast_def_id"::myself.coast_def_id];
@@ -1946,6 +1995,7 @@ species Coastal_Defense {
 				do send to: dist.district_code contents: msg;
 			}	
 		}
+		// reseting cells
 		ask cells {
 			soil_height <- soil_height - myself.height;
 			soil_height_before_broken <- soil_height;
@@ -1955,7 +2005,7 @@ species Coastal_Defense {
 	}
 	
 	action degrade_cord_status {
-		if slices > 1 {
+		if slices > 1 { // if there's slices to remove
 			slices <- slices - NB_SLICES_LOST_PER_ROUND;
 			if slices <= NB_SLICES_CORD_STATUS_BAD {
 				status <- STATUS_BAD;
@@ -1997,13 +2047,13 @@ species Coastal_Defense {
 			not_updated<- true;
 		}
 		else { // a dune without a ganivelle
-			if maintained {
+			if maintained { 
 				maintain_status <- maintain_status - 1;
 				if maintain_status = 0 {
 					maintained <- false;
 					not_updated <- true;
 				}
-			} else {
+			} else { // if not maintained it degrades
 				counter_status <- counter_status + 1;
 				if counter_status > (dune_type = 1 ? STEPS_DEGRAD_STATUS_DUNE : STEPS_DEGRAD_STATUS_DUNE + 2) {
 					counter_status   <- 0;
@@ -2041,11 +2091,11 @@ species Coastal_Defense {
 		else if type = COAST_DEF_TYPE_DUNE  {
 			if status = STATUS_BAD 	{
 				p <- PROBA_RUPTURE_DUNE_STATUS_BAD;
-				if dune_type = 2 { p <- p*2; }	
+				if dune_type = 2 { p <- p*2; }	 // if its a 2nd dune type we double the probability
 			}
 			else if status = STATUS_MEDIUM 	{
 				p <- PROBA_RUPTURE_DUNE_STATUS_MEDIUM;
-				if dune_type = 2 { p <- int(p*1.5); }	
+				if dune_type = 2 { p <- int(p*1.5); }// if its a 2nd dune type we 150% the probability
 			}
 			else { p <- PROBA_RUPTURE_DUNE_STATUS_GOOD;	 }
 		}
@@ -2078,7 +2128,9 @@ species Coastal_Defense {
 	}
 	
 	action install_ganivelle {
+		// if its in a bad status, it evolves in the next step 
 		if status = STATUS_BAD { counter_status <- STEPS_REGAIN_STATUS_GANIVELLE - 1; }
+		// else, it waits for STEPS_REGAIN_STATUS_GANIVELLE
 		else				   { counter_status <- 0; 	}		
 		ganivelle <- true;
 	}
@@ -2087,7 +2139,7 @@ species Coastal_Defense {
 		self.maintained <- true;
 		maintain_status <- MAINTAIN_STATUS_DUNE_STEPS;
 	}
-	
+	// upgrading the status of peblle dikes by installing slices
 	action install_new_slice{
 		slices <- slices + 1;
 		if slices > NB_SLICES_CORD_STATUS_MEDIUM {
@@ -2128,6 +2180,7 @@ species Coastal_Defense {
 				draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
 			}
 		}
+		// we display ruptures only if the submersion has arrived to the coastal def
 		if display_ruptures and rupture and flooded {
 			list<point> pts <- shape.points;
 			point tmp <- length(pts) > 2 ? pts[int(length(pts)/2)] : shape.centroid;
@@ -2227,7 +2280,7 @@ species Land_Use {
 			}
 		}
 	}
-	
+	// change AU to U if the counter = STEPS_FOR_AU_TO_U
 	action evolve_AU_to_U {
 		if lu_code in [LU_TYPE_AU,LU_TYPE_AUs]{
 			AU_to_U_counter <- AU_to_U_counter + 1;
@@ -2236,6 +2289,7 @@ species Land_Use {
 				lu_name <- lu_code = LU_TYPE_AU ? "U" : "Us";
 				lu_code <- lu_type_names index_of lu_name;
 				not_updated <- true;
+				// the population is assigned depending on the LU area
 				do assign_population (int(POP_FOR_NEW_U * self.shape.area / STANDARD_LU_AREA), true);
 			}
 		}	
@@ -2264,20 +2318,21 @@ species Land_Use {
 	
 	action assign_population(int nb_pop, bool assign_anyway) {
 		if population_still_to_dispatch > 0 {
+			// nb_pop is greater than the remaining pop to dispatch, we take the minimum
 			int pop_to_assign <- min (nb_pop, population_still_to_dispatch);
 			population <- population + pop_to_assign;
 			population_still_to_dispatch <- population_still_to_dispatch - pop_to_assign;
 			not_updated <- true;
 			pop_updated <- true;
 		}else{
-			if assign_anyway {
+			if assign_anyway { // even if population to dispatch is negative, we assign anyway for new U and Ui, but not for standard U
 				population <- population + nb_pop;
 				not_updated <- true;
 				pop_updated <- true;
 			}
 		}
 	}
-	
+	// population decrease
 	action withdraw_population (int nb_pop) {
 		if population_still_to_dispatch < 0 {
 			int pop_to_withdraw <- min (nb_pop, abs(population_still_to_dispatch));
@@ -2507,6 +2562,7 @@ species District {
 		put string(length(LUs where (each.lu_code = LU_TYPE_U))) 	key: "count_LU_U_t0"   in: my_indicators_t0; // count cells of type U
 	}
 	
+	// cells flooded by river
 	action calculate_river_flood_results { // for Normandie
 		float my_area <- 0.0;
 		loop i from: 0 to: 6 { // init tables
@@ -2548,7 +2604,7 @@ species District {
 	}			
 }
 //------------------------------ End of District -------------------------------//
-
+// small cells to display on "Planning display"
 species Polycell{
 	point loc;
 	rgb col;
@@ -2569,6 +2625,7 @@ species Button{
 	geometry shape 	 <- square(min(button_size.x,button_size.y));
 	image_file my_icon;
 	
+	// buttons on the control panel display
 	aspect buttons_master {
 		if nb_button in [0,1,2,3,5,7,8,55,57,911,912,913,914] {
 			draw shape color: #white border: is_selected ? #red : #black;
@@ -2584,7 +2641,7 @@ species Button{
 			}
 		}	
 	}
-	
+	// show/hide grid button
 	aspect buttons_map {
 		if nb_button = 4 {
 			draw shape color: #white border: is_selected? # red : # black;
@@ -2598,7 +2655,7 @@ species Legend_Planning{
 	list<string> texts <- [];
 	point start_location;
 	point rect_size <- {300, 400};
-	rgb text_color  <- application_name = "overflow_coast_v" ? #white : #black;
+	rgb text_color  <- application_name = "overflow_coast_h" ? #white : #black;
 	
 	init{
 		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
@@ -2654,7 +2711,7 @@ species Legend_Flood_Map parent: Legend_Planning {
 
 species Legend_Flood_Plan parent: Legend_Flood_Map {
 	init{
-		text_color <- application_name = "overflow_coast_v" ? #white : #black;
+		text_color <- application_name = "overflow_coast_h" ? #white : #black;
 		start_location <- {LEGEND_POSITION_X + 350, LEGEND_POSITION_Y};
 	}
 	
@@ -2815,7 +2872,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		display "Planning" background: #black{
 			graphics "World" {
 				draw shape color: rgb(230,251,255);
-				if application_name = "overflow_coast_v" {
+				if application_name = "overflow_coast_h" {
 					draw rectangle(2*world.shape.width, world.shape.height) at: {0,0} color: #black;
 				}
 			}

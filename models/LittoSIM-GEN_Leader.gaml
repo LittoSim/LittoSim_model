@@ -1257,7 +1257,7 @@ species Lever {
 			}
 		}
 	}
-
+	// manual lever: pebbles (cliff_coast)
 	action toggle_status {
 		status_on <- !status_on ;
 		if !status_on { activation_queue <-[]; }

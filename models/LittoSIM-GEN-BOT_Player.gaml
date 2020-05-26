@@ -110,7 +110,7 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 					}
 					if length(codefs) > 0 {
 						ask world {
-							do create_coastal_def_action (one_of(codefs), Button first_with (each.command = comm));
+							//do create_coastal_def_action (one_of(codefs), Button first_with (each.command = comm));
 						}
 					}	
 				}
