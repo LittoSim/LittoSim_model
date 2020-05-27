@@ -2354,7 +2354,7 @@ species Land_Use {
 		draw shape color: get_color_density();
 	}
 	
-	aspect conditional_outline {
+	aspect quadrillage {
 		if show_grid {	draw shape empty: true border:#black;	}
 	}
 	
@@ -2856,7 +2856,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species River_Flood_Cell aspect: base;
 			species River_Flood_Cell_1m aspect: base;
 			species Coastal_Defense aspect: base;
-			species Land_Use 		aspect: conditional_outline;
+			species Land_Use 		aspect: quadrillage;
 			species Water_Gate		aspect: base;
 			species Protected_Area 	aspect: base;
 			species Flood_Risk_Area aspect: base;
