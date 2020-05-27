@@ -170,7 +170,7 @@ global{
 	file districts_shape 		<- file(study_area_def["DISTRICTS_SHAPE"]);
 	file roads_shape 			<- file(study_area_def["ROADS_SHAPE"]);
 	file protected_areas_shape 	<- file(study_area_def["SPA_SHAPE"]);
-	file water_shape 			<- file(study_area_def["WATER_SHAPE"]);
+	file river_shape 			<- file(study_area_def["WATER_SHAPE"]);
 	file rpp_area_shape 		<- file(study_area_def["RPP_SHAPE"]);
 	file coastline_shape 		<- file(study_area_def["COASTLINE_SHAPE"]);
 	file coastal_defenses_shape <- file(study_area_def["COASTAL_DEFENSES_SHAPE"]);

@@ -18,25 +18,25 @@ global{
 	float sim_id;
 	list<string> leader_activities <- [];
 	list<Player_Action> player_actions <- [];
-	list<Activated_Lever> activated_levers <- [];	
-	District selected_district <- nil;
+	list<Activated_Lever> activated_levers <- [];
+	
 	list<District> districts <- nil;
 	geometry shape <- square(100#m);
 	Lever selected_lever;
 	Player_Button clicked_pButton;
 	Lever explored_lever;
-	list<species<Lever>> all_levers <- []; // levers in all_levers and levers_names should be in the same order
+	list<species<Lever>> all_levers <- []; // levers in this list "all_levers" and in "levers_names" should be in the same order
 	list<string> levers_names <- ['LEVER_CREATE_DIKE', 'LEVER_RAISE_DIKE', 'LEVER_REPAIR_DIKE', 'LEVER_AU_Ui_in_COAST_AREA', 'LEVER_AU_Ui_in_RISK_AREA',
 								  'LEVER_GANIVELLE', 'LEVER_ENHANCE_NAT_ACCR', 'LEVER_CREATE_DUNE', 'LEVER_MAINTAIN_DUNE', 'LEVER_Us_out_COAST_and_RISK_AREA',
 								  'LEVER_Us_in_COAST_AREA', 'LEVER_Us_in_RISK_AREA', 'LEVER_INLAND_DIKE',
 								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_to_N_in_COAST_or_RISK_AREA',
 								  'LEVER_DENSIFICATION_out_COAST_and_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE','LEVER_GIVE_PEBBLES'];
 	bool save_data <- false; // whether save or not data logs 
-	
+	// for graphs
 	list<list<int>> districts_budgets <- [[],[],[],[]];
 	list<list<int>> districts_populations <- [[],[],[],[]];
 	Action_Name last_updated <- nil;
-	
+	// financial plan
 	int plan_project_duration <- 5;
 	float plan_risk_agency_rate <- 0.3;
 	int plan_current_partition_index <- 0;
@@ -76,6 +76,7 @@ global{
 		MSG_OTHER				<- get_message("MSG_OTHER");
 		LDR_LAST				<- get_message('LDR_LAST');
 		
+		// list of all supported levers in the same order as "levers_names"
 		all_levers <- [Create_Dike_Lever, Raise_Dike_Lever, Repair_Dike_Lever, AU_or_Ui_in_Coast_Area_Lever, AU_or_Ui_in_Risk_Area_Lever,
 				Ganivelle_Lever, Enhance_Natural_Accr_Lever, Create_Dune_Lever, Maintain_Dune_Lever, Us_out_Coast_and_Risk_Area_Lever,
 				Us_in_Coast_Area_Lever, Us_in_Risk_Area_Lever, Inland_Dike_Lever,
@@ -83,16 +84,14 @@ global{
 				Densification_out_Coast_and_Risk_Area_Lever, Expropriation_Lever, Destroy_Dike_Lever, Give_Pebbles_Lever];
 		
 		sim_id <- machine_time;
-		create District from: districts_shape with: [district_code::string(read("dist_code")), dist_id::int(read("player_id"))] {
-			if dist_id = 0 {
-				do die;
-			}
+		create District from: districts_shape with: [district_code::string(read("dist_code"))] {
 			district_name <- dist_code_sname_correspondance_table at district_code;
+			if district_name = nil { do die; } // the district is not in the game (absent from study_area.conf)
 			district_long_name <- dist_code_lname_correspondance_table at district_code;
-			surface <- round(shape.area / 10000);
+			surface <- round(shape.area / 10000); // m2 to hectare
 		}
 		int idx <- 1;
-		loop kk over: dist_code_sname_correspondance_table.keys {
+		loop kk over: dist_code_sname_correspondance_table.keys { // ditrict id
 			add first(District where (each.district_code = kk)) to: districts;
 			last(districts).dist_id <- idx;
 			idx <- idx + 1;
@@ -109,7 +108,7 @@ global{
 		do create_financial_plan;
 	}
 	//------------------------------ end of init -------------------------------//
-	
+	// header : create district names and buttons on top
 	action create_district_buttons_names{
 		loop i from: 0 to: 3 {
 			create District_Name {
@@ -142,7 +141,7 @@ global{
 			}
 		}
 	}
-	
+	// creating and positionning all levers (display 1: Levers)
 	action create_levers {
 		int filter <- GRID_H - 11;
 		loop i from: 0 to: 3{
@@ -159,17 +158,16 @@ global{
 			}
 		}
 	}
-	
+	// create the table of actions counters (display 2 : Actions)
 	action create_actions_counters {
 		string act;
 		int lu_index;
 		int codef_index;
-		list<string> all_actions <- [];
 		loop i from: 0 to: length(data_action) - 1 {
 			act <- data_action.keys[i];
 			lu_index <- int(data_action at act at 'lu_index');
 			codef_index <- int(data_action at act at 'coast_def_index');
-			if codef_index >= 0 or  lu_index >= 0 {
+			if codef_index >= 0 or lu_index >= 0 { // if the action is avilable for player on LU or Codef tab 
 				int act_code <- int(data_action at act at 'action_code');
 				create Action_Name {
 					action_code	<- act_code;
@@ -193,9 +191,10 @@ global{
 				}
 			} 
 		}
+		// allows to color in red the last updated action
 		last_updated <- first(Action_Name);
 	}
-	
+	// create buttons for actions available for players (display 5 : Player_Buttons)
 	action create_player_buttons {
 		string act_name;
 		int lu_index;
@@ -244,7 +243,7 @@ global{
 		write aText;
 		add ("<" + machine_time + ">" + aText) to: leader_activities;
 	}
-	
+	// if save_data is true
 	action save_leader_data{
 		int num_round <- game_round;
 		if length(leader_activities) > 0 {
@@ -269,7 +268,7 @@ global{
 			save a to: records_folder + "leader_data-" + sim_id + "/all_levers_round" + num_round + ".csv"  type: "csv" rewrite: false;
 		}
 	}
-
+	// a click on the "Player_Buttons" interface
 	action user_buttons_click{
 		point loc <- #user_location;
 		Player_Button but <- (Player_Button) first_with (each overlaps loc);
@@ -304,12 +303,12 @@ global{
 			}
 		}
 	}
-	
+	// a user click on "Levers" display
 	action user_click{
 		point loc <- #user_location;
 		if selected_lever != nil {
 			Lever_Window_Button but <- (Lever_Window_Button) first_with (each overlaps loc);
-			if but != nil {
+			if but != nil { // a button of lever window buttons is clicked
 				switch but.command {
 					match 0 {
 						if species(selected_lever).parent = Delay_Lever {
@@ -325,43 +324,43 @@ global{
 							selected_lever <- nil;
 						}
 					}
-					match 2 {
+					match 2 { // change message sent to player
 						ask selected_lever { do change_lever_player_msg; }
 						selected_lever <- nil;
 					}
-					match 3 {
+					match 3 { // cancel next lever
 						if selected_lever.status_on and selected_lever.timer_activated {
 							ask selected_lever { do cancel_next_activated_action; }
 							selected_lever <- nil;
 						}
 					}
-					match 4 {
+					match 4 { // cancel all instances
 						if selected_lever.status_on and selected_lever.timer_activated {
 							ask selected_lever { do cancel_all_activated_actions; }
 							selected_lever <- nil;
 						}
 					}
-					match 5 {
+					match 5 { // apply next lever
 						if selected_lever.status_on and selected_lever.timer_activated{
 							ask selected_lever { do accept_next_activated_action; }
 							selected_lever <- nil;
 						}
 					}
-					match 6 {
+					match 6 { // apply all instances
 						if selected_lever.status_on and selected_lever.timer_activated {
 							ask selected_lever { do accept_all_activated_actions; }
 							selected_lever <- nil;
 						}
 					}
-					match 7 {
+					match 7 { // activate/deactivate
 						ask selected_lever { do toggle_status; }
 						selected_lever <- nil;
 					}
-					match 8 {
-						ask selected_lever { do write_help_lever_msg; }
+					match 8 { // change help message
+						ask selected_lever { do display_help_lever_msg; }
 						selected_lever <- nil;
 					}
-					match 9 {
+					match 9 { // close
 						selected_lever <- nil;
 					}
 				}
@@ -371,11 +370,13 @@ global{
 		} else {
 			District_Action_Button but <- (District_Action_Button) first_with (each overlaps loc);
 			if but != nil { 
+				// one of four buttons : exchange, give, take money or send message
 				ask District_Action_Button where (each = but){
 					do district_button_cliked();
 				}
 			}else{
 				selected_lever <- Lever(first(all_levers accumulate (each.population) first_with (each overlaps loc)));
+				// a lever is clicked, open the buttons window
 				if selected_lever != nil {
 					 string code_msg <- species(selected_lever).parent = Delay_Lever ? 'LEV_CHANGE_IMPACT_DELAY' : 'LEV_CHANGE_IMPACT_COST';
 					 Lever_Window_Button[0].text <- world.get_message(code_msg);
@@ -383,7 +384,7 @@ global{
 			}	
 		}
 	}
-	
+	// when the mouse moves on "Levers" display
 	action user_move {
 		if selected_lever != nil {
 			explored_lever <- nil;
@@ -420,7 +421,7 @@ global{
 			ask lev.population { activation_queue <-[]; }
 		}
 	}
-	
+	// color depending on strategy
 	rgb color_profile (string prof){
 		switch prof {
 			match BUILDER 		{ return #deepskyblue;}
@@ -475,39 +476,39 @@ global{
 			F_Plan_Grid[i,15].col <- #lightgreen;
 		}
 		
-		create plan_Button {
+		create Plan_Button {
 			command <- 0;
 			_name <- world.get_message("PLAN_EGAL");
 			loc <- F_Plan_Grid[1,5].location;
 		}
-		create plan_Button {
+		create Plan_Button {
 			command <- 1;
 			_name <- world.get_message("PLAN_POPUL");
 			loc <- F_Plan_Grid[2,5].location;
 		}
-		create plan_Button {
+		create Plan_Button {
 			command <- 2;
 			_name <- world.get_message("PLAN_BUDGET");
 			loc <- F_Plan_Grid[3,5].location;
 		}
-		create plan_Button {
+		create Plan_Button {
 			command <- 3;
 			_name <- world.get_message("PLAN_SURFACE");
 			loc <- F_Plan_Grid[4,5].location;
 		}
 		
-		create plan_Button {
+		create Plan_Button {
 			command <- 4;
 			_name <- world.get_message("PLAN_AMOUNTS");
 			loc <- F_Plan_Grid[2,9].location;
 		}
-		create plan_Button {
+		create Plan_Button {
 			col <- #orange;
 			command <- 5;
 			_name <- world.get_message('PLAN_TIME_PER100');
 			loc <- F_Plan_Grid[4,11].location; 
 		}
-		create plan_Button {
+		create Plan_Button {
 			command <- 6;
 			col <- #lightgreen;
 			_name <- world.get_message("PLAN_VALIDATE");
@@ -527,8 +528,8 @@ global{
 	}
 	
 	action update_paritionning (int ix) {
-		ask plan_Button where (each.command = plan_current_partition_index) { col <- #yellow; }
-		ask plan_Button where (each.command = ix) { col <- #red; }
+		ask Plan_Button where (each.command = plan_current_partition_index) { col <- #yellow; }
+		ask Plan_Button where (each.command = ix) { col <- #red; }
 		plan_current_partition_index <- ix;
 		loop i from: 0 to: 3 {
 			F_Plan_Grid[i+1,6].text <- ""+ 100 * plan_current_partition[i] + "%";
@@ -554,7 +555,7 @@ global{
 			F_Plan_Grid[i+1,1].text <- "" + districts[i].population;
 		}
 	}
-	
+	// send the annual amount of financial plan
 	action send_one_year_plan {
 		if plan_project_duration > 0 {
 			plan_project_duration <- plan_project_duration - 1;
@@ -580,14 +581,14 @@ global{
 				do record_leader_activity ("Interdistrict financial plan", districts[i].district_name, msg_player + " : " + amount_value + " By");
 			}
 		}else {
-			send_my_plan <- false;
+			send_my_plan <- false; // sending plan is over
 		}
 	}
 	
 	action plan_buttons_click{
-		if send_my_plan { return; }
+		if send_my_plan { return; } // a plan is already in process
 		point loc <- #user_location;
-		plan_Button but <- (plan_Button) first_with (each overlaps loc);
+		Plan_Button but <- (Plan_Button) first_with (each overlaps loc);
 		if but != nil {
 			switch but.command {
 				match 0 {
@@ -673,6 +674,7 @@ species Player_Action schedules:[]{
 	list<int> previous_activated_levers <- [];
 	bool already_impacted <- false; // to prevent that an action be impacted by two levers
 	
+	// profiling the action as Builder, Soft def, Withdrawal or Other
 	string get_strategy_profile {
 		District dd <- first(District where(each.district_code = self.district_code));
 		if action_type = PLAYER_ACTION_TYPE_COAST_DEF {
@@ -796,6 +798,7 @@ species District{
 	int count_A_to_N_in_coast_or_risk_area			<- 0;
 	int count_densification_out_coast_and_risk_area	<- 0;
 	
+	// graphs of statistics display
 	int received_tax <- 0;
 	int actions_cost <- 0;
 	int given_money  <- 0;
@@ -807,7 +810,7 @@ species District{
 	int soft_cost 	<- 0;
 	int withdraw_cost <- 0;
 	int other_cost  <- 0;
-	
+	// each time a player action is recieved, we check related levers and we update related indicators
 	action update_indicators_and_register_player_action (Player_Action act){
 		if act.is_applied {
 			write world.replace_strings('LDR_MSG_ACTION_RECEIVED_VALIDATED', [act.id]);
@@ -903,7 +906,7 @@ species District{
 			}
 		}
 	}
-	
+	// calculate the score of each profile for a certain player (ex: 30% builder, 30% soft defense, 40% withdrawal)
 	action calculate_scores (int ref_round) {
 		// updating player profile scores : only player actions of current and previous rounds
 		list<Player_Action> pacts <- Player_Action where (each.district_code = district_code and each.command_round in [ref_round, ref_round-1]);
@@ -916,6 +919,8 @@ species District{
 		withdrawal_score <- (withdrawal_score / tot_score) with_precision 2;
 	}
 	
+	// return th list of actions that can be impacted (by a lever) depending on the player profile
+	// this was introduced to allow some levers to impact multiple type of actions
 	list<Player_Action> get_impacted_actions_by_profile (string prof) {
 		if (prof = WITHDRAWAL and !is_withdrawal) or (prof = SOFT_DEFENSE and !is_soft_def) { return [];}
 		list<Lever> levs <- all_levers accumulate each.population where (each.my_district = self);
@@ -924,7 +929,7 @@ species District{
 		}
 		return [];
 	}
-	
+	// return the list of imacted actions if the player is soft def or withdrawal
 	list<Player_Action> get_impacted_soft_def_withraw_actions {
 		list<Player_Action> impactions <- [];
 		if !is_builder {
@@ -970,7 +975,7 @@ species Activated_Lever {
 	}
 }
 //------------------------------ End of Activated_Lever -------------------------------//
-
+// buttons of "Player_Buttons" display
 species Player_Button {
 	string action_name;
 	geometry shape <- rectangle (20, 5);
@@ -988,10 +993,11 @@ species Player_Button {
 	
 }
 
+// the small window displayed when a player_buttons is clicked
 species Player_Button_Actions {
 	point loca <- world.location;
 	geometry shape <- rectangle(25, 27);
-	
+	// four buttons
 	list<string> text_buttons <- ['LDR_ACTIVATE','LDR_DEACTIVATE','LDR_HIDE','LEV_CLOSE_WINDOW'];
 	
 	init {
@@ -1013,7 +1019,7 @@ species Player_Button_Actions {
 		}
 	}
 }
-
+// the four boutons (activate/deativate/hide/close) on the previous interface "Player_Button_Actions"
 species Player_Button_Button {
 	int command;
 	string text;
@@ -1028,7 +1034,7 @@ species Player_Button_Button {
 		}
 	}
 }
-
+// player action name on "Actions" display
 species Action_Name {
 	int action_code;
 	string action_name;
@@ -1042,7 +1048,7 @@ species Action_Name {
 	}
 	
 }
-
+// the rectangle serving as the player counter on "Actions" display
 species Action_Counter {
 	int action_code;
 	list<int> action_count_by_profile <- [0,0,0];
@@ -1050,6 +1056,7 @@ species Action_Counter {
 	District my_district;
 	rgb col <- #whitesmoke;
 	
+	// a new actions has been exectued by a player, count and color it depending on the profile
 	action add_one(string prof) {
 		int ix <- prof = BUILDER ? 0 : (prof = SOFT_DEFENSE ? 1 : 2);
 		action_count_by_profile[ix] <- action_count_by_profile[ix] + 1;
@@ -1070,7 +1077,7 @@ species Action_Counter {
 	
 }
 //------------------------------ End of Player_Button -------------------------------//
-
+// displaying lever info when the mouse is on
 species Lever_Window_Info {
 	point loca;
 	geometry shape <- rectangle(30#m,15#m);
@@ -1102,7 +1109,7 @@ species Lever_Window_Info {
 		}
 	}
 }
-
+// buttons to edit levers when a lever is clicked
 species Lever_Window_Actions {
 	point loca <- world.location;
 	geometry shape <- rectangle(30#m, 60#m);
@@ -1132,7 +1139,7 @@ species Lever_Window_Actions {
 		}
 	}
 }
-
+// the window to display previous buttons
 species Lever_Window_Button {
 	int command;
 	string text;
@@ -1175,7 +1182,7 @@ species Lever {
 	string player_msg;
 	int row_index;
 	int col_index;
-	list<Player_Action>   associated_actions;
+	list<Player_Action>   associated_actions; // each lever has associated actions that it can impact
 	list<Activated_Lever> activation_queue;
 	list<Activated_Lever> activated_levers;
 	
@@ -1208,7 +1215,7 @@ species Lever {
 		do check_activation_and_impact_on (p_action);
 	}
 	
-	action register (Player_Action p_action){
+	action register (Player_Action p_action){ // add to the actions that can be impacted
 		add p_action to: associated_actions;	
 	}
 	
@@ -1285,7 +1292,7 @@ species Lever {
 		return lever_help_msg;
 	}
 	
-	action write_help_lever_msg {
+	action display_help_lever_msg {
 		map values <- user_input(LEV_MSG_LEVER_HELP,
 					[get_lever_help_msg()::true, world.get_message('LEV_THRESHOLD_VALUE') + " : " + threshold::true]);
 	}
@@ -1311,7 +1318,7 @@ species Lever {
 			}
 		}	
 	}
-	
+	// check if it's time to apply lever
 	reflex check_timer when: timer_activated {
 		if machine_time > activation_queue[0].activation_time {
 			Activated_Lever act_lever <- activation_queue[0];
@@ -1358,7 +1365,7 @@ species Lever {
 			aa.activation_time <- machine_time ;
 		} 	
 	}
-	
+	// inform the player the this action should or not wait for a lever
 	action inform_network_should_wait_lever_to_activate(Player_Action p_action, Activated_Lever al){
 		map<string, unknown> msg <-[];
 		put ACTION_SHOULD_WAIT_LEVER_TO_ACTIVATE 	key: LEADER_COMMAND 						in: msg;
@@ -1917,7 +1924,7 @@ species Destroy_Dike_Lever parent: Cost_Lever{
 	}	
 }
 //------------------------------ end of Destroy_Dike_Lever -------------------------------//
-
+// manuel lever, no automatic activation
 species Give_Pebbles_Lever parent: Cost_Lever{
 	string progression_bar <- "Levier manuel (Activer/Désactiver)";
 	init{
@@ -1954,7 +1961,7 @@ species Network_Leader skills:[network] {
 			string m_sender 				<- msg.sender;
 			map<string, string> m_contents 	<- msg.contents;
 			switch m_contents[RESPONSE_TO_LEADER] {
-				match NUM_ROUND	{
+				match NUM_ROUND	{ // new round by manager
 					if save_data {
 						ask world { do save_leader_data; }
 					}
@@ -1965,6 +1972,7 @@ species Network_Leader skills:[network] {
 					write MSG_ROUND + " " + game_round;
 					ask districts {
 						if game_round > 0 {
+							// receiving round statistics for each districts
 							string bud <- m_contents[district_code+"_bud"];
 							string pop <- m_contents[district_code+"_pop"];
 							if bud != nil {
@@ -1984,22 +1992,21 @@ species Network_Leader skills:[network] {
 						}
 					}
 					if game_round = 1 {
-						ask world { do init_plan_budget; }
+						ask world { do init_plan_budget; } // initialize budgets in the financial plan
 					}
-					ask world { do update_plan_populations; }
+					ask world { do update_plan_populations; } // update populations in the financial plan
 					
-					loop lev over: all_levers{
+					loop lev over: all_levers{ // check levers that can be activated by num of rounds : No_Action_On_Dike_Lever
 						ask lev.population { 
 							do check_activation_at_new_round();
 						}	
 					}
 				}
+				// a new player action is received
 				match ACTION_STATE {
 					do update_action (m_contents);
 				}
-				match "ACTIVATED_LEVER_ON_ACTION" {
-					
-				}
+				// when the leander connects or reconnects
 				match INDICATORS_T0 		{
 					ask districts where (each.district_code = m_contents[DISTRICT_CODE]) {
 						length_dikes_t0 								<- int (m_contents['length_dikes_t0']);
@@ -2047,7 +2054,7 @@ species Network_Leader skills:[network] {
 						}	
 					}
 				}
-				match "STATS" {
+				match "STATS" { // statistiques sent by manager 
 					ask districts where (each.district_code = m_contents[DISTRICT_CODE]) {
 						received_tax <- received_tax + int(m_contents['TAX']);
 						actions_cost <- actions_cost + int(m_contents['ACTIONS']); 			
@@ -2127,13 +2134,13 @@ species Network_Leader skills:[network] {
 	}
 }
 //------------------------------ end of Network_Leader -------------------------------//
-
+// grid of "Levers" and "Player_Buttons"
 grid Grille width: GRID_W height: GRID_H {
 	init {
 		color <- #white ;
 	}
 }
-
+// grid of "Actions"
 grid Grille2 width: GRID_W+1 height: GRID_H+1 {
 	init {
 		color <- #white ;
@@ -2141,7 +2148,7 @@ grid Grille2 width: GRID_W+1 height: GRID_H+1 {
 }
 
 //------------------------------ end of Grille -------------------------------//
-
+// the four buttons on "Levers" display
 species District_Action_Button parent: District_Name{
 	string command;
 	District my_district;
@@ -2154,7 +2161,7 @@ species District_Action_Button parent: District_Name{
 		draw shape color: rgb(176,97,188) border: #black;
 		draw display_name color: #white font: font("Arial", 12, #bold) at: location anchor: #center;
 	}
-	
+	// click on one of four buttons of "Levers" display
 	action district_button_cliked {
 		string msg_player 			<- "";
 		list<string> msg_activity 	<- ["",""];
@@ -2270,7 +2277,6 @@ species District_Action_Button parent: District_Name{
 				}	
 			}	
 		}
-		selected_district <- my_district;
 		if msg_player != "" {
 			ask world {
 				do send_message_from_leader(msg);
@@ -2280,7 +2286,7 @@ species District_Action_Button parent: District_Name{
 	}
 }
 //------------------------------ end of District_Action_Button -------------------------------//
-
+// district names of display "Levers"
 species District_Name {
 	string display_name;
 	
@@ -2289,10 +2295,10 @@ species District_Name {
 	}
 }
 
-species District_Name2 parent: District_Name {}
+species District_Name2 parent: District_Name {} // display "Actions"
 //------------------------------ end of District_Name -------------------------------//
-
-species plan_Button {
+// buttons of the financial plan
+species Plan_Button {
 	int command;
 	string _name;
 	geometry shape <- first(F_Plan_Grid).shape * 0.9;
@@ -2414,7 +2420,7 @@ experiment LittoSIM_GEN_Leader {
 		
 		display Financial_Plan {
 			species F_Plan_Grid;
-			species plan_Button;
+			species Plan_Button;
 			
 			event [mouse_down] action: plan_buttons_click;
 		}

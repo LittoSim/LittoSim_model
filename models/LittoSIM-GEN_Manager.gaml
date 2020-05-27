@@ -86,7 +86,6 @@ global {
 	list<District> districts_in_game;
 	bool save_data <- false; // whether save or not data logs
 	bool display_ruptures <- false; // display or not ruptures
-	int event_ruptures <- 0;
 	bool submersion_ok <- false;
 	bool send_flood_results <- true;
 	point button_size;
@@ -165,8 +164,8 @@ global {
 		if isolines_shape != nil {
 			create Isoline from: isolines_shape;
 		}
-		if water_shape != nil {
-			create Water from: water_shape;
+		if river_shape != nil {
+			create River from: river_shape;
 		}		
 		create Coastal_Border_Area from: coastline_shape {
 			line_shape <- shape;
@@ -448,7 +447,6 @@ global {
 			do read_lisflood_files (false);
 			lisfloodReadingStep <- 0;
 			last_played_event <- length(list_flooding_events.keys) - 1;
-			event_ruptures <- last_played_event;
 			send_flood_results <- true;
 			map<string,unknown> vmap <- user_input("OK", world.get_message('MSG_SIM_FINISHED')::true);
 			sub_event <- 1;
@@ -1715,7 +1713,7 @@ species Network_Listener_To_Leader skills:[network]{
 			}	
 		}
 	}
-	
+	// an action is created and has to be sent to leader
 	reflex inform_leader_action_state when: cycle mod 10 = 0 {
 		loop act over: Player_Action where (!each.is_sent_to_leader){
 			map<string,string> msg <- act.build_map_from_action_attributes();
@@ -2514,7 +2512,7 @@ species District {
 			do send to: myself.district_code contents: msg;
 		}
 	}
-	
+	// statistiques are sent ot leader
 	action inform_leader_stats {
 		map<string,string> msg <- [RESPONSE_TO_LEADER::"STATS"];
 		put district_code  key: DISTRICT_CODE	in: msg;
@@ -2729,7 +2727,7 @@ species Road {	aspect base { draw shape color: rgb (125,113,53); } }
 
 species Isoline {	aspect base { draw shape color: #gray; } }
 
-species Water { aspect base { draw shape color: #blue; } }
+species River { aspect base { draw shape color: #blue; } }
 
 species Protected_Area {
 	aspect base {
@@ -2854,7 +2852,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species District 		aspect: flooding;
 			species Isoline			aspect: base;
 			species Road 			aspect: base;
-			species Water			aspect: base;
+			species River			aspect: base;
 			species River_Flood_Cell aspect: base;
 			species River_Flood_Cell_1m aspect: base;
 			species Coastal_Defense aspect: base;
@@ -2879,7 +2877,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species District 		aspect: planning;
 			species Land_Use 		aspect: base;
 			species Road 	 		aspect: base;
-			species Water			aspect: base;
+			species River			aspect: base;
 			species Coastal_Defense aspect: base;
 			species Polycell		aspect: base;
 			species River_Flood_Cell aspect: base;

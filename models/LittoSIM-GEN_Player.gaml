@@ -168,8 +168,8 @@ global{
 		create Sea from: convex_hull_shape {
 			shape <- shape - (union(District) + 200#m); // creating the see zone 
 		}
-		if water_shape != nil {
-			create Water from: water_shape;
+		if river_shape != nil {
+			create River from: river_shape;
 		}
 		if isolines_shape != nil {
 			create Isoline from: isolines_shape;
@@ -2436,7 +2436,7 @@ species Isoline {
 	}
 }
 
-species Water {
+species River {
 	aspect base {
 		draw shape color:#blue;
 	}
@@ -2557,7 +2557,7 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Coastal_Defense 		aspect: map;
 			species Coastal_Defense 		aspect: historical;
 			species Road 					aspect:	base;
-			species Water					aspect: base;
+			species River					aspect: base;
 			species Water_Gate				aspect: base;
 			species Protected_Area 			aspect: base;
 			species Flood_Risk_Area 		aspect: base;
