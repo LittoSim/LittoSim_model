@@ -176,13 +176,15 @@ global {
 		
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
 			lu_name <- lu_type_names[lu_code];
-			if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] { 
-				if AU_AND_AUs_TO_N {// if true, convert all AU and AUs to N (AU should not be imposed to players !)
+			if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] {
+				// if true, convert all AU and AUs to N (AU should not be imposed to players)
+				if AU_AND_AUs_TO_N {
 					lu_name <- "N";
 					lu_code <- LU_TYPE_N;
 				} else {
 					if lu_code = LU_TYPE_AU {
-						AU_to_U_counter <- flip(0.5) ? 1 : 0;
+						// assign random counter to AU before it evolves to U [0, 1, ..., STEPS_FOR_AU_TO_U - 1]
+						AU_to_U_counter <- rnd(STEPS_FOR_AU_TO_U - 1);
 						not_updated <- true;
 					}
 				}
@@ -312,14 +314,24 @@ global {
 			write stateSimPhase;
 		}
 		else {
-			// distribute populations
+			/*
+			 * Distribute populations between LU units
+			 */
 			population_still_to_dispatch <- population_to_dispatch();
-			ask shuffle(Land_Use){ pop_updated <- false; do evolve_AU_to_U; }
-			ask shuffle(Land_Use){ do evolve_pop_U_densification; 			}
-			ask shuffle(Land_Use){ do evolve_pop_U_standard; 				}
-			ask Coastal_Defense where (each.rupture){ // remove ruptures after the new round
+			ask shuffle(Land_Use){
+				pop_updated <- false;
+				do evolve_AU_to_U;
+			}
+			ask shuffle(Land_Use){ do evolve_pop_U_densification; }
+			ask shuffle(Land_Use){ do evolve_pop_U_standard; }
+			
+			/*
+			 * Remove the ruptures of the last submersion after the new round
+			 */
+			ask Coastal_Defense where (each.rupture){
 				do remove_rupture;
 			}
+			
 			ask districts_in_game{
 				// each districts evolves its own coastal defenses
 				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
@@ -2283,7 +2295,7 @@ species Land_Use {
 	action evolve_AU_to_U {
 		if lu_code in [LU_TYPE_AU,LU_TYPE_AUs]{
 			AU_to_U_counter <- AU_to_U_counter + 1;
-			if AU_to_U_counter = STEPS_FOR_AU_TO_U {
+			if AU_to_U_counter >= STEPS_FOR_AU_TO_U {
 				AU_to_U_counter <- 0;
 				lu_name <- lu_code = LU_TYPE_AU ? "U" : "Us";
 				lu_code <- lu_type_names index_of lu_name;
@@ -2324,7 +2336,8 @@ species Land_Use {
 			not_updated <- true;
 			pop_updated <- true;
 		}else{
-			if assign_anyway { // even if population to dispatch is negative, we assign anyway for new U and Ui, but not for standard U
+			 // even if there's no more population to dispatch, we assign anyway for new U and Ui, but not for standard U
+			if assign_anyway {
 				population <- population + nb_pop;
 				not_updated <- true;
 				pop_updated <- true;
