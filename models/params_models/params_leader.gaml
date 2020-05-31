@@ -57,10 +57,5 @@ global{
 	int get_lever_delay(string lever_id){
 		return float(levers_def at lever_id at 'delay');
 	}
-	
-	// gets translated messages from langs.conf
-	string get_message(string code_msg){
-		return code_msg = nil or code_msg = 'na'? "" : (langs_def at code_msg != nil ? langs_def at code_msg at my_language : '');
-	}
 }
 

@@ -25,7 +25,7 @@ experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {
 	list<list<string>> actions_to_exec <- [];
 	
 	action _init_ {
-		create simulation with:[active_district_name::districts[1], my_language::default_language];
+		create simulation with:[active_district_name::districts[1]];
 		minimum_cycle_duration <- 0.5;
 	}
 	

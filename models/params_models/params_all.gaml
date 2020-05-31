@@ -259,9 +259,11 @@ global{
 			match ACTION_EXPROPRIATION 			{	return "N"  ;	}
 		}
 	}
-	// methods to get corresponding text from languages file
+	/*
+	 * Methods to get the corresponding text from languages' file (langs.conf)
+	 */ 
 	string get_message(string code_msg){
-		return code_msg = nil or code_msg = 'na' ? "" : (langs_def at code_msg != nil ? langs_def at code_msg at littosim_def["LANGUAGE"] : ''); // getting the right message from languages file
+		return code_msg = nil or code_msg = 'na' ? '' : (langs_def at code_msg != nil ? langs_def at code_msg at littosim_def["LANGUAGE"] : '');
 	}
 	string replace_strings(string s, list<string> lisa){
 		s <- get_message (s);

@@ -2499,28 +2499,28 @@ species Water_Gate {
 //---------------------------- Experiment definiton -----------------------------//
 experiment District1 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[0], my_language::default_language];
+		create simulation with:[active_district_name::districts[0]];
 		minimum_cycle_duration <- 0.5;
 	}
 }
 
 experiment District2 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[1], my_language::default_language];
+		create simulation with:[active_district_name::districts[1]];
 		minimum_cycle_duration <- 0.5;
 	}
 }
 
 experiment District3 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[2], my_language::default_language];
+		create simulation with:[active_district_name::districts[2]];
 		minimum_cycle_duration <- 0.5;
 	}
 }
 
 experiment District4 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[3], my_language::default_language];
+		create simulation with:[active_district_name::districts[3]];
 		minimum_cycle_duration <- 0.5;	
 	}
 }
@@ -2528,12 +2528,8 @@ experiment District4 type: gui parent: LittoSIM_GEN_Player {
 experiment LittoSIM_GEN_Player type: gui{
 	// read the list of districts of study_area.conf
 	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'STUDY_AREA_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_SNAMES')) split_with ';' at 1)).values;
-	// read language params from littosim.conf
-	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
-	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
 
 	parameter "District choice : " var: active_district_name <- districts[0] among: districts;
-	parameter "Language choice : " var: my_language	<- default_language  among: languages_list;
 	
 	init {
 		minimum_cycle_duration <- 0.5;

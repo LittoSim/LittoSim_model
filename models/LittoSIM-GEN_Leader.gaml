@@ -2332,15 +2332,11 @@ grid F_Plan_Grid width: 5 height: 20 schedules:[] {
 //------------------------------ end of Pot -------------------------------//
 
 experiment LittoSIM_GEN_Leader {
-	string default_language <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE')) split_with ';' at 1;
-	list<string> languages_list <- first(text_file("../includes/config/littosim.conf").contents where (each contains 'LANGUAGE_LIST')) split_with ';' at 1 split_with ',';
-	
+
 	init {
 		minimum_cycle_duration <- 0.5;
 	}
-	
-	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	
+		
 	output{
 		display Levers{
 			graphics "Round" {

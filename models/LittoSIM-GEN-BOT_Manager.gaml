@@ -19,7 +19,7 @@ experiment _Manager_BOT_ type: gui parent: LittoSIM_GEN_Manager {
 	//list<list<string>> actions_to_exec <- [];
 	
 	action _init_ {
-		create simulation with:[my_language::default_language];
+		create simulation;
 		minimum_cycle_duration <- 0.5;
 	}
 	
