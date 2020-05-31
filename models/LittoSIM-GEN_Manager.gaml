@@ -2274,9 +2274,17 @@ species Land_Use {
 	}
 		
 	action modify_LU (string new_lu_name) {
-		if (lu_code in [LU_TYPE_U,LU_TYPE_Us]) and new_lu_name = "N" {
+		if lu_code in [LU_TYPE_U,LU_TYPE_Us] and new_lu_name = "N" {
 			population <- 0; //expropriation
-		} 
+		}
+		/*
+		 * If the number of steps to go from AU to U is 0, we omit the AU/AUs state and go directly to U/Us
+		 */
+		if new_lu_name in ['AU','AUs'] and STEPS_FOR_AU_TO_U = 0 {
+			new_lu_name <- new_lu_name = 'AU' ? 'U' : 'Us';
+			do assign_population (int(POP_FOR_NEW_U * self.shape.area / STANDARD_LU_AREA), true);
+		}
+		
 		lu_name <- new_lu_name;
 		lu_code <-  lu_type_names index_of lu_name;
 		// updating rugosity of related cells
@@ -2299,9 +2307,9 @@ species Land_Use {
 				AU_to_U_counter <- 0;
 				lu_name <- lu_code = LU_TYPE_AU ? "U" : "Us";
 				lu_code <- lu_type_names index_of lu_name;
-				not_updated <- true;
 				// the population is assigned depending on the LU area
 				do assign_population (int(POP_FOR_NEW_U * self.shape.area / STANDARD_LU_AREA), true);
+				not_updated <- true;
 			}
 		}	
 	}
