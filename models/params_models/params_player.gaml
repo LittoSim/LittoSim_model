@@ -50,7 +50,9 @@ global{
 	int MAX_HISTORY_VIEW_SIZE 	<- 10;
 	point INFORMATION_BOX_SIZE 	<- {200,80};
 	
-	// width of urban ring to allow urbanization
+	/*
+	 * The width of the urban ring allowed urbanization. If not specified, it takes 0.
+	 */
 	int URBAN_RING 	 <- int(study_area_def["URBAN_RING"]);
 
 	// Multi-langs

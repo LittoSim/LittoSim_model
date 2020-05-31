@@ -775,14 +775,20 @@ global{
 				}
 				
 				if lu_code in [LU_TYPE_A,LU_TYPE_N] and selected_button.command in [ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs] {
-					// cannot urbanize out of the urban neighborhood (ring)
-					if empty(Land_Use at_distance URBAN_RING where (each.is_urban_type)){
-						cursor_taken <- true;
-						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_OUTSIDE_U')::true);
-						cursor_taken <- false;
-						return;
+					/*
+					 * If an urban ring (neighborhood) is specified, then we cannot urbanize out of it
+					 */
+					if URBAN_RING != 0 {
+						if empty(Land_Use at_distance URBAN_RING where (each.is_urban_type)){
+							cursor_taken <- true;
+							map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_OUTSIDE_U')::true);
+							cursor_taken <- false;
+							return;
+						}	
 					}
-					// cannot urbanize in protected areas				
+					/*
+					 * Cannot urbanize in protected areas
+					 */		
 					if !empty(Protected_Area where (each intersects (circle(10, shape.centroid)))) {
 						cursor_taken <- true;
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_PROTECTED_U')::true);
