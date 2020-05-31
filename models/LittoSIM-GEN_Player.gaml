@@ -219,7 +219,7 @@ global{
 		geometry rec<- rectangle(geom.width, geom.height);
 		draw rec at: loc color: #black;
 		float msize <- min([geom.width/2, geom.height/2]);
-		draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
+		draw image_file("../images/system_icons/common/logo.png") at: loc size: {msize, msize};
 	}
 	
 	// refreshing (reloading from the server) all agents
@@ -259,46 +259,45 @@ global{
 	
 	image_file get_action_icon (int cmd){
 		switch cmd {
-			match ACTION_MODIFY_LAND_COVER_A 	{return image_file("../images/ihm/S_agricole.png"); 			}
-			match ACTION_MODIFY_LAND_COVER_AU 	{return image_file("../images/ihm/S_urbanise.png");				}
+			match ACTION_MODIFY_LAND_COVER_A 	{return image_file("../images/system_icons/player/agricultural.png"); 		}
+			match ACTION_MODIFY_LAND_COVER_AU 	{return image_file("../images/system_icons/player/urban.png");				}
 			match_one[ACTION_MODIFY_LAND_COVER_Us,
-						ACTION_MODIFY_LAND_COVER_AUs]{return image_file("../images/ihm/S_urbanise_adapte.png");	}
-			match ACTION_MODIFY_LAND_COVER_Ui 	{return image_file("../images/ihm/S_urbanise_intensifie.png");	}
-			match ACTION_MODIFY_LAND_COVER_N 	{return image_file("../images/ihm/S_naturel.png");				}
-			match ACTION_CREATE_DIKE 			{return image_file("../images/ihm/S_creation_digue.png");		}
-			match ACTION_REPAIR_DIKE 			{return image_file("../images/ihm/S_reparation_digue.png");		}
-			match ACTION_RAISE_DIKE 			{return image_file("../images/ihm/S_elevation_digue.png");		}
-			match ACTION_DESTROY_DIKE			{return image_file("../images/ihm/S_suppression_digue.png");	}
+						ACTION_MODIFY_LAND_COVER_AUs]{return image_file("../images/system_icons/player/urban_adapted.png");	}
+			match ACTION_MODIFY_LAND_COVER_Ui 	{return image_file("../images/system_icons/player/urban_dense.png");		}
+			match ACTION_MODIFY_LAND_COVER_N 	{return image_file("../images/system_icons/player/natural.png");			}
+			match ACTION_CREATE_DIKE 			{return image_file("../images/system_icons/player/dike_creation.png");		}
+			match ACTION_REPAIR_DIKE 			{return image_file("../images/system_icons/player/dike_repair.png");		}
+			match ACTION_RAISE_DIKE 			{return image_file("../images/system_icons/player/dike_raise.png");			}
+			match ACTION_DESTROY_DIKE			{return image_file("../images/system_icons/player/dike_remove.png");		}
 			match_one [ACTION_INSTALL_GANIVELLE,
-					ACTION_ENHANCE_NATURAL_ACCR]{return image_file("../images/ihm/S_ganivelle.png");			}
-			match ACTION_CREATE_DUNE 			{return image_file("../images/ihm/S_dune.png");					}
-			match ACTION_MAINTAIN_DUNE			{return image_file("../images/ihm/S_maintain_d.png");			}
-			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/ihm/S_pebbles.png");				}
+					ACTION_ENHANCE_NATURAL_ACCR]{return image_file("../images/system_icons/player/ganivelle.png");			}
+			match ACTION_CREATE_DUNE 			{return image_file("../images/system_icons/player/dune.png");				}
+			match ACTION_MAINTAIN_DUNE			{return image_file("../images/system_icons/player/dune_maintain.png");		}
+			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/system_icons/player/pebbles.png");			}
 		}
 		return nil;
 	}
 	
 	image_file get_lu_icon (Land_Use lu){
 		if lu.is_in_densification {
-			return image_file("../images/ihm/S_urbanise_intensifie.png");
+			return image_file("../images/system_icons/player/urban_dense.png");
 		}
 		switch lu.lu_code {
-			match 1 {return image_file("../images/ihm/S_naturel.png");   }
-			match 2 {return image_file("../images/ihm/S_urbanise.png");	 }
-			match 4 {return image_file("../images/ihm/S_urbanise.png");  }
-			match 5 {return image_file("../images/ihm/S_agricole.png");	 }
-			match_one[6,7] {return image_file("../images/ihm/S_urbanise_adapte.png"); }
+			match 1 { return image_file("../images/system_icons/player/natural.png");   			}
+			match 5 { return image_file("../images/system_icons/player/agricultural.png");	 		}
+			match_one [2,4] { return image_file("../images/system_icons/player/urban.png");	 		}
+			match_one[6,7] { return image_file("../images/system_icons/player/urban_adapted.png"); 	}
 		}
 		return nil;
 	}
 	
 	image_file get_flag_icon (int im) { // flooding marks icons. S_flagN.png is used for the Nth submersion
 		switch im {
-			match 0 {return image_file("../images/ihm/S_flag0.png");  }
-			match 1 {return image_file("../images/ihm/S_flag1.png");  }
-			match 2 {return image_file("../images/ihm/S_flag2.png");  }
-			match 3 {return image_file("../images/ihm/S_flag3.png");  }
-			match 4 {return image_file("../images/ihm/S_flag4.png");  }
+			match 0 {return image_file("../images/system_icons/player/flag0.png");  }
+			match 1 {return image_file("../images/system_icons/player/flag1.png");  }
+			match 2 {return image_file("../images/system_icons/player/flag2.png");  }
+			match 3 {return image_file("../images/system_icons/player/flag3.png");  }
+			match 4 {return image_file("../images/system_icons/player/flag4.png");  }
 		}
 		return nil;
 	}
@@ -474,8 +473,8 @@ global{
 			ask a_MAP_button {
 				is_selected <- ! is_selected;
 				switch command {
-					match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_zone_protegee.png") :  image_file("../images/ihm/I_afficher_zone_protegee.png");}
-					match ACTION_DISPLAY_FLOODED_AREA 	{my_icon <-  is_selected ? image_file("../images/ihm/I_desafficher_PPR.png") :  image_file("../images/ihm/I_afficher_PPR.png");}
+					match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/developer_icons/act_display_protected.png") :  image_file("../images/developer_icons/act_hide_protected.png");}
+					match ACTION_DISPLAY_FLOODED_AREA 	{my_icon <-  is_selected ? image_file("../images/developer_icons/act_hide_ppr.png") :  image_file("../images/developer_icons/act_display_ppr.png");}
 				}			
 			}
 		}
@@ -999,7 +998,7 @@ species History_Element parent: List_Element {
 			draw "" + current_action.nb_rounds_before_activation_and_waiting_for_lever_to_activate() at: round_apply_location anchor: #center color: #white font: font1;
 		}
 		else { // if the action is validated
-			draw file("../images/ihm/I_valider.png") at: round_apply_location size: bullet_size color: std_color;
+			draw file("../images/system_icons/player/validate.png") at: round_apply_location size: bullet_size color: std_color;
 		}
 		// display the fination cost of the action
 		rgb mc <- final_price = initial_price ? std_color : (final_price > initial_price ? #red : #green);
@@ -1019,7 +1018,7 @@ species Basket_Element parent: List_Element {
 	point button_size 		<- point(0,0) update: {ui_height * 0.6, ui_height * 0.6};
 	point button_location 	<- point(0,0) update: {location.x + ui_width / 2 - (button_size.x), location.y};
 	Player_Action current_action <- nil;
-	image_file close_button <- file("../images/ihm/I_close.png"); // delete the action button
+	image_file close_button <- file("../images/system_icons/player/close.png"); // delete the action button
 	
 	point bullet_size 			<- point(0,0) update: {ui_height*0.6, ui_height*0.6};
 	point round_apply_location  <- point(0,0) update: {location.x + 1.3 * ui_width / 5, location.y};
@@ -1359,7 +1358,7 @@ species Basket parent: Displayed_List {
 		float sz 		 <- element_height*ui_height;
 		validation_button_size <- {sz * 0.8, sz * 0.8};
 		point pt 		 <- validation_button_location(validation_button_size.x);
-		image_file icone <- file("../images/ihm/I_valider.png");
+		image_file icone <- file("../images/system_icons/player/validate.png");
 		draw icone at: pt size: validation_button_size;
 		
 		int mfont <- DISPLAY_FONT_SIZE - 2;
@@ -1477,11 +1476,11 @@ species Messages parent: Displayed_List { //schedules:[]{
 	
 	image_file get_message_icon(string message_type){
 		switch(message_type){
-			match INFORMATION_MESSAGE {return file("../images/ihm/I_quote.png");}
-			match POPULATION_MESSAGE  {return file("../images/ihm/I_population.png");}
-			match BUDGET_MESSAGE 	  {return file("../images/ihm/I_BY.png");}
+			match INFORMATION_MESSAGE {return file("../images/system_icons/player/quote.png");}
+			match POPULATION_MESSAGE  {return file("../images/system_icons/player/population.png");}
+			match BUDGET_MESSAGE 	  {return file("../images/system_icons/player/BY.png");}
 		}
-		return file("../images/ihm/I_quote.png");
+		return file("../images/system_icons/player/quote.png");
 	}
 	
 	action write_message (string msg, string type){
@@ -1495,7 +1494,7 @@ species Messages parent: Displayed_List { //schedules:[]{
 //------------------------------ End of Message_Console -------------------------------//
 
 species History_Left_Icon skills:[UI_location]{
-	image_file directory_icon <- file("../images/ihm/I_dossier.png");
+	image_file directory_icon <- file("../images/system_icons/player/dossier.png");
 	float lui_width <- 0.0 update: ui_width;
 	float lui_height <- 0.0 update: ui_height;
 	
@@ -1512,7 +1511,7 @@ species History_Left_Icon skills:[UI_location]{
 //------------------------------ End of History_Left_Icon -------------------------------//
 
 species Message_Left_Icon parent: History_Left_Icon {
-	image_file directory_icon <- file("../images/ihm/I_quote.png");
+	image_file directory_icon <- file("../images/system_icons/player/quote.png");
 }
 //------------------------------ End of Message_Left_Icon -------------------------------//
 
@@ -2094,11 +2093,11 @@ species Land_Use_Action parent: Player_Action {
 			
 			if(command = ACTION_MODIFY_LAND_COVER_Ui){
 				geometry sq <- first(to_squares(shape, 1, false));
-				draw file("../images/icons/crowd.png") size: sq.width at: sq.location;
+				draw file("../images/system_icons/player/crowd.png") size: sq.width at: sq.location;
 			}
 			else if command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us]{
 				geometry sq <- first(to_squares(shape, 1, false));
-				draw file("../images/icons/wave.png") size: sq.width at: sq.location;
+				draw file("../images/system_icons/player/wave.png") size: sq.width at: sq.location;
 			}
 		}
 	}
@@ -2130,7 +2129,7 @@ species Button skills:[UI_location] {
 		label 		<- world.label_of_action(command);
 		action_cost <- world.cost_of_action(action_name);
  		help_msg 	<- world.get_message((data_action at action_name at 'button_help_message'));
-		my_icon 	<-  image_file(data_action at action_name at 'button_icon_file') ;
+		my_icon 	<-  image_file("../images/developer_icons/" + data_action at action_name at 'button_icon_file') ;
 	}
 	
 	// changing the state of a button (by the leader)
@@ -2255,8 +2254,8 @@ species Land_Use {
 	aspect map {
 		if active_display = LU_DISPLAY and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			draw shape color: my_color;	
-			if is_adapted_type		{draw file("../images/icons/wave.png") size: self.shape.width;}
-			if is_in_densification	{draw file("../images/icons/crowd.png") size: self.shape.width;}
+			if is_adapted_type		{draw file("../images/system_icons/player/wave.png") size: self.shape.width;}
+			if is_in_densification	{draw file("../images/system_icons/player/crowd.png") size: self.shape.width;}
 			if focus_on_me {
 				draw shape empty: true border: #black;
 			}
@@ -2527,7 +2526,9 @@ experiment District4 type: gui parent: LittoSIM_GEN_Player {
 
 experiment LittoSIM_GEN_Player type: gui{
 	// read the list of districts of study_area.conf
-	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents where (each contains 'STUDY_AREA_FILE')) split_with ';' at 1).contents where (each contains 'MAP_DIST_SNAMES')) split_with ';' at 1)).values;
+	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
+			where ((each contains 'STUDY_AREA_FILE') and !(each contains '#')))
+			split_with ';' at 1).contents where (each contains 'MAP_DIST_SNAMES')) split_with ';' at 1)).values;
 
 	parameter "District choice : " var: active_district_name <- districts[0] among: districts;
 	
@@ -2597,8 +2598,8 @@ experiment LittoSIM_GEN_Player type: gui{
 					if my_codef.status != STATUS_GOOD {
 						point image_loc <- {my_codef.location.x + 1*(INFORMATION_BOX_SIZE.x#px) - 40#px, my_codef.location.y + 80#px};
 						switch(my_codef.status){
-							match STATUS_MEDIUM {draw file("../images/icons/danger.png")  at: image_loc size: 50#px;}
-							match STATUS_BAD 	{draw file("../images/icons/rupture.png") at: image_loc size: 50#px;}
+							match STATUS_MEDIUM {draw file("../images/system_icons/player/danger.png")  at: image_loc size: 50#px;}
+							match STATUS_BAD 	{draw file("../images/system_icons/common/rupture.png") at: image_loc size: 50#px;}
 						}	
 					}
 				}
@@ -2744,7 +2745,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					
 					draw rectangle(target, target2) border: #gold color: #gray;
 					draw PLY_MSG_STATE_CHANGE + " (" + mcell.id + ")" at: target + {3#px, 15#px} font: regular color: #yellow;
-					draw file("../images/icons/fleche.png") at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x #px), target.y + 50#px} size:50#px;
+					draw file("../images/system_icons/player/arrow.png") at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x #px), target.y + 50#px} size:50#px;
 					draw "" + (my_lu_action.effective_application_round) at: {mcell.location.x + 0.5 * (INFORMATION_BOX_SIZE.x#px), target.y + 55#px} font: regular;
 					draw world.get_action_icon(my_lu_action.command) at: {target2.x - 50#px, target.y +50#px} size: 50#px;
 					draw world.get_lu_icon(mcell) at: {target.x + 50#px, target.y + 50#px} size: 50#px;

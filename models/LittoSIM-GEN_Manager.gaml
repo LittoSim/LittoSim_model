@@ -555,7 +555,7 @@ global {
 		put sub_rep key: sub_name in: list_flooding_events;
 		// updating the button that displays this submersion
 		ask Button where (each.nb_button = 6 and int(each.command) = length(list_flooding_events)-1){
-			my_icon <- image_file("../images/icons/" + flooding_icons at floodEventType);
+			my_icon <- image_file("../images/system_icons/manager/" + flooding_icons at floodEventType);
 			display_text <- world.get_message('MSG_REPLY_SUBMERSION') + " (" + sub_name + ")";
 		}
 
@@ -1054,14 +1054,14 @@ global {
 			nb_button 	<- 0;
 			command  	<- ONE_STEP;
 			location 	<- {button_size.x*0.75, button_size.y*0.75};
-			my_icon 	<- image_file("../images/icons/one_step.png");
+			my_icon 	<- image_file("../images/system_icons/manager/new_round.png");
 			display_text <- MSG_NEW_ROUND;
 		}
 		create Button{
 			nb_button 	<- 1;
 			command  	<- LOCK_USERS;
 			location 	<- {button_size.x*0.75, button_size.y*2};
-			my_icon 	<- image_file("../images/icons/pause.png");
+			my_icon 	<- image_file("../images/system_icons/manager/pause.png");
 			display_text <- world.get_message('MSG_PAUSE_GAME');
 			pause_b <- self.location;
 		}
@@ -1069,7 +1069,7 @@ global {
 			nb_button 	<- 2;
 			command  	<- UNLOCK_USERS;
 			location 	<- {button_size.x*0.75, button_size.y*3.25};
-			my_icon 	<- image_file("../images/icons/play.png");
+			my_icon 	<- image_file("../images/system_icons/manager/play.png");
 			display_text <- world.get_message('MSG_RESUME_GAME');
 			play_b <- self.location;
 		}
@@ -1077,7 +1077,7 @@ global {
 			nb_button 	<- 5;
 			command	 	<- LOW_FLOODING;
 			location 	<- {button_size.x*2.55, button_size.y*0.75};
-			my_icon 	<- image_file("../images/icons/low_event.png");
+			my_icon 	<- image_file("../images/system_icons/manager/low_event.png");
 			string text_label <- world.get_message('MSG_LOW_FLOODING');
 			display_text <- text_label split_with ' ' at 0;
 			display_text2 <- text_label split_with ' ' at 1;
@@ -1087,7 +1087,7 @@ global {
 				nb_button 	<- 55;
 				command	 	<- MEDIUM_FLOODING;
 				location 	<- {button_size.x*3.75, button_size.y*0.75};
-				my_icon 	<- image_file("../images/icons/medium_event.png");
+				my_icon 	<- image_file("../images/system_icons/manager/medium_event.png");
 				string text_label <- world.get_message('MSG_MEDIUM_FLOODING');
 				display_text <- text_label split_with ' ' at 0;
 				display_text2 <- text_label split_with ' ' at 1;
@@ -1097,7 +1097,7 @@ global {
 				nb_button 	<- 57;
 				command	 	<- "OPEN_DIEPPE_GATES";
 				location 	<- {button_size.x*3.75, button_size.y*0.75};
-				my_icon 	<- image_file("../images/icons/open_gates.png");
+				my_icon 	<- image_file("../images/system_icons/manager/open_gates.png");
 				string text_label <- "Ouvrir les#portes de Dieppe";
 				display_text <- text_label split_with '#' at 0;
 				display_text2 <- text_label split_with '#' at 1;
@@ -1107,7 +1107,7 @@ global {
 			nb_button 	<- 3;
 			command	 	<- HIGH_FLOODING;
 			location 	<- {button_size.x*5, button_size.y*0.75};
-			my_icon 	<- image_file("../images/icons/high_event.png");
+			my_icon 	<- image_file("../images/system_icons/manager/high_event.png");
 			string text_label <- world.get_message('MSG_HIGH_FLOODING');
 			display_text <- text_label split_with ' ' at 0;
 			display_text2 <- text_label split_with ' ' at 1;
@@ -1125,44 +1125,44 @@ global {
 			nb_button 	<- 4;
 			command  	<- SHOW_LU_GRID;
 			shape 		<- square(800);
-			my_icon 	<- image_file("../images/icons/avec_quadrillage.png");
+			my_icon 	<- image_file("../images/system_icons/manager/display_grid.png");
 			location <- {LEGEND_POSITION_X-1200, LEGEND_POSITION_Y-1000};
 		}
 		create Button{
 			nb_button 	<- 7;
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
-			my_icon 	<- image_file("../images/icons/max_water_height.png");
+			my_icon 	<- image_file("../images/system_icons/manager/max_water_height.png");
 			location 	<- {button_size.x*2,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 8;
 			command	 	<- SHOW_RUPTURE;
-			my_icon 	<- image_file("../images/icons/rupture2.png");
+			my_icon 	<- image_file("../images/system_icons/manager/display_ruptures.png");
 			location 	<-  {button_size.x*3.25,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 911;
 			command	 	<- ACTION_DISPLAY_FLOODED_AREA;
-			my_icon 	<- image_file("../images/icons/display_ppr.png");
+			my_icon 	<- image_file("../images/system_icons/manager/display_ppr.png");
 			location 	<- {button_size.x*4.5,  world.shape.height - button_size.y*0.75};
 		}
 		create Button{
 			nb_button 	<- 912;
 			command	 	<- ACTION_DISPLAY_PROTECTED_AREA;
-			my_icon 	<- image_file("../images/icons/display_protected.png");
+			my_icon 	<- image_file("../images/system_icons/manager/display_protected.png");
 			location 	<-  {button_size.x*5.75,  world.shape.height - button_size.y*0.75};
 		}
 		if river_flood_shape != nil {
 			create Button{
 				nb_button 	<- 913;
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
-				my_icon 	<- image_file("../images/icons/river_flood0.jpg");
+				my_icon 	<- image_file("../images/system_icons/manager/river_flood0.jpg");
 				location 	<- {button_size.x*0.75, world.shape.height - button_size.y*0.75};
 			}
 			create Button{
 				nb_button 	<- 914;
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
-				my_icon 	<- image_file("../images/icons/river_flood1.jpg");
+				my_icon 	<- image_file("../images/system_icons/manager/river_flood1.jpg");
 				location 	<- {button_size.x*0.75, world.shape.height - button_size.y*2};
 			}
 		}
@@ -1260,7 +1260,7 @@ global {
 			ask a_button {
 				is_selected <- !is_selected;
 				show_grid <- is_selected;
-				my_icon	<-  is_selected ? image_file("../images/icons/sans_quadrillage.png") : image_file("../images/icons/avec_quadrillage.png");
+				my_icon	<-  is_selected ? image_file("../images/system_icons/manager/hide_grid.png") : image_file("../images/system_icons/manager/display_grid.png");
 			}
 		}
 	}
@@ -2202,7 +2202,7 @@ species Coastal_Defense {
 		if display_ruptures and rupture and flooded {
 			list<point> pts <- shape.points;
 			point tmp <- length(pts) > 2 ? pts[int(length(pts)/2)] : shape.centroid;
-			draw image_file("../images/icons/rupture.png") at: tmp size: 30#px;
+			draw image_file("../images/system_icons/common/rupture.png") at: tmp size: 30#px;
 		}	
 	}
 }
@@ -2862,7 +2862,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			graphics "Control Panel"{
 				point loc 	<- {world.shape.width/2, world.shape.height/2};
 				float msize <- min([loc.x*2/3, loc.y*2/3]);
-				draw image_file("../images/ihm/logo.png") at: loc size: {msize, msize};
+				draw image_file("../images/system_icons/common/logo.png") at: loc size: {msize, msize};
 				draw rectangle(msize,1500) at: loc + {0,msize*0.66} color: #lightgray border: #gray anchor:#center;
 				draw MSG_ROUND + " : " + game_round color: #black font: bold20 at: loc + {0,msize*0.66} anchor:#center;
 			}	

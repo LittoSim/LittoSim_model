@@ -38,7 +38,7 @@ global{
 	string HISTORY_DISPLAY <- "History";
 	string MESSAGES_DISPLAY<- "Messages";
 	
-	image_file TRANSPARENT <- image_file("../images/icons/transparent.png");
+	image_file TRANSPARENT <- image_file("../images/system_icons/player/transparent.png");
 
 	// Received user messages type
 	string INFORMATION_MESSAGE 	<- "INFORMATION_MESSAGE";
