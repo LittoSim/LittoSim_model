@@ -45,10 +45,6 @@ global{
 	// folder of saving leader data
 	string records_folder <- "../includes/"+ application_name +"/";
 	
-	// methods to get lever information
-	string get_lever_name(string lever_id){
-		return levers_def at lever_id at my_language;
-	}
 	string get_lever_type(string lever_id){
 		return levers_def at lever_id at 'type';
 	}

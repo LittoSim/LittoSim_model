@@ -144,7 +144,9 @@ global{
 			}
 		}
 	}
-	// creating and positionning all levers (display 1: Levers)
+	/*
+	 * creating and positionning all levers (display 1: Levers)
+	 */
 	action create_levers {
 		int filter <- GRID_H - 11;
 		loop i from: 0 to: 3{
@@ -161,7 +163,9 @@ global{
 			}
 		}
 	}
-	// create the table of actions counters (display 2 : Actions)
+	/*
+	 * create the table of actions counters (display 2 : Actions)
+	 */
 	action create_actions_counters {
 		string act;
 		int lu_index;
@@ -1481,7 +1485,7 @@ species Create_Dike_Lever parent: Cost_Lever {
 	string progression_bar  -> { "" + my_district.length_created_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " +LEV_AT+ " t0"};
 	
 	init{
-		lever_name 		<- world.get_lever_name('LEVER_CREATE_DIKE');
+		lever_name 		<- world.get_message('LEVER_CREATE_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_CREATE_DIKE');
 		threshold		<- world.get_lever_threshold('LEVER_CREATE_DIKE');
 		added_cost		<- world.get_lever_cost('LEVER_CREATE_DIKE');
@@ -1494,7 +1498,7 @@ species Raise_Dike_Lever parent: Cost_Lever {
 	float indicator 		-> { my_district.length_dikes_t0 = 0 ? 0.0 : my_district.length_raised_dikes / my_district.length_dikes_t0 };
 	string progression_bar 	-> { "" + my_district.length_raised_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " +LEV_AT+ " t0"};
 	init{
-		lever_name 		<- world.get_lever_name('LEVER_RAISE_DIKE');
+		lever_name 		<- world.get_message('LEVER_RAISE_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_RAISE_DIKE');
 		threshold		<- world.get_lever_threshold('LEVER_RAISE_DIKE');
 		added_cost		<- world.get_lever_cost('LEVER_RAISE_DIKE');
@@ -1509,7 +1513,7 @@ species Repair_Dike_Lever parent: Cost_Lever{
 	string progression_bar 		-> { "" + my_district.length_repaired_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " +LEV_AT+ " t0"};
 	
 	init{
-		lever_name 		<- world.get_lever_name('LEVER_REPAIR_DIKE');
+		lever_name 		<- world.get_message('LEVER_REPAIR_DIKE');
 		lever_type		<- world.get_lever_type('LEVER_REPAIR_DIKE');
 		threshold		<- world.get_lever_threshold('LEVER_REPAIR_DIKE');
 		added_cost		<- world.get_lever_cost('LEVER_REPAIR_DIKE');
@@ -1523,7 +1527,7 @@ species AU_or_Ui_in_Coast_Area_Lever parent: Delay_Lever{
 	string progression_bar 	-> { "" + indicator + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_in_COAST_AREA');
+		lever_name 	<- world.get_message('LEVER_AU_Ui_in_COAST_AREA');
 		lever_type	<- world.get_lever_type('LEVER_AU_Ui_in_COAST_AREA');
 		threshold	<- world.get_lever_threshold('LEVER_AU_Ui_in_COAST_AREA');
 		added_delay	<- world.get_lever_delay('LEVER_AU_Ui_in_COAST_AREA');
@@ -1548,7 +1552,7 @@ species AU_or_Ui_in_Risk_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + indicator + " " + LEV_MSG_ACTIONS + " / "+ int(threshold) + " " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_AU_Ui_in_RISK_AREA');
+		lever_name 	<- world.get_message('LEVER_AU_Ui_in_RISK_AREA');
 		lever_type	<- world.get_lever_type('LEVER_AU_Ui_in_RISK_AREA');
 		threshold	<- world.get_lever_threshold('LEVER_AU_Ui_in_RISK_AREA');
 		added_cost 	<- world.get_lever_cost('LEVER_AU_Ui_in_RISK_AREA');
@@ -1569,7 +1573,7 @@ species Ganivelle_Lever parent: Cost_Lever {
 		string progression_bar 	-> { "" + my_district.length_created_ganivelles + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " + LEV_DUNES };
 	
 	init{
-		lever_name	<- world.get_lever_name('LEVER_GANIVELLE');
+		lever_name	<- world.get_message('LEVER_GANIVELLE');
 		lever_type	<- world.get_lever_type('LEVER_GANIVELLE');
 		threshold	<- world.get_lever_threshold('LEVER_GANIVELLE');
 		added_cost 	<- world.get_lever_cost('LEVER_GANIVELLE');
@@ -1587,7 +1591,7 @@ species Enhance_Natural_Accr_Lever parent: Cost_Lever {
 	string progression_bar 	-> { "" + my_district.length_enhanced_accretion + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " + LEV_DUNES };
 	
 	init{
-		lever_name	<- world.get_lever_name('LEVER_ENHANCE_NAT_ACCR');
+		lever_name	<- world.get_message('LEVER_ENHANCE_NAT_ACCR');
 		lever_type	<- world.get_lever_type('LEVER_ENHANCE_NAT_ACCR');
 		threshold	<- world.get_lever_threshold('LEVER_ENHANCE_NAT_ACCR');
 		added_cost 	<- world.get_lever_cost('LEVER_ENHANCE_NAT_ACCR');
@@ -1605,7 +1609,7 @@ species Create_Dune_Lever parent: Cost_Lever {
 	string progression_bar  -> { "" + my_district.length_created_dunes + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " +LEV_AT+ " t0"};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_CREATE_DUNE');
+		lever_name 	<- world.get_message('LEVER_CREATE_DUNE');
 		lever_type	<- world.get_lever_type('LEVER_CREATE_DUNE');
 		player_msg 	<- world.get_message('LEV_GANIVELLE_PLAYER');
 		threshold	<- world.get_lever_threshold('LEVER_CREATE_DUNE');
@@ -1624,7 +1628,7 @@ species Maintain_Dune_Lever parent: Cost_Lever {
 	string progression_bar 	-> { "" + my_district.length_maintained_dunes + " m / " + threshold + " * " + my_district.length_dunes_t0 + " m " + LEV_DUNES };
 	
 	init{
-		lever_name	<- world.get_lever_name('LEVER_MAINTAIN_DUNE');
+		lever_name	<- world.get_message('LEVER_MAINTAIN_DUNE');
 		lever_type	<- world.get_lever_type('LEVER_MAINTAIN_DUNE');
 		threshold	<- world.get_lever_threshold('LEVER_MAINTAIN_DUNE');
 		added_cost 	<- world.get_lever_cost('LEVER_MAINTAIN_DUNE');
@@ -1642,7 +1646,7 @@ species Us_out_Coast_and_Risk_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + indicator + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_Us_out_COAST_and_RISK_AREA');
+		lever_name 	<- world.get_message('LEVER_Us_out_COAST_and_RISK_AREA');
 		lever_type	<- world.get_lever_type('LEVER_Us_out_COAST_and_RISK_AREA');
 		threshold	<- world.get_lever_threshold('LEVER_Us_out_COAST_and_RISK_AREA');
 		added_cost 	<- world.get_lever_cost('LEVER_Us_out_COAST_and_RISK_AREA');
@@ -1680,7 +1684,7 @@ species Us_in_Coast_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + my_district.count_Us_in_coast_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) +" " + LEV_MAX};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_Us_in_COAST_AREA');
+		lever_name 	<- world.get_message('LEVER_Us_in_COAST_AREA');
 		lever_type	<- world.get_lever_type('LEVER_Us_in_COAST_AREA');
 		threshold	<- world.get_lever_threshold('LEVER_Us_in_COAST_AREA');
 		added_cost 	<- world.get_lever_cost('LEVER_Us_in_COAST_AREA');
@@ -1702,7 +1706,7 @@ species Us_in_Risk_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + my_district.count_Us_in_risk_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) + " " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_Us_in_RISK_AREA');
+		lever_name 	<- world.get_message('LEVER_Us_in_RISK_AREA');
 		lever_type	<- world.get_lever_type('LEVER_Us_in_RISK_AREA');
 		threshold	<- world.get_lever_threshold('LEVER_Us_in_RISK_AREA');
 		added_cost 	<- world.get_lever_cost('LEVER_Us_in_RISK_AREA');
@@ -1724,7 +1728,7 @@ species Inland_Dike_Lever parent: Delay_Lever {
 	string progression_bar 	-> { "" + my_district.length_inland_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " + LEV_DIKES + " " + LEV_AT + " t0"};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_INLAND_DIKE');
+		lever_name 	<- world.get_message('LEVER_INLAND_DIKE');
 		lever_type	<- world.get_lever_type('LEVER_INLAND_DIKE');
 		added_delay <- world.get_lever_delay('LEVER_INLAND_DIKE');
 		threshold	<- world.get_lever_threshold('LEVER_INLAND_DIKE');
@@ -1794,7 +1798,7 @@ species No_Action_On_Dike_Lever parent: Cost_Lever {
 
 species No_Dike_Creation_Lever parent: No_Action_On_Dike_Lever{
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_NO_DIKE_CREATION');
+		lever_name 	<- world.get_message('LEVER_NO_DIKE_CREATION');
 		lever_type	<- world.get_lever_type('LEVER_NO_DIKE_CREATION');
 		threshold	<- world.get_lever_threshold('LEVER_NO_DIKE_CREATION');
 		added_cost	<- world.get_lever_cost('LEVER_NO_DIKE_CREATION');
@@ -1809,7 +1813,7 @@ species No_Dike_Creation_Lever parent: No_Action_On_Dike_Lever{
 
 species No_Dike_Raise_Lever parent: No_Action_On_Dike_Lever{
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_NO_DIKE_RAISE');
+		lever_name 	<- world.get_message('LEVER_NO_DIKE_RAISE');
 		lever_type	<- world.get_lever_type('LEVER_NO_DIKE_RAISE');
 		threshold	<- world.get_lever_threshold('LEVER_NO_DIKE_RAISE');
 		added_cost	<- world.get_lever_cost('LEVER_NO_DIKE_RAISE');
@@ -1824,7 +1828,7 @@ species No_Dike_Raise_Lever parent: No_Action_On_Dike_Lever{
 
 species No_Dike_Repair_Lever parent: No_Action_On_Dike_Lever{
 	init{
-		lever_name	<- world.get_lever_name('LEVER_NO_DIKE_REPAIR');
+		lever_name	<- world.get_message('LEVER_NO_DIKE_REPAIR');
 		lever_type	<- world.get_lever_type('LEVER_NO_DIKE_REPAIR');
 		threshold	<- world.get_lever_threshold('LEVER_NO_DIKE_REPAIR');
 		added_cost	<- world.get_lever_cost('LEVER_NO_DIKE_REPAIR');
@@ -1844,7 +1848,7 @@ species A_to_N_in_Coast_or_Risk_Area_Lever parent: Cost_Lever{
 	bool should_be_activated 	-> { indicator > threshold and (my_district.is_withdrawal or my_district.is_soft_def)};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_A_to_N_in_COAST_or_RISK_AREA');
+		lever_name 	<- world.get_message('LEVER_A_to_N_in_COAST_or_RISK_AREA');
 		lever_type	<- world.get_lever_type('LEVER_A_to_N_in_COAST_or_RISK_AREA');
 		threshold	<- world.get_lever_threshold('LEVER_A_to_N_in_COAST_or_RISK_AREA');
 		added_cost 	<- world.get_lever_cost('LEVER_A_to_N_in_COAST_or_RISK_AREA');
@@ -1866,7 +1870,7 @@ species Densification_out_Coast_and_Risk_Area_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + my_district.count_densification_out_coast_and_risk_area + " " + LEV_MSG_ACTIONS + " / " + int(threshold) +" " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
+		lever_name 	<- world.get_message('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
 		lever_type	<- world.get_lever_type('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
 		threshold	<- world.get_lever_threshold('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
 		added_cost 	<- world.get_lever_cost('LEVER_DENSIFICATION_out_COAST_and_RISK_AREA');
@@ -1888,7 +1892,7 @@ species Expropriation_Lever parent: Cost_Lever{
 	string progression_bar 	-> { "" + my_district.count_expropriation + " " + MSG_EXPROPRIATION + " / " + int(threshold) + " " + LEV_MAX };
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_EXPROPRIATION');
+		lever_name 	<- world.get_message('LEVER_EXPROPRIATION');
 		lever_type	<- world.get_lever_type('LEVER_EXPROPRIATION');
 		threshold	<- world.get_lever_threshold('LEVER_EXPROPRIATION');
 		added_cost 	<- world.get_lever_cost('LEVER_EXPROPRIATION');
@@ -1911,7 +1915,7 @@ species Destroy_Dike_Lever parent: Cost_Lever{
 	string progression_bar 	 -> { "" + my_district.length_destroyed_dikes + " m / " + threshold + " * " + my_district.length_dikes_t0 + " m " + LEV_AT + " t0"};
 	
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_DESTROY_DIKE');
+		lever_name 	<- world.get_message('LEVER_DESTROY_DIKE');
 		lever_type 	<- world.get_lever_type('LEVER_DESTROY_DIKE');
 		threshold	<- world.get_lever_threshold('LEVER_DESTROY_DIKE');
 		added_cost 	<- world.get_lever_cost('LEVER_DESTROY_DIKE');
@@ -1931,7 +1935,7 @@ species Destroy_Dike_Lever parent: Cost_Lever{
 species Give_Pebbles_Lever parent: Cost_Lever{
 	string progression_bar <- "Levier manuel (Activer/Désactiver)";
 	init{
-		lever_name 	<- world.get_lever_name('LEVER_GIVE_PEBBLES');
+		lever_name 	<- world.get_message('LEVER_GIVE_PEBBLES');
 		lever_type	<- world.get_lever_type('LEVER_GIVE_PEBBLES');
 		threshold	<- world.get_lever_threshold('LEVER_GIVE_PEBBLES');
 		added_cost 	<- world.get_lever_cost('LEVER_GIVE_PEBBLES');
