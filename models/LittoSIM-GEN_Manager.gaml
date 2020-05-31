@@ -14,6 +14,8 @@ model Manager
 import "params_models/params_manager.gaml"
 
 global {
+	// put to false to omit saving data on the Manager machine
+	bool save_data <- false;
 	
 	// files sent to LISFLOOD
 	string lisflood_start_file	<- study_area_def["LISFLOOD_START"];
@@ -84,7 +86,6 @@ global {
 	point play_b;
 	point pause_b;
 	list<District> districts_in_game;
-	bool save_data <- false; // whether save or not data logs
 	bool display_ruptures <- false; // display or not ruptures
 	bool submersion_ok <- false;
 	bool send_flood_results <- true;
@@ -2824,7 +2825,6 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- false;
 	
 	output {
 		

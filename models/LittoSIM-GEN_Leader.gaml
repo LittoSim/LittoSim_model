@@ -15,6 +15,9 @@ import "params_models/params_leader.gaml"
 
 global{
 	
+	// put to false to omit saving data on the Leader machine
+	bool save_data <- false;
+	
 	float sim_id;
 	list<string> leader_activities <- [];
 	list<Player_Action> player_actions <- [];
@@ -31,7 +34,7 @@ global{
 								  'LEVER_Us_in_COAST_AREA', 'LEVER_Us_in_RISK_AREA', 'LEVER_INLAND_DIKE',
 								  'LEVER_NO_DIKE_CREATION', 'LEVER_NO_DIKE_RAISE', 'LEVER_NO_DIKE_REPAIR', 'LEVER_A_to_N_in_COAST_or_RISK_AREA',
 								  'LEVER_DENSIFICATION_out_COAST_and_RISK_AREA', 'LEVER_EXPROPRIATION', 'LEVER_DESTROY_DIKE','LEVER_GIVE_PEBBLES'];
-	bool save_data <- false; // whether save or not data logs 
+
 	// for graphs
 	list<list<int>> districts_budgets <- [[],[],[],[]];
 	list<list<int>> districts_populations <- [[],[],[],[]];
@@ -2333,7 +2336,6 @@ experiment LittoSIM_GEN_Leader {
 	}
 	
 	parameter "Language choice : " var: my_language	 <- default_language  among: languages_list;
-	parameter "Save data : " var: save_data <- false;
 	
 	output{
 		display Levers{
