@@ -27,7 +27,7 @@ global{
 	// LISFLOOD simulation parameters
 	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
 	// file defining additional LISFLOOD parameters (*.param in floodfiles folder)
-	map<string,string> lisflood_param_def <- read_configuration_file("../../" + my_flooding_path + study_area_def["LISFLOOD_PARAMS"],";");
+	map<string,string> lisflood_param_def <- read_configuration_file("../../" + my_flooding_path + study_area_def["LISFLOOD_PARAMS"]);
 	// four parameters of *.param file. These params differ between case studies
 	int LISFLOOD_SIM_TIME 		<- int(lisflood_param_def["LISFLOOD_SIM_TIME"]);
 	int LISFLOOD_INIT_TSTEP  	<- int(lisflood_param_def["LISFLOOD_INIT_TSTEP"]);

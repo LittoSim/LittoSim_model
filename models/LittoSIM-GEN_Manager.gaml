@@ -25,7 +25,7 @@ global {
 		  						 :(floodEventType = MEDIUM_FLOODING ? study_area_def ["LISFLOOD_BDY_MEDIUM"] // scenario3 : MEDIUM
 		  						 :get_message('MSG_FLOODING_TYPE_PROBLEM')))};
 	// paths to Lisflood
-	string lisfloodPath;		// absolute path to Lisflood ex: "C:/littosim/lisflood"
+	string lisfloodPath <- littosim_def["LISFLOOD_PATH"]; // absolute path to Lisflood ex: "C:/littosim/lisflood"
 	string results_lisflood_rep 	<- my_flooding_path + "results"; 			// Lisflood results folder
 	string lisflood_par_file 		-> {my_flooding_path + "inputs/" + application_name + "_par" + timestamp + ".par"};   // parameter file
 	string lisflood_DEM_file 		-> {my_flooding_path + "inputs/" + application_name + "_dem" + timestamp + ".asc"};   // DEM file 
@@ -126,9 +126,6 @@ global {
 		LDR_LASTE 		<- get_message("LDR_LASTE");
 		LEV_DUNES		<- get_message('LEV_DUNES');
 		LEV_DIKES		<- get_message('LEV_DIKES');
-		
-		// the lisflood path depends on the OS
-		lisfloodPath <- IS_OSX ? littosim_def["LISFLOOD_PATH_OSX"] : littosim_def["LISFLOOD_PATH_WIN"];
 		
 		// Create GIS agents
 		// only the disctrict code is read from the districts file, other variables are read from the
@@ -328,12 +325,13 @@ global {
 			/*
 			 * Remove the ruptures of the last submersion after the new round
 			 */
-			ask Coastal_Defense where (each.rupture){
-				do remove_rupture;
-			}
+			ask Coastal_Defense where (each.rupture){ do remove_rupture; }
 			
 			ask districts_in_game{
-				// each districts evolves its own coastal defenses
+				/*
+				 * Each district evolves its own coastal defenses. Coastal defenses that belong to other districts that do not participate in the
+				 * game do not evolve
+				 */
 				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status; }				
@@ -438,11 +436,20 @@ global {
 			ask Cell where (each.cell_type = 1) {
 				max_water_height <- 0.0; // reset of max_water_height
 			}
-			ask Coastal_Defense {
-				do calculate_rupture;
+			
+			/*
+			 * Calculate potential ruptures for codefs of active districts
+			 */
+			ask districts_in_game {
+				ask Coastal_Defense where (each.district_code = district_code) {
+					do calculate_rupture;
+				}
 			}
-			//********* for Criel case only *//////////////*******
-			// forcing the rupture of one of dikes protected by pebbles (cliff_coast)
+			
+			/*
+			 * For cliff_coast only (Criel)
+			 * Forcing the rupture of one of dikes protected by pebbles
+			 */
 			ask Coastal_Defense where (each.type = COAST_DEF_TYPE_CORD) {
 				if status = STATUS_BAD {
 					list<Coastal_Defense> cordies <- Coastal_Defense where (each.is_protected_by_cord and !each.rupture);

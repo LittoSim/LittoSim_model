@@ -15,7 +15,7 @@ import "params_all.gaml"
 
 global{
 	string my_language; // language specific to leader interface
-	map<string,map> levers_def <- store_csv_data_into_map_of_map(study_area_def["LEVERS_FILE"], ";");	// levers configuration file
+	map<string,map> levers_def <- store_csv_data_into_map_of_map(study_area_def["LEVERS_FILE"]);	// levers configuration file
 
 	// specific parameters to leader
 	int game_round <- 0;

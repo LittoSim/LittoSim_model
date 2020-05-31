@@ -13,11 +13,11 @@ model paramsall
 
 global{
 	// Configuration files
-	map<string,string> littosim_def <- read_configuration_file("../includes/config/littosim.conf",";"); // main file pointing to others
-	map<string,string> study_area_def <- read_configuration_file(littosim_def["STUDY_AREA_FILE"],";"); // Shapefiles & data specific to the study area
-	map<string,map> langs_def <- store_csv_data_into_map_of_map(littosim_def["LANGUAGE_FILE"],";"); // Languages file
+	map<string,string> littosim_def <- read_configuration_file("../includes/config/littosim.conf"); // main file pointing to others
+	map<string,string> study_area_def <- read_configuration_file(littosim_def["STUDY_AREA_FILE"]); // Shapefiles & data specific to the study area
+	map<string,map> langs_def <- store_csv_data_into_map_of_map(littosim_def["LANGUAGE_FILE"]); // Languages file
 	// Actions file. To use this map : data_action at ACTION_NAME at parameter (Example: data_action at 'ACTON_CREATE_DIKE' at 'cost')
-	map<string,map> data_action <- store_csv_data_into_map_of_map(study_area_def["ACTIONS_FILE"],";");
+	map<string,map> data_action <- store_csv_data_into_map_of_map(study_area_def["ACTIONS_FILE"]);
 	
 	// General params
 	string application_name <- study_area_def["APPLICATION_NAME"]; // name of the case study
@@ -189,12 +189,12 @@ global{
 	
 	//------------------------------ Shared methods to load configuration files into maps -------------------------------//
 	// used to the read configuration files : littosim.conf + study_area.conf
-	map<string, string> read_configuration_file(string fileName,string separator){
+	map<string, string> read_configuration_file(string fileName){
 		map<string, string> res <- map<string, string>([]);
 		string line <- "";
 		loop line over:text_file(fileName){
-			if(line contains(separator)){
-				list<string> data <- line split_with(separator);
+			if first(line) != "#" and line contains(";"){
+				list<string> data <- line split_with(";");
 				add data[1] at:data[0] to:res;	
 			}				
 		}
@@ -202,13 +202,13 @@ global{
 	}
 	
 	// used to read ";" separated values files : langs.conf + actions.conf + levers.conf
-	map<string, map> store_csv_data_into_map_of_map(string fileName, string separator){
+	map<string, map> store_csv_data_into_map_of_map(string fileName){
 		map<string, map> res ;
 		string line <- "";
 		list<string> col_labels <- [];
 		loop line over: text_file(fileName){
-			if(line contains(separator)){
-				list<string> data <- line split_with(separator);
+			if first(line) != "#" and line contains(";"){
+				list<string> data <- line split_with(";");
 				if empty(col_labels) {
 					col_labels <- data ;
 				} 
