@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+
+<mapping>
+	<app-name>rochefort</app-name>
+	<input-files>rochefort_input_files</input-files>
+	<output-files>rochefort_output_files</output-files>
+	<grid-cell-size>200</grid-cell-size>
+		
+	<file output-name="roads.shp" input-name="routes.shp"></file>
+	<file output-name="coastline.shp" input-name="TCH.shp"></file>
+	<file output-name="rpp.shp" input-name="PPR.shp"></file>
+	<file output-name="spa.shp" input-name="ZPS.shp"></file>
+	<file output-name="water.shp" input-name="COURS_D_EAU.shp"></file>
+	<file output-name="dem.asc" input-name="recalcul_mnt_val_pt.asc"></file>
+
+	<file output-name="buildings.shp" input-name="BATIMENT.shp">
+		<attribute output-name="bld_type" type="string">
+			<input-name>USAGE1</input-name>
+			<replace value="Résidentiel">Residential</replace>
+			<replace value="*">Other</replace>
+		</attribute>
+	</file>
+
+	<file output-name="urban_plan.shp" input-name="sig_agglo_PLU_ZONE_URBA_c.shp">
+		<attribute output-name="unit_code" type="string">
+			<input-name>typezone</input-name>
+			<replace value="N">1</replace>
+			<replace value="NA">1</replace>
+			<replace value="Nh">1</replace>
+			<replace value="Nj">1</replace>
+			<replace value="Nr">1</replace>
+			<replace value="U">2</replace>
+			<replace value="UA">2</replace>
+			<replace value="AU">4</replace>
+			<replace value="AUb">4</replace>
+			<replace value="AUc">4</replace>
+			<replace value="A">5</replace>
+			<replace value="Ax">5</replace>
+			<replace value="AUs">7</replace>
+		</attribute>
+	</file>
+	
+	<file output-name="land_cover.shp" input-name="CLC18_FR.shp">
+		<attribute output-name="cover_type" type="string">
+			<input-name>CODE_18</input-name>
+		</attribute>
+	</file>
+	
+	<file output-name="districts.shp" input-name="COMMUNE_clip_m_Charente2.shp">
+		<attribute output-name="dist_code" type="string">
+			<input-name>INSEE_COM</input-name>
+		</attribute>
+		<attribute output-name="dist_pop" type="integer">
+			<input-name>POPULATION</input-name>
+		</attribute>
+		<active-districts>
+			<district>17299</district>
+			<district>17353</district>
+			<district>17375</district>
+			<district>17484</district>
+		</active-districts>
+	</file>
+
+	<file output-name="coastal_defenses.shp" input-name="defense_cote1_JS_nonull.shp">
+		<attribute output-name="dist_code" type="string">
+			<input-name>GroupID</input-name>
+		</attribute>
+		<attribute output-name="type" type="string">
+			<input-name>Position</input-name>
+			<replace value="Digue levee">DIKE</replace>
+			<replace value="*">DUNE</replace>
+		</attribute>
+		<attribute output-name="status" type="string">
+			<input-name>etat</input-name>
+			<replace value="*">GOOD</replace>
+		</attribute>
+		<attribute output-name="alt" type="double">
+			<input-name>MAX_POINT_</input-name>
+		</attribute>
+		<attribute output-name="height" type="double">
+			<input-name>Height</input-name>
+		</attribute>
+	</file>
+	
+	<rugosity>
+		<nrows>472</nrows>
+		<ncols>730</ncols>
+		<resolution>20</resolution>
+		<manning value="111">0.12</manning>
+		<manning value="112">0.12</manning>
+		<manning value="121">0.12</manning>
+		<manning value="122">0.12</manning>
+		<manning value="123">0.12</manning>
+		<manning value="131">0.04</manning>
+		<manning value="142">0.03</manning>
+		
+		<manning value="211">0.032</manning>
+		<manning value="231">0.04</manning>
+		<manning value="242">0.06</manning>
+		<manning value="243">0.04</manning>
+		
+		<manning value="311">0.15</manning>
+		
+		<manning value="411">0.055</manning>
+		<manning value="421">0.055</manning>
+		<manning value="423">0.025</manning>
+		
+		<manning value="511">0.025</manning>
+		<manning value="512">0.025</manning>
+		<manning value="522">0.025</manning>
+		<manning value="523">0.02</manning>
+	</rugosity>
+</mapping>

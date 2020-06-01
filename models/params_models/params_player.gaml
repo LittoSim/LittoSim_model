@@ -14,48 +14,53 @@ model paramsplayer
 import "params_all.gaml"
 
 global{
-	// Interface
-	string my_language;
-	// defines the top district of visualizing the commands in the rights place (top or bottom)
-	string DISTRICT_AT_TOP 	 <- study_area_def["DISTRICT_AT_TOP"];
+	/*
+	 * General parameters
+	 */
+	string DISTRICT_AT_TOP 	 <- study_area_def["DISTRICT_AT_TOP"]; // defines the top district to visualize the commands tab in the right place (top or bottom)
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
 	int DISPLAY_FONT_SIZE 	 <- 16;
-	
-	// Player specific actions
-	int ACTION_DISPLAY_PROTECTED_AREA 	<- int(data_action at 'ACTION_DISPLAY_PROTECTED_AREA' at 'action_code');
-	int ACTION_DISPLAY_FLOODED_AREA 	<- int(data_action at 'ACTION_DISPLAY_FLOODED_AREA'   at 'action_code');
-	int ACTION_DISPLAY_FLOODING 		<- int(data_action at 'ACTION_DISPLAY_FLOODING' 	  at 'action_code');
-	int ACTION_INSPECT		  			<- int(data_action at 'ACTION_INSPECT' 		  		  at 'action_code');
-	int ACTION_HISTORY		  			<- int(data_action at 'ACTION_HISTORY' 		  		  at 'action_code');
-	
-	// Map tab displays
-	string LU_DISPLAY 		 <- "LU_DISPLAY";
-	string COAST_DEF_DISPLAY <- "COAST_DEF_DISPLAY";
-	string BOTH_DISPLAYS 	 <- "BOTH_DISPLAYS";
-	// Player displays
+	image_file TRANSPARENT <- image_file("../images/system_icons/player/transparent.png");
+	/*
+	 * Player specific actions
+	 */
+	int ACTION_DISPLAY_PROTECTED_AREA <- data_action at 'ACTION_DISPLAY_PROTECTED_AREA' != nil ? int(data_action at 'ACTION_DISPLAY_PROTECTED_AREA' at 'action_code') : 0;
+	int ACTION_DISPLAY_FLOODED_AREA   <- data_action at 'ACTION_DISPLAY_FLOODED_AREA' 	!= nil ? int(data_action at 'ACTION_DISPLAY_FLOODED_AREA' 	at 'action_code') : 0;
+	int ACTION_DISPLAY_FLOODING 	  <- data_action at 'ACTION_DISPLAY_FLOODING' 	 	!= nil ? int(data_action at 'ACTION_DISPLAY_FLOODING' 		at 'action_code') : 0;
+ 	int ACTION_INSPECT 				  <- data_action at 'ACTION_INSPECT' 	 			!= nil ? int(data_action at 'ACTION_INSPECT' 				at 'action_code') : 0;
+ 	int ACTION_HISTORY 				  <- data_action at 'ACTION_HISTORY' 	 			!= nil ? int(data_action at 'ACTION_HISTORY' 				at 'action_code') : 0;
+	/*
+	 * Player displays
+	 */
 	string BASKET_DISPLAY 	<- "Basket";
 	string MAP_DISPLAY		<- "Map";
 	string HISTORY_DISPLAY <- "History";
 	string MESSAGES_DISPLAY<- "Messages";
-	
-	image_file TRANSPARENT <- image_file("../images/system_icons/player/transparent.png");
-
-	// Received user messages type
+	/*
+	 * Map tab displays
+	 */
+	string LU_DISPLAY 		 <- "LU_DISPLAY";
+	string COAST_DEF_DISPLAY <- "COAST_DEF_DISPLAY";
+	string BOTH_DISPLAYS 	 <- "BOTH_DISPLAYS";
+	/*
+	 * Received user messages type
+	 */
 	string INFORMATION_MESSAGE 	<- "INFORMATION_MESSAGE";
 	string BUDGET_MESSAGE 		<- "BUDGET_MESSAGE";
 	string POPULATION_MESSAGE 	<- "POPULATION_MESSAGE";
-	
-	// Interface components parameters
+	/*
+	 *  Interface components parameters
+	 */
 	int BASKET_MAX_SIZE 		<- 15;
 	int MAX_HISTORY_VIEW_SIZE 	<- 10;
 	point INFORMATION_BOX_SIZE 	<- {200,80};
-	
 	/*
 	 * The width of the urban ring allowed urbanization. If not specified, it takes 0.
 	 */
 	int URBAN_RING 	 <- int(study_area_def["URBAN_RING"]);
-
-	// Multi-langs
+	/* 
+	 * Translated messages
+	 */
 	string MSG_WARNING;
 	string PLY_MSG_INFO_AB;
 	string PLY_MSG_LENGTH;

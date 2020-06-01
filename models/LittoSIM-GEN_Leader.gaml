@@ -237,7 +237,7 @@ global{
 						location <- (Grille[my_district.dist_id - 1, 1]).location + {0, 6 * i};
 						command	<- int(data_action at action_name at 'action_code');
 						label <- world.label_of_action(command);
-						my_icon <- image_file(data_action at action_name at 'button_icon_file') ;
+						my_icon <- image_file("../images/developer_icons/" + data_action at action_name at 'button_icon_file') ;
 					}	
 				}
 			}
