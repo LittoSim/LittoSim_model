@@ -127,4 +127,10 @@ LittoSIM-GEN
   - ***LittoSIM-GEN_Manager*** : model file to execute the Manager.
   - ***LittoSIM-GEN_Player*** : model file to execute the Player.
 
-- **Rscripts** : 
+- **Rscripts** :
+  - ***pre_processing*** :
+  	- *leader_data.R* :
+  	- *manager_data.R*:
+  - ***post_processing*** :
+  	- *data_compiler.R* :
+  	- *data_mapping.xml* :

@@ -2527,8 +2527,8 @@ experiment District4 type: gui parent: LittoSIM_GEN_Player {
 experiment LittoSIM_GEN_Player type: gui{
 	// read the list of districts of study_area.conf
 	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
-			where ((each contains 'STUDY_AREA_FILE') and !(each contains '#')))
-			split_with ';' at 1).contents where (each contains 'MAP_DIST_SNAMES')) split_with ';' at 1)).values;
+			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
+			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)).values;
 
 	parameter "District choice : " var: active_district_name <- districts[0] among: districts;
 	

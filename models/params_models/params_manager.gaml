@@ -70,7 +70,7 @@ global{
 	int NB_SLICES_CORD_STATUS_BAD 		<- int  (study_area_def["NB_SLICES_CORD_BAD"]); // Number of slices for a cord to become bad
 	int NB_SLICES_CORD_STATUS_MEDIUM	<- int  (study_area_def["NB_SLICES_CORD_MEDIUM"]); 	// Number of slices for a cord to become medium
 	int NB_SLICES_LOST_PER_ROUND		<- int  (study_area_def["NB_SLICES_LOST_PER_ROUND"]); // Number of lost slices at each round 
-	int STEPS_FOR_AU_TO_U 				<- int  (study_area_def["STEPS_FOR_AU_TO_U"]);		  // 2 years to change from AU to U)
+	int STEPS_FOR_AU_TO_U 				<- int  (study_area_def["STEPS_FOR_AU_TO_U"]);		  // Number of years to change from AU to U
 	/*
 	 * Coastal defenses rupture parameters
 	 */
