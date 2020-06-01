@@ -60,15 +60,22 @@ LittoSIM-GEN
   │     ├── esturay_coast
   │     ├── overflow_coast_h
   │     └── overflow_coast_v
-  └── models
-        ├── params_models
-        │     ├── params_all.gaml
-        │     ├── params_leader.gaml
-        │     ├── params_manager.gaml
-        │     └── params_player.gaml
-        ├── LittoSIM-GEN_Leader.gaml
-        ├── LittoSIM-GEN_Manager.gaml
-        └── LittoSIM-GEN_Player.gaml
+  ├── models
+  │     ├── params_models
+  │     │     ├── params_all.gaml
+  │     │     ├── params_leader.gaml
+  │     │     ├── params_manager.gaml
+  │     │     └── params_player.gaml
+  │     ├── LittoSIM-GEN_Leader.gaml
+  │     ├── LittoSIM-GEN_Manager.gaml
+  │     └── LittoSIM-GEN_Player.gaml
+  └── Rscripts
+        ├── pre_processing
+        │     ├── data_compiler.R
+        │     └── data_mapping.xml
+        └── post_processing
+              ├── leader_data.R
+              └── manager_data.R
 ```
 - **images** : this folder has two subdirectories that contain images related to actions (icons) and to the interface (ihm).
 
