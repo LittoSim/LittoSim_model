@@ -6,7 +6,7 @@
  * 				  The project aims at modeling effects of coastal flooding on urban areas and at enabling the transfer of scientific
  * 				  findings to risk managers, as well as awareness of those concerned by the risk of coastal flooding.
  * 
- * LittoSIM_GEN_Manager : this module reprsents the game manager.
+ * LittoSIM_GEN_Manager : this model reprsents the game manager.
  */
 
 model Manager
@@ -14,25 +14,27 @@ model Manager
 import "params_models/params_manager.gaml"
 
 global {
-	// put to false to omit saving data on the Manager machine
-	bool save_data <- false;
-	
-	// files sent to LISFLOOD
+	/*
+	 * General parameters
+	 */
+	bool save_data <- false; // put to false to omit saving data on the Manager machine
+	string project_path; // the absolete path of the current project for further use in file paths
+	/*
+	 * Files and paths of LISFLOOD
+	 */
 	string lisflood_start_file	<- study_area_def["LISFLOOD_START"];
 	string lisflood_bci_file	<- study_area_def["LISFLOOD_BCI"];
 	string lisflood_bdy_file 	->{floodEventType = HIGH_FLOODING   ? study_area_def ["LISFLOOD_BDY_HIGH"]   // scenario1 : HIGH 
 								 :(floodEventType = LOW_FLOODING    ? study_area_def ["LISFLOOD_BDY_LOW"]    // scenario2 : LOW
 		  						 :(floodEventType = MEDIUM_FLOODING ? study_area_def ["LISFLOOD_BDY_MEDIUM"] // scenario3 : MEDIUM
 		  						 :get_message('MSG_FLOODING_TYPE_PROBLEM')))};
-	// paths to Lisflood
-	string lisfloodPath <- littosim_def["LISFLOOD_PATH"]; // absolute path to Lisflood ex: "C:/littosim/lisflood"
-	string results_lisflood_rep 	<- my_flooding_path + "results"; 			// Lisflood results folder
-	string lisflood_par_file 		-> {my_flooding_path + "inputs/" + application_name + "_par" + timestamp + ".par"};   // parameter file
-	string lisflood_DEM_file 		-> {my_flooding_path + "inputs/" + application_name + "_dem" + timestamp + ".asc"};   // DEM file 
-	string lisflood_rugosity_file 	-> {my_flooding_path + "inputs/" + application_name + "_rug" + timestamp + ".asc"};   // rugosity file
-	string lisflood_bat_file 		<- "LittoSIM_GEN_Lisflood.bat";	  // Lisflood executable
-	
-	// variables for Lisflood calculs 
+	string results_lisflood_rep 	<- my_flooding_path + "results"; // Lisflood results folder
+	string lisflood_par_file 		-> {my_flooding_path + "inputs/" + application_name + "_par" + timestamp + ".par"}; // parameter file
+	string lisflood_DEM_file 		-> {my_flooding_path + "inputs/" + application_name + "_dem" + timestamp + ".asc"}; // DEM file 
+	string lisflood_rugosity_file 	-> {my_flooding_path + "inputs/" + application_name + "_rug" + timestamp + ".asc"}; // rugosity file
+	/*
+	 * Additional variables for Lisflood calculations
+	 */
 	map<string,string> list_flooding_events;  // list of submersions of a round
 	string floodEventType <- LOW_FLOODING;
 	int lisfloodReadingStep <- 9999; // to indicate to which step of Lisflood results, the current cycle corresponds 
@@ -41,20 +43,43 @@ global {
 	string flood_results 	<- "";  // text of flood results per district // saved as a txt file
 	list<int> submersions; // list of events 
 	int sub_event <- 0; // if it's a new flooding event or an existing one (to add it to populations/budgets graphs and to save or not ruptures file)
-	
-	// parameters for saving submersion results
-	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; 	// folder to save main model results
+	/*
+	 * Parameters for saving simulation results
+	 */
+	string output_data_rep 	  <- "../includes/"+ application_name +"/manager_data-" + EXPERIMENT_START_TIME; // folder to save main model results
 	string shapes_export_path <- output_data_rep + "/shapes/"; // shapefiles to save
 	string csvs_export_path <- output_data_rep + "/csvs/"; // shapefiles to save
-	
-	// operation variables
-	geometry shape <- envelope(convex_hull_shape);	// world geometry
+	/*
+	 * Shape and simulation variables
+	 */
 	float EXPERIMENT_START_TIME <- machine_time; 	// machine time at simulation initialization
+	string stateSimPhase 	<- SIM_NOT_STARTED; // state variable of current simulation state
 	int messageID <- 0; 							// network communication
+	geometry shape <- envelope(convex_hull_shape);	// world geometry
+	int population_still_to_dispatch <- 0;	// remaining population to distribute to districts
+	
 	geometry all_flood_risk_area; 					// geometry agrregating risked area polygons
 	geometry all_protected_area; 					// geometry agrregating protected area polygons	
 	geometry all_coastal_border_area;				// geometry aggregating coastal border areas
-	// budget tables to draw evolution graphs
+ 
+	bool show_max_water_height	<- false;	// defines if the water_height displayed on the map should be the max one or the current one
+	bool show_protected_areas	<- false;
+	int show_river_flooded_area <- 0;
+	bool show_risked_areas	<- false;
+	bool show_grid <- false;
+ 
+	int game_round 	<- 0;
+	bool game_paused <- false;
+	point play_b;
+	point pause_b;
+	list<District> districts_in_game;
+	bool display_ruptures <- false; // display or not ruptures
+	bool submersion_ok <- false; // the submersion is calculated successfully by Lisflood, and can be displayed
+	bool send_flood_results <- true; // send or not results to players
+	point button_size;
+	/*
+	 * Budget lists to draw evolution graphs
+	 */
 	list<list<int>> districts_budgets <- [[],[],[],[]];	
 	list<list<int>> districts_taxes <- [[],[],[],[]];
 	list<list<int>> districts_given_money 	<- [[0],[0],[0],[0]];
@@ -67,30 +92,14 @@ global {
 	list<list<int>> districts_soft_strategies 	<- [[0],[0],[0],[0]];
 	list<list<int>> districts_withdraw_strategies<- [[0],[0],[0],[0]];
 	list<list<int>> districts_other_strategies <- [[0],[0],[0],[0]];
-
+	// Actions costs by strategy
 	list<list<float>> districts_build_costs 	<- [[0],[0],[0],[0]];
 	list<list<float>> districts_soft_costs 	<- [[0],[0],[0],[0]];
 	list<list<float>> districts_withdraw_costs<- [[0],[0],[0],[0]];
 	list<list<float>> districts_other_costs <- [[0],[0],[0],[0]];
-
-	int population_still_to_dispatch <- 0;	// remaining population to distribute to districts
-	// other variables 
-	bool show_max_water_height	<- false;	// defines if the water_height displayed on the map should be the max one or the current one
-	bool show_protected_areas	<- false;
-	int show_river_flooded_area <- 0;
-	bool show_risked_areas	<- false;
-	bool show_grid <- false;
-	string stateSimPhase 	<- SIM_NOT_STARTED; // state variable of current simulation state 
-	int game_round 	<- 0;
-	bool game_paused <- false;
-	point play_b;
-	point pause_b;
-	list<District> districts_in_game;
-	bool display_ruptures <- false; // display or not ruptures
-	bool submersion_ok <- false;
-	bool send_flood_results <- true;
-	point button_size;
-
+	/*
+	 * Fonts
+	 */
 	font bold20 <- font('Helvetica Neue', 20, #bold);
 	font bold40 <- font('Helvetica Neue', 40, #bold);
 	
@@ -263,10 +272,12 @@ global {
 		
 		do init_buttons;
 		stateSimPhase <- SIM_NOT_STARTED;
-		do read_lisflood_files (true); // read sumbersion 0 files
+		do read_lisflood_files (true); // read sumbersion 0 files with ruptures
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		last_played_event <- 0;
-
+		/*
+		 * Create Legens and network agents
+		 */
 		create Legend_Planning;
 		create Legend_Map;
 		create Legend_Flood_Map;
@@ -274,6 +285,12 @@ global {
 		create Network_Game_Manager;
 		create Network_Listener_To_Leader;
 		create Network_Control_Manager;
+		/*
+		 * Create a dummy file to get the project path
+		 */
+		save "" rewrite: true to: "../empty.txt";
+		project_path <- text_file("../empty.txt").path;
+		project_path <- copy_between(project_path, 0, length(project_path)-9);
 	}
 	//------------------------------ End of init -------------------------------//
 	
@@ -464,7 +481,7 @@ global {
 			stateSimPhase <- SIM_EXEC_LISFLOOD;
 			write stateSimPhase;
 			do execute_lisflood;
-			do read_lisflood_files (false);
+			do read_lisflood_files (false); // read flood files but without reading ruptures file (ruptures are already known because it's a new submersion
 			lisfloodReadingStep <- 0;
 			last_played_event <- length(list_flooding_events.keys) - 1;
 			send_flood_results <- true;
@@ -534,15 +551,17 @@ global {
 			return;
 		}
 		do clear_map;
-		// if the requested event is the last one played (already in memory), ok, we just display it
-		// if not, we read flood files
+		/*
+		 * if the requested event is the last one played (already in memory), ok, we just display it (without ruptures that were removed at "new round"
+		 * if not, we read flood files
+		 */
 		if last_played_event != fe {
 			last_played_event <- fe;
 			results_lisflood_rep <- list_flooding_events at list_flooding_events.keys[fe];
 			ask Cell {
 				max_water_height <- 0.0; // reset of max_water_height
 			} 
-			do read_lisflood_files (true);
+			do read_lisflood_files (true); // reading files of an previous submersions + ruptures
 			send_flood_results <- true;
 		}
 		lisfloodReadingStep <- 0;
@@ -565,18 +584,18 @@ global {
 	}
 		
 	action save_lf_launch_files {
-		save ("DEMfile         ../workspace/LittoSIM-GEN/" + lisflood_DEM_file + 
+		save ("DEMfile         " + project_path + lisflood_DEM_file + 
 				"\nresroot         res\ndirroot         results\nsim_time        " + LISFLOOD_SIM_TIME + "\ninitial_tstep   " + LISFLOOD_INIT_TSTEP + 
-				"\nmassint         " + LISFLOOD_MASSINT + "\nsaveint         " + LISFLOOD_SAVEINT + "\nmanningfile     ../workspace/LittoSIM-GEN/"
-				+ lisflood_rugosity_file + "\nbcifile         ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_bci_file + 
-				"\nbdyfile         ../workspace/LittoSIM-GEN/" + my_flooding_path + lisflood_bdy_file + "\nstartfile       ../workspace/LittoSIM-GEN/"
+				"\nmassint         " + LISFLOOD_MASSINT + "\nsaveint         " + LISFLOOD_SAVEINT + "\nmanningfile     " + project_path
+				+ lisflood_rugosity_file + "\nbcifile         " + project_path + my_flooding_path + lisflood_bci_file + 
+				"\nbdyfile         " + project_path + my_flooding_path + lisflood_bdy_file + "\nstartfile       " + project_path
 				+ my_flooding_path + lisflood_start_file + "\nstartelev\nelevoff\nacceleration\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
 
 		if IS_OSX {
-			save ("cd " + lisfloodPath + ";\n./lisflood -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + ";\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+			save ("cd " + lisfloodPath + ";\n./lisflood -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + ";\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 		}
 		else {
-			save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + "../workspace/LittoSIM-GEN/"+ results_lisflood_rep + " ../workspace/LittoSIM-GEN/"+ lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+			save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
 		}		
 	}
 	// read dem and rugosity from files to the GAMA grid (Cell)
@@ -2901,8 +2920,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Land_Use 		aspect: base;
 			species Road 	 		aspect: base;
 			species River			aspect: base;
-			species Coastal_Defense aspect: base;
 			species Polycell		aspect: base;
+			species Coastal_Defense aspect: base;
 			species River_Flood_Cell aspect: base;
 			species River_Flood_Cell_1m aspect: base;	
 			species Water_Gate		aspect: base;

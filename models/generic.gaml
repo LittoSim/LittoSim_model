@@ -12,8 +12,8 @@ global {
 	map<string,map> levers <- store_csv_data_into_map_of_map("../includes/estuary_coast/levers.conf", ";");
 		
 	init {
-
-		loop lev over: levers.keys {
+		
+		/*loop lev over: levers.keys {
 			create Lever {
 				code <- lev;
 				name <- levers at lev at 'fr';
@@ -26,7 +26,7 @@ global {
 		
 		ask Lever {
 			write ""+code+" : " + name + " : " + type + " : " + threshold + " : " + added_cost;
-		}
+		}*/
 		
 	}
 	
