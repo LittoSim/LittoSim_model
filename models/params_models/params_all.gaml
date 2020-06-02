@@ -182,9 +182,11 @@ global{
 	float coastBorderBuffer <- float(eval_gaml(study_area_def["COAST_BORDER_BUFFER"])); // width of littoral area from the coast line (ex: 400m)
 	bool AU_AND_AUs_TO_N	<- bool (study_area_def["AU_AND_AUs_TO_N"]); // should we replace AU and AUs by N ?
 	int STANDARD_LU_AREA <- int(study_area_def["STANDARD_LU_AREA"]); // area of a standard cell to manage costs and populations
-	
-	// Natural, Urbanized, Authorized Urbanization, Agricultural, Urbanized subsidized, Authorized Urbanization subsidized
-	//			 lu_code		   [0	1	2	3	 4	  5	  6	    7  ]
+	/*
+	 * Different types of a land use unit : Natural, Urbanized, Authorized for Urbanization, Agricultural, Urbanized Special (adapted),
+	 * 										Authorized for Urbanization Special (adapted)
+	 *			 lu_code		   [0	1	2	3	 4	  5	  6	    7  ]
+	 */
     list<string> lu_type_names 	<- ["","N","U","Ui","AU","A","Us","AUs"];
     int LU_TYPE_N  <- 1;
     int LU_TYPE_U  <- 2;

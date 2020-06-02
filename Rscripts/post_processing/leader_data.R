@@ -1,3 +1,4 @@
+options(encoding = "utf-8")
 # les packages nécessaires pour l'exécution du script manager
 library(ggplot2)
 library(reshape2)
