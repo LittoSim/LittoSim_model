@@ -213,7 +213,7 @@ global{
 	 */
 	map dist_code_lname_correspondance_table	<- eval_gaml(study_area_def["MAP_DIST_LNAMES"]);
 	map dist_code_sname_correspondance_table 	<- eval_gaml(study_area_def["MAP_DIST_SNAMES"]);
-		
+	int number_of_districts <- length(dist_code_sname_correspondance_table);
 	/*
 	 * Taxes and budgets
 	 */

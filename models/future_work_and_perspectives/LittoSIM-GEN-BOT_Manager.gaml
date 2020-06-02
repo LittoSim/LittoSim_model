@@ -6,7 +6,7 @@
 ***/
 
 model Manager_BOT
-import "LittoSIM-GEN_Manager.gaml"
+import "../LittoSIM-GEN_Manager.gaml"
 
 
 experiment _Manager_BOT_ type: gui parent: LittoSIM_GEN_Manager {

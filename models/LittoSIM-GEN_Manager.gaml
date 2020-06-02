@@ -80,23 +80,30 @@ global {
 	/*
 	 * Budget lists to draw evolution graphs
 	 */
-	list<list<int>> districts_budgets <- [[],[],[],[]];	
-	list<list<int>> districts_taxes <- [[],[],[],[]];
-	list<list<int>> districts_given_money 	<- [[0],[0],[0],[0]];
-	list<list<int>> districts_taken_money 	<- [[0],[0],[0],[0]];
-	list<list<int>> districts_transferred_money <- [[0],[0],[0],[0]];
-	list<list<int>> districts_actions_costs <- [[0],[0],[0],[0]];
-	list<list<int>> districts_levers_costs 	<- [[0],[0],[0],[0]];
+	list<list<int>> districts_budgets;	
+	list<list<int>> districts_taxes;
+	list<list<int>> districts_given_money;
+	list<list<int>> districts_taken_money;
+	list<list<int>> districts_transferred_money;
+	list<list<int>> districts_actions_costs;
+	list<list<int>> districts_levers_costs;
 	// Strategy profiles actions
-	list<list<int>> districts_build_strategies 	<- [[0],[0],[0],[0]];
-	list<list<int>> districts_soft_strategies 	<- [[0],[0],[0],[0]];
-	list<list<int>> districts_withdraw_strategies<- [[0],[0],[0],[0]];
-	list<list<int>> districts_other_strategies <- [[0],[0],[0],[0]];
+	list<list<int>> districts_build_strategies;
+	list<list<int>> districts_soft_strategies;
+	list<list<int>> districts_withdraw_strategies;
+	list<list<int>> districts_other_strategies;
 	// Actions costs by strategy
-	list<list<float>> districts_build_costs 	<- [[0],[0],[0],[0]];
-	list<list<float>> districts_soft_costs 	<- [[0],[0],[0],[0]];
-	list<list<float>> districts_withdraw_costs<- [[0],[0],[0],[0]];
-	list<list<float>> districts_other_costs <- [[0],[0],[0],[0]];
+	list<list<float>> districts_build_costs;
+	list<list<float>> districts_soft_costs;
+	list<list<float>> districts_withdraw_costs;
+	list<list<float>> districts_other_costs;
+	// Diffrential of land use surfaces 
+	list<list<float>> surface_N_diff <- [[],[],[],[]];
+	list<list<float>> surface_U_diff <- [[],[],[],[]];
+	list<list<float>> surface_Udense_diff <- [[],[],[],[]];
+	list<list<float>> surface_A_diff <- [[],[],[],[]];
+	list<list<float>> surface_Us_diff <- [[],[],[],[]];
+	list<list<float>> surface_Usdense_diff <- [[],[],[],[]];
 	/*
 	 * Fonts
 	 */
@@ -135,10 +142,31 @@ global {
 		LDR_LASTE 		<- get_message("LDR_LASTE");
 		LEV_DUNES		<- get_message('LEV_DUNES');
 		LEV_DIKES		<- get_message('LEV_DIKES');
-		
-		// Create GIS agents
-		// only the disctrict code is read from the districts file, other variables are read from the
-		// study_area.conf (names) and population from the land_use file
+		/*
+		 * Initialazing lists used in graphs
+		 */
+		loop i from: 1 to: number_of_districts {
+			add [] to: districts_budgets;	
+			add [] to: districts_taxes;
+			add [0] to: districts_given_money;
+			add [0] to: districts_taken_money;
+			add [0] to: districts_transferred_money;
+			add [0] to: districts_actions_costs;
+			add [0] to: districts_levers_costs;
+			add [0] to: districts_build_strategies;
+			add [0] to: districts_soft_strategies;
+			add [0] to: districts_withdraw_strategies;
+			add [0] to: districts_other_strategies;
+			add [0] to: districts_build_costs;
+			add [0] to: districts_soft_costs;
+			add [0] to: districts_withdraw_costs;
+			add [0] to: districts_other_costs;
+		}
+		/*
+		 * Create GIS agents
+		 * only the disctrict code is read from the districts file, other variables are read from the
+		 * study_area.conf (names) and population from the land_use file
+		 */
 		create District from: districts_shape with: [district_code::string(read("dist_code"))];
 		int idx <- 1;
 		loop kk over: dist_code_sname_correspondance_table.keys {
@@ -146,7 +174,7 @@ global {
 			last(districts_in_game).dist_id <- idx;
 			idx <- idx + 1;
 		}
-		
+
 		create Coastal_Defense from: coastal_defenses_shape with: [
 			coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
 			alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))] {
@@ -317,12 +345,12 @@ global {
 			ask districts_in_game{
 				add budget to: districts_taxes[dist_id-1];
 				
-				add 0 to: surface_N_diff;
-				add 0 to: surface_U_diff;
-				add 0 to: surface_Udense_diff;
-				add 0 to: surface_A_diff;
-				add 0 to: surface_Us_diff;
-				add 0 to: surface_Usdense_diff;
+				add 0 to: surface_N_diff[dist_id-1];
+				add 0 to: surface_U_diff[dist_id-1];
+				add 0 to: surface_Udense_diff[dist_id-1];
+				add 0 to: surface_A_diff[dist_id-1];
+				add 0 to: surface_Us_diff[dist_id-1];
+				add 0 to: surface_Usdense_diff[dist_id-1];
 			}
 			stateSimPhase <- SIM_GAME;
 			write stateSimPhase;
@@ -919,12 +947,12 @@ global {
 			
 			// lu differential surfaces is not calculated in round 0
 			if game_round != 0 {
-				add surface_N[game_round] - surface_N[game_round-1] + surface_N_diff[game_round-1] to: surface_N_diff;
-				add surface_U[game_round] - surface_U[game_round-1] + surface_U_diff[game_round-1] to: surface_U_diff;
-				add surface_Udense[game_round] - surface_Udense[game_round-1] + surface_Udense_diff[game_round-1] to: surface_Udense_diff;
-				add surface_A[game_round] - surface_A[game_round-1] + surface_A_diff[game_round-1] to: surface_A_diff;
-				add surface_Us[game_round] - surface_Us[game_round-1] + surface_Us_diff[game_round-1] to: surface_Us_diff;
-				add surface_Usdense[game_round] - surface_Usdense[game_round-1] + surface_Usdense_diff[game_round-1] to: surface_Usdense_diff;
+				add surface_N[game_round] - surface_N[game_round-1] + surface_N_diff[dist_id-1][game_round-1] to: surface_N_diff[dist_id-1];
+				add surface_U[game_round] - surface_U[game_round-1] + surface_U_diff[dist_id-1][game_round-1] to: surface_U_diff[dist_id-1];
+				add surface_Udense[game_round] - surface_Udense[game_round-1] + surface_Udense_diff[dist_id-1][game_round-1] to: surface_Udense_diff[dist_id-1];
+				add surface_A[game_round] - surface_A[game_round-1] + surface_A_diff[dist_id-1][game_round-1] to: surface_A_diff[dist_id-1];
+				add surface_Us[game_round] - surface_Us[game_round-1] + surface_Us_diff[dist_id-1][game_round-1] to: surface_Us_diff[dist_id-1];
+				add surface_Usdense[game_round] - surface_Usdense[game_round-1] + surface_Usdense_diff[dist_id-1][game_round-1] to: surface_Usdense_diff[dist_id-1];
 			}
 			/**************** coastal defenses */
 			list<Coastal_Defense> my_dikes <- Coastal_Defense where (each.district_code=district_code and each.type=COAST_DEF_TYPE_DIKE);
@@ -1056,7 +1084,9 @@ global {
  		ask Network_Game_Manager{
 			do send to: my_district contents: nmap;
 		}
-		// sending ruptures
+		/*
+		 * sending ruptures
+		 */
 		nmap <- ["TOPIC"::"NEW_RUPTURES"];
 		ask Coastal_Defense where (each.district_code = my_district) {
 			add string(rupture and flooded) at: string(coast_def_id) to: nmap;
@@ -1066,7 +1096,9 @@ global {
 		}
 	}
 	
-	// creating buttons
+	/*
+	 * creating buttons of "Game control"
+	 */
  	action init_buttons{
  		button_size <- {world.shape.width/7.75,world.shape.height/6.5};
 		create Button{
@@ -2496,18 +2528,12 @@ species District {
 	
 	list<int> round_population <- [];
 	list<float> surface_N <- [];
-	list<float> surface_N_diff <- [];
 	list<float> surface_U <- [];
-	list<float> surface_U_diff <- [];
 	list<float> surface_Udense <- [];
-	list<float> surface_Udense_diff <- [];
 	list<float> surface_AU <- [];
 	list<float> surface_A <- [];
-	list<float> surface_A_diff <- [];
 	list<float> surface_Us <- [];
-	list<float> surface_Us_diff <- [];
 	list<float> surface_Usdense <- [];
-	list<float> surface_Usdense_diff <- [];
 	list<float> surface_AUs <- [];
 	
 	list<float> length_dikes_all <- [];
@@ -2935,14 +2961,14 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			chart MSG_POPULATION type: series size: {0.33,0.48} position: {0.01,0.01} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				data "" value: submersions collect (each * max(districts_in_game accumulate each.round_population)) color: #black style: bar;
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].round_population color: dist_colors[i] marker_shape: marker_circle;
 				}
 			}
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.33,0.48} position: {0.34,0.01} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				data "" value: submersions collect (each * max(districts_budgets accumulate each)) color: #black style: bar;
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1 {
 					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
@@ -2955,7 +2981,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: districts_actions_costs collect sum(each) color: color_lbls[3];
 			 	data MSG_LEVERS value: districts_levers_costs collect sum(each) color: color_lbls[4];		
 			}
-			//-----	
+			//
 			chart districts_in_game[0].district_long_name type: histogram size: {0.48,0.24} position: {0.01,0.5}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
 			 	data MSG_TAXES value: districts_taxes[0] color: color_lbls[0];
@@ -2974,36 +3000,36 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: districts_actions_costs[1] color: color_lbls[3];
 			 	data MSG_LEVERS value: districts_levers_costs[1] color: color_lbls[4];		
 			}
-			chart districts_in_game[2].district_long_name type: histogram size: {0.48,0.24} position: {0.01,0.75}
+			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.01,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_TAXES value: districts_taxes[2] color: color_lbls[0];
-			 	data LDR_GIVEN value: districts_given_money[2] color: color_lbls[1];
-			 	data LDR_TAKEN value: districts_taken_money[2] color: color_lbls[2];
-			 	data LDR_TRANSFERRED value: districts_transferred_money[2] color: color_lbls[5];
-			 	data LEV_MSG_ACTIONS value: districts_actions_costs[2] color: color_lbls[3];
-			 	data MSG_LEVERS value: districts_levers_costs[2] color: color_lbls[4];		
+			 	data MSG_TAXES value: float(number_of_districts > 2 ? districts_taxes[2] : 0) color: color_lbls[0];
+			 	data LDR_GIVEN value: float(number_of_districts > 2 ? districts_given_money[2] : 0) color: color_lbls[1];
+			 	data LDR_TAKEN value: float(number_of_districts > 2 ? districts_taken_money[2] : 0) color: color_lbls[2];
+			 	data LDR_TRANSFERRED value: float(number_of_districts > 2 ? districts_transferred_money[2] : 0) color: color_lbls[5];
+			 	data LEV_MSG_ACTIONS value: float(number_of_districts > 2 ? districts_actions_costs[2] : 0) color: color_lbls[3];
+			 	data MSG_LEVERS value: float(number_of_districts > 2 ? districts_levers_costs[2] : 0) color: color_lbls[4];		
 			}
-			chart districts_in_game[3].district_long_name type: histogram size: {0.48,0.24} position: {0.5,0.75}
+			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_TAXES value: districts_taxes[3] color: color_lbls[0];
-			 	data LDR_GIVEN value: districts_given_money[3] color: color_lbls[1];
-			 	data LDR_TAKEN value: districts_taken_money[3] color: color_lbls[2];
-			 	data LDR_TRANSFERRED value: districts_transferred_money[3] color: color_lbls[5];
-			 	data LEV_MSG_ACTIONS value: districts_actions_costs[3] color: color_lbls[3];
-			 	data MSG_LEVERS value: districts_levers_costs[3] color: color_lbls[4];		
+			 	data MSG_TAXES value: float(number_of_districts > 3 ? districts_taxes[3] : 0) color: color_lbls[0];
+			 	data LDR_GIVEN value: float(number_of_districts > 3 ? districts_given_money[3] : 0) color: color_lbls[1];
+			 	data LDR_TAKEN value: float(number_of_districts > 3 ? districts_taken_money[3] : 0) color: color_lbls[2];
+			 	data LDR_TRANSFERRED value: float(number_of_districts > 3 ? districts_transferred_money[3] : 0) color: color_lbls[5];
+			 	data LEV_MSG_ACTIONS value: float(number_of_districts > 3 ? districts_actions_costs[3] : 0) color: color_lbls[3];
+			 	data MSG_LEVERS value: float(number_of_districts > 3 ? districts_levers_costs[3] : 0) color: color_lbls[4];		
 			}
 		}
 		
 		display "Actions & Strategies" {
 			chart world.get_message('MSG_NUMBER_ACTIONS') type: histogram size: {0.48,0.48} position: {0.01,0.01}
-				x_serie_labels: districts_in_game collect (each.district_name) style:stack {
+				x_serie_labels: districts_in_game collect (each.district_name) style: stack {
 			 	data MSG_BUILDER value: districts_build_strategies collect sum(each) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies collect sum(each) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies collect sum(each) color: color_lbls[0];
 			 	data MSG_OTHER value: districts_other_strategies collect sum(each) color: color_lbls[3];
 			}
 			chart world.get_message('MSG_COST_ACTIONS') type: histogram size: {0.48,0.48} position: {0.51,0.01}
-				x_serie_labels: districts_in_game collect (each.district_name) style:stack {
+				x_serie_labels: districts_in_game collect (each.district_name) style: stack {
 			 	data MSG_BUILDER value: districts_build_costs collect sum(each) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_costs collect sum(each) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_costs collect sum(each) color: color_lbls[0];
@@ -3024,70 +3050,70 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data MSG_WITHDRAWAL value: districts_withdraw_costs[1] color: color_lbls[0];
 			 	data MSG_OTHER value: districts_other_costs[1] color: color_lbls[3];
 			}
-			chart districts_in_game[2].district_long_name type: histogram size: {0.48,0.24} position: {0.01,0.75}
+			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.01,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_BUILDER value: districts_build_costs[2] color: color_lbls[2];
-			 	data MSG_SOFT_DEF value: districts_soft_costs[2] color: color_lbls[1];
-			 	data MSG_WITHDRAWAL value: districts_withdraw_costs[2] color: color_lbls[0];
-			 	data MSG_OTHER value: districts_other_costs[2] color: color_lbls[3];
+			 	data MSG_BUILDER value: float(number_of_districts > 2 ? districts_build_costs[2] : 0) color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: float(number_of_districts > 2 ? districts_soft_costs[2] : 0) color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: float(number_of_districts > 2 ? districts_withdraw_costs[2] : 0) color: color_lbls[0];
+			 	data MSG_OTHER value: float(number_of_districts > 2 ? districts_other_costs[2] : 0) color: color_lbls[3];
 			}
-			chart districts_in_game[3].district_long_name type: histogram size: {0.48,0.24} position: {0.5,0.75}
+			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_BUILDER value: districts_build_costs[3] color: color_lbls[2];
-			 	data MSG_SOFT_DEF value: districts_soft_costs[3] color: color_lbls[1];
-			 	data MSG_WITHDRAWAL value: districts_withdraw_costs[3] color: color_lbls[0];
-			 	data MSG_OTHER value: districts_other_costs[3] color: color_lbls[3];
+			 	data MSG_BUILDER value: float(number_of_districts > 3 ? districts_build_costs[3] : 0) color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: float(number_of_districts > 3 ? districts_soft_costs[3] : 0) color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: float(number_of_districts > 3 ? districts_withdraw_costs[3] : 0) color: color_lbls[0];
+			 	data MSG_OTHER value: float(number_of_districts > 3 ? districts_other_costs[3] : 0) color: color_lbls[3];
 			}
 		}
 				
 		display "LU & CODEF" {
 			chart districts_in_game[0].district_long_name type: series size: {0.24,0.48} position: {0.0,0.01}
 				x_tick_line_visible: false x_range:[0,12] x_label: MSG_ROUND{
-					data "N" value: districts_in_game[0].surface_N_diff color: #green marker_shape: marker_circle;
-					data "U" value: districts_in_game[0].surface_U_diff color: #gray marker_shape: marker_circle;
-					data "U"+MSG_DENSE value: districts_in_game[0].surface_Udense_diff color: #black marker_shape: marker_circle;
-					data "A" value: districts_in_game[0].surface_A_diff color: #orange marker_shape: marker_circle;
-					data "Us" value: districts_in_game[0].surface_Us_diff color: #blue marker_shape: marker_circle;
-					data "Us"+MSG_DENSE value: districts_in_game[0].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
+					data "N" value: surface_N_diff[0] color: #green marker_shape: marker_circle;
+					data "U" value: surface_U_diff[0] color: #gray marker_shape: marker_circle;
+					data "U"+MSG_DENSE value: surface_Udense_diff[0] color: #black marker_shape: marker_circle;
+					data "A" value: surface_A_diff[0] color: #orange marker_shape: marker_circle;
+					data "Us" value: surface_Us_diff[0] color: #blue marker_shape: marker_circle;
+					data "Us"+MSG_DENSE value: surface_Usdense_diff[0] color: #darkblue marker_shape: marker_circle;
 			}
 			chart districts_in_game[1].district_long_name type: series size: {0.24,0.48} position: {0.25,0.01}
 				x_tick_line_visible: false x_range:[0,12] x_label: MSG_ROUND{
-					data "N" value: districts_in_game[1].surface_N_diff color: #green marker_shape: marker_circle;
-					data "U" value: districts_in_game[1].surface_U_diff color: #gray marker_shape: marker_circle;
-					data "U"+MSG_DENSE value: districts_in_game[1].surface_Udense_diff color: #black marker_shape: marker_circle;
-					data "A" value: districts_in_game[1].surface_A_diff color: #orange marker_shape: marker_circle;
-					data "Us" value: districts_in_game[1].surface_Us_diff color: #blue marker_shape: marker_circle;
-					data "Us"+MSG_DENSE value: districts_in_game[1].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
+					data "N" value: surface_N_diff[1] color: #green marker_shape: marker_circle;
+					data "U" value: surface_U_diff[1] color: #gray marker_shape: marker_circle;
+					data "U"+MSG_DENSE value: surface_Udense_diff[1] color: #black marker_shape: marker_circle;
+					data "A" value: surface_A_diff[1] color: #orange marker_shape: marker_circle;
+					data "Us" value: surface_Us_diff[1] color: #blue marker_shape: marker_circle;
+					data "Us"+MSG_DENSE value: surface_Usdense_diff[1] color: #darkblue marker_shape: marker_circle;
 			}
-			chart districts_in_game[2].district_long_name type: series size: {0.24,0.48} position: {0.50,0.01}
+			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : ".") type: series size: {0.24,0.48} position: {0.50,0.01}
 				x_tick_line_visible: false x_range:[0,12] x_label: MSG_ROUND{
-					data "N" value: districts_in_game[2].surface_N_diff color: #green marker_shape: marker_circle;
-					data "U" value: districts_in_game[2].surface_U_diff color: #gray marker_shape: marker_circle;
-					data "U"+MSG_DENSE value: districts_in_game[2].surface_Udense_diff color: #black marker_shape: marker_circle;
-					data "A" value: districts_in_game[2].surface_A_diff color: #orange marker_shape: marker_circle;
-					data "Us" value: districts_in_game[2].surface_Us_diff color: #blue marker_shape: marker_circle;
-					data "Us"+MSG_DENSE value: districts_in_game[2].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
+					data "N" value: surface_N_diff[2] color: #green marker_shape: marker_circle;
+					data "U" value: surface_U_diff[2] color: #gray marker_shape: marker_circle;
+					data "U"+MSG_DENSE value: surface_Udense_diff[2] color: #black marker_shape: marker_circle;
+					data "A" value: surface_A_diff[2] color: #orange marker_shape: marker_circle;
+					data "Us" value: surface_Us_diff[2] color: #blue marker_shape: marker_circle;
+					data "Us"+MSG_DENSE value: surface_Usdense_diff[2] color: #darkblue marker_shape: marker_circle;
 			}
-			chart districts_in_game[3].district_long_name type: series size: {0.24,0.48} position: {0.75,0.01}
+			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : ".") type: series size: {0.24,0.48} position: {0.75,0.01}
 				x_tick_line_visible: false x_range:[0,12] x_label: MSG_ROUND{
-					data "N" value: districts_in_game[3].surface_N_diff color: #green marker_shape: marker_circle;
-					data "U" value: districts_in_game[3].surface_U_diff color: #gray marker_shape: marker_circle;
-					data "U"+MSG_DENSE value: districts_in_game[3].surface_Udense_diff color: #black marker_shape: marker_circle;
-					data "A" value: districts_in_game[3].surface_A_diff color: #orange marker_shape: marker_circle;
-					data "Us" value: districts_in_game[3].surface_Us_diff color: #blue marker_shape: marker_circle;
-					data "Us"+MSG_DENSE value: districts_in_game[3].surface_Usdense_diff color: #darkblue marker_shape: marker_circle;
+					data "N" value: surface_N_diff[3] color: #green marker_shape: marker_circle;
+					data "U" value: surface_U_diff[3] color: #gray marker_shape: marker_circle;
+					data "U"+MSG_DENSE value: surface_Udense_diff[3] color: #black marker_shape: marker_circle;
+					data "A" value: surface_A_diff[3] color: #orange marker_shape: marker_circle;
+					data "Us" value: surface_Us_diff[3] color: #blue marker_shape: marker_circle;
+					data "Us"+MSG_DENSE value: surface_Usdense_diff[3] color: #darkblue marker_shape: marker_circle;
 			}
 			/****************************************//****************************************/		
 			chart LEV_DIKES type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false {
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].stat_dikes_good color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 			/****************************************//****************************************/
 			chart LEV_DUNES type: series size: {0.48,0.48} position: {0.51,0.51} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].stat_dunes_good color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
@@ -3230,39 +3256,39 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		display "Flooded area per district"{
 
 			chart MSG_AREA+" U" type: series size: {0.24,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" U "+ MSG_DENSE type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.25, 0} 
 					x_label: MSG_SUBMERSION x_range:[0,5]{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" Us" type: series size: {0.24,0.45} position: {0.5, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
 			chart MSG_AREA+" AU" type: series size: {0.24,0.45} position: {0.75, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			
 			chart MSG_AREA+" A" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" N" type: series size: {0.24,0.45} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
 			chart MSG_ALL_AREAS type: series size: {0.48,0.45} position: {0.5, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}

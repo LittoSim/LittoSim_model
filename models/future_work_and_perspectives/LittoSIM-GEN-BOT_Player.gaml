@@ -6,7 +6,7 @@
 ***/
 
 model Player_BOT
-import "LittoSIM-GEN_Player.gaml"
+import "../LittoSIM-GEN_Player.gaml"
 
 
 experiment _Player_BOT_ type: gui parent: LittoSIM_GEN_Player {

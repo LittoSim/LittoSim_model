@@ -39,7 +39,9 @@ global{
 	list<list<int>> districts_budgets <- [[],[],[],[]];
 	list<list<int>> districts_populations <- [[],[],[],[]];
 	Action_Name last_updated <- nil;
-	// financial plan
+	/*
+	 * financial plan parameters
+	 */
 	int plan_project_duration <- 5;
 	float plan_risk_agency_rate <- 0.3;
 	int plan_current_partition_index <- 0;
@@ -113,7 +115,7 @@ global{
 	//------------------------------ end of init -------------------------------//
 	// header : create district names and buttons on top
 	action create_district_buttons_names{
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			create District_Name {
 				display_name <- districts[i].district_long_name;
 				location	 <- (Grille grid_at {i,0}).location - {0,1.5};
@@ -149,7 +151,7 @@ global{
 	 */
 	action create_levers {
 		int filter <- GRID_H - 11;
-		loop i from: 0 to: 3{
+		loop i from: 0 to: number_of_districts - 1{
 			loop j from: 0 to: length(levers_def) - 1{
 				if (string((levers_def.values[j]) at 'active') at i) = '1'{ // the lever is activated on this district
 					create all_levers at (levers_names index_of levers_def.keys[j]){
@@ -443,7 +445,7 @@ global{
 	}
 	
 	action create_financial_plan {
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			F_Plan_Grid[i+1,0].col <- #deepskyblue;
 			F_Plan_Grid[i+1,0].text <- districts[i].district_name + " :";
 		}
@@ -452,13 +454,13 @@ global{
 		F_Plan_Grid[0,3].text <- world.get_message("MSG_SURFACE") + " :";
 		
 		F_Plan_Grid[0,6].text <-  world.get_message("PLAN_CHOSEN_R") + " :";
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			F_Plan_Grid[i+1,6].col <- #moccasin;
 			F_Plan_Grid[i+1,6].text <- "25%";
 		}
 		
 		F_Plan_Grid[0,8].text <- world.get_message("PLAN_AMOUNT_P") + " :";
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			F_Plan_Grid[i+1,8].col <- #moccasin;
 			F_Plan_Grid[i+1,8].text <- ""+plan_project_amounts[i];
 		}
@@ -470,15 +472,15 @@ global{
 		F_Plan_Grid[3,11].text <- "" + plan_risk_agency_rate * 100 + "%";
 		F_Plan_Grid[3,11].col <- #moccasin;
 		F_Plan_Grid[0,13].text <- world.get_message("PLAN_ANNUAL_C") + " :";
-		loop i from: 1 to: 4 {
+		loop i from: 1 to: number_of_districts {
 			F_Plan_Grid[i,13].text <- ""+plan_contributions[i-1];
 		}
 		F_Plan_Grid[0,14].text <- world.get_message("PLAN_ANNUAL_F") + " :";
-		loop i from: 1 to: 4 {
+		loop i from: 1 to: number_of_districts {
 			F_Plan_Grid[i,14].text <- ""+plan_finances[i-1];
 		}
 		F_Plan_Grid[0,15].text <- world.get_message("PLAN_ANNUAL_S") + " :";
-		loop i from: 1 to: 4 {
+		loop i from: 1 to: number_of_districts {
 			F_Plan_Grid[i,15].text <- ""+plan_balances[i-1];
 			F_Plan_Grid[i,15].col <- #lightgreen;
 		}
@@ -522,13 +524,13 @@ global{
 			loc <- F_Plan_Grid[2,17].location; 
 		}
 		
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			F_Plan_Grid[i+1,3].text <- ""+ districts[i].surface;
 		}
 	}
 	
 	action init_plan_budget {
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			districts[i].initial_budget <- first(districts_budgets[i]);
 			F_Plan_Grid[i+1,2].text <- "" + districts[i].initial_budget;
 		}
@@ -538,15 +540,15 @@ global{
 		ask Plan_Button where (each.command = plan_current_partition_index) { col <- #yellow; }
 		ask Plan_Button where (each.command = ix) { col <- #red; }
 		plan_current_partition_index <- ix;
-		loop i from: 0 to: 3 {
-			F_Plan_Grid[i+1,6].text <- ""+ 100 * plan_current_partition[i] + "%";
+		loop i from: 0 to: number_of_districts - 1 {
+			F_Plan_Grid[i+1,6].text <- ""+ (100 * plan_current_partition[i]) with_precision 2 + "%";
 		}
 		do update_plan;
 	}
 	
 	action update_plan{
 		float paid_by_ditrict <- (sum (plan_project_amounts) * (1 - plan_risk_agency_rate)) / max([plan_project_duration,1]);
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			plan_contributions [i] <- paid_by_ditrict * plan_current_partition [i];
 			plan_finances [i] <- plan_project_amounts [i] / max([plan_project_duration,1]);
 			plan_balances [i] <- plan_finances[i] - plan_contributions[i];
@@ -558,7 +560,7 @@ global{
 	}
 	
 	action update_plan_populations {
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			F_Plan_Grid[i+1,1].text <- "" + districts[i].population;
 		}
 	}
@@ -569,7 +571,7 @@ global{
 			map<string, unknown> msg 	<-[];
 			string msg_player <- "";
 			int amount_value <- 0;
-			loop i from: 0 to: 3 {
+			loop i from: 0 to: number_of_districts - 1 {
 				amount_value <- plan_balances [i];
 				put districts[i].district_code	key: DISTRICT_CODE in: msg;
 				if amount_value < 0 { // prélever
@@ -599,34 +601,38 @@ global{
 		if but != nil {
 			switch but.command {
 				match 0 {
-					loop i from: 0 to: 3 {
+					loop i from: 0 to: number_of_districts - 1 {
 						plan_current_partition [i] <- 0.25;
 					}
 					do update_paritionning (0);
 				}
 				match 1 {
-					loop i from: 0 to: 3 {
+					loop i from: 0 to: number_of_districts - 1 {
 						plan_current_partition [i] <- (districts[i].population / max([1, districts sum_of (each.population)])) with_precision 2;
 					}
 					do update_paritionning (1);
 				}
 				match 2 {
-					loop i from: 0 to: 3 {
+					loop i from: 0 to: number_of_districts - 1 {
 						plan_current_partition [i]  <- (districts[i].initial_budget / max([1, districts sum_of (each.initial_budget)])) with_precision 2;
 					}
 					do update_paritionning (2);
 				}
 				match 3 {
-					loop i from: 0 to: 3 {
+					loop i from: 0 to: number_of_districts - 1 {
 						plan_current_partition [i] <-  (districts[i].surface / max([1, districts sum_of (each.surface)])) with_precision 2;
 					}
 					do update_paritionning (3);
 				}
 				match 4 {
-					map mpp <- user_input(world.get_message("PLAN_AMOUNT_P") + " :",
-					[districts[0].district_name::plan_project_amounts [0], districts[1].district_name::plan_project_amounts [1],
-							districts[2].district_name::plan_project_amounts [2], districts[3].district_name::plan_project_amounts [3]]);
-					loop ix from: 0 to: 3 {
+					map<string,float> mm <- [];
+					loop ix from: 0 to: number_of_districts - 1 {
+						put plan_project_amounts [ix]	 key: districts[ix].district_name in: mm;
+					}
+					
+					
+					map mpp <- user_input(world.get_message("PLAN_AMOUNT_P") + " :", mm);
+					loop ix from: 0 to: number_of_districts - 1 {
 						plan_project_amounts [ix] <- int(mpp at districts[ix].district_name);
 						F_Plan_Grid[ix+1,8].text <- ""+plan_project_amounts[ix];
 					}
@@ -1009,7 +1015,7 @@ species Player_Button_Actions {
 	
 	init {
 		point lo <- loca - {1, 7.5};
-		loop i from: 0 to: 3 {
+		loop i from: 0 to: number_of_districts - 1 {
 			create Player_Button_Button {
 				command <- i ;
 				text <- world.get_message(myself.text_buttons[i]);	
@@ -2304,7 +2310,9 @@ species District_Name {
 
 species District_Name2 parent: District_Name {} // display "Actions"
 //------------------------------ end of District_Name -------------------------------//
-// buttons of the financial plan
+/*
+ * buttons of the financial plan
+ */
 species Plan_Button {
 	int command;
 	string _name;
@@ -2319,7 +2327,9 @@ species Plan_Button {
 		draw _name at: loc anchor: #center font: font("Arial", 12 , #bold) color: #black;
 	}
 }
-
+/*
+ * The financial plan grid
+ */
 grid F_Plan_Grid width: 5 height: 20 schedules:[] {
 	string text;
 	rgb col <- #whitesmoke;
@@ -2383,14 +2393,14 @@ experiment LittoSIM_GEN_Leader {
 		display Statistics {
 			chart world.get_message('MSG_POPULATION') type: series size: {0.33,0.48} position: {0.0,0.01} x_range:[0,16] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1 {
 					data districts[i].district_name value: districts_populations[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 			
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.33,0.48} position: {0.34,0.01} x_range:[0,16] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
-				loop i from: 0 to: 3{
+				loop i from: 0 to: number_of_districts - 1 {
 					data districts[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}

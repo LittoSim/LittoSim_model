@@ -2512,14 +2512,25 @@ experiment District2 type: gui parent: LittoSIM_GEN_Player {
 
 experiment District3 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[2]];
+		/*
+		 * get the number of districts to prevent executing a non-existing district
+		 */
+		int n_dists <- length(map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
+			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
+			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)));
+			
+		create simulation with:[active_district_name::districts[min([2, n_dists-1])]];
 		minimum_cycle_duration <- 0.5;
 	}
 }
 
 experiment District4 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		create simulation with:[active_district_name::districts[3]];
+		int n_dists <- length(map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
+			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
+			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)));
+
+		create simulation with:[active_district_name::districts[min([3, n_dists-1])]];
 		minimum_cycle_duration <- 0.5;	
 	}
 }
