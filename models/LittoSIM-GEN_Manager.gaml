@@ -167,9 +167,10 @@ global {
 		 * only the disctrict code is read from the districts file, other variables are read from the
 		 * study_area.conf (names) and population from the land_use file
 		 */
+		 list<string> d_codes <- dist_code_sname_correspondance_table.keys;
 		create District from: districts_shape with: [district_code::string(read("dist_code"))];
 		int idx <- 1;
-		loop kk over: dist_code_sname_correspondance_table.keys {
+		loop kk over: d_codes {
 			add first(District where (each.district_code = kk)) to: districts_in_game;
 			last(districts_in_game).dist_id <- idx;
 			idx <- idx + 1;
@@ -207,23 +208,32 @@ global {
 			shape <-  shape + coastBorderBuffer#m;
 		}
 		all_coastal_border_area <- union(Coastal_Border_Area);
-		
+		/*
+		 * We load only land use units of active districts
+		 */
 		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
-			lu_name <- lu_type_names[lu_code];
-			if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] {
-				// if true, convert all AU and AUs to N (AU should not be imposed to players)
-				if AU_AND_AUs_TO_N {
-					lu_name <- "N";
-					lu_code <- LU_TYPE_N;
-				} else {
-					if lu_code = LU_TYPE_AU {
-						// assign random counter to AU before it evolves to U [0, 1, ..., STEPS_FOR_AU_TO_U - 1]
-						AU_to_U_counter <- rnd(STEPS_FOR_AU_TO_U - 1);
-						not_updated <- true;
+			if dist_code in d_codes {
+				lu_name <- lu_type_names[lu_code];
+				if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] {
+					// if true, convert all AU and AUs to N (AU should not be imposed to players)
+					if AU_AND_AUs_TO_N {
+						lu_name <- "N";
+						lu_code <- LU_TYPE_N;
+					} else {
+						if lu_code = LU_TYPE_AU {
+							// assign random counter to AU before it evolves to U [0, 1, ..., STEPS_FOR_AU_TO_U - 1]
+							AU_to_U_counter <- rnd(STEPS_FOR_AU_TO_U - 1);
+							not_updated <- true;
+						}
 					}
 				}
+				my_color <- cell_color();	
+			}/*
+			 * if the land use is not in an active district, it dies
+			 */
+			else {
+				do die;
 			}
-			my_color <- cell_color();
 		}
 		
 		// fix populations issues
@@ -3059,10 +3069,10 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : " ") type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_BUILDER value: number_of_districts > 2 ? districts_build_costs[3] : [0] color: color_lbls[2];
-			 	data MSG_SOFT_DEF value: number_of_districts > 2 ? districts_soft_costs[3] : [0] color: color_lbls[1];
-			 	data MSG_WITHDRAWAL value: number_of_districts > 2 ? districts_withdraw_costs[3] : [0] color: color_lbls[0];
-			 	data MSG_OTHER value: number_of_districts > 2 ? districts_other_costs[3] : [0] color: color_lbls[3];
+			 	data MSG_BUILDER value: number_of_districts > 3 ? districts_build_costs[3] : [0] color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: number_of_districts > 3 ? districts_soft_costs[3] : [0] color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: number_of_districts > 3 ? districts_withdraw_costs[3] : [0] color: color_lbls[0];
+			 	data MSG_OTHER value: number_of_districts > 3 ? districts_other_costs[3] : [0] color: color_lbls[3];
 			}
 		}
 				
