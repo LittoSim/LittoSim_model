@@ -57,7 +57,11 @@ global{
 	/*
 	 * The width of the urban ring allowed urbanization. If not specified, it takes 0.
 	 */
-	int URBAN_RING 	 <- int(study_area_def["URBAN_RING"]);
+	int URBAN_RING <- int(study_area_def["URBAN_RING"]);
+	/*
+	 * Wether urbanizing is allowed or not in protected areas
+	 */
+	bool NO_URBANIZING_SPA <- bool(study_area_def["NO_URBANIZING_SPA"]);
 	/* 
 	 * Translated messages
 	 */

@@ -790,7 +790,7 @@ global{
 					/*
 					 * Cannot urbanize in protected areas
 					 */		
-					if !empty(Protected_Area where (each intersects (circle(10, shape.centroid)))) {
+					if NO_URBANIZING_SPA and !empty(Protected_Area where (each intersects (circle(10, shape.centroid)))) {
 						cursor_taken <- true;
 						map<string,unknown> vmap <- user_input(MSG_WARNING, world.get_message('PLY_MSG_WARNING_PROTECTED_U')::true);
 						cursor_taken <- false;
