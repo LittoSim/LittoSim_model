@@ -2962,18 +2962,18 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				data "" value: submersions collect (each * max(districts_in_game accumulate each.round_population)) color: #black style: bar;
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].round_population color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].round_population color: dist_colors[i] marker_shape: marker_circle;
 				}
 			}
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.33,0.48} position: {0.34,0.01} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				data "" value: submersions collect (each * max(districts_budgets accumulate each)) color: #black style: bar;
 				loop i from: 0 to: number_of_districts - 1 {
-					data districts_in_game[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 			chart LDR_TOTAL type: histogram size: {0.33,0.48} position: {0.67,0.01} style:stack
-				x_serie_labels: districts_in_game collect each.district_name series_label_position: xaxis x_tick_line_visible: false {
+				x_serie_labels: districts_in_game collect each.district_long_name series_label_position: xaxis x_tick_line_visible: false {
 			 	data MSG_TAXES value: districts_taxes collect sum(each) color: color_lbls[0];
 			 	data LDR_GIVEN value: districts_given_money collect sum(each) color: color_lbls[1];
 			 	data LDR_TAKEN value: districts_taken_money collect sum(each) color: color_lbls[2];
@@ -3000,36 +3000,36 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data LEV_MSG_ACTIONS value: districts_actions_costs[1] color: color_lbls[3];
 			 	data MSG_LEVERS value: districts_levers_costs[1] color: color_lbls[4];		
 			}
-			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.01,0.75}
+			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : " ") type: histogram size: {0.48,0.24} position: {0.01,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_TAXES value: float(number_of_districts > 2 ? districts_taxes[2] : 0) color: color_lbls[0];
-			 	data LDR_GIVEN value: float(number_of_districts > 2 ? districts_given_money[2] : 0) color: color_lbls[1];
-			 	data LDR_TAKEN value: float(number_of_districts > 2 ? districts_taken_money[2] : 0) color: color_lbls[2];
-			 	data LDR_TRANSFERRED value: float(number_of_districts > 2 ? districts_transferred_money[2] : 0) color: color_lbls[5];
-			 	data LEV_MSG_ACTIONS value: float(number_of_districts > 2 ? districts_actions_costs[2] : 0) color: color_lbls[3];
-			 	data MSG_LEVERS value: float(number_of_districts > 2 ? districts_levers_costs[2] : 0) color: color_lbls[4];		
+			 	data MSG_TAXES value: number_of_districts > 2 ? districts_taxes[2] : [0] color: color_lbls[0];
+			 	data LDR_GIVEN value: number_of_districts > 2 ? districts_given_money[2] : [0] color: color_lbls[1];
+			 	data LDR_TAKEN value: number_of_districts > 2 ? districts_taken_money[2] : [0] color: color_lbls[2];
+			 	data LDR_TRANSFERRED value: number_of_districts > 2 ? districts_transferred_money[2] : [0] color: color_lbls[5];
+			 	data LEV_MSG_ACTIONS value: number_of_districts > 2 ? districts_actions_costs[2] : [0] color: color_lbls[3];
+			 	data MSG_LEVERS value: number_of_districts > 2 ? districts_levers_costs[2] : [0] color: color_lbls[4];		
 			}
-			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.5,0.75}
+			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : " ") type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_TAXES value: float(number_of_districts > 3 ? districts_taxes[3] : 0) color: color_lbls[0];
-			 	data LDR_GIVEN value: float(number_of_districts > 3 ? districts_given_money[3] : 0) color: color_lbls[1];
-			 	data LDR_TAKEN value: float(number_of_districts > 3 ? districts_taken_money[3] : 0) color: color_lbls[2];
-			 	data LDR_TRANSFERRED value: float(number_of_districts > 3 ? districts_transferred_money[3] : 0) color: color_lbls[5];
-			 	data LEV_MSG_ACTIONS value: float(number_of_districts > 3 ? districts_actions_costs[3] : 0) color: color_lbls[3];
-			 	data MSG_LEVERS value: float(number_of_districts > 3 ? districts_levers_costs[3] : 0) color: color_lbls[4];		
+			 	data MSG_TAXES value: number_of_districts > 3 ? districts_taxes[3] : [0] color: color_lbls[0];
+			 	data LDR_GIVEN value: number_of_districts > 3 ? districts_given_money[3] : [0] color: color_lbls[1];
+			 	data LDR_TAKEN value: number_of_districts > 3 ? districts_taken_money[3] : [0] color: color_lbls[2];
+			 	data LDR_TRANSFERRED value: number_of_districts > 3 ? districts_transferred_money[3] : [0] color: color_lbls[5];
+			 	data LEV_MSG_ACTIONS value: number_of_districts > 3 ? districts_actions_costs[3] : [0] color: color_lbls[3];
+			 	data MSG_LEVERS value: number_of_districts > 3 ? districts_levers_costs[3] : [0] color: color_lbls[4];		
 			}
 		}
 		
 		display "Actions & Strategies" {
 			chart world.get_message('MSG_NUMBER_ACTIONS') type: histogram size: {0.48,0.48} position: {0.01,0.01}
-				x_serie_labels: districts_in_game collect (each.district_name) style: stack {
+				x_serie_labels: districts_in_game collect (each.district_long_name) style: stack {
 			 	data MSG_BUILDER value: districts_build_strategies collect sum(each) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_strategies collect sum(each) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_strategies collect sum(each) color: color_lbls[0];
 			 	data MSG_OTHER value: districts_other_strategies collect sum(each) color: color_lbls[3];
 			}
 			chart world.get_message('MSG_COST_ACTIONS') type: histogram size: {0.48,0.48} position: {0.51,0.01}
-				x_serie_labels: districts_in_game collect (each.district_name) style: stack {
+				x_serie_labels: districts_in_game collect (each.district_long_name) style: stack {
 			 	data MSG_BUILDER value: districts_build_costs collect sum(each) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts_soft_costs collect sum(each) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts_withdraw_costs collect sum(each) color: color_lbls[0];
@@ -3050,19 +3050,19 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			 	data MSG_WITHDRAWAL value: districts_withdraw_costs[1] color: color_lbls[0];
 			 	data MSG_OTHER value: districts_other_costs[1] color: color_lbls[3];
 			}
-			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.01,0.75}
+			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : " ") type: histogram size: {0.48,0.24} position: {0.01,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_BUILDER value: float(number_of_districts > 2 ? districts_build_costs[2] : 0) color: color_lbls[2];
-			 	data MSG_SOFT_DEF value: float(number_of_districts > 2 ? districts_soft_costs[2] : 0) color: color_lbls[1];
-			 	data MSG_WITHDRAWAL value: float(number_of_districts > 2 ? districts_withdraw_costs[2] : 0) color: color_lbls[0];
-			 	data MSG_OTHER value: float(number_of_districts > 2 ? districts_other_costs[2] : 0) color: color_lbls[3];
+			 	data MSG_BUILDER value: number_of_districts > 2 ? districts_build_costs[2] : [0] color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: number_of_districts > 2 ? districts_soft_costs[2] : [0] color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: number_of_districts > 2 ? districts_withdraw_costs[2] : [0] color: color_lbls[0];
+			 	data MSG_OTHER value: number_of_districts > 2 ? districts_other_costs[2] : [0] color: color_lbls[3];
 			}
-			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : ".") type: histogram size: {0.48,0.24} position: {0.5,0.75}
+			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : " ") type: histogram size: {0.48,0.24} position: {0.5,0.75}
 				style: stack x_range:[0,12] x_label: MSG_ROUND{
-			 	data MSG_BUILDER value: float(number_of_districts > 3 ? districts_build_costs[3] : 0) color: color_lbls[2];
-			 	data MSG_SOFT_DEF value: float(number_of_districts > 3 ? districts_soft_costs[3] : 0) color: color_lbls[1];
-			 	data MSG_WITHDRAWAL value: float(number_of_districts > 3 ? districts_withdraw_costs[3] : 0) color: color_lbls[0];
-			 	data MSG_OTHER value: float(number_of_districts > 3 ? districts_other_costs[3] : 0) color: color_lbls[3];
+			 	data MSG_BUILDER value: number_of_districts > 2 ? districts_build_costs[3] : [0] color: color_lbls[2];
+			 	data MSG_SOFT_DEF value: number_of_districts > 2 ? districts_soft_costs[3] : [0] color: color_lbls[1];
+			 	data MSG_WITHDRAWAL value: number_of_districts > 2 ? districts_withdraw_costs[3] : [0] color: color_lbls[0];
+			 	data MSG_OTHER value: number_of_districts > 2 ? districts_other_costs[3] : [0] color: color_lbls[3];
 			}
 		}
 				
@@ -3085,7 +3085,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: surface_Us_diff[1] color: #blue marker_shape: marker_circle;
 					data "Us"+MSG_DENSE value: surface_Usdense_diff[1] color: #darkblue marker_shape: marker_circle;
 			}
-			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : ".") type: series size: {0.24,0.48} position: {0.50,0.01}
+			chart (number_of_districts > 2 ? districts_in_game[2].district_long_name : " ") type: series size: {0.24,0.48} position: {0.50,0.01}
 				x_tick_line_visible: false x_range:[0,12] x_label: MSG_ROUND{
 					data "N" value: surface_N_diff[2] color: #green marker_shape: marker_circle;
 					data "U" value: surface_U_diff[2] color: #gray marker_shape: marker_circle;
@@ -3094,7 +3094,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us" value: surface_Us_diff[2] color: #blue marker_shape: marker_circle;
 					data "Us"+MSG_DENSE value: surface_Usdense_diff[2] color: #darkblue marker_shape: marker_circle;
 			}
-			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : ".") type: series size: {0.24,0.48} position: {0.75,0.01}
+			chart (number_of_districts > 3 ? districts_in_game[3].district_long_name : " ") type: series size: {0.24,0.48} position: {0.75,0.01}
 				x_tick_line_visible: false x_range:[0,12] x_label: MSG_ROUND{
 					data "N" value: surface_N_diff[3] color: #green marker_shape: marker_circle;
 					data "U" value: surface_U_diff[3] color: #gray marker_shape: marker_circle;
@@ -3107,21 +3107,21 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			chart LEV_DIKES type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false {
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].stat_dikes_good color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].stat_dikes_good color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 			/****************************************//****************************************/
 			chart LEV_DUNES type: series size: {0.48,0.48} position: {0.51,0.51} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].stat_dunes_good color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].stat_dunes_good color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 		}
 		
 		display "Flooded depth per area"{
 			chart MSG_AREA+" U" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.U_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_U] : each.loth1m_0_5c[LU_TYPE_U]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.U_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3130,7 +3130,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_U] : each.loth1m_maxc[LU_TYPE_U]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.25, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.Udense_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_Ui] : each.loth1m_0_5c[LU_TYPE_Ui]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.Udense_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3139,7 +3139,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_Ui] : each.loth1m_maxc[LU_TYPE_Ui]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" Us" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.51, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.Us_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_Us] : each.loth1m_0_5c[LU_TYPE_Us]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.Us_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3148,7 +3148,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_Us] : each.loth1m_maxc[LU_TYPE_Us]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" AU" type: histogram style: stack background: rgb("white") size: {0.24,0.48} position: {0.76, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.AU_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_AU] : each.loth1m_0_5c[LU_TYPE_AU]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.AU_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3158,7 +3158,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 			
 			chart MSG_AREA+" A" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.01, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.A_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_A] : each.loth1m_0_5c[LU_TYPE_A]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.A_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3167,7 +3167,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_A] : each.loth1m_maxc[LU_TYPE_A]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" N" type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.34, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.N_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_N] : each.loth1m_0_5c[LU_TYPE_N]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.N_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3176,7 +3176,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_N] : each.loth1m_maxc[LU_TYPE_N]))) color: colors_of_water_height[2];
 			}
 			chart LDR_TOTAL type: histogram style: stack background: rgb("white") size: {0.33,0.48} position: {0.67, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.tot_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[0] : each.loth1m_0_5c[0]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.tot_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3188,7 +3188,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 		
 		display "Previous flooded depth per area"{
 			chart MSG_AREA+" U" type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.prev_U_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_U] : each.loth1m_0_5c[LU_TYPE_U]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.prev_U_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3197,7 +3197,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_U] : each.loth1m_maxc[LU_TYPE_U]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" U "+ MSG_DENSE type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0.25, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.prev_Udense_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_Ui] : each.loth1m_0_5c[LU_TYPE_Ui]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.prev_Udense_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3206,7 +3206,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_Ui] : each.loth1m_maxc[LU_TYPE_Ui]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" Us" type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0.51, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.prev_Us_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_Us] : each.loth1m_0_5c[LU_TYPE_Us]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.prev_Us_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3215,7 +3215,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_Us] : each.loth1m_maxc[LU_TYPE_Us]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" AU" type: histogram style: stack background: rgb("whitesmoke") size: {0.24,0.48} position: {0.76, 0}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.prev_AU_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_AU] : each.loth1m_0_5c[LU_TYPE_AU]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.prev_AU_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3225,7 +3225,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			}
 			
 			chart MSG_AREA+" A" type: histogram style: stack background: rgb("whitesmoke") size: {0.33,0.48} position: {0.01, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.prev_A_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_A] : each.loth1m_0_5c[LU_TYPE_A]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.prev_A_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3234,7 +3234,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_A] : each.loth1m_maxc[LU_TYPE_A]))) color: colors_of_water_height[2];
 			}
 			chart MSG_AREA+" N" type: histogram style: stack background: rgb("whitesmoke") size: {0.33,0.48} position: {0.34, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.prev_N_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[LU_TYPE_N] : each.loth1m_0_5c[LU_TYPE_N]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.prev_N_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3243,7 +3243,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 							each.loth_maxc[LU_TYPE_N] : each.loth1m_maxc[LU_TYPE_N]))) color: colors_of_water_height[2];
 			}
 			chart LDR_TOTAL type: histogram style: stack background: rgb("whitesmoke") size: {0.33,0.48} position: {0.67, 0.5}
-				x_serie_labels: districts_in_game collect each.district_name {
+				x_serie_labels: districts_in_game collect each.district_long_name {
 				data "0.5" value: districts_in_game collect (each.prev_tot_0_5c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
 							each.loth_0_5c[0] : each.loth1m_0_5c[0]))) color: colors_of_water_height[0];
 				data "1" value: districts_in_game collect (each.prev_tot_1c + (show_river_flooded_area = 0 ? 0 : (show_river_flooded_area = 1 ?
@@ -3257,39 +3257,39 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 
 			chart MSG_AREA+" U" type: series size: {0.24,0.45} position: {0, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totU color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].data_totU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" U "+ MSG_DENSE type: series x_tick_line_visible: false size: {0.24,0.45} position: {0.25, 0} 
 					x_label: MSG_SUBMERSION x_range:[0,5]{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totUdense color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].data_totUdense color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" Us" type: series size: {0.24,0.45} position: {0.5, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totUs color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].data_totUs color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
 			chart MSG_AREA+" AU" type: series size: {0.24,0.45} position: {0.75, 0} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totAU color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].data_totAU color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			
 			chart MSG_AREA+" A" type: series size: {0.24,0.45} position: {0, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totA color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].data_totA color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 			chart MSG_AREA+" N" type: series size: {0.24,0.45} position: {0.25, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_totN color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].data_totN color: dist_colors[i] marker_shape: marker_circle;
 				} 			
 			}
 			chart MSG_ALL_AREAS type: series size: {0.48,0.45} position: {0.5, 0.5} x_tick_line_visible: false x_range:[0,5] x_label: MSG_SUBMERSION{
 				loop i from: 0 to: number_of_districts - 1{
-					data districts_in_game[i].district_name value: districts_in_game[i].data_flooded_area color: dist_colors[i] marker_shape: marker_circle;
+					data districts_in_game[i].district_long_name value: districts_in_game[i].data_flooded_area color: dist_colors[i] marker_shape: marker_circle;
 				}			
 			}
 		}

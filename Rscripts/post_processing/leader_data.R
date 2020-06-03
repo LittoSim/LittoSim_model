@@ -6,6 +6,8 @@ library(reshape2)
 # la liste des noms et des codes INSEE des communes dans le même ordre
 coms <- c('rochefort','stlaurent','stnazaire','porbarq')
 insees <- c('17299','17353','17375','17484')
+# noms des communes à afficher sur les graphes
+noms_communes <- c("Nicolas","Amélie","Cécilia","Benoit")
 
 # les répertoires des fichiers à utiliser
 # le répertoire leader_data-X.xxxxxx, à récupérer de workspace/LittoSIM-GEN/includes/XXXXXX/, côté agence du risque

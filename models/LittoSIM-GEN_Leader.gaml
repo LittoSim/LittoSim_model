@@ -187,7 +187,7 @@ global{
 				}
 				ask districts {
 					create District_Name2 {
-						display_name <- myself.district_name;
+						display_name <- myself.district_long_name;
 						location <- (Grille2[myself.dist_id, 0]).location  - {0,1.5};
 					}					
 					if (string(data_action at act at 'active') at (dist_id-1)) = '1'{
@@ -447,7 +447,7 @@ global{
 	action create_financial_plan {
 		loop i from: 0 to: number_of_districts - 1 {
 			F_Plan_Grid[i+1,0].col <- #deepskyblue;
-			F_Plan_Grid[i+1,0].text <- districts[i].district_name + " :";
+			F_Plan_Grid[i+1,0].text <- districts[i].district_long_name;
 		}
 		F_Plan_Grid[0,1].text <- world.get_message("MSG_POPULATION") + " :";
 		F_Plan_Grid[0,2].text <- world.get_message("MSG_BUDGETS") + " :";
@@ -2394,19 +2394,19 @@ experiment LittoSIM_GEN_Leader {
 			chart world.get_message('MSG_POPULATION') type: series size: {0.33,0.48} position: {0.0,0.01} x_range:[0,16] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				loop i from: 0 to: number_of_districts - 1 {
-					data districts[i].district_name value: districts_populations[i] color: dist_colors[i] marker_shape: marker_circle;
+					data districts[i].district_long_name value: districts_populations[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 			
 			chart world.get_message('MSG_BUDGETS') type: series size: {0.33,0.48} position: {0.34,0.01} x_range:[0,16] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				loop i from: 0 to: number_of_districts - 1 {
-					data districts[i].district_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
+					data districts[i].district_long_name value: districts_budgets[i] color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 			
 			chart LDR_TOTAL type: histogram size: {0.33,0.48} position: {0.67,0.01} style:stack
-				x_serie_labels: districts collect each.district_name series_label_position: xaxis x_tick_line_visible: false {
+				x_serie_labels: districts collect each.district_long_name series_label_position: xaxis x_tick_line_visible: false {
 			 	data MSG_TAXES value: districts collect each.received_tax collect sum(each) color: color_lbls[0];
 			 	data LDR_GIVEN value: districts collect each.given_money collect sum(each) color: color_lbls[1];
 			 	data LDR_TAKEN value: districts collect each.taken_money collect sum(each) color: color_lbls[2];
@@ -2416,14 +2416,14 @@ experiment LittoSIM_GEN_Leader {
 			}
 			
 			chart world.get_message('MSG_COST_ACTIONS') + " ("+ LDR_TOTAL +")" type: histogram size: {0.48,0.48} position: {0.01,0.51}
-				x_serie_labels: districts collect (each.district_name) style:stack {
+				x_serie_labels: districts collect (each.district_long_name) style:stack {
 			 	data MSG_BUILDER value: districts collect (each.build_cost) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_cost) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdraw_cost) color: color_lbls[0];
 			 	data MSG_OTHER value: districts collect (each.other_cost) color: color_lbls[3];
 			}
 			chart "% " + world.get_message('MSG_COST_ACTIONS') + " (2 " + LDR_LAST + " " + LDR_MSG_ROUNDS + ")" type: histogram size: {0.48,0.48} position: {0.51,0.51}
-				x_serie_labels: districts collect (each.district_name) style:stack {
+				x_serie_labels: districts collect (each.district_long_name) style:stack {
 			 	data MSG_BUILDER value: districts collect (each.builder_score * 100) color: color_lbls[2];
 			 	data MSG_SOFT_DEF value: districts collect (each.soft_def_score * 100) color: color_lbls[1];
 			 	data MSG_WITHDRAWAL value: districts collect (each.withdrawal_score * 100) color: color_lbls[0];

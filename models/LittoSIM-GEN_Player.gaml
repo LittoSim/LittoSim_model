@@ -17,9 +17,10 @@ global{
 	// the active district
 	string active_district_name <- "";
 	string active_district_code <- dist_code_sname_correspondance_table index_of active_district_name;
-	District active_district	<- nil;
+	string active_district_lname <- dist_code_lname_correspondance_table at active_district_code;
+	District active_district <- nil;
 	
-	int game_round 		 		 <- 0;
+	int game_round <- 0;
 	
 	geometry shape <- envelope(convex_hull_shape); // shape of the world
 	geometry local_shape <- nil; // shape of the current district 
@@ -119,6 +120,7 @@ global{
 		// creating districts and focusing on the active district
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
+			district_long_name <- dist_code_lname_correspondance_table at district_code;
 			district_id <- 1 + world.dist_code_sname_correspondance_table.keys index_of district_code;
 		}
 		active_district <- District first_with (each.district_code = active_district_code);
@@ -1340,7 +1342,7 @@ species Basket parent: Displayed_List {
 				at: {location.x + ui_width / 2, location.y + ui_height- header_height / 4 * ui_height} color: rgb(219,219,219);
 		
 		draw district_label + " : " font: f0 color: rgb(101,101,101) at: {location.x + 10#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
-		draw active_district_name font: f1 color:#black at: {location.x + 80#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		draw active_district_lname font: f1 color:#black at: {location.x + 80#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 		draw solde_label + " : " font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 100#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 		draw world.thousands_separator(int(final_budget)) font: f1 color:#black
 						at: {location.x + ui_width - 55#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
@@ -2177,6 +2179,7 @@ species Button_Map parent: Button {
 species District {
 	int district_id <- 0;
 	string district_name <- "";
+	string district_long_name <- "";
 	string district_code <- "";
 	aspect base{
 		draw shape color: self = active_district ? rgb (202,170,145) : rgb(255,255,212) border: #black;
@@ -2518,9 +2521,10 @@ experiment District3 type: gui parent: LittoSIM_GEN_Player {
 		int n_dists <- length(map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
 			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
 			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)));
-			
-		create simulation with:[active_district_name::districts[min([2, n_dists-1])]];
-		minimum_cycle_duration <- 0.5;
+		if n_dists > 2 {
+			create simulation with:[active_district_name::districts[2]];
+			minimum_cycle_duration <- 0.5;	
+		}
 	}
 }
 
@@ -2529,9 +2533,10 @@ experiment District4 type: gui parent: LittoSIM_GEN_Player {
 		int n_dists <- length(map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
 			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
 			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)));
-
-		create simulation with:[active_district_name::districts[min([3, n_dists-1])]];
-		minimum_cycle_duration <- 0.5;	
+		if n_dists > 3 {
+			create simulation with:[active_district_name::districts[3]];
+			minimum_cycle_duration <- 0.5;	
+		}
 	}
 }
 
