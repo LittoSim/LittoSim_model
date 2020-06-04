@@ -53,6 +53,7 @@ global{
 	bool send_my_plan <- false;
 	
 	init{
+		write application_name;
 		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
 		MSG_TYPE_CUSTOMIZED_MSG <- get_message('MSG_TYPE_CUSTOMIZED_MSG');
 		MSG_TO_CANCEL 			<- get_message('MSG_TO_CANCEL');

@@ -35,7 +35,8 @@ global{
 	 * General parameters
 	 */
 	string default_lang 	<- littosim_def["LANGUAGE"]; // the default selected language
-	string application_name <- study_area_def["APPLICATION_NAME"]; // name of the case study
+	// the name of the case study is the second part of the study area file path : includes/xxxxxxxx/study_area.conf
+	string application_name <- littosim_def["STUDY_AREA_FILE"] split_with "/" at 1;
 	/*
 	 * Network names used to connect and communicate between models
 	 */
