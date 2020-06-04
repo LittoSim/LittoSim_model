@@ -17,7 +17,7 @@ global{
 	/*
 	 * Reading the levers configuration file (levers.conf) to a map
 	 */
-	map<string,map> levers_def <- store_csv_data_into_map_of_map(study_area_def["LEVERS_FILE"]);
+	map<string,map> levers_def <- store_csv_data_into_map_of_map("../" + study_area_def["LEVERS_FILE"]);
 
 	/*
 	 * specific parameters to leader

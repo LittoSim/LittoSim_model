@@ -20,17 +20,17 @@ global{
 	 * The study area file (study_area.conf) of the case study specified in littosim.conf
 	 * This file stores hapefiles, data, and parameters specific to the study area
 	 */
-	map<string,string> study_area_def <- read_configuration_file(littosim_def["STUDY_AREA_FILE"]);
+	map<string,string> study_area_def <- read_configuration_file("../" + littosim_def["STUDY_AREA_FILE"]);
 	/*
 	 *  Languages' file (langs.conf)
 	 */
-	map<string,map> langs_def <- store_csv_data_into_map_of_map(littosim_def["LANGUAGE_FILE"]);
+	map<string,map> langs_def <- store_csv_data_into_map_of_map("../" + littosim_def["LANGUAGE_FILE"]);
 	/*
 	 * This map represents data from actions file (actions.conf)
 	 * To use this map : data_action at ACTION_NAME at parameter
 	 * Example: data_action at 'ACTON_CREATE_DIKE' at 'cost'
 	 */
-	map<string,map> data_action <- store_csv_data_into_map_of_map(study_area_def["ACTIONS_FILE"]);
+	map<string,map> data_action <- store_csv_data_into_map_of_map("../" + study_area_def["ACTIONS_FILE"]);
 	/*
 	 * General parameters
 	 */
@@ -198,16 +198,16 @@ global{
 	/*
 	 * Loading GIS data (shapefiles and rasters)
 	 */
-	file districts_shape 		<- file(study_area_def["DISTRICTS_SHAPE"]);
-	file roads_shape 			<- file(study_area_def["ROADS_SHAPE"]);
-	file protected_areas_shape 	<- file(study_area_def["SPA_SHAPE"]);
-	file river_shape 			<- file(study_area_def["RIVER_SHAPE"]);
-	file rpp_area_shape 		<- file(study_area_def["RPP_SHAPE"]);
-	file coastline_shape 		<- file(study_area_def["COASTLINE_SHAPE"]);
-	file coastal_defenses_shape <- file(study_area_def["COASTAL_DEFENSES_SHAPE"]);
-	file land_use_shape 		<- file(study_area_def["LAND_USE_SHAPE"]);	
-	file convex_hull_shape 		<- file(study_area_def["CONVEX_HULL_SHAPE"]);
-	file isolines_shape 		<- file(study_area_def["ISOLINES_SHAPE"]);
+	file districts_shape 		<- file("../" + study_area_def["DISTRICTS_SHAPE"]);
+	file roads_shape 			<- file("../" + study_area_def["ROADS_SHAPE"]);
+	file protected_areas_shape 	<- file("../" + study_area_def["SPA_SHAPE"]);
+	file river_shape 			<- file("../" + study_area_def["RIVER_SHAPE"]);
+	file rpp_area_shape 		<- file("../" + study_area_def["RPP_SHAPE"]);
+	file coastline_shape 		<- file("../" + study_area_def["COASTLINE_SHAPE"]);
+	file coastal_defenses_shape <- file("../" + study_area_def["COASTAL_DEFENSES_SHAPE"]);
+	file land_use_shape 		<- file("../" + study_area_def["LAND_USE_SHAPE"]);	
+	file convex_hull_shape 		<- file("../" + study_area_def["CONVEX_HULL_SHAPE"]);
+	file isolines_shape 		<- file("../" + study_area_def["ISOLINES_SHAPE"]);
 	/*
 	 * tables of district names (short and long names)
 	 */

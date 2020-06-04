@@ -33,7 +33,7 @@ global{
 	/*
 	 * file defining additional LISFLOOD parameters (*.param in floodfiles folder)
 	 */
-	map<string,string> lisflood_param_def <- read_configuration_file("../../" + my_flooding_path + study_area_def["LISFLOOD_PARAMS"]);
+	map<string,string> lisflood_param_def <- read_configuration_file("../../" + study_area_def["LISFLOOD_PARAMS"]);
 	// four parameters of *.param file. These params differ between case studies
 	int LISFLOOD_SIM_TIME 		<- int(lisflood_param_def["LISFLOOD_SIM_TIME"]);
 	int LISFLOOD_INIT_TSTEP  	<- int(lisflood_param_def["LISFLOOD_INIT_TSTEP"]);
@@ -94,14 +94,14 @@ global{
 	/*
 	 * Reading manager shapes and rasters
 	 */
-	file dem_file 	<- file(study_area_def["DEM_FILE"]); // dem.asc
-	string rugosity_file <- study_area_def["RUGOSITY_FILE"]; // rugosity.asc
-	file buffer_in_100m_shape 	<- file(study_area_def["BUFFER_IN100M_SHAPE"]);
+	string dem_file 	<- "../" + study_area_def["DEM_FILE"]; // dem.asc
+	string rugosity_file <- "../" + study_area_def["RUGOSITY_FILE"]; // rugosity.asc
+	file buffer_in_100m_shape 	<- file("../" + study_area_def["BUFFER_IN100M_SHAPE"]);
 	/*
 	 * Additional shpaes for cliff_coast only
 	 */
-	file river_flood_shape 		<- file(study_area_def["RIVER_FLOOD_SHAPE"]);
-	file river_flood_shape_1m 	<- file(study_area_def["RIVER_FLOOD_SHAPE_1M"]);
+	file river_flood_shape 		<- file("../" + study_area_def["RIVER_FLOOD_SHAPE"]);
+	file river_flood_shape_1m 	<- file("../" + study_area_def["RIVER_FLOOD_SHAPE_1M"]);
 	/*
 	 * Rugosity coefficients
 	 */

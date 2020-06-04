@@ -170,10 +170,10 @@ global{
 		create Sea from: convex_hull_shape {
 			shape <- shape - (union(District) + 200#m); // creating the see zone 
 		}
-		if river_shape != nil {
+		if file_exists(river_shape.path) {
 			create River from: river_shape;
 		}
-		if isolines_shape != nil {
+		if file_exists(isolines_shape.path) {
 			create Isoline from: isolines_shape;
 		}
 		
@@ -2518,7 +2518,7 @@ experiment District3 type: gui parent: LittoSIM_GEN_Player {
 		/*
 		 * get the number of districts to prevent executing a non-existing district
 		 */
-		int n_dists <- length(map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
+		int n_dists <- length(map(eval_gaml(first(text_file("../" + first(text_file("../includes/config/littosim.conf").contents
 			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
 			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)));
 		if n_dists > 2 {
@@ -2530,7 +2530,7 @@ experiment District3 type: gui parent: LittoSIM_GEN_Player {
 
 experiment District4 type: gui parent: LittoSIM_GEN_Player {
 	action _init_ {
-		int n_dists <- length(map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
+		int n_dists <- length(map(eval_gaml(first(text_file("../" + first(text_file("../includes/config/littosim.conf").contents
 			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
 			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)));
 		if n_dists > 3 {
@@ -2542,7 +2542,7 @@ experiment District4 type: gui parent: LittoSIM_GEN_Player {
 
 experiment LittoSIM_GEN_Player type: gui{
 	// read the list of districts of study_area.conf
-	list<string> districts 	<- map(eval_gaml(first(text_file(first(text_file("../includes/config/littosim.conf").contents
+	list<string> districts 	<- map(eval_gaml(first(text_file("../" + first(text_file("../includes/config/littosim.conf").contents
 			where (!(each contains '#') and (each contains 'STUDY_AREA_FILE')))
 			split_with ';' at 1).contents where (!(each contains '#') and (each contains 'MAP_DIST_SNAMES'))) split_with ';' at 1)).values;
 

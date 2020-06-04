@@ -197,10 +197,10 @@ global {
 		create Flood_Risk_Area from: rpp_area_shape;
 		all_flood_risk_area <- union(Flood_Risk_Area);
 		create Road from: roads_shape;
-		if isolines_shape != nil {
+		if file_exists(isolines_shape.path) {
 			create Isoline from: isolines_shape;
 		}
-		if river_shape != nil {
+		if file_exists(river_shape.path) {
 			create River from: river_shape;
 		}		
 		create Coastal_Border_Area from: coastline_shape {
@@ -260,18 +260,18 @@ global {
 			mean_alt <- cells mean_of(each.soil_height);
 		}
 		// rivers (cliff_coast only)
-		if river_flood_shape != nil {
+		if file_exists(river_flood_shape.path){
 			create River_Flood_Cell from: river_flood_shape with: [water_h::float(read("water_h"))] {
 				col <- colors_of_water_height[world.class_of_water_height(water_h)];
 			}
 		}
-		if river_flood_shape_1m != nil {
+		if file_exists(river_flood_shape_1m.path) {
 			create River_Flood_Cell_1m from: river_flood_shape_1m with: [water_h::float(read("water_h"))] {
 				col <- colors_of_water_height[world.class_of_water_height(water_h)];
 			}
 		}
 		// giving LU type to river inundation cells 
-		if river_flood_shape != nil {
+		if file_exists(river_flood_shape.path) {
 			ask Land_Use {
 				ask River_Flood_Cell inside self {
 					lu_type <- myself.lu_code;
@@ -303,7 +303,7 @@ global {
 			write MSG_COMMUNE + " " + district_name + " (" + district_code + ") " + MSG_POPULATION + ": " + current_population() + " " + world.get_message('MSG_INITIAL_BUDGET') + ": " + budget;
 			do calculate_indicators_t0;
 			
-			if river_flood_shape != nil {
+			if file_exists(river_flood_shape.path) {
 				do calculate_river_flood_results;
 			}
 		}
@@ -625,9 +625,9 @@ global {
 		save ("DEMfile         " + project_path + lisflood_DEM_file + 
 				"\nresroot         res\ndirroot         results\nsim_time        " + LISFLOOD_SIM_TIME + "\ninitial_tstep   " + LISFLOOD_INIT_TSTEP + 
 				"\nmassint         " + LISFLOOD_MASSINT + "\nsaveint         " + LISFLOOD_SAVEINT + "\nmanningfile     " + project_path
-				+ lisflood_rugosity_file + "\nbcifile         " + project_path + my_flooding_path + lisflood_bci_file + 
-				"\nbdyfile         " + project_path + my_flooding_path + lisflood_bdy_file + "\nstartfile       " + project_path
-				+ my_flooding_path + lisflood_start_file + "\nstartelev\nelevoff\nacceleration\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
+				+ lisflood_rugosity_file + "\nbcifile         " + project_path + lisflood_bci_file + 
+				"\nbdyfile         " + project_path + lisflood_bdy_file + "\nstartfile       " + project_path
+				+ lisflood_start_file + "\nstartelev\nelevoff\nacceleration\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
 
 		if IS_OSX {
 			save ("cd " + lisfloodPath + ";\n./lisflood -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + ";\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
@@ -918,7 +918,7 @@ global {
 				add totN to: data_totN;
 				add totA to: data_totA;
 			}
-			if river_flood_shape != nil {
+			if file_exists(river_flood_shape.path) {
 				do calculate_river_flood_results;
 			}
 		}
@@ -1213,7 +1213,7 @@ global {
 			my_icon 	<- image_file("../images/system_icons/manager/display_protected.png");
 			location 	<-  {button_size.x*5.75,  world.shape.height - button_size.y*0.75};
 		}
-		if river_flood_shape != nil {
+		if file_exists(river_flood_shape.path) {
 			create Button{
 				nb_button 	<- 913;
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
@@ -2358,7 +2358,7 @@ species Land_Use {
 		// updating rugosity of related cells
 		float rug <- float((eval_gaml("RUGOSITY_" + lu_name)));
 		ask cells { rugosity <- rug; }
-		if river_flood_shape != nil {
+		if file_exists(river_flood_shape.path) {
 			ask River_Flood_Cell inside self {
 				lu_type <- myself.lu_code;
 			}
