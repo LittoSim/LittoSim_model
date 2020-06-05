@@ -314,15 +314,26 @@ global {
 		do add_element_in_list_flooding_events (INITIAL_SUBMERSION, results_lisflood_rep);
 		last_played_event <- 0;
 		/*
-		 * Create Legens and network agents
+		 * Create Legens
 		 */
 		create Legend_Planning;
 		create Legend_Map;
 		create Legend_Flood_Map;
 		create Legend_Flood_Plan;
-		create Network_Game_Manager;
-		create Network_Listener_To_Leader;
-		create Network_Control_Manager;
+		/*
+		 * Create network agents
+		 * The use of try/catch allows to start the model without ActiveMQ. An error message is displayed.
+		 */
+		 try {
+			create Network_Game_Manager;
+			create Network_Listener_To_Leader;
+			create Network_Control_Manager;	
+		} catch {
+			write "Error connecting to the server. This may be caused by:";
+			write "   - Apache Active MQ is not running.";
+			write "   - The server address is wrong.";
+			write "Start ActiveMQ, check the servers address in littosim.conf, and then restart LittoSIM-GEN_Manager.";
+		}
 		/*
 		 * Create a dummy file to get the project path
 		 */

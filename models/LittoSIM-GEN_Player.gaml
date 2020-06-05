@@ -187,10 +187,20 @@ global{
 				my_color <- cell_color();
 			} else { do die; }
 		}
-
 		population_area <- union(Land_Use where(each.lu_code = LU_TYPE_U or each.lu_code = LU_TYPE_AU));
-		create Network_Player;
-		create Network_Listener_To_Leader;
+		/*
+		 * Create network agents
+		 * The use of try/catch allows to start the model without ActiveMQ. An error message is displayed.
+		 */
+		try {
+			create Network_Player;
+			create Network_Listener_To_Leader;
+		} catch {
+			write "Error connecting to the server. This may be caused by:";
+			write "   - Apache Active MQ is not running.";
+			write "   - The server address is wrong.";
+			write "Start ActiveMQ, check the servers address in littosim.conf, and then restart LittoSIM-GEN_Player.";
+		}
 	}
 	//------------------------------ End of init -------------------------------//
 	

@@ -53,7 +53,6 @@ global{
 	bool send_my_plan <- false;
 	
 	init{
-		write application_name;
 		MSG_CHOOSE_MSG_TO_SEND 	<- get_message('MSG_CHOOSE_MSG_TO_SEND');
 		MSG_TYPE_CUSTOMIZED_MSG <- get_message('MSG_TYPE_CUSTOMIZED_MSG');
 		MSG_TO_CANCEL 			<- get_message('MSG_TO_CANCEL');
@@ -107,11 +106,23 @@ global{
 		do create_levers;
 		do create_player_buttons;
 		do create_actions_counters;
-		create Network_Leader;
 		create Lever_Window_Info;
 		create Lever_Window_Actions;
 		create Player_Button_Actions;
 		do create_financial_plan;
+		/*
+		 * Create network agent
+		 * The use of try/catch allows to start the model without ActiveMQ. An error message is displayed.
+		 */
+		try {
+			create Network_Leader;
+		} catch {
+			write "Error connecting to the server. This may be caused by:";
+			write "   - Apache Active MQ is not running.";
+			write "   - The server address is wrong.";
+			write "Start ActiveMQ, check the servers address in littosim.conf, and then restart LittoSIM-GEN_Leader.";
+		}
+		
 	}
 	//------------------------------ end of init -------------------------------//
 	// header : create district names and buttons on top
