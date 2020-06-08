@@ -33,7 +33,7 @@ LEADER_DATA <- "/Users/atelier/Desktop/leader_data-1.587376442452E12/"
 # Si le répertoire existe déjà, on le supprime (Sous Windows, R ne remplace pas les fichiers existants !)
 unlink("graphs_leader/", recursive=T)
 dir.create("graphs_leader", showWarnings = FALSE)
-print(paste("Les graphes sont enregistrés dans le répertoire ",getwd(),"/graphs_leader",sep=""))
+print(paste("Les graphes seront enregistrés dans le répertoire ",getwd(),"/graphs_leader",sep=""))
 
 ################################################################################################
 # Paramètres générales
