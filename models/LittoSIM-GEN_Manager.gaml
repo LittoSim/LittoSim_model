@@ -471,6 +471,21 @@ global {
 	 ************************************************************************************************************************************************/
 	
 	action execute_lisflood{
+		// Check if Lisflood exists
+		if IS_OSX {
+			if !file_exists(lisflood_path + "lisflood") {
+				write "Lisflood executable does not exist in " + lisflood_path;
+				write "Check the LISFLOOD_PATH parameter in lisflood.conf";
+				return;
+			}
+		}
+		else {
+			if !file_exists(lisflood_path + "lisflood.exe") {
+				write "Lisflood executable does not exist in " + lisflood_path;
+				write "Check the LISFLOOD_PATH parameter in lisflood.conf";
+				return;
+			}
+		}
 		// pause players
 		ask districts_in_game{
 			ask Network_Game_Manager { do lock_user (myself, true); }
@@ -484,10 +499,10 @@ global {
 		save floodEventType to: "../"+results_lisflood_rep + "/submersion_type.txt" type: "text";// need to create the lisflood results directory because lisflood cannot create it by itself
 		ask Network_Game_Manager {
 			if IS_OSX {
-				do execute command: "sh " + lisfloodPath + lisflood_bat_file;
+				do execute command: "sh " + lisflood_path + lisflood_bat_file;
 			}
 			else{
-				do execute command: "cmd /c start " + lisfloodPath + lisflood_bat_file;
+				do execute command: "cmd /c start " + lisflood_path + lisflood_bat_file;
 			}
 		}
  	}
@@ -641,10 +656,10 @@ global {
 				+ lisflood_start_file + "\nstartelev\nelevoff\nacceleration\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
 
 		if IS_OSX {
-			save ("cd " + lisfloodPath + ";\n./lisflood -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + ";\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+			save ("cd " + lisflood_path + ";\n./lisflood -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + ";\nexit") rewrite: true to: lisflood_path+lisflood_bat_file type: "text";
 		}
 		else {
-			save ("cd " + lisfloodPath + "\nlisflood.exe -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + "\nexit") rewrite: true to: lisfloodPath+lisflood_bat_file type: "text";
+			save ("cd " + lisflood_path + "\nlisflood.exe -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + "\nexit") rewrite: true to: lisflood_path+lisflood_bat_file type: "text";
 		}		
 	}
 	// read dem and rugosity from files to the GAMA grid (Cell)

@@ -26,7 +26,7 @@ global{
 	/*
 	 * LISFLOOD simulation parameters
 	 */
-	 string lisfloodPath <- littosim_def["LISFLOOD_PATH"]; // absolute path to Lisflood ex: "C:/littosim/lisflood"
+	 string lisflood_path <- littosim_def["LISFLOOD_PATH"]; // absolute path to Lisflood ex: "C:/littosim/lisflood"
 	string lisflood_bat_file 	<- "LittoSIM_GEN_Lisflood.bat";// the Lisflood executable that will be run by DOS/SH
 	string my_flooding_path <- "includes/" + application_name + "/floodfiles/";
 	bool IS_OSX <- bool(littosim_def["IS_OSX"]); // wether the manager is running on MAC OSX or Windows
