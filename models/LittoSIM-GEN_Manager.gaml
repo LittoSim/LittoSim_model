@@ -472,19 +472,10 @@ global {
 	
 	action execute_lisflood{
 		// Check if Lisflood exists
-		if IS_OSX {
-			if !file_exists(lisflood_path + "lisflood") {
-				write "Lisflood executable does not exist in " + lisflood_path;
-				write "Check the LISFLOOD_PATH parameter in lisflood.conf";
-				return;
-			}
-		}
-		else {
-			if !file_exists(lisflood_path + "lisflood.exe") {
-				write "Lisflood executable does not exist in " + lisflood_path;
-				write "Check the LISFLOOD_PATH parameter in lisflood.conf";
-				return;
-			}
+		if (IS_OSX and !file_exists(lisflood_path + "lisflood")) or (!IS_OSX and !file_exists(lisflood_path + "lisflood.exe")){
+			write "Lisflood executable does not exist in " + lisflood_path;
+			write "Check the LISFLOOD_PATH parameter in lisflood.conf";
+			return;
 		}
 		// pause players
 		ask districts_in_game{
