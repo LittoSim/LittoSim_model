@@ -29,6 +29,11 @@ strategies_colors <- c("BUILDER"="blue","SOFT_DEFENSE"="green","WITHDRAWAL"="ora
 # Le XXXXXX représente le nom de l'étude de cas
 LEADER_DATA <- "/Users/atelier/Desktop/leader_data-1.587376442452E12/"
 
+# Vérifier si le LEADER_DATA existe ou non
+if (!dir.exists(LEADER_DATA)){
+  stop(paste("Le répertoire des données d'entrée n'existe pas :", LEADER_DATA))
+}
+
 # Créer le répertoire des graphs à générer: le dossier graphs_leader sera dans l'espace du travail
 # Si le répertoire existe déjà, on le supprime (Sous Windows, R ne remplace pas les fichiers existants !)
 unlink("graphs_leader/", recursive=T)
@@ -103,7 +108,9 @@ p <- ggplot(pacts, aes(nom_commune, fill=command)) +
   geom_bar(position = position_fill(reverse = TRUE)) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Action", breaks=levels(pacts$command), 
                     values= command_to_colors, label=command_to_names[levels(pacts$command)]) +
-  labs(x = "Commune", y = "Nombre d'actions")
+  labs(x = "Commune", y = "Pourcentage du nombre d'actions") +
+  # pour afficher l'axe y en pourcentage
+  scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/actions_total_count_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -134,7 +141,7 @@ p <- ggplot(pacts, aes(command_round, fill=command)) +
   facet_wrap(~nom_commune) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Action", breaks=levels(pacts$command),
                     values=command_to_colors,label=command_to_names[levels(pacts$command)]) +
-  labs(x = "Tour", y = "Nombre d'actions")
+  labs(x = "Tour", y = "Pourcentage du nombre d'actions") + scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/actions_round_count_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -160,7 +167,8 @@ p <- ggplot(pacts, aes(x=nom_commune, y=cost, fill=command)) +
   geom_bar(stat="identity", position = position_fill(reverse = TRUE)) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Action", breaks=levels(pacts$command),
                     values=command_to_colors,label=command_to_names[levels(pacts$command)]) +
-  labs(x = "Commune", y = "Coût des actions")
+  labs(x = "Commune", y = "Pourcentage des coûts d'actions") +
+  scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/actions_total_cost_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -188,7 +196,7 @@ p <- ggplot(pacts, aes(x=command_round, y=cost, fill=command)) +
   facet_wrap(~nom_commune) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Action", breaks=levels(pacts$command),
                     values=command_to_colors,label=command_to_names[levels(pacts$command)]) +
-  labs(x = "Tour", y = "Coût des actions")
+  labs(x = "Tour", y = "Pourcentage des coûts d'actions") + scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/actions_round_cost_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -214,7 +222,7 @@ p <- ggplot(pacts, aes(nom_commune, fill=strategy_profile)) +
   geom_bar(position = position_fill(reverse = TRUE)) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Stratégie", breaks=strategies,
                     values= strategies_colors, label= noms_strategies) +
-  labs(x = "Commune", y = "Nombre d'actions")
+  labs(x = "Commune", y = "Pourcentage du nombre d'actions") + scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/strategies_total_count_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -223,7 +231,7 @@ dev.off()
 ################################################################################################
 # Répartition totale des stratégies par coût
 #
-p <- ggplot(pacts, aes(x=district_code, y=cost, fill=strategy_profile)) +
+p <- ggplot(pacts, aes(x=nom_commune, y=cost, fill=strategy_profile)) +
   geom_bar(stat="identity", position = position_stack(reverse = TRUE)) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Stratégie", breaks=strategies,
                     values=strategies_colors, label= noms_strategies)+
@@ -236,11 +244,11 @@ dev.off()
 #
 # Répartition totale des stratégies par coût en pourcentage
 #
-p <- ggplot(pacts, aes(x=district_code, y=cost, fill=strategy_profile)) +
+p <- ggplot(pacts, aes(x=nom_commune, y=cost, fill=strategy_profile)) +
   geom_bar(stat="identity", position = position_fill(reverse = TRUE)) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Stratégie", breaks=strategies,
                     values=strategies_colors, label= noms_strategies)+
-  labs(x = "Commune", y = "Coût des actions")
+  labs(x = "Commune", y = "Pourcentage des coûts d'actions") + scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/strategies_total_cost_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -269,7 +277,7 @@ p <- ggplot(pacts, aes(command_round, fill=strategy_profile)) +
   facet_wrap(~nom_commune) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Stratégie", breaks=levels(pacts$strategy_profile),
                     values=strategies_colors,label=noms_strategies) +
-  labs(x = "Tour", y = "Nombre d'actions par stratégie")
+  labs(x = "Tour", y = "Pourcentage du nombre d'actions par stratégie") + scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/strategies_round_count_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -297,7 +305,7 @@ p <- ggplot(pacts, aes(x=command_round, y=cost, fill=strategy_profile)) +
   facet_wrap(~nom_commune) + scale_x_discrete(drop=FALSE) +
   scale_fill_manual("Stratégie", breaks=levels(pacts$strategy_profile),
                     values=strategies_colors,label=noms_strategies) +
-  labs(x = "Tour", y = "Coût des actions par stratégie")
+  labs(x = "Tour", y = "Pourcentage des coût d'actions par stratégie") + scale_y_continuous(labels = scales::percent)
 
 png("graphs_leader/strategies_round_cost_percent.png", width = 1000, height = 800, res=144)
 print(p)
@@ -360,7 +368,7 @@ dd$nom_commune <- noms_communes[match(dd$district_code, coms)]
 p <- ggplot(dd, aes(x=variable, y=value, fill=variable)) +
   geom_bar(stat="identity", position = position_stack(reverse = TRUE)) +
   facet_wrap(~nom_commune, scales = "free") + theme(legend.position = "none") +
-  scale_x_discrete(label=c("Protégé","Risqué","Total"), drop=FALSE) +
+  scale_x_discrete(label=c("Zone\nenvironnementale\nprotégée","Zone à risque\n(PPR)","Total"), drop=FALSE) +
   scale_fill_manual("Type de zone", values=c("protected"="green","risked"="red","total"="darkblue")) +
   labs(x = "", y = "Nombre d'actions")
 

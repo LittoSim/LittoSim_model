@@ -31,6 +31,11 @@ noms_communes <- c("Rochefort","Saint-Laurent","Saint-Nazaire","Port-des-Barques
 # Le XXXXXX représente le nom de l'étude de cas
 MANAGER_DATA <- "/Users/atelier/Desktop/manager_data-1.587376322512E12/"
 
+# Vérifier si le MANAGER_DATA existe ou non
+if (!dir.exists(MANAGER_DATA)){
+  stop(paste("Le répertoire des données d'entrée n'existe pas :", MANAGER_DATA))
+}
+
 # Créer le répertoire des graphs à générer: le dossier graphs_manager sera dans l'espace du travail
 # Si le répertoire existe déjà, on le supprime (Sous Windows, R ne remplace pas les fichiers existants !)
 unlink("graphs_manager/", recursive=T)
@@ -128,11 +133,14 @@ dev.off()
 buds <- dd[,c("nom_commune", "num_round", "received_tax","actions_cost","given_money",
               "taken_money", "transferred_money","levers_costs")]
 
+# On vire le tour 0 où il n'y a jamais de transactions
+buds <- buds[buds$num_round != 0,]
 # construire une tableau long à base du couple "nom commune" et "numéro de tour"
 buds <- melt(buds, id = c("nom_commune","num_round"))
 
 # les labels et les couleurs à utiliser sur les graphes
-budget_labels <- c("Impôts","Actions","Donné","Prélevé","Transféré","Leviers")
+budget_labels <- c("Impôts reçus","Montants des actions","Subventions de l’Agence du risque",
+                   "Prélevements de l’Agence du risque","Transfert entre communes","Leviers automatiques")
 budget_colors <- c("received_tax"="gold","actions_cost"="darkgray","given_money"=
                      "darkgreen","taken_money"="darkred","transferred_money"="darkblue", "levers_costs"="purple")
 
@@ -144,10 +152,23 @@ p <- ggplot(buds, aes(x=num_round, y=value, fill=variable)) +
   scale_fill_manual("Transaction", values=budget_colors,
                     labels=budget_labels) + labs(x = "Tour", y = "Montant")
 
-png("graphs_manager/budget_round.png", width = 1000, height = 800, res=144)
+png("graphs_manager/budget_round.png", width = 1200, height = 800, res=144)
 print(p)
 dev.off()
 
+#
+# Composition du budget par tour en pourcentage
+p <- ggplot(buds, aes(x=num_round, y=value, fill=variable)) + 
+  geom_bar(stat="identity",  position=position_fill(reverse = TRUE))  +
+  facet_wrap(~nom_commune, scales="free") + scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual("Transaction", values=budget_colors,
+                    labels=budget_labels) + labs(x = "Tour", y = "Montant en pourcentage")
+
+png("graphs_manager/budget_round_percent.png", width = 1200, height = 800, res=144)
+print(p)
+dev.off()
+
+#
 # Composition du budget total
 # calculer la somme des budgets selon le type de transaction pour chaque commune
 buds <- aggregate(buds$value, by=list(buds$nom_commune,buds$variable), FUN=sum)
@@ -155,24 +176,39 @@ names(buds) <- c("nom_commune", "transaction","amount")
 p <- ggplot(buds, aes(x=nom_commune, y=amount, fill=transaction)) +
   geom_bar(stat='identity', position=position_stack(reverse = TRUE))  +
   scale_fill_manual("Transaction", values=budget_colors, labels=budget_labels) +
-  labs(x = "Tour", y = "Montant")
+  labs(x = "Commune", y = "Montant") +
+  # forcer ggplot à afficher le nombre en entier au lieu de la notation scientifique
+  scale_y_continuous(labels = scales::comma)
 
 png("graphs_manager/budget_total.png", width = 1000, height = 800, res=144)
 print(p)
 dev.off()
 
+#
+# Composition du budget total en pourcentage
+p <- ggplot(buds, aes(x=nom_commune, y=amount, fill=transaction)) +
+  geom_bar(stat='identity', position=position_fill(reverse = TRUE))  +
+  scale_fill_manual("Transaction", values=budget_colors, labels=budget_labels) +
+  labs(x = "Commune", y = "Montant en pourcentage") +
+  scale_y_continuous(labels = scales::percent)
+
+png("graphs_manager/budget_total_percent.png", width = 1000, height = 800, res=144)
+print(p)
+dev.off()
+
 ################################################################################################
-# Évolution des défenses côtières
+# Évolution des défenses côtières (digues et dunes)
 #
 
+# digues
 codef <- data.frame()
 for (ix in (1:nrow(dd))) {
-  # Calculer la proportion des défenses cotières en bon état par rapport à toutes les defcotes
+  # Calculer la proportion des digues en bon état par rapport à toutes les digues
   val <- round(( (dd$last.length_dikes_good.[ix] * dd$last.mean_alt_dikes_good.[ix]) / (
     (dd$last.length_dikes_good.[ix] * dd$last.mean_alt_dikes_good.[ix])+
       (dd$last.length_dikes_medium.[ix] * dd$last.mean_alt_dikes_medium.[ix]) +
       (dd$last.length_dikes_bad.[ix] * dd$last.mean_alt_dikes_bad.[ix]) )) ,2)
-  # si val est nulle (pas de defénses côtières pour la commune), mettre la valeur à 0
+  # si val est nulle (pas de digues pour la commune), mettre la valeur à 0
   val <- ifelse(is.nan(val), 0, val)
   codef = rbind (codef, c(dd[ix,]$nom_commune,as.character(dd[ix,]$num_round), val))
 }
@@ -184,10 +220,40 @@ codef$val <- as.double(codef$val)
 codef = codef[order(codef$round),]
 
 p <- ggplot(codef, aes(x=round, y=val, color=district, group=district)) +
-  geom_line(size=2) +
-  labs(x = "Tour", y = "% de digues en bon état", color="Commune")
+  geom_line(size=2) + scale_y_continuous(labels = scales::percent) +
+  labs(x = "Tour", y = "Pourcentage de digues en bon état", color="Commune")
 
-png("graphs_manager/defcotes.png", width = 1000, height = 800, res=144)
+png("graphs_manager/dikes.png", width = 1000, height = 800, res=144)
+print(p)
+dev.off()
+
+#
+#
+# dunes
+#
+codef <- data.frame()
+for (ix in (1:nrow(dd))) {
+  # Calculer la proportion des dunes en bon état par rapport à toutes les dunes
+  val <- round(( (dd$last.length_dunes_good.[ix] * dd$last.mean_alt_dunes_good.[ix]) / (
+    (dd$last.length_dunes_good.[ix] * dd$last.mean_alt_dunes_good.[ix])+
+      (dd$last.length_dunes_medium.[ix] * dd$last.mean_alt_dunes_medium.[ix]) +
+      (dd$last.length_dunes_bad.[ix] * dd$last.mean_alt_dunes_bad.[ix]) )) ,2)
+  # si val est nulle (pas de dunes pour la commune), mettre la valeur à 0
+  val <- ifelse(is.nan(val), 0, val)
+  codef = rbind (codef, c(dd[ix,]$nom_commune,as.character(dd[ix,]$num_round), val))
+}
+
+names(codef) <- c("district","round","val")
+codef$round <- as.factor(codef$round)
+codef$val <- as.double(codef$val)
+# ordonner la table selon le numéro de tour
+codef = codef[order(codef$round),]
+
+p <- ggplot(codef, aes(x=round, y=val, color=district, group=district)) +
+  geom_line(size=2) + scale_y_continuous(labels = scales::percent) +
+  labs(x = "Tour", y = "Pourcentage de dunes en bon état", color="Commune")
+
+png("graphs_manager/dunes.png", width = 1000, height = 800, res=144)
 print(p)
 dev.off()
 
@@ -223,12 +289,12 @@ lus <- melt (lus, id = c("district_name","num_round"))
 lus$district_name <- noms_communes[match(lus$district_name, coms)]
 
 p <- ggplot(lus) +
-  geom_line(aes(x=num_round, y = value, group=variable, color = variable), size=1.25) +
+  geom_line(aes(x=num_round, y = value, group=variable, color=variable), size=1.25) +
   facet_wrap(~district_name, scales = "free_y") +
   scale_color_manual(values=c("nn"="darkgreen","uu"="darkgray","udense"="black","us"="blue",
                               "usdense"="darkblue","aa"="orange"),
-                     labels= c("N", "U", "Udense","Us","Usdense","A")) +
-  labs(x = "Tour", y = "Utilisation du sol", color="Type LU")
+                     labels= c("Naturel", "Urbain", "Urbain dense","Urbain adapté","Urbain adapté dense","Agricole")) +
+  labs(x = "Tour", y = "Utilisation du sol (ha)", color="Type PLU")
 
 png("graphs_manager/landuse.png", width = 1000, height = 800, res=144)
 print(p)
@@ -241,7 +307,7 @@ dev.off()
 data = data.frame()
 
 # lire tous les fichiers sub-RX.csv du repertoire flood_results
-# ces fichiers contient les résultats des submersions par tour, type LU, et par niveau
+# ces fichiers contient les résultats des submersions par tour, type PLU, et par niveau
 csvs <- list.files(path = paste(MANAGER_DATA,"flood_results",sep=""), pattern = "sub-R.*\\.csv$", full.names = T)
 for (fichier in csvs) {
   d <- read.csv(fichier, sep= ";", header=T)
@@ -258,8 +324,8 @@ data$sub_level <- as.factor(data$sub_level)
 # calculer le total pour les colonnes en question
 data$tt <- rowSums(data[,c("uu","us","udense","aa","nn")])
 
-# renseigner le nom de la commune à afficher, ou commenter la ligne pour afficher toutes les communes
-#data <- data[data$district_name =="rochefort",]
+# renseigner le/les nom/noms de/des la commune(s) à afficher, ou commenter la ligne pour afficher toutes les communes
+data <- subset(data, district_name %in% c("rochefort","porbarq"))
 
 data <- melt(data, id = c("num_round","district_name","sub_level"))
 data$sub_level = factor(data$sub_level,levels(data$sub_level)[c(3,2,1)])
@@ -274,11 +340,12 @@ data$district_name <- noms_communes[match(data$district_name, coms)]
 p <- ggplot(data, aes(fill=sub_level, y=value, x=num_round))+
   geom_bar(stat="identity") +
   # le paramètre "free" permet d'avoir des axes Y indépendants pour chaque barchart
-  facet_wrap(district_name~variable, scales = "free", ncol= 6,
+  # le paramètre ncol permet de spécifier le nombre de colonnes (nombre de graphes par lignes)
+  facet_wrap(district_name~variable, scales = "free", ncol= 3,
              labeller = labeller(variable = plu_types)) +
-  scale_fill_manual("Level", values=c("1"="lightblue","2"="blue","3"="darkblue"),
+  scale_fill_manual("Hauteur d'eau", values=c("1"="lightblue","2"="blue","3"="darkblue"),
                     labels=c("> 1m","[0.5,1m]","< 0.5m")) +
-  labs(x = "Tour", y = "", fill="Hauteur d'eau")
+  labs(x = "Tour de la submersion", y = "Surfaces submergées (ha)")
 
 png("graphs_manager/graph_sub.png", width = 2500, height = 2000, res = 300)
 print(p)
@@ -306,6 +373,7 @@ flood_cols <- c("lightblue","blue","darkblue")
 # lire les fichiers de submersion et les shapefiles du tour N
 # changer le numéro du tour selon la submersion voulue. Pour chque submersion, le dossier est nommé
 # avec le numéro du tour correspondant N results_RN_xxxxxxxx
+
 num_round <- 7
 
 # le fichier res-R8.max représente le fichier .max (lisflood) de la 3ème submersion correspondant au tour 7 du jeu
@@ -315,7 +383,8 @@ num_round <- 7
 subm <- raster(paste(MANAGER_DATA,"flood_results/res-R8.max",sep=""))
 crs(subm) <- '+init=epsg:2154';
 
-# lire les fichiers land use et defenses côtes
+
+# lire les fichiers land use et defenses côtes du tour indiqué : "num_round"
 # la lecture des deux fichiers engendrent deux warnings (Z-dimension), mais c'est à negliger car ils n'affectent pas les données
 land_use <- readOGR(dsn = paste(MANAGER_DATA,"shapes",sep=""), layer = paste("Land_Use_",num_round,sep=""), verbose=FALSE);
 land_use <- spTransform(land_use, CRS('+init=epsg:2154'));
@@ -327,15 +396,50 @@ codefs[codefs$type == "DIKE","type"] <- 2
 codefs[codefs$type == "DUNE","type"] <- 4
 codefs$type <- as.integer(codefs$type)
 
-png("graphs_manager/map_sub.png", width = 1000, height = 800, res=144)
-
 # prendre uniquement la submersion dans les zones en jeu
 flood <- raster::intersect(subm, land_use)
 flood <- mask(flood, land_use)
 flood[flood==0] <- NA
 
+#
+# La carte sans la submersion
+png("graphs_manager/map_sub.png", width = 1000, height = 1000, res=144)
+# spécifier une marge de 7 en bas (bottom)
+par(oma = c(7, 0, 0, 0))
 # on fait un premier plot du raster pour prendre son emprise
-plot(flood,legend=F)
+# on affiche le raster sans le cadre, sans les axes (coordonnées) et sans la légende par défaut
+plot(flood,axes=F,box=F,legend=F)
+
+# afficher les cellules non urbaines avec les couleurs 
+noturbs <- land_use[land_use$lu_code != 2,]
+plot(noturbs, col=lu_colors[noturbs$lu_code], add=T)
+
+# afficher les cellules urbaines colorées selon la densité de population
+urbs <- land_use[land_use$lu_code == 2,]
+plot(urbs, col=pop_colors[match(urbs$density_cl,pop_class)], add=T)
+
+# afficher les défenses cotières colorés selon l'état avec un épaisseur (lwd) selon le type
+plot(codefs, lwd= codefs$type, col=codef_colors[match(codefs$status,codef_status)], add=T)
+
+# ajouter les légendes
+par(xpd=TRUE) # autoriser l'affichage des légendes en dehors du graphe
+legend("bottom", legend=c("Digue","Dune"), lwd=c(2,4), inset=c(0,-0.17), bty="n")
+legend("bottomright", legend=c("Bon","Moyen","Dégradé"), col=codef_colors, lwd=2, inset=c(0,-0.21), bty="n")
+legend("bottom", legend=c("N","U","AU","A","Us","AUs"), fill=c("darkgreen","gray","yellow","orange","magenta","purple"),
+       horiz=TRUE, inset=c(0,-0.31), bty="n")
+
+dev.off()
+
+#
+# La carte avec la submersion
+#
+
+png("graphs_manager/map_no_sub.png", width = 1000, height = 1000, res=144)
+par(oma = c(7, 0, 0, 0))
+
+# on fait un premier plot du raster pour prendre son emprise
+# on affiche le raster sans le cadre, sans les axes (coordonnées) et sans la légende par défaut
+plot(flood,axes=F,box=F,legend=F)
 
 # afficher les cellules non urbaines avec les couleurs 
 noturbs <- land_use[land_use$lu_code != 2,]
@@ -348,8 +452,17 @@ plot(urbs, col=pop_colors[match(urbs$density_cl,pop_class)], add=T)
 # paramètrer la légende : 0, 0.5, 1
 breakpoints <- c(0,0.5,1,round(max(flood[!is.na(flood)]),2))
 # afficher la légende bleue
-plot(flood,breaks=breakpoints,col=flood_cols, add=T)
+plot(flood,breaks=breakpoints,col=flood_cols, legend=F, add=T)
 
 # afficher les défenses cotières colorés selon l'état avec un épaisseur (lwd) selon le type
 plot(codefs, lwd= codefs$type, col=codef_colors[match(codefs$status,codef_status)], add=T)
+
+# ajouter les légendes
+par(xpd=TRUE)
+legend("bottomleft", legend=c("< 0.5m","[0.5,1m]","> 1m"), fill=flood_cols, inset=c(0,-0.21),bty="n")
+legend("bottom", legend=c("Digue","Dune"), lwd=c(2,4), inset=c(0,-0.17), bty="n")
+legend("bottomright", legend=c("Bon","Moyen","Dégradé"), col=codef_colors, lwd=2, inset=c(0,-0.21), bty="n")
+legend("bottom", legend=c("N","U","AU","A","Us","AUs"), fill=c("darkgreen","gray","yellow","orange","magenta","purple"),
+       horiz=TRUE, inset=c(0,-0.31), bty="n")
+
 dev.off()
