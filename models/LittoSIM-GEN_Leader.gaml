@@ -893,11 +893,11 @@ species District{
 					ask Us_out_Coast_and_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 				} else{
 					if act.is_in_coast_area {
-					count_Us_in_coast_area <- count_Us_in_coast_area +1;
+					count_Us_in_coast_area <- count_Us_in_coast_area + 1;
 					ask Us_in_Coast_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 					}
 					if act.is_in_risk_area {
-						count_Us_in_risk_area <- count_Us_in_risk_area +1;
+						count_Us_in_risk_area <- count_Us_in_risk_area + 1;
 						ask Us_in_Risk_Area_Lever where(each.my_district = self) { do register_and_check_activation(act); }
 					}
 				}
