@@ -862,6 +862,7 @@ global{
 					cost <- element_shape.area / STANDARD_LU_AREA * world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
 				}
 			}
+			mylu.my_cols[0] <- mylu.my_color;
 		}
 		current_action  <- first(actions_list);
 		my_basket 		<- my_basket + current_action; 
@@ -2103,7 +2104,7 @@ species Land_Use_Action parent: Player_Action {
 			draw first(trs where (each.area = max(trs collect (each.area)))) color: define_color() border: define_color();
 			draw shape at: location empty: true border: (self = highlighted_action) ? #red: (is_sent ? define_color() : #black) ;
 			
-			if(command = ACTION_MODIFY_LAND_COVER_Ui){
+			if command = ACTION_MODIFY_LAND_COVER_Ui {
 				geometry sq <- first(to_squares(shape, 1, false));
 				draw file("../images/system_icons/player/crowd.png") size: sq.width at: sq.location;
 			}
@@ -2216,6 +2217,7 @@ species Land_Use {
 	Flood_Mark mark <- nil;
 	list<Player_Action> actions_on_me <- []; // the list a previous actions done on this land use (history)
 	int flooded_times <- 0; // the number of times that the cell has been flooded
+	list<rgb> my_cols <- [#gray, #gray]; // list of two colors to draw transitive states (AU, AUs)
 
 	// initialize the land use cell from the received map
 	action init_lu_from_map(map<string, unknown> a ){
@@ -2244,7 +2246,7 @@ species Land_Use {
 		location <- mpp;
 	}
 	
-	rgb cell_color{
+	rgb cell_color {
 		switch lu_code{
 			match	  	LU_TYPE_N			 {return #green; } // natural
 			match	  	LU_TYPE_A 			 {return #orange;} // agricultural
@@ -2266,7 +2268,15 @@ species Land_Use {
 	// the normal aspect of land use (colored by PLU type)
 	aspect map {
 		if active_display = LU_DISPLAY and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
-			draw shape color: my_color;	
+			if lu_code in [4,7] {
+				list<geometry> geos <- to_rectangles(shape, 11, 1);
+				loop i from: 0 to: length(geos) - 1 {
+					draw geos[i] color: my_cols[i mod 2];
+				}
+				draw shape empty: true border: my_cols[1];
+			} else {
+				draw shape color: my_color;
+			}
 			if is_adapted_type		{draw file("../images/system_icons/player/wave.png") size: self.shape.width;}
 			if is_in_densification	{draw file("../images/system_icons/player/crowd.png") size: self.shape.width;}
 			if focus_on_me {

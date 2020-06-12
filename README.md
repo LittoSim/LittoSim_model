@@ -128,9 +128,9 @@ LittoSIM-GEN
   - ***LittoSIM-GEN_Player*** : model file to execute the Player.
 
 - **Rscripts** :
-  - ***pre_processing*** :
-  	- *leader_data.R* :
-  	- *manager_data.R*:
-  - ***post_processing*** :
-  	- *data_compiler.R* :
-  	- *data_mapping.xml* :
+  - ***pre_processing*** : contains two R script files used to generate graphs based on data collected data by LittoSIM-GEN during workshops.
+  	- *leader_data.R* : uses data of *leader_data-X.xxxxxxxxxxxxx* to analyse and create graphs of results.
+  	- *manager_data.R*: uses data of *manager_data-X.xxxxxxxxxxxxx* to analyse and create maps and graphs of results.
+  - ***post_processing*** : contains an R and XML file used to prepare input data for LittoSIM-GEN.
+  	- *data_compiler.R* : this R scripts takes raw data and transforms it to the structure required by LittoSIM-GEN.
+  	- *data_mapping.xml* : this XML file contains the mapping between raw data as collected from different sources, and the input data structure of LittoSIM-GEN.

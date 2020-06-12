@@ -192,8 +192,9 @@ global{
 				int act_code <- int(data_action at act at 'action_code');
 				create Action_Name {
 					action_code	<- act_code;
-					action_name <- world.label_of_action(act_code);
+					action_label <- world.label_of_action(act_code);
 					col <- string(data_action at act at 'entity') = "COAST_DEF" ? #lightgray : #whitesmoke;
+					my_icon <- image_file("../images/developer_icons/" + data_action at act at 'button_icon_file') ;
 					origi_color <- col;
 					location <- (Grille2[0, 1]).location + {1.5, 5.25 * i};
 				}
@@ -1062,14 +1063,16 @@ species Player_Button_Button {
 // player action name on "Actions" display
 species Action_Name {
 	int action_code;
-	string action_name;
+	string action_label;
 	geometry shape <- rectangle (22, 5);
 	rgb col;
+	image_file my_icon;
 	rgb origi_color;
 	
 	aspect {
 		draw shape color: col border: #black;
-		draw action_name at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
+		draw my_icon size: {4,4} at: location - {10,0};
+		draw action_label at: location anchor: #center font: font("Arial", 12 , #bold) color: #black;
 	}
 	
 }

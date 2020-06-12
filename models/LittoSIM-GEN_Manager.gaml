@@ -1447,6 +1447,7 @@ species Network_Game_Manager skills: [network]{
 										Land_Use tmp  	<- Land_Use first_with (each.id = self.element_id);
 										element_shape 	<- tmp.shape;
 										location 		<- tmp.location;
+										tmp.my_cols[0]  <- previous_lu_name = "N" ? #palegreen : (previous_lu_name = "A" ? rgb(225, 165, 0) : #grey);
 									}
 									match PLAYER_ACTION_TYPE_COAST_DEF {
 										element_shape 	 <- (Coastal_Defense first_with(each.coast_def_id = self.element_id)).shape;
@@ -2333,10 +2334,11 @@ species Land_Use {
 	bool pop_updated 		<- false;
 	int population;
 	list<Cell> cells;
-	float mean_alt <- 0.0;
-	int nb_watered_cells;
-	int flooded_times <- 0;
-	bool marked <- false;
+	float mean_alt <- 0.0; // the mean altitude
+	int nb_watered_cells; // number of flooded DEM cells in this Land_Use
+	int flooded_times <- 0; // the number of times that the cell has been flooded
+	bool marked <- false;  // a flood mark (flag) has been created on this land use
+	list<rgb> my_cols <- [#gray, #gray]; // list of two colors to draw transitive states (AU, AUs)
 	
 	map<string,unknown> build_map_from_lu_attributes {
 		map<string,string> res <- [
@@ -2452,7 +2454,15 @@ species Land_Use {
 	}
 	
 	aspect base {
-		draw shape color: my_color;
+		if lu_code in [4,7] {
+				list<geometry> geos <- to_rectangles(shape, 11, 1);
+				loop i from: 0 to: length(geos) - 1 {
+					draw geos[i] color: my_cols[i mod 2];
+				}
+				draw shape empty: true border: my_cols[1];
+			} else {
+				draw shape color: my_color;
+		}
 		if is_adapted		  {	draw "A" color:#black anchor: #center;	}
 		if is_in_densification{	draw "D" color:#black anchor: #center;  }
 	}
@@ -2758,13 +2768,21 @@ species Legend_Planning{
 	
 	init{
 		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
-		colors<- [#palegreen,rgb(225,165,0),#yellow,rgb(245,245,245),rgb(220,220,220),rgb(192,192,192),rgb(169,169,169)];
-		start_location <- {LEGEND_POSITION_X/3, LEGEND_POSITION_Y-750};		
+		colors<- [#palegreen,rgb(225,165,0),nil,rgb(245,245,245),rgb(220,220,220),rgb(192,192,192),rgb(169,169,169)];
+		start_location <- {LEGEND_POSITION_X/3, LEGEND_POSITION_Y-750};	
 	}
 	
 	aspect {
 		loop i from: 0 to: length(texts) - 1 {
-			draw rectangle(rect_size) at: start_location + {0, i * rect_size.y} color: colors[i] border: #black;
+			if colors[i] = nil { // if it's AU or AUs, we draw a dashed grey color
+				int ix <- int(rect_size.x/10);
+				loop j from: 0 to: 10 {
+					draw rectangle(ix,rect_size.y) at: start_location + {(j*ix) - (rect_size.x/2), i * rect_size.y} color: j mod 2 = 0 ? #white : #grey;
+				}
+				draw rectangle(rect_size) at: start_location + {0, i * rect_size.y} empty: true border: #black;
+			} else {
+				draw rectangle(rect_size) at: start_location + {0, i * rect_size.y} color: colors[i] border: #black;
+			}
 			draw texts[i] at: start_location + {rect_size.x - 50, (i * rect_size.y) + 200} color: text_color size: rect_size.y;
 		}
 	}
