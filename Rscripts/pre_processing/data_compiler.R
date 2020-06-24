@@ -38,7 +38,7 @@ library('raster')
 # library('raster')
 
 # reading the mapping configuration file
-mapping_file <- xmlTreeParse(file = 'mapping_rochefort.xml', useInternalNodes = TRUE);
+mapping_file <- xmlTreeParse(file = 'data_mapping.xml', useInternalNodes = TRUE);
 mapping_node <- xmlRoot(mapping_file);
 app_name 	 <- xmlValue(xmlElementsByTagName(el = mapping_node, 'app-name')[[1]]);
 
@@ -226,10 +226,11 @@ for(i in(1:length(listOfFiles))){
 				for(i in(1:length(ids))){
 				  rugo[rugo == ids[i]] <- vals[i]
 				}
-				# replacing land cover values with manning coefficients()
-				mannings <- xmlElementsByTagName(el = rugosity, 'manning');
-				for(xman in(1:length(mannings))){
-					rugo[rugo == as.double(xmlGetAttr(mannings[[xman]],'value'))] <- as.double(xmlValue(mannings[[xman]]));
+				# replacing land cover values with manning coefficients
+				clc_manning_file <- xmlValue(xmlElementsByTagName(el = rugosity, 'manning')[[1]]);
+				mannings <- read.csv(clc_manning_file, header=TRUE, sep=";")
+				for(xman in(1:nrow(mannings))){
+					rugo[rugo == as.integer(mannings[xman,]$clc)] <- as.double(mannings[xman,]$manning);
 				}
 				writeRaster(rugo, paste(output_folder,"rugosity",sep="/"), format = "ascii", overwrite=TRUE);
 				print(paste('files rugosity.asc and start.asc have been created in',output_folder));
