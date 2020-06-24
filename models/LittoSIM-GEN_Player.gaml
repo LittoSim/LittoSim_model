@@ -1310,6 +1310,7 @@ species Basket parent: Displayed_List {
 	string init_budget_label;
 	string solde_label;
 	string district_label;
+	string round_label;
 	string validate_label;
 	
 	point validation_button_size <- {0, 0};
@@ -1321,6 +1322,7 @@ species Basket parent: Displayed_List {
 		init_budget_label <- world.get_message('MSG_INITIAL_BUDGET');
 		solde_label <- world.get_message('MSG_SOLDE');
 		district_label <- world.get_message('MSG_COMMUNE');
+		round_label <- world.get_message('MSG_ROUND');
 		validate_label <- world.get_message('PLY_MSG_VALIDATE');
 	}
 	
@@ -1354,6 +1356,10 @@ species Basket parent: Displayed_List {
 		
 		draw district_label + " : " font: f0 color: rgb(101,101,101) at: {location.x + 10#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 		draw active_district_lname font: f1 color:#black at: {location.x + 80#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		
+		draw round_label + " : " font: f0 color: rgb(101,101,101) at: {location.x + ui_width/2, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		draw "" + game_round font: f1 color: #black at: {location.x + ui_width/2 + 50#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
+		
 		draw solde_label + " : " font: f0 color: rgb(101,101,101) at: {location.x + ui_width - 100#px, location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
 		draw world.thousands_separator(int(final_budget)) font: f1 color:#black
 						at: {location.x + ui_width - 55#px,location.y+ui_height-ui_height*header_height/4 - 0.25 #px};
