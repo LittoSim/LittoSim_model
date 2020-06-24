@@ -335,6 +335,12 @@ global {
 			write "Start ActiveMQ, check the servers address in littosim.conf, and then restart LittoSIM-GEN_Manager.";
 		}
 		/*
+		 * Check to see if data saving is active or not
+		 */
+		 if !save_data {
+		 	write "ATTENTION : data saving is disabled ! Turn the variable save_data to true!";
+		 }
+		/*
 		 * Create a dummy file to get the project path
 		 */
 		save "" rewrite: true to: "../empty.txt";

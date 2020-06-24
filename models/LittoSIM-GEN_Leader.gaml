@@ -122,7 +122,12 @@ global{
 			write "   - The server address is wrong.";
 			write "Start ActiveMQ, check the servers address in littosim.conf, and then restart LittoSIM-GEN_Leader.";
 		}
-		
+		/*
+		 * Check to see if data saving is active or not
+		 */
+		 if !save_data {
+		 	write "ATTENTION : data saving is disabled ! Turn the variable save_data to true!";
+		 }
 	}
 	//------------------------------ end of init -------------------------------//
 	// header : create district names and buttons on top
