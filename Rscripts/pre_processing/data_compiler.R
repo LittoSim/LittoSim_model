@@ -208,9 +208,6 @@ for(i in(1:length(listOfFiles))){
 				# and also an empty raster start.asc for LISFLOOD-FP #
 				######################################################
 				rugosity <- xmlElementsByTagName(el = mapping_node, 'rugosity')[[1]];
-				nrows <- as.integer(xmlValue(xmlElementsByTagName(el = rugosity, 'nrows')[[1]]))
-				ncols <- as.integer(xmlValue(xmlElementsByTagName(el = rugosity, 'ncols')[[1]]))
-				resolution <- as.integer(xmlValue(xmlElementsByTagName(el = rugosity, 'resolution')[[1]]))
 				ras <- raster(nrow= nrows, ncol= ncols, crs=projection(land_cover), ext=extent(land_cover), res=resolution)
 				
 				# {app_name}_start.asc : the start grid (a grid of 0 values) for LISFLOOD
@@ -422,7 +419,8 @@ for(i in(1:length(listOfFiles))){
 			print('-------------------------');
 			# creating the convex_hull as the extent of the dem file
 			if (output_file_name == "dem.asc") {
-				emprisesp <- as(raster::extent(raster(paste(output_folder, "dem.asc", sep='/'))), "SpatialPolygons");
+			  dem_file <- raster(paste(output_folder, "dem.asc", sep='/'));
+				emprisesp <- as(raster::extent(dem_file), "SpatialPolygons");
 				proj4string(emprisesp) <- CRS('+init=epsg:2154');
 				# fenerating and saving the convex_hull shapefile 
 				convex_hull <- SpatialPolygonsDataFrame(emprisesp, data.frame(ID=1:length(emprisesp)), match.ID=FALSE);
@@ -430,6 +428,10 @@ for(i in(1:length(listOfFiles))){
 				print(paste('file convex_hull.shp has been created in',output_folder));
 				print('-------------------------');
 			}
+		  # reading resolution and dimensions to use them with the rugosity grid
+		  resolution <- res(dem_file)[1]
+		  ncols <- ncol (dem_file)
+		  nrows <- nrow (dem_file)
 		}
 	}else{ # the file does not exist in input_files folder
 		warning(paste(input_file_name, '..... not found'));

@@ -112,10 +112,9 @@
 	
 	
 	<!-- The rugosity grid parameters -->
+	<!-- ATTENTION : the dem file tag must always be placed before to this rugosity processing -->
+	<!-- because we use it to read some parameters -->
 	<rugosity>
-		<nrows>472</nrows>
-		<ncols>730</ncols>
-		<resolution>20</resolution>
 		<!-- name of the csv containing clc values with their manning coefficients-->
 		<manning>clc_manning.csv</manning>
 	</rugosity>
