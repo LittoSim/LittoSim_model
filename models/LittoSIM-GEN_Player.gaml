@@ -116,6 +116,7 @@ global{
 		MSG_DISTRICT_POPULATION <- get_message('MSG_DISTRICT_POPULATION');
 		MSG_INHABITANTS <- get_message('MSG_INHABITANTS');
 		PLY_MSG_DOSSIER <- get_message('PLY_MSG_DOSSIER');
+		MSG_ADAPTATION <- world.get_message('ACTION_MODIFY_LAND_COVER_Us');
 		
 		// creating districts and focusing on the active district
 		create District from: districts_shape with:[district_code::string(read("dist_code"))]{
@@ -858,7 +859,7 @@ global{
 			else if command = ACTION_MODIFY_LAND_COVER_AUs {
 				if previous_lu_name = "U" { // if adapting an urbanized cell
 					command <- ACTION_MODIFY_LAND_COVER_Us;
-					label <- world.get_message('ACTION_MODIFY_LAND_COVER_Us');
+					label <- MSG_ADAPTATION;
 					cost <- element_shape.area / STANDARD_LU_AREA * world.cost_of_action('ACTION_MODIFY_LAND_COVER_Us');	
 				}
 			}
@@ -2489,7 +2490,7 @@ species Protected_Area {
 species Flood_Risk_Area {
 	aspect base {
 		if (Button_Map first_with(each.command = ACTION_DISPLAY_FLOODED_AREA)).is_selected {
-			draw shape color: rgb (160, 32, 240, 120) border:#black;
+			draw shape color: rgb (20, 200, 255,120)border:#black;
 		}
 	}
 }

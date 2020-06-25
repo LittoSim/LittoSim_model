@@ -109,5 +109,6 @@ global{
 	string MSG_DISTRICT_POPULATION;
 	string MSG_INHABITANTS;
 	string PLY_MSG_DOSSIER;
+	string MSG_ADAPTATION;
 }
 

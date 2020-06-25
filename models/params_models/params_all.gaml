@@ -355,6 +355,8 @@ global{
 	string MSG_SOFT_DEF;
 	string MSG_WITHDRAWAL;
 	string MSG_OTHER;
+	string MSG_DIKES;
+	string MSG_DUNES;
 	string LEV_DIKES;
 	string LEV_DUNES;
 }

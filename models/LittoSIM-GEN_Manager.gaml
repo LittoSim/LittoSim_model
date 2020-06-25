@@ -140,8 +140,8 @@ global {
 		MSG_CYCLE 		<- get_message("MSG_CYCLE");
 		MSG_ALL_AREAS 	<- get_message("MSG_ALL_AREAS");
 		LDR_LASTE 		<- get_message("LDR_LASTE");
-		LEV_DUNES		<- get_message('LEV_DUNES');
-		LEV_DIKES		<- get_message('LEV_DIKES');
+		MSG_DUNES		<- get_message('MSG_DUNES');
+		MSG_DIKES		<- get_message('MSG_DIKES');
 		/*
 		 * Initialazing lists used in graphs
 		 */
@@ -1217,24 +1217,28 @@ global {
 			command	 	<- SHOW_MAX_WATER_HEIGHT;
 			my_icon 	<- image_file("../images/system_icons/manager/max_water_height.png");
 			location 	<- {button_size.x*2,  world.shape.height - button_size.y*0.75};
+			display_text <- world.get_message("PLY_MSG_WATER_H");
 		}
 		create Button{
 			nb_button 	<- 8;
 			command	 	<- SHOW_RUPTURE;
 			my_icon 	<- image_file("../images/system_icons/manager/display_ruptures.png");
 			location 	<-  {button_size.x*3.25,  world.shape.height - button_size.y*0.75};
+			display_text <- world.get_message("MSG_RUPTURE");
 		}
 		create Button{
 			nb_button 	<- 911;
 			command	 	<- ACTION_DISPLAY_FLOODED_AREA;
 			my_icon 	<- image_file("../images/system_icons/manager/display_ppr.png");
 			location 	<- {button_size.x*4.5,  world.shape.height - button_size.y*0.75};
+			display_text <- world.get_message("MSG_PPR_CONTROL");
 		}
 		create Button{
 			nb_button 	<- 912;
 			command	 	<- ACTION_DISPLAY_PROTECTED_AREA;
 			my_icon 	<- image_file("../images/system_icons/manager/display_protected.png");
 			location 	<-  {button_size.x*5.75,  world.shape.height - button_size.y*0.75};
+			display_text <- world.get_message("MSG_PROTECTED_CONTROL");
 		}
 		if file_exists(river_flood_shape.path) {
 			create Button{
@@ -2771,6 +2775,7 @@ species Legend_Planning{
 	point start_location;
 	point rect_size <- {300, 400};
 	rgb text_color  <- application_name = "overflow_coast_h" ? #white : #black;
+	int offset <- 80;
 	
 	init{
 		texts <- ["N","A","AU, AUs","U empty", "U low","U medium","U dense"];
@@ -2789,13 +2794,14 @@ species Legend_Planning{
 			} else {
 				draw rectangle(rect_size) at: start_location + {0, i * rect_size.y} color: colors[i] border: #black;
 			}
-			draw texts[i] at: start_location + {rect_size.x - 50, (i * rect_size.y) + 200} color: text_color size: rect_size.y;
+			draw texts[i] at: start_location + {rect_size.x - 50, (i * rect_size.y) + offset} color: text_color size: rect_size.y;
 		}
 	}
 }
 
 species Legend_Map parent: Legend_Planning {
 	init {
+		offset <- 200;
 		start_location <- {LEGEND_POSITION_X/3, LEGEND_POSITION_Y};
 		text_color <- #white;
 		int t1 <- int(land_color_interval);
@@ -3155,14 +3161,14 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 					data "Us"+MSG_DENSE value: surface_Usdense_diff[3] color: #darkblue marker_shape: marker_circle;
 			}
 			/****************************************//****************************************/		
-			chart LEV_DIKES type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,12] 
+			chart MSG_DIKES type: series size: {0.48,0.48} position: {0.01,0.51} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false {
 				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_long_name value: districts_in_game[i].stat_dikes_good color: dist_colors[i] marker_shape: marker_circle;
 				}		
 			}
 			/****************************************//****************************************/
-			chart LEV_DUNES type: series size: {0.48,0.48} position: {0.51,0.51} x_range:[0,12] 
+			chart MSG_DUNES type: series size: {0.48,0.48} position: {0.51,0.51} x_range:[0,12] 
 					x_label: MSG_ROUND x_tick_line_visible: false{
 				loop i from: 0 to: number_of_districts - 1{
 					data districts_in_game[i].district_long_name value: districts_in_game[i].stat_dunes_good color: dist_colors[i] marker_shape: marker_circle;
