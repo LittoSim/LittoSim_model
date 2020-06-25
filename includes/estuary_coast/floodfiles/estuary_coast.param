@@ -1,4 +1,7 @@
+#
+# Total length of the simulation in seconds
 LISFLOOD_SIM_TIME;199990
-LISFLOOD_INIT_TSTEP;100
-LISFLOOD_MASSINT;1000
+#
+# Interval in seconds at which results files (grids) are saved
+# NOTE : LISFLOOD_SIM_TIME divided by LISFLOOD_SAVEINT must always be 14, to produce exactly 14 outputs files
 LISFLOOD_SAVEINT;14285

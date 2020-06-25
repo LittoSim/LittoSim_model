@@ -109,6 +109,10 @@ global {
 	 */
 	font bold20 <- font('Helvetica Neue', 20, #bold);
 	font bold40 <- font('Helvetica Neue', 40, #bold);
+	/*
+	 * Clock
+	 */
+	string flood_timestep <- "00:00";
 	
 	init{
 		// repetitive messages loaded once only
@@ -320,6 +324,7 @@ global {
 		create Legend_Map;
 		create Legend_Flood_Map;
 		create Legend_Flood_Plan;
+		create Clock_Map;
 		/*
 		 * Create network agents
 		 * The use of try/catch allows to start the model without ActiveMQ. An error message is displayed.
@@ -575,6 +580,10 @@ global {
 		write "Step " + lisfloodReadingStep;
 		if lisfloodReadingStep < 14 {
 			lisfloodReadingStep <- lisfloodReadingStep + 1;
+			int tstp <- LISFLOOD_SAVEINT * lisfloodReadingStep;
+			int hh <- int(tstp / 3600);
+			int mm <- int((tstp mod 3600) / 60);
+			flood_timestep <-  "" + (hh >= 10 ? hh : "0" + hh) + ":" + (mm >= 10 ? mm : "0"+ mm);
 		}
 		else{
      		stateSimPhase <- SIM_CALCULATING_FLOOD_STATS;
@@ -646,11 +655,10 @@ global {
 		
 	action save_lf_launch_files {
 		save ("DEMfile         " + project_path + lisflood_DEM_file + 
-				"\nresroot         res\ndirroot         results\nsim_time        " + LISFLOOD_SIM_TIME + "\ninitial_tstep   " + LISFLOOD_INIT_TSTEP + 
-				"\nmassint         " + LISFLOOD_MASSINT + "\nsaveint         " + LISFLOOD_SAVEINT + "\nmanningfile     " + project_path
-				+ lisflood_rugosity_file + "\nbcifile         " + project_path + lisflood_bci_file + 
-				"\nbdyfile         " + project_path + lisflood_bdy_file + "\nstartfile       " + project_path
-				+ lisflood_start_file + "\nstartelev\nelevoff\nacceleration\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
+				"\nresroot         res\ndirroot         results\nsim_time        " + LISFLOOD_SIM_TIME + "\nsaveint         " + LISFLOOD_SAVEINT +
+				"\nmanningfile     " + project_path + lisflood_rugosity_file + "\nbcifile         " + project_path + lisflood_bci_file + 
+				"\nbdyfile         " + project_path + lisflood_bdy_file + "\nstartfile       " + project_path + lisflood_start_file +
+				"\nstartelev\nelevoff\nacceleration\nSGC_enable\n") rewrite: true to: "../"+lisflood_par_file type: "text";
 
 		if IS_OSX {
 			save ("cd " + lisflood_path + ";\n./lisflood -dir " + project_path + results_lisflood_rep + " " + project_path + lisflood_par_file + ";\nexit") rewrite: true to: lisflood_path+lisflood_bat_file type: "text";
@@ -1246,12 +1254,14 @@ global {
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
 				my_icon 	<- image_file("../images/system_icons/manager/river_flood0.jpg");
 				location 	<- {button_size.x*0.75, world.shape.height - button_size.y*0.75};
+				display_text <- "Concomitance Lothar";
 			}
 			create Button{
 				nb_button 	<- 914;
 				command	 	<- ACTION_DISPLAY_RIVER_FLOOD;
 				my_icon 	<- image_file("../images/system_icons/manager/river_flood1.jpg");
 				location 	<- {button_size.x*0.75, world.shape.height - button_size.y*2};
+				display_text <- "Concomitance Lothar 1m";
 			}
 		}
 	}
@@ -2943,6 +2953,16 @@ species River_Flood_Cell {
 species River_Flood_Cell_1m parent: River_Flood_Cell {
 	int display_me <- 2;
 }
+
+species Clock_Map {
+	geometry shape <- square(1000#m);
+	point location <- {LEGEND_POSITION_X, LEGEND_POSITION_Y-1000};
+	
+	aspect default{
+		draw shape color: #white border: #black;
+		draw flood_timestep color: #blue font: bold20 at: location - {0,40} anchor: #center;
+	}
+}
 //---------------------------- Experiment definiton -----------------------------//
 
 experiment LittoSIM_GEN_Manager type: gui schedules:[]{
@@ -2988,6 +3008,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Button 			aspect: buttons_map;
 			species Legend_Map;
 			species Legend_Flood_Map;
+			species Clock_Map;
 			
 			event mouse_down 		action: button_click_map;
 		}

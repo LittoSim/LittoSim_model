@@ -36,8 +36,6 @@ global{
 	map<string,string> lisflood_param_def <- read_configuration_file("../../" + study_area_def["LISFLOOD_PARAMS"]);
 	// four parameters of *.param file. These params differ between case studies
 	int LISFLOOD_SIM_TIME 		<- int(lisflood_param_def["LISFLOOD_SIM_TIME"]);
-	int LISFLOOD_INIT_TSTEP  	<- int(lisflood_param_def["LISFLOOD_INIT_TSTEP"]);
-	int LISFLOOD_MASSINT		<- int(lisflood_param_def["LISFLOOD_MASSINT"]);
 	int LISFLOOD_SAVEINT		<- int(lisflood_param_def["LISFLOOD_SAVEINT"]);
 	/*
 	 * Manager networking commands
