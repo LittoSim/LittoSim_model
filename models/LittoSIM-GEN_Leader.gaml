@@ -16,7 +16,7 @@ import "params_models/params_leader.gaml"
 global{
 	
 	// put to false to omit saving data on the Leader machine
-	bool save_data <- false;
+	bool save_data <- true;
 	
 	float sim_id;
 	list<string> leader_activities <- [];

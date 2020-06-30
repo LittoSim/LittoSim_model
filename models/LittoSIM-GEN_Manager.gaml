@@ -17,7 +17,7 @@ global {
 	/*
 	 * General parameters
 	 */
-	bool save_data <- false; // put to false to omit saving data on the Manager machine
+	bool save_data <- true; // put to false to omit saving data on the Manager machine
 	string project_path; // the absolete path of the current project for further use in file paths
 	/*
 	 * Files and paths of LISFLOOD
