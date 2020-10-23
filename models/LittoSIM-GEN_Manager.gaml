@@ -1174,7 +1174,7 @@ global {
 			display_text <- text_label split_with ' ' at 0;
 			display_text2 <- text_label split_with ' ' at 1;
 		}
-		if study_area_def ["LISFLOOD_BDY_MEDIUM_FILENAME"] != nil { // if there's a medium submersion
+		if study_area_def ["LISFLOOD_BDY_MEDIUM"] != nil { // if there's a medium submersion
 			create Button{
 				nb_button 	<- 55;
 				command	 	<- MEDIUM_FLOODING;
