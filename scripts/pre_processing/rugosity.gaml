@@ -12,7 +12,7 @@ global {
 	csv_file my_csv_file <- csv_file("clc_color.csv",";");
 	shape_file boundaries <- shape_file("../../includes/raw_files/convex_hull.shp");
 	shape_file land_cover <- shape_file("../../includes/estuary_coast/shapefiles/land_cover.shp");
-	string output_file <- "./output_file/gathered_MNT_Bathy.ASC";
+	string output_file <- "./output_file/rugosity.ASC";
 	
 
 	
