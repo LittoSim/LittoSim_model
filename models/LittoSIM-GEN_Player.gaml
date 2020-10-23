@@ -2275,15 +2275,17 @@ species Land_Use {
 	// the normal aspect of land use (colored by PLU type)
 	aspect map {
 		if active_display = LU_DISPLAY and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
-			if lu_code in [4,7] {
-				list<geometry> geos <- to_rectangles(shape, 11, 1);
-				loop i from: 0 to: length(geos) - 1 {
-					draw geos[i] color: my_cols[i mod 2];
-				}
-				draw shape empty: true border: my_cols[1];
-			} else {
-				draw shape color: my_color;
-			}
+//			if lu_code in [4,7] {
+//				list<geometry> geos <- to_rectangles(shape, 11, 1);
+//				loop i from: 0 to: length(geos) - 1 {
+//					draw geos[i] color: my_cols[i mod 2];
+//				}
+//				draw shape empty: true border: my_cols[1];
+//			} else {
+//				draw shape color: my_color;
+//			}
+			draw shape color: my_color; // le code au dessus qui mettait des hachures verticales pour les AU et AUs a été retiré
+			
 			if is_adapted_type		{draw file("../images/system_icons/player/wave.png") size: self.shape.width;}
 			if is_in_densification	{draw file("../images/system_icons/player/crowd.png") size: self.shape.width;}
 			if focus_on_me {

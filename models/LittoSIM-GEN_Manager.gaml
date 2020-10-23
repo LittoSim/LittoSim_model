@@ -2839,12 +2839,13 @@ species Legend_Flood_Map parent: Legend_Planning {
 	}
 	
 	aspect {
-		if show_max_water_height {
+//		if show_max_water_height {
+		// La condition a été retiré afin que la légende des hauteurs d'eau soit affiché tout le temps
 			loop i from: 0 to: length(texts) - 1 {
 				draw rectangle(rect_size) at: start_location + {0,i * rect_size.y} color: colors[i] border: #black;
 				draw texts[i] at: start_location + {rect_size.x, (i * rect_size.y)+75} color: text_color size: rect_size.y;
 			}
-		}
+//		}
 	}
 }
 
@@ -2855,12 +2856,13 @@ species Legend_Flood_Plan parent: Legend_Flood_Map {
 	}
 	
 	aspect {
-		if show_max_water_height {
+//		if show_max_water_height {
+		// La condition a été retiré afin que la légende des hauteurs d'eau soit affiché tout le temps
 			loop i from: 0 to: length(texts) - 1 {
 				draw rectangle(rect_size) at: start_location + {0,i * rect_size.y} color: colors[i] border: #black;
 				draw texts[i] at: start_location + {rect_size.x, (i * rect_size.y)+75} color: text_color size: rect_size.y;
 			}
-		}
+//		}
 	}
 }
 
