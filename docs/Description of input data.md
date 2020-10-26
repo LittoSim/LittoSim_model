@@ -4,9 +4,7 @@ All the data created have the same coordinate reference system. The vector files
 
 # The input data necessary for LittoSIM is of several types :
 
-#
 
-Y
 
 [**I – Raw data** 1](#_Toc42784826)
 
