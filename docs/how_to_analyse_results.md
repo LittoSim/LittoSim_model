@@ -20,10 +20,10 @@ IMPORTANT : The list of names &#39;coms&#39; (short names) and &#39;insees&#39; 
 
 | _Overflow\_coast-v_ | _Overflow\_coast-h_ |
 | --- | --- |
-| ![](RackMultipart20201026-4-wj5x4e_html_6c0f267ec0f00e1e.png) | ![](RackMultipart20201026-4-wj5x4e_html_fe49ccb9055b1dee.png)
- |
+| ![overflow_coast-v](https://github.com/LittoSim/LittoSim_model/blob/LittoDev/docs/overflow_coast-v.png?raw=true.png) | ![overflow_coast-h](https://github.com/LittoSim/LittoSim_model/blob/LittoDev/docs/overflow_coast-h.png?raw=true.png)
 | _Estuary-coast_ | _Cliff\_coast_ |
-| ![](RackMultipart20201026-4-wj5x4e_html_34884471bed5c8a8.png) | ![](RackMultipart20201026-4-wj5x4e_html_3a411a65a1499663.png) |
+| --- | --- |
+| ![estuary-coast](https://github.com/LittoSim/LittoSim_model/blob/LittoDev/docs/estuary_coast.png?raw=true.png) | ![cliff_coast](https://github.com/LittoSim/LittoSim_model/blob/LittoDev/docs/cliff_coast.png?raw=true.png)  |
 
 - **Define your workspace**
 
