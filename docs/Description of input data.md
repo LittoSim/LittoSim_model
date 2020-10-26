@@ -6,27 +6,9 @@ The input data necessary for LittoSIM is of several types :
 
 
 
-[**I – Raw data** 1](#_Toc42784826)
-
-[1.1.– Essential data 1](#_Toc42784827)
-
-[1.2.– Display data (optional) 2](#_Toc42784828)
-
-[**II –**  **Data to be pre-processed** 2](#_Toc42784829)
-
-[2.1 – Study area / bounding box 3](#_Toc42784830)
-
-[2.2. - DEM 3](#_Toc42784831)
-
-[2.3. – Land cover/ Rugosity 3](#_Toc42784832)
-
-[**III –**  **The data processed and ready to be used in**  **LittoSIM** 3](#_Toc42784833)
-
-[**IV –Lisflood parameter** 4](#_Toc42784834)
-
 **I – Raw data**
 
-  1. – Essential data
+  *1.1. – Essential data*
 
 - The administrative boundaries of the study area
 
@@ -70,7 +52,7 @@ _type polygon_
 
 _Example source :_ _risk prevention plan_
 
-  1. – Display data (optional)
+  1.2. – Display data (optional)
 
 Rivers representing principal rivers, t_ype polyline or polygon_
 
@@ -79,6 +61,7 @@ Roads representing principal roads, t_ype polyline or polygon_
 Coastline representing the coast, t_ype polyline or polygon_
 
 Theses are the shapefiles to improve the understanding of the map.
+
 
 **II –**  **Data to be pre-processed**
 
@@ -104,6 +87,7 @@ Two Gama scripts ([LittoSIM\_modele/scripts/pre\_processing/](https://github.com
 Like the DEM, a roughness grid is essential for the LisFlood model. This grid will have the same bounding geometry (same row and columns), the same coordinate reference system and the same resolution as DEM.
 
 This grid can be generated from the land use vector layer, like _European Corine Land Cover (CLC) :_ [_https://land.copernicus.eu/pan-european/corine-land-cover_](https://land.copernicus.eu/pan-european/corine-land-cover)
+
 
 **III –**  **The data processed and ready to be used in**  **LittoSIM**
 
