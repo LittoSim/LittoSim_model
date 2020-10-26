@@ -117,7 +117,7 @@ The script allows several types of processing : creates new spatial objects, agg
 
 The generated will be automatically stored in a folder &#39;output&#39; :
 
-- Shapefiles
+3.1. - Shapefiles
 
 - Buffer\_in\_100m
 - Buildings
@@ -133,7 +133,8 @@ The generated will be automatically stored in a folder &#39;output&#39; :
 - Urban\_plan
 - water
 
-- files .asc
+
+3.2. - files .asc
 
 - dem.asc (topographic and bathymetric grid merged)
 - rugosity.asc (math code CLC with Manning rugosity coefficents)
