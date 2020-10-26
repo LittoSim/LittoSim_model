@@ -2,7 +2,7 @@
 
 All the data created have the same coordinate reference system. The vector files will be in shapefiles format and the grids in ASCII format.
 
-# The input data necessary for LittoSIM is of several types :
+The input data necessary for LittoSIM is of several types :
 
 
 
