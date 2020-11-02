@@ -93,7 +93,7 @@ This grid can be generated from the land use vector layer, like _European Corine
 
 The data described in the first two parts will be stored in a folder, which will be named &#39;input&#39;.
 
-The files &#39;mapping.xml&#39; and the script R &#39;LittoGenData.R&#39; allow to generate and format data, in order to make them conform to LittoSIM.
+The files &#39;mapping.xml&#39; and the script R &#39;data_compiler.R&#39 (LittoSim_model/scripts/pre_processing/); allow to generate and format data, in order to make them conform to LittoSIM.
 
 The script allows several types of processing : creates new spatial objects, aggregate attributes, replace values, rename files, coordinate reference system ….
 
