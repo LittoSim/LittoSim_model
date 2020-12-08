@@ -10,13 +10,16 @@ model DEMBaty
 global {
 	
 	grid_file grid_top <-grid_file("../../includes/raw_files/rge_alti_20m_clip.tif");
-	shape_file trait_cote <- shape_file("../../includes/raw_files/tdc_clip.shp");
-	grid_file grid_bathy <- grid_file("../../includes/raw_files/idw_clip.tif");
+	string strait_cote <- "../../includes/raw_files/tdc_clip.shp";
+	string sgrid_bathy <- "../../includes/raw_files/idw_clip.tif";
+	
+	shape_file trait_cote <- nil;
+	grid_file grid_bathy <- nil;
 	shape_file convex_hull0_shape_file <- shape_file("../../includes/raw_files/convex_hull.shp");
 	shape_file coastal_defenses_file <-shape_file("../../includes/raw_files/coastal_defenses.shp");
-	string output_file <- "./output_file/gathered_MNT_Bathy.ASC";
+	string output_file <- "./output_file/gathered_MNT_Bathy.asc";
 	bool manage_coastal_defenses <- true;
-	
+	bool manage_baty_MNT <- true;
 	geometry shape <- envelope(convex_hull0_shape_file);
 
 	int stage <- 0;
@@ -25,22 +28,34 @@ global {
 	{
 		
 		
-		write("size MNT file " + length(topo));
-		write("size bathymetric file " + length(bathy));
-		
-		if(length(topo) != length(bathy))
+		if(manage_baty_MNT)
 		{
-			write "****************************\n* files has not the same   *\n* size. Check them         *\n****************************";
-		}
+			trait_cote <- shape_file(strait_cote);
+		 //	grid_bathy <- grid_file(sgrid_bathy);
+		 	write("size MNT file " + length(topo));
+			write("size bathymetric file " + length(bathy));
+			
+			if(length(topo) != length(bathy))
+			{
+				write "****************************\n* files has not the same   *\n* size. Check them         *\n****************************";
+			}
+			else
+			{
+				write "****************************\n* compatibility analysis   *\n* achieved                 *\n****************************";
+			}
+			create cote from: trait_cote;
+
+		}	
 		else
 		{
-			write "****************************\n* compatibility analysis   *\n* achieved                 *\n****************************";
+			stage <- 3;
 		}
-		create cote from: trait_cote;
+		
 		if(manage_coastal_defenses)
 		{	
 			create coastal_defense from:coastal_defenses_file;
 		}
+
 		ask topo {
 			float r;
 			float g;
@@ -82,7 +97,8 @@ global {
 			
 		}
 	}
-	reflex to_execute 
+	
+	reflex to_execute when: cycle > 1
 	{
 		switch(stage)
 		{
@@ -238,7 +254,7 @@ grid topo file:grid_top schedules:[]
 }
 
 
-grid bathy file:grid_bathy schedules:[]
+grid bathy file:manage_baty_MNT?grid_file(sgrid_bathy):nil schedules:[]
 {
 	rgb color;
 
@@ -249,13 +265,15 @@ grid bathy file:grid_bathy schedules:[]
 
 experiment DEM_Bathy type: gui {
 	parameter "Fichier de DEM (grid en TIF)" var:grid_top;
-	parameter "Fichier de bathymétrie (grid en TIF) - attention il doit être en NGF" var:grid_bathy;
-	parameter "Fichier de délimitation (ex. trait de cote) (shape file)" var:trait_cote;
+	parameter "bounding box (shape file)" var:convex_hull0_shape_file;
+	parameter "Fusion bathymetrie et MNT " var:manage_baty_MNT;
+	parameter "Fichier de bathymétrie (grid en TIF) - attention il doit être en NGF" var:sgrid_bathy;
+	parameter "Fichier de délimitation (ex. trait de cote) (shape file)" var:strait_cote;
 	parameter "suppression des digues du mnt " var:manage_coastal_defenses;
 	parameter "Fichier de digues" var:coastal_defenses_file;
 	
-	parameter "bounding box (shape file)" var:convex_hull0_shape_file;
 	parameter "output files" var:output_file;
+	
 	
 	output {
 		display map type: opengl {
@@ -266,3 +284,4 @@ experiment DEM_Bathy type: gui {
 		
 	}
 }
+
