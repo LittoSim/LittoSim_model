@@ -9,14 +9,20 @@ model DEMBaty
 
 global {
 	
-	grid_file grid_top <-grid_file("../../includes/raw_files/rge_alti_20m_clip.tif");
+	//grid_file dem0_grid_file <- grid_file("includes/raw_files/dem.asc");
+
+//	shape_file convex_hull0_shape_file <- shape_file("includes/raw_files/convex_hull.shp");
+
+	//shape_file coastal_defenses0_shape_file <- shape_file("includes/raw_files/coastal_defenses.shp");
+
+	grid_file grid_top <-grid_file("includes/raw_files/dem.asc");
 	string strait_cote <- "../../includes/raw_files/tdc_clip.shp";
 	string sgrid_bathy <- "../../includes/raw_files/idw_clip.tif";
 	
 	shape_file trait_cote <- nil;
 	grid_file grid_bathy <- nil;
-	shape_file convex_hull0_shape_file <- shape_file("../../includes/raw_files/convex_hull.shp");
-	shape_file coastal_defenses_file <-shape_file("../../includes/raw_files/coastal_defenses.shp");
+	shape_file convex_hull0_shape_file <- shape_file("includes/raw_files/convex_hull.shp");
+	shape_file coastal_defenses_file <-shape_file("includes/raw_files/coastal_defenses.shp");
 	string output_file <- "./output_file/gathered_MNT_Bathy.asc";
 	bool manage_coastal_defenses <- true;
 	bool manage_baty_MNT <- true;
@@ -48,7 +54,7 @@ global {
 		}	
 		else
 		{
-			stage <- 3;
+			stage <- 2;
 		}
 		
 		if(manage_coastal_defenses)
