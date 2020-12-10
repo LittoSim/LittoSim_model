@@ -183,11 +183,12 @@ global {
 		create Coastal_Defense from: coastal_defenses_shape with: [
 			coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
 			alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))] {
-			ask Cell overlapping self
+			/* 	ask Cell overlapping self
 				{
 					self.soil_height <- myself.alt;
 				}
-				
+				* 
+				*/
 				// if its a water_gate and not a coastal defense (cliff_coast only)
 				if type = WATER_GATE {
 					create Water_Gate {
