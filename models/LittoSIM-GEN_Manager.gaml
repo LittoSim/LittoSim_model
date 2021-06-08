@@ -2637,6 +2637,7 @@ species District {
 	
 	aspect flooding { draw shape color: rgb (0,0,0,0) border:#black; }
 	aspect planning { draw shape color: rgb(255,255,212) border: #black; }
+	aspect planning_border { draw shape color: #transparent border: #black width:5; }
 	
 	int current_population {  return sum(LUs accumulate (each.population));	}
 	
@@ -3031,6 +3032,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species Land_Use 		aspect: base;
 			species Road 	 		aspect: base;
 			species River			aspect: base;
+			species District 		aspect: planning_border;
 			species Polycell		aspect: base;
 			species Coastal_Defense aspect: base;
 			species River_Flood_Cell aspect: base;
