@@ -81,6 +81,8 @@ global{
 	int PROBA_RUPTURE_DUNE_STATUS_MEDIUM 	<- int(study_area_def["PROBA_RUPTURE_DUNE_MEDIUM"]);
 	int PROBA_RUPTURE_DUNE_STATUS_GOOD 		<- int(study_area_def["PROBA_RUPTURE_DUNE_GOOD"]); 	// 0 = never
 	int RADIUS_RUPTURE 						<- int(study_area_def["RADIUS_RUPTURE"]); // the extent of ruptures in #m
+	float MAX_HEIGHT_RUPTURE 				<- float(study_area_def["MAX_HEIGHT_RUPTURE"]); // the max height of a rupture in m. If not specified, it takes 0 and this constraint is omitted	 
+	
 	/*
 	 * Demographic parameters
 	 */

@@ -556,6 +556,7 @@ global {
 			lisfloodReadingStep <- 0;
 			last_played_event <- length(list_flooding_events.keys) - 1;
 			send_flood_results <- true;
+			ask Coastal_Defense { do record_max_water_height; }
 			map<string,unknown> vmap <- user_input("OK", world.get_message('MSG_SIM_FINISHED')::true);
 			sub_event <- 1;
 			stateSimPhase <- SIM_SHOWING_LISFLOOD;
@@ -700,7 +701,7 @@ global {
 				soil_color <- #black;
 			}
 		}
-		// variables to golor the flooding display
+		// variables to color the flooding display
 		land_max_height <- Cell max_of(each.soil_height);
 		land_color_interval <- land_max_height / LEGEND_SIZE;
 		cells_max_depth <- abs(min(Cell where (each.cell_type = 0 and each.soil_height != no_data_value) collect each.soil_height));
@@ -1046,7 +1047,7 @@ global {
 		save Land_Use type:"shp" to: shapes_export_path+"Land_Use_" + num_round + ".shp"
 				attributes: ['id'::id, 'lu_code'::lu_code, 'dist_code'::dist_code, 'density_class'::density_class, 'population'::population];
 		save Coastal_Defense type: "shp" to: shapes_export_path+"Coastal_Defense_" + num_round + ".shp"
-				attributes: ['id'::coast_def_id, 'dist_code'::district_code, 'type'::type, 'status'::status, 'height'::height, 'alt'::alt];
+				attributes: ['id'::coast_def_id, 'dist_code'::district_code, 'type'::type, 'status'::status, 'height'::height, 'alt'::alt, 'max_water_height'::max_water_height];
 
 		ask districts_in_game {
 			int popul <- round_population[num_round];
@@ -2037,6 +2038,7 @@ species Coastal_Defense {
 	bool maintained		 <- false; // if DUNE
 	int maintain_status  <- 0;
 	int slices 			 <- 4;  // if CORD
+	float max_water_height  	<- 0.0;  // max water height reached during last flooding
 	float height_before_ganivelle;
 	bool is_protected_by_cord <- false;
 	list<Cell> cells;
@@ -2230,11 +2232,14 @@ species Coastal_Defense {
 			int rupture_radius <- is_protected_by_cord ? RADIUS_RUPTURE * 2 : RADIUS_RUPTURE; 
 			rupture_area <- circle(rupture_radius#m,(cells[cIndex]).location);
 			// rupture is applied on relevant area cells : circle of radius_rupture
-			float soil_height_after_rupture <- max([0, self.alt - self.height]);
+			
+			// If a MAX_HEIGHT_RUPTURE has been specified in study_area.conf then the height of the rupture is limited  
+			float soil_height_after_rupture <- MAX_HEIGHT_RUPTURE = 0 ? max([0, self.alt - self.height]) : max([0, (self.alt - min([self.height,MAX_HEIGHT_RUPTURE]))]);
+			
 			ask Cell where(each.soil_height > 0) overlapping rupture_area {
 				soil_height <- min([soil_height, soil_height_after_rupture]);
 			}
-			write "rupture " + type + " n°" + coast_def_id + "(" + world.dist_code_sname_correspondance_table at district_code + ", status " + status + ", height " + height + ", alt " + alt + ")";
+			write "rupture " + type + " n°" + coast_def_id + "(" + world.dist_code_sname_correspondance_table at district_code + ", status " + status + ", height " + height + ", alt " + alt + ", soil_height_after_rupture " + soil_height_after_rupture  + ")";
 		}
 	}
 	
@@ -2249,6 +2254,9 @@ species Coastal_Defense {
 		rupture_area <- nil;
 	}
 	
+	action record_max_water_height {
+		max_water_height <- cells max_of (each.max_water_height);
+	}
 	action install_ganivelle {
 		// if its in a bad status, it evolves in the next step 
 		if status = STATUS_BAD { counter_status <- STEPS_REGAIN_STATUS_GANIVELLE - 1; }
@@ -2980,6 +2988,8 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 	}
 	
 	output {
+		// organization of the interferface
+		//does not work-- layout horizontal([vertical([0::5000,1::5000])::5000,vertical([stack([2::5000,3::5000,4::5000])::5000,vertical([stack([5::5000,6::5000,7::5000])::5000,8::5000])::5000])::5000]) tabs:true editors: false;
 		
 		display "Game control"{	
 			graphics "Master" {

@@ -78,7 +78,6 @@ global {
 	bool send_flood_results <- true; // send or not results to players
 	point button_size;
 	
-	float alt_TEMP <- 0.0;
 	/*
 	 * Budget lists to draw evolution graphs
 	 */
@@ -740,7 +739,7 @@ global {
 	}
 	// method used to create a new dem file for which soilHeight does not take dikes height into account
 	action remove_dikeHeight_and_save_dem {
-		//remvoe dikeHeight
+		//remove dikeHeight
 		ask Coastal_Defense {
 			ask cells { soil_height <- soil_height - myself.height;}
 			}
