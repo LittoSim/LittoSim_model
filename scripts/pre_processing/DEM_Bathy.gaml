@@ -15,8 +15,12 @@ global {
 
 	//shape_file coastal_defenses0_shape_file <- shape_file("includes/raw_files/coastal_defenses.shp");
 
+	
+	int CELL_SIZE <- 20#m; // for archetypes overflow_coast this value is 20#m  
+	//int CELL_SIZE <- 10#m; // for archetype cliff_coast this value is 10#m   
+	
 	grid_file grid_top <-grid_file("includes/raw_files/dem.asc");
-	string strait_cote <- "../../includes/raw_files/tdc_clip.shp";
+	string strait_cote <- "../../includes/raw_files/coastline.shp";
 	string sgrid_bathy <- "../../includes/raw_files/idw_clip.tif";
 	
 	shape_file trait_cote <- nil;
@@ -30,6 +34,8 @@ global {
 
 	int stage <- 0;
 	list<mnt> mnt_to_execute<-[];
+	
+	
 	init
 	{
 		
@@ -66,14 +72,14 @@ global {
 			float r;
 			float g;
 			float b;
-			if (grid_value < 20) {
+			if (grid_value < CELL_SIZE) {
 				r <- 76 + (26 * (grid_value - 7) / 13);
 				g <- 153 - (51 * (grid_value - 7) / 13);
 				b <- 0.0;
 			} else {
-				r <- 102 + (122 * (grid_value - 20) / 19);
-				g <- 51 + (173 * (grid_value - 20) / 19);
-				b <- 224 * (grid_value - 20) / 19;
+				r <- 102 + (122 * (grid_value - CELL_SIZE) / 19);
+				g <- 51 + (173 * (grid_value - CELL_SIZE) / 19);
+				b <- 224 * (grid_value - CELL_SIZE) / 19;
 			}
 
 			self.color <- rgb(r, g, b);
@@ -82,14 +88,14 @@ global {
 			float r;
 			float g;
 			float b;
-			if (grid_value < 20) {
+			if (grid_value < CELL_SIZE) {
 				r <- 76 + (26 * (grid_value - 7) / 13);
 				g <- 153 - (51 * (grid_value - 7) / 13);
 				b <- 0.0;
 			} else {
-				r <- 102 + (122 * (grid_value - 20) / 19);
-				g <- 51 + (173 * (grid_value - 20) / 19);
-				b <- 224 * (grid_value - 20) / 19;
+				r <- 102 + (122 * (grid_value - CELL_SIZE) / 19);
+				g <- 51 + (173 * (grid_value - CELL_SIZE) / 19);
+				b <- 224 * (grid_value - CELL_SIZE) / 19;
 			}
 
 			self.color <- rgb(r, g, b);
@@ -228,9 +234,9 @@ species coastal_defense
 	}
 }
 
-//grid final_mnt cell_width:20#m cell_height:20#m;
+//grid final_mnt cell_width and cell_height are 20#m for some archtypes and 10#m for other archetypes ; this value value can be changed withe global paaramter CELL_SIZE 
 
-grid mnt cell_width:20#m cell_height:20#m schedules:mnt_to_execute  parallel:true neighbors:8
+grid mnt cell_width: CELL_SIZE cell_height: CELL_SIZE schedules:mnt_to_execute  parallel:true neighbors:8
 {
 	rgb color<- #black;
 	
