@@ -2111,9 +2111,6 @@ species Coastal_Defense {
 		if !empty(Coastal_Defense at_distance 30 where (each.type=COAST_DEF_TYPE_CORD)) {
 			is_protected_by_cord <- true;
 		}
-		if type != COAST_DEF_TYPE_CORD {
-			do build_coast_def;
-		}
 	}
 	
 	action initialize_alt {

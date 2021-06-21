@@ -2,11 +2,11 @@
 
 <mapping>
   <!-- app-name identify the study area and is be used to name some out put files-->
-	<app-name>rochefort</app-name>
+	<app-name>estuary_coast</app-name>
 	<!-- input-files is the folder where raw data is located -->
-	<input-files>rochefort_input_files</input-files>
+	<input-files>input_files_github</input-files>
 	<!-- the folder where output data is saved. If it doesn't exist, R will create it -->
-	<output-files>rochefort_output_files</output-files>
+	<output-files>output_files_github</output-files>
 	<!-- the resolution of the Land_Use standard cells -->
 	<grid-cell-size>200</grid-cell-size>
 	
@@ -16,8 +16,8 @@
 	<file output-name="coastline.shp" input-name="TCH.shp"></file>
 	<file output-name="rpp.shp" input-name="PPR.shp"></file>
 	<file output-name="spa.shp" input-name="ZPS.shp"></file>
-	<file output-name="water.shp" input-name="COURS_D_EAU.shp"></file>
-	<file output-name="dem.asc" input-name="recalcul_mnt_val_pt.asc"></file>
+	<file output-name="river.shp" input-name="COURS_D_EAU.shp"></file>
+	<file output-name="dem.asc" input-name="dem_maj.asc"></file>
 
 
   <!-- the buildings file -->
@@ -34,7 +34,7 @@
 
 
   <!-- The PLU urban plan file-->
-	<file output-name="urban_plan.shp" input-name="sig_agglo_PLU_ZONE_URBA_c.shp">
+	<file output-name="urban_plan.shp" input-name="PLU.shp">
 		<attribute output-name="unit_code" type="string">
 			<input-name>typezone</input-name>
 			<!-- All possible values should be listed here with their replacement value-->
@@ -64,7 +64,7 @@
 	
 	
 	<!-- The districts file -->
-	<file output-name="districts.shp" input-name="COMMUNE_clip_m_Charente2.shp">
+	<file output-name="districts.shp" input-name="COMMUNE.shp">
 		<attribute output-name="dist_code" type="string">
 			<input-name>INSEE_COM</input-name>
 		</attribute>
@@ -84,7 +84,7 @@
 
 
   <!-- Coastal defenses file -->
-	<file output-name="coastal_defenses.shp" input-name="defense_cote1_JS_nonull.shp">
+	<file output-name="coastal_defenses.shp" input-name="defense_cote.shp">
 		<attribute output-name="dist_code" type="string">
 			<input-name>GroupID</input-name>
 		</attribute>
