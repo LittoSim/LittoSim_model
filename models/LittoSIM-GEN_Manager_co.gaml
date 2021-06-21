@@ -700,7 +700,7 @@ global {
 		}
 		ask Cell {
 			if soil_height > 0 {
-				cell_type <-1; //  1 -> land
+				cell_type <- 1; //  1 -> land
 			} else if soil_height = -9999 {
 				cell_type <- -1; // NODATA
 				soil_color <- #black;
@@ -2112,7 +2112,7 @@ species Coastal_Defense {
 	}
 	
 	action initialize_alt {
-		alt <-  height + (cells max_of(each.soil_height));
+		alt <-  height + (cells mean_of(each.soil_height));
 	}
 
 	action initialize_soil_height_according_to_alt {

@@ -77,6 +77,7 @@ global {
 	bool submersion_ok <- false; // the submersion is calculated successfully by Lisflood, and can be displayed
 	bool send_flood_results <- true; // send or not results to players
 	point button_size;
+	
 	/*
 	 * Budget lists to draw evolution graphs
 	 */
@@ -183,11 +184,6 @@ global {
 		create Coastal_Defense from: coastal_defenses_shape with: [
 			coast_def_id::int(read("ID")),type::string(read("type")), status::string(read("status")),
 			alt::float(get("alt")), height::float(get("height")), district_code::string(read("dist_code"))] {
-			ask Cell overlapping self
-				{
-					self.soil_height <- myself.alt;
-				}
-				
 				// if its a water_gate and not a coastal defense (cliff_coast only)
 				if type = WATER_GATE {
 					create Water_Gate {
@@ -263,6 +259,16 @@ global {
 		ask Coastal_Defense {
 			do init_coastal_def;
 		}
+		// the following process proceeds in 2 steps 
+		// step 1 : set the alt of the coatal def as the sum of the height of the coastal def and the max soil_height of the underneath cells 
+		ask Coastal_Defense {
+			do initialize_alt;
+		}
+		// step 2 : set the soil_height of the underneath cells, to the alt of the coastal def
+		ask Coastal_Defense {
+			do initialize_soil_height_according_to_alt;
+		}
+		
 		// initialize lu cells
 		ask Land_Use {
 			cells <- Cell overlapping self;
@@ -695,7 +701,7 @@ global {
 		}
 		ask Cell {
 			if soil_height > 0 {
-				cell_type <-1; //  1 -> land
+				cell_type <- 1; //  1 -> land
 			} else if soil_height = -9999 {
 				cell_type <- -1; // NODATA
 				soil_color <- #black;
@@ -730,6 +736,28 @@ global {
 			}
 			save dem_data to: dem_filename rewrite: false;
 			save rug_data to: rug_filename rewrite: false;
+		}
+	}
+	// method used to create a new dem file for which soilHeight does not take dikes height into account
+	action remove_dikeHeight_and_save_dem {
+		//remove dikeHeight
+		ask Coastal_Defense {
+			ask cells { soil_height <- soil_height - myself.height;}
+			}
+		// save the dem
+		string dem_filename <-  "dem_co_new.asc";
+		string h_txt <- 'ncols         ' + GRID_NB_COLS + '\nnrows         ' + GRID_NB_ROWS + '\nxllcorner     ' + GRID_XLLCORNER
+							+ '\nyllcorner     ' + GRID_YLLCORNER + '\ncellsize      ' + GRID_CELL_SIZE + '\nNODATA_value  -9999';
+		// headers
+		save h_txt rewrite: true to: dem_filename type: "text";
+		// body
+		string dem_data;
+		loop rw from: 0 to: GRID_NB_ROWS - 1 {
+			dem_data <- "";
+			loop cl from: 0 to: GRID_NB_COLS - 1 {
+				dem_data <- dem_data + " " + Cell[cl, rw].soil_height;
+			}
+			save dem_data to: dem_filename rewrite: false;
 		}
 	}
 	
@@ -2027,7 +2055,7 @@ species Coastal_Defense {
 	string type;     // DIKE or DUNE ord CORD
 	string status;	//  "GOOD" "MEDIUM" "BAD"  
 	float height;
-	float alt; 
+	float alt <- 0.0; 
 	rgb color 			 <- #pink;
 	int counter_status	 <- 0;
 	bool rupture		 <- false;
@@ -2087,6 +2115,19 @@ species Coastal_Defense {
 			do build_coast_def;
 		}
 	}
+	
+	action initialize_alt {
+		alt <-  height + (cells mean_of(each.soil_height));
+	}
+
+	action initialize_soil_height_according_to_alt {
+		ask cells { 
+			soil_height <- myself.alt ;
+			soil_height_before_broken <- soil_height;
+			do init_cell_color();
+		}
+	}
+	
 	// build the coastal defense : modify relevant dem cells
 	action build_coast_def {
 		ask cells  {
