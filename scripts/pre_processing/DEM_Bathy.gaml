@@ -5,7 +5,7 @@
 * Tags: Tag1, Tag2, TagN
 ***/
 
-model DEMBaty
+model DEMBathy
 
 global {
 	
@@ -19,17 +19,20 @@ global {
 	int CELL_SIZE <- 20#m; // for archetypes overflow_coast this value is 20#m  
 	//int CELL_SIZE <- 10#m; // for archetype cliff_coast this value is 10#m   
 	
+	int NCOLS <- 906 ;   // NCOLS of the DEM in input and out 
+	int NROWS <- 631 ;  // NROWS of the DEM in input and out
+	
 	grid_file grid_top <-grid_file("includes/raw_files/dem.asc");
-	string strait_cote <- "../../includes/raw_files/coastline.shp";
+	string strait_cote <- "../../includes/raw_files/coastline2.shp";
 	string sgrid_bathy <- "../../includes/raw_files/idw_clip.tif";
 	
 	shape_file trait_cote <- nil;
 	grid_file grid_bathy <- nil;
-	shape_file convex_hull0_shape_file <- shape_file("includes/raw_files/convex_hull.shp");
-	shape_file coastal_defenses_file <-shape_file("includes/raw_files/coastal_defenses.shp");
+	shape_file convex_hull0_shape_file <- shape_file("includes/raw_files/convex_hull2.shp");
+	shape_file coastal_defenses_file <-shape_file("includes/raw_files/coastal_defenses - extended to generate DEM without coastal defenses.shp");
 	string output_file <- "./output_file/gathered_MNT_Bathy.asc";
 	bool manage_coastal_defenses <- true;
-	bool manage_baty_MNT <- true;
+	bool manage_bathy_MNT <- true;
 	geometry shape <- envelope(convex_hull0_shape_file);
 
 	int stage <- 0;
@@ -40,7 +43,7 @@ global {
 	{
 		
 		
-		if(manage_baty_MNT)
+		if(manage_bathy_MNT)
 		{
 			trait_cote <- shape_file(strait_cote);
 		 //	grid_bathy <- grid_file(sgrid_bathy);
@@ -236,7 +239,7 @@ species coastal_defense
 
 //grid final_mnt cell_width and cell_height are 20#m for some archtypes and 10#m for other archetypes ; this value value can be changed withe global paaramter CELL_SIZE 
 
-grid mnt cell_width: CELL_SIZE cell_height: CELL_SIZE schedules:mnt_to_execute  parallel:true neighbors:8
+grid mnt width: NCOLS height: NROWS /*cell_width: CELL_SIZE cell_height: CELL_SIZE */ schedules:mnt_to_execute  parallel:true neighbors:8
 {
 	rgb color<- #black;
 	
@@ -266,7 +269,7 @@ grid topo file:grid_top schedules:[]
 }
 
 
-grid bathy file:manage_baty_MNT?grid_file(sgrid_bathy):nil schedules:[]
+grid bathy file:manage_bathy_MNT?grid_file(sgrid_bathy):nil schedules:[]
 {
 	rgb color;
 
@@ -278,7 +281,7 @@ grid bathy file:manage_baty_MNT?grid_file(sgrid_bathy):nil schedules:[]
 experiment DEM_Bathy type: gui {
 	parameter "Fichier de DEM (grid en TIF)" var:grid_top;
 	parameter "bounding box (shape file)" var:convex_hull0_shape_file;
-	parameter "Fusion bathymetrie et MNT " var:manage_baty_MNT;
+	parameter "Fusion bathymetrie et MNT " var:manage_bathy_MNT;
 	parameter "Fichier de bathymétrie (grid en TIF) - attention il doit être en NGF" var:sgrid_bathy;
 	parameter "Fichier de délimitation (ex. trait de cote) (shape file)" var:strait_cote;
 	parameter "suppression des digues du mnt " var:manage_coastal_defenses;
