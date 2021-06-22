@@ -1,5 +1,5 @@
 ################################################
-# LittoSIM - manager_data version du 17/06/2021
+# LittoSIM - manager_data version du 22/06/2021
 # @Authors: Ahmed Laatabi et compléments : Cécilia Pignon-Mussaud, Nicolas Marilleau
 # This script allows you to generate different diagrams to analyze the results of a LittoSIM simulation/game session, after the workshop.
 # This script is tested, and works for R version 3.5.3. et 3.6.3/ Ce script est testÃ©, et fonctionne bien sous R, version 3.5.3. et 3.6.3

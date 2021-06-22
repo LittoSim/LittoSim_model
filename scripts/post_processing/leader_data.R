@@ -1,6 +1,8 @@
-#
+################################################
+# LittoSIM - leader_data version du 22/06/2021
+# @Authors: Ahmed Laatabi et compléments : Cécilia Pignon-Mussaud, Nicolas Marilleau
+# This script allows you to generate different diagrams to analyze the results of a LittoSIM simulation/game session, after the workshop.
 # Ce script est testé, et fonctionne bien sous R, version 3.6.3
-#
 # Le codage "utf-8" pour supporter les caractères de la langue française
 options(encoding = "utf-8")
 
