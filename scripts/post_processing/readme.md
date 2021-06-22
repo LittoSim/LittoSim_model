@@ -1,0 +1,1 @@
+The documentation is in the file 'docs\How_to_analyse_results.md'

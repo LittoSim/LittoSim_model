@@ -2,7 +2,7 @@
 
 This document presents GIS geoprocessing to create the DEM and rugosity grid.
 
-Two Gama scripts can automatically generate a DEM (land-sea continuum) and a rugosity grid : DEM\_Baty.gaml ; rugosity.gaml ([LittoSIM\_modele/scripts/pre\_processing/](https://github.com/LittoSim/LittoSim_model/tree/LittoDev/scripts/pre_processing)).
+Two Gama scripts can automatically generate a DEM (land-sea continuum) and a rugosity grid : DEM\_Bathy.gaml ; rugosity.gaml ([LittoSIM\_modele/scripts/pre\_processing/](https://github.com/LittoSim/LittoSim_model/tree/LittoDev/scripts/pre_processing)).
 
 **1 . DEM**
 
