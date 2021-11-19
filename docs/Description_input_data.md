@@ -77,7 +77,7 @@ LittoSIM requires an altimetry database as input a Digital Elevation Model (DEM)
 
 The type of coast implies the choice of the resolution of the bathymetry and the spatial extent.
 
-If this database is not available in the study area (example Litto3D® IGN), it&#39;s possible to generate it, by merging the topographic and bathymetric part and by defining the same altimetric system (example in metropolitan France: NGF/IGN69, which is the &quot;zero level&quot; of reference in France and determined by the Marseille tide gauge).
+If this database is not available in the study area (example Litto3D® IGN/SHOM), it&#39;s possible to generate it, by merging the topographic and bathymetric part and by defining the same altimetric system (example in metropolitan France: NGF/IGN69, which is the &quot;zero level&quot; of reference in France and determined by the Marseille tide gauge).
 Note that the quality of the input data will strongly influence the results of the submersion simulations.
 
 Two Gama scripts ([LittoSIM\_modele/scripts/pre\_processing/](https://github.com/LittoSim/LittoSim_model/tree/LittoDev/scripts/pre_processing)DEM\_Baty.gaml and rugosity.gaml) and the document &#39;Generate\_DEM\_rugosity\_grid&#39; ([LittoSim\_model/docs](https://github.com/LittoSim/LittoSim_model/tree/LittoDev/docs)/) presents data processing to create the DEM and rugosity grid.
