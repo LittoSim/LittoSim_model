@@ -170,7 +170,7 @@ global {
 		/*
 		 * Create GIS agents
 		 * only the disctrict code is read from the districts file, other variables are read from the
-		 * study_area.conf (names) and population from the land_use file
+		 * study_area.conf (names) and population from the Land_use file
 		 */
 		 list<string> d_codes <- dist_code_sname_correspondance_table.keys;
 		create District from: districts_shape with: [district_code::string(read("dist_code"))];
@@ -216,7 +216,7 @@ global {
 		/*
 		 * We load only land use units of active districts
 		 */
-		create Land_Use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
+		create Land_use from: land_use_shape with: [id::int(read("ID")), lu_code::int(read("unit_code")), dist_code::string(read("dist_code")), population::round(float(get("unit_pop")))]{
 			if dist_code in d_codes {
 				lu_name <- lu_type_names[lu_code];
 				if lu_code in [LU_TYPE_AU,LU_TYPE_AUs] {
@@ -242,15 +242,15 @@ global {
 		}
 		
 		// fix populations issues
-		ask Land_Use where (each.lu_code in [LU_TYPE_N,LU_TYPE_A] and each.population > 0) { // move populations of Natural and Agricultural cells
+		ask Land_use where (each.lu_code in [LU_TYPE_N,LU_TYPE_A] and each.population > 0) { // move populations of Natural and Agricultural cells
 			loop i from: 1 to: population {
-				ask one_of(Land_Use where (each.dist_code = self.dist_code and each.lu_name = "U")){
+				ask one_of(Land_use where (each.dist_code = self.dist_code and each.lu_name = "U")){
 					population <- population + 1;
 				}
 			}
 			population <- 0;
 		}
-		ask Land_Use where (each.lu_code = LU_TYPE_U and each.population < MIN_POP_AREA) { // each U should have a min pop
+		ask Land_use where (each.lu_code = LU_TYPE_U and each.population < MIN_POP_AREA) { // each U should have a min pop
 			population <- MIN_POP_AREA;
 		}
 		//*****
@@ -270,7 +270,7 @@ global {
 		}
 		
 		// initialize lu cells
-		ask Land_Use {
+		ask Land_use {
 			cells <- Cell overlapping self;
 			mean_alt <- cells mean_of(each.soil_height);
 		}
@@ -287,7 +287,7 @@ global {
 		}
 		// giving LU type to river inundation cells 
 		if file_exists(river_flood_shape.path) {
-			ask Land_Use {
+			ask Land_use {
 				ask River_Flood_Cell inside self {
 					lu_type <- myself.lu_code;
 					if lu_type = LU_TYPE_U and myself.density_class = POP_DENSE {
@@ -311,7 +311,7 @@ global {
 		ask districts_in_game{
 			district_name <- world.dist_code_sname_correspondance_table at district_code;
 			district_long_name <- world.dist_code_lname_correspondance_table at district_code;
-			LUs 	<- Land_Use where (each.dist_code = self.district_code);
+			LUs 	<- Land_use where (each.dist_code = self.district_code);
 			cells 	<- LUs accumulate (each.cells);
 			tax_unit  <- float(tax_unit_table at district_name);
 			budget 	<- int(self.current_population() * tax_unit * (1 + initial_budget));
@@ -344,6 +344,7 @@ global {
 			create Network_Game_Manager;
 			create Network_Listener_To_Leader;
 			create Network_Control_Manager;	
+
 		} catch {
 			write "Error connecting to the server. This may be caused by:";
 			write "   - Apache Active MQ is not running.";
@@ -378,7 +379,7 @@ global {
 	// the number of people to distibute on districts
 	int population_to_dispatch {
 		return round(sum(districts_in_game accumulate (each.current_population())) * ANNUAL_POP_GROWTH_RATE) +
-					(length(Land_Use where(each.is_in_densification)) * ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION);
+					(length(Land_use where(each.is_in_densification)) * ANNUAL_POP_IMMIGRATION_IF_DENSIFICATION);
 	}
 
 	action new_round {
@@ -403,12 +404,12 @@ global {
 			 * Distribute populations between LU units
 			 */
 			population_still_to_dispatch <- population_to_dispatch();
-			ask shuffle(Land_Use){
+			ask shuffle(Land_use){
 				pop_updated <- false;
 				do evolve_AU_to_U;
 			}
-			ask shuffle(Land_Use){ do evolve_pop_U_densification; }
-			ask shuffle(Land_Use){ do evolve_pop_U_standard; }
+			ask shuffle(Land_use){ do evolve_pop_U_densification; }
+			ask shuffle(Land_use){ do evolve_pop_U_standard; }
 			
 			/*
 			 * Remove the ruptures of the last submersion after the new round
@@ -1072,7 +1073,7 @@ global {
 	
 	action save_round_data {
 		int num_round <- game_round;
-		save Land_Use type:"shp" to: shapes_export_path+"Land_Use_" + num_round + ".shp"
+		save Land_use type:"shp" to: shapes_export_path+"Land_use" + num_round + ".shp"
 				attributes: ['id'::id, 'lu_code'::lu_code, 'dist_code'::dist_code, 'density_class'::density_class, 'population'::population];
 		save Coastal_Defense type: "shp" to: shapes_export_path+"Coastal_Defense_" + num_round + ".shp"
 				attributes: ['id'::coast_def_id, 'dist_code'::district_code, 'type'::type, 'status'::status, 'height'::height, 'alt'::alt, 'max_water_height'::max_water_height];
@@ -1123,6 +1124,23 @@ global {
      			do send_flooding_results_to_district (dd);
      		}
 		}
+		
+		//BOT information
+		map<string,unknown> msg ;
+		map<string,float> flood_data;
+		loop d over:districts_in_game{
+			flood_data <- ['Udense'::d.Udense_1c+d.Udense_maxc,'U_1c'::d.U_1c,'U_maxc'::d.U_maxc,'Us_1c'::d.Us_1c,'Us_maxc'::d.Us_maxc];
+			put flood_data key:d.district_name in:msg;
+		}
+		put 'FLOOD_DATA' key:'TOPIC' in:msg;
+		
+		loop i over:districts_in_game{
+			ask Network_Game_Manager{
+			do send to: i.district_code contents: msg;
+			}
+		}
+		
+		//--------------------------------------------------//	
      	write "Flooding results sent!";
 	}
 	
@@ -1134,7 +1152,7 @@ global {
 		ask d.LUs {
 			add string(flooded_times) at: "ftimes"+self.id to: nmap;
 		}
-		list<Land_Use> luss <- d.LUs where (each.nb_watered_cells > 0 and !each.marked);
+		list<Land_use> luss <- d.LUs where (each.nb_watered_cells > 0 and !each.marked);
 		int i <- 0;
  		int n_cells <- min([5, length(luss)]);
  		ask n_cells among (shuffle(luss)) { // sending 5 (maximum) flooded lu cells to players as flood marks
@@ -1498,7 +1516,7 @@ species Network_Game_Manager skills: [network]{
 							else{
 								switch self.action_type {
 									match PLAYER_ACTION_TYPE_LU {
-										Land_Use tmp  	<- Land_Use first_with (each.id = self.element_id);
+										Land_use tmp  	<- Land_use first_with (each.id = self.element_id);
 										element_shape 	<- tmp.shape;
 										location 		<- tmp.location;
 										tmp.my_cols[0]  <- previous_lu_name = "N" ? #palegreen : (previous_lu_name = "A" ? rgb(225, 165, 0) : #grey);
@@ -1603,7 +1621,7 @@ species Network_Game_Manager skills: [network]{
 					}
 					match_one [ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
 								ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs] {
-						Land_Use luse <- Land_Use first_with(each.id = element_id);
+						Land_use luse <- Land_use first_with(each.id = element_id);
 						if luse != nil {
 							ask luse {
 					 			do modify_LU (world.lu_name_of_command(myself.command));
@@ -1613,7 +1631,7 @@ species Network_Game_Manager skills: [network]{
 				 		}
 					}
 				 	match ACTION_MODIFY_LAND_COVER_Ui {
-				 		Land_Use luse <- Land_Use first_with(each.id = element_id);
+				 		Land_use luse <- Land_use first_with(each.id = element_id);
 						if luse != nil {
 							ask luse {
 					 			is_in_densification <- true;
@@ -1636,9 +1654,9 @@ species Network_Game_Manager skills: [network]{
 		do send to: act.district_code contents: msg;
 	}
 	// send updates on lu cells to player
-	reflex update_LU when: length (Land_Use where(each.not_updated)) > 0 {
+	reflex update_LU when: length (Land_use where(each.not_updated)) > 0 {
 		string msg <- "";
-		ask Land_Use where(each.not_updated) {
+		ask Land_use where(each.not_updated) {
 			map<string,string> msg <- ["TOPIC"::ACTION_LAND_COVER_UPDATED, "id"::id, "lu_code"::lu_code,
 							"population"::population, "is_in_densification"::is_in_densification];
 			not_updated <- false;
@@ -1756,7 +1774,14 @@ species Network_Control_Manager skills:[remoteGUI]{
 	}
 }
 //------------------------------ End of Network_Control_Manager -------------------------------//
+species Network_bot skills:[network]{
+	init {do connect to: SERVER with_name:"Bot_communication";}
 
+	reflex send_message{
+		
+	}
+
+}
 species Network_Listener_To_Leader skills:[network]{
 	
 	init{	do connect to: SERVER with_name: LISTENER_TO_LEADER;	}
@@ -2388,7 +2413,7 @@ grid Cell width: GRID_NB_COLS height: GRID_NB_ROWS schedules:[] neighbors: 8 {
 }
 //------------------------------ End of grid -------------------------------//
 
-species Land_Use {
+species Land_use {
 	int id;
 	string lu_name;
 	int lu_code;
@@ -2406,7 +2431,7 @@ species Land_Use {
 	int population;
 	list<Cell> cells;
 	float mean_alt <- 0.0; // the mean altitude
-	int nb_watered_cells; // number of flooded DEM cells in this Land_Use
+	int nb_watered_cells; // number of flooded DEM cells in this Land_use
 	int flooded_times <- 0; // the number of times that the cell has been flooded
 	bool marked <- false;  // a flood mark (flag) has been created on this land use
 	list<rgb> my_cols <- [#gray, #gray]; // list of two colors to draw transitive states (AU, AUs)
@@ -2576,7 +2601,7 @@ species District {
 	string district_code; 
 	string district_name;
 	string district_long_name;
-	list<Land_Use> LUs;
+	list<Land_use> LUs;
 	list<Cell> cells;
 	map<int, int> buttons_states <- [];
 	list<Flood_Mark> flood_marks <- [];
@@ -2694,6 +2719,7 @@ species District {
 		ask Network_Game_Manager{
 			do send to: myself.district_code contents: msg;
 		}
+		
 	}
 	// statistiques are sent ot leader
 	action inform_leader_stats {
@@ -2977,7 +3003,7 @@ species Flood_Mark {
 	float max_w_h_per_cent;
 	float mean_w_h;
 	int sub_num <- 0;
-	Land_Use mylu <- nil;
+	Land_use mylu <- nil;
 	
 	map<string,unknown> build_map_from_fm_attributes {
 		map<string,string> res <- [
@@ -3057,7 +3083,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 			species River_Flood_Cell aspect: base;
 			species River_Flood_Cell_1m aspect: base;
 			species Coastal_Defense aspect: base;
-			species Land_Use 		aspect: quadrillage;
+			species Land_use 		aspect: quadrillage;
 			species Water_Gate		aspect: base;
 			species Protected_Area 	aspect: base;
 			species Flood_Risk_Area aspect: base;
@@ -3077,7 +3103,7 @@ experiment LittoSIM_GEN_Manager type: gui schedules:[]{
 				}
 			}
 			species District 		aspect: planning;
-			species Land_Use 		aspect: base;
+			species Land_use 		aspect: base;
 			species Road 	 		aspect: base;
 			species River			aspect: base;
 			species District 		aspect: planning_border;
