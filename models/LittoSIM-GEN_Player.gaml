@@ -69,6 +69,16 @@ global{
 	bool dieppe_pebbles_allowed <- false;
 	float dieppe_pebbles_discount <- 1.0;
 	
+	
+	// image for dike and dunes
+	image_file dike_symbol_img <- image_file("../images/system_icons/player/normal_dike_symbol.png");
+	image_file dune_symbol_img <- image_file("../images/system_icons/player/normal_dune_symbol.png");
+	image_file cord_symbol_img <- image_file("../images/system_icons/player/normal_cord_symbol.png");
+	
+	//icones for action trigger on land use
+	file modif_land_cover_ui <- file("../images/system_icons/player/house.png");
+	file modif_land_cover_auNus <- file("../images/system_icons/player/trait.png");
+	
 	init{
 		// reading repetitive messages to display in the interface
 		MSG_WARNING 	<- get_message('MSG_WARNING');
@@ -146,7 +156,8 @@ global{
 		create Coastal_Defense from: coastal_defenses_shape with: [coast_def_id::int(read("ID")),type::string(read("type")),
 			status::string(read("status")), alt::float(read("alt")), height::float(get("height")), district_code::string(read("dist_code"))]{
 			if district_code = active_district_code {
-				if type in [COAST_DEF_TYPE_DIKE, COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CORD] {
+				if type in [COAST_DEF_TYPE_DIKE, COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CORD]{
+				//if type in [COAST_DEF_TYPE_DIKE] {
 					do init_coastal_def;
 				} else if type = WATER_GATE { // if the coastal defense is a port gate (cliff_coast/Normandie)
 					create Water_Gate {
@@ -1975,6 +1986,7 @@ species Player_Action {
 	float height;
 	int draw_around <- 15; // thickness of the coastl defense
 	
+	
 	// creating a player action from the received map
 	action init_action_from_map(map<string, unknown> mp){
 		self.id			 	<- string(mp at "id");
@@ -2113,11 +2125,11 @@ species Land_Use_Action parent: Player_Action {
 			
 			if command = ACTION_MODIFY_LAND_COVER_Ui {
 				geometry sq <- first(to_squares(shape, 1, false));
-				draw file("../images/system_icons/player/crowd.png") size: sq.width at: sq.location;
+				//draw modif_land_cover_ui size: sq.width at: sq.location;
 			}
 			else if command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us]{
 				geometry sq <- first(to_squares(shape, 1, false));
-				draw file("../images/system_icons/player/wave.png") size: sq.width at: sq.location;
+				//draw modif_land_cover_auNus size: sq.width at: sq.location;
 			}
 		}
 	}
@@ -2286,8 +2298,9 @@ species Land_Use {
 //			}
 			draw shape color: my_color; // le code au dessus qui mettait des hachures verticales pour les AU et AUs a été retiré
 			
-			if is_adapted_type		{draw file("../images/system_icons/player/wave.png") size: self.shape.width;}
-			if is_in_densification	{draw file("../images/system_icons/player/crowd.png") size: self.shape.width;}
+			
+			if is_adapted_type		{draw modif_land_cover_ui size: self.shape.width;}
+			if is_in_densification	{draw modif_land_cover_auNus size: self.shape.width;}
 			if focus_on_me {
 				draw shape empty: true border: #black;
 			}
@@ -2326,6 +2339,14 @@ species Coastal_Defense {
 	list<Player_Action> actions_on_me <- [];
 	int draw_around;
 	
+	//var for form modification
+	int outer_shape_layer <- 2;
+	rgb outer_layer_color;
+	
+	int symbol_size <- 100;
+	image_file symbol_form;
+	list<point> symbol_place;
+	
 	// initialize the codef from the received map
 	action init_coastal_def_from_map(map<string, unknown> a ){
 		self.coast_def_id<- int(a at "coast_def_id");
@@ -2343,10 +2364,11 @@ species Coastal_Defense {
 		int tot_points	<- int(a at "tot_points");
 		point pp;
 		list<point> all_points <- [];
-		loop i from: 0 to: tot_points - 1 {
+		loop i from: 0 to: tot_points - 1{
 			pp <- {float(a at ("locationx"+i)), float(a at ("locationy"+i))};
 			add pp to: all_points;
 		}
+		
 		shape <- polyline(all_points);
 		length_coast_def <- int(shape.perimeter);
 		draw_around <- type = COAST_DEF_TYPE_DUNE ? (dune_type = 2 ? 30 : 45) : 15;
@@ -2361,6 +2383,22 @@ species Coastal_Defense {
 		draw_around <- type = COAST_DEF_TYPE_DUNE ? (dune_type = 2 ? 30 : 45) : 15;
 	}
 	
+	//define angle of a segment
+	float define_angle(point p1, point p2){
+		return atan((p2.y - p1.y) / (p2.x - p1.x));
+	}
+	
+	//draw symbol inside defenses
+	action draw_symbols(image_file symbol){
+		list<point> pebbles <- points_on(shape, 5#m);
+		float j <- length(pebbles)/11;
+		loop i from: 1 to: j {
+			point p1 <- pebbles[int (i*j)];
+			point p2 <- i = j-1 ? pebbles[int ((i-1)*j)] : pebbles[int ((i+1)*j)];
+			draw symbol size:symbol_size rotate:define_angle(p1,p2) at: pebbles[int(i*j)];
+		}
+	}
+	
 	aspect map {
 		if active_display = COAST_DEF_DISPLAY {
 			switch status {
@@ -2372,10 +2410,15 @@ species Coastal_Defense {
 					write "" + coast_def_id + " Coast Def status problem ! " + status;
 				}
 			}
-			draw draw_around#m around shape color: color;
-			draw shape color: #black;
+//			draw draw_around#m around shape color: color;
+			//draw shape color: #black;
+					
 			
-			if type = COAST_DEF_TYPE_DUNE{ 
+			if type = COAST_DEF_TYPE_DUNE{
+				outer_layer_color <- #yellow;
+				draw draw_around#m around shape color: color border:outer_layer_color;
+				do draw_symbols(dune_symbol_img);
+				 
 				if maintained { // if the dune is mantained we draw white line inside of it
 					draw shape+15#m color: #whitesmoke;
 				}
@@ -2385,16 +2428,19 @@ species Coastal_Defense {
 					}
 				}
 			}
-			else if type = COAST_DEF_TYPE_CORD { // if it's a pebble dike, wa draw slices as squares
-				list<point> pebbles <- points_on(shape, 10#m);
-				float ix <- length(pebbles)/11;
-				loop i from: 1 to: slices {
-					draw square(20) at: pebbles[int(i*ix)] color: #darkgray;
-				}
+			else if type = COAST_DEF_TYPE_CORD { // if it's a pebble dike, we draw slices as squares
+				draw shape color: #black;
+				do draw_symbols(cord_symbol_img);
+			}
+			//add symboles inside the aspect of a dike
+			else if type = COAST_DEF_TYPE_DIKE {
+				outer_layer_color <- #grey;
+				draw draw_around#m around shape color: color border:outer_layer_color;
+				do draw_symbols(dike_symbol_img);
 			}
 		}
 	}
-	// the historical aspect showing pas player actions
+	// the historical aspect showing last player actions
 	aspect historical {
 		if (Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			if(active_display = COAST_DEF_DISPLAY) {
