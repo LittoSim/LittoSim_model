@@ -71,9 +71,12 @@ global{
 	
 	
 	// image for dike and dunes
-	image_file dike_symbol_img <- image_file("../images/system_icons/player/normal_dike_symbol.png");
-	image_file dune_symbol_img <- image_file("../images/system_icons/player/normal_dune_symbol.png");
-	image_file cord_symbol_img <- image_file("../images/system_icons/player/normal_cord_symbol.png");
+	image_file dike_symbol_img <- image_file("../images/system_icons/player/gray_dike_symbol.png");
+	image_file dune_symbol_img <- image_file("../images/system_icons/player/gray_dune_symbol.png");
+	
+	image_file bad_cord_symbol <- image_file("../images/system_icons/player/bad_cord_symbol.png");
+	image_file medium_cord_symbol <- image_file("../images/system_icons/player/medium_cord_symbol.png");
+	image_file normal_cord_symbol <- image_file("../images/system_icons/player/normal_cord_symbol.png");
 	
 	//icones for action trigger on land use
 	file modif_land_cover_ui <- file("../images/system_icons/player/house.png");
@@ -369,11 +372,21 @@ global{
 						p <- {0.05 + (lu_index*0.1) - (lu_index*0.025), increment + 0.13};
 					}
 				} else if codef_index >= 0 {
-					create Button {
-						action_name  <- act_name; 
-						display_name <- COAST_DEF_DISPLAY;
-						p <- {0.05 + (codef_index*0.1) - (codef_index*0.025), increment + 0.13};
+					if(act_name in ['ACTION_CLOSE_OPEN_GATES','ACTION_CLOSE_OPEN_DIEPPE_GATE']){
+						create Button_Map {
+							action_name  <- act_name;
+							display_name <- COAST_DEF_DISPLAY;
+							location 	 <- {1000, 3000};
+							p <- {0.05 + (codef_index*0.1) - (codef_index*0.025), increment + 0.13};
+						}
+					}else{
+						create Button {
+							action_name  <- act_name; 
+							display_name <- COAST_DEF_DISPLAY;
+							p <- {0.05 + (codef_index*0.1) - (codef_index*0.025), increment + 0.13};
+						}
 					}
+					
 				}	
 			}
 		}
@@ -406,6 +419,8 @@ global{
 			location 	 <- {1000,9000};
 			p 			 <- {0.95, increment + 0.13};
 		}
+		
+		
 		// locking buttons to the map display (
 		ask Button + Button_Map	{
 			do lock_agent_at ui_location: p display_name: MAP_DISPLAY ui_width: 0.1 ui_height: 0.1;
@@ -464,25 +479,14 @@ global{
 		Button clicked_coast_def_button <- first(Button where (each overlaps loc and each.display_name != LU_DISPLAY));
 		if clicked_coast_def_button != nil {
 			Button current_active_button <- first(Button where (each.is_selected));
-			if clicked_coast_def_button.command in [ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE] {
-				if clicked_coast_def_button.state = B_DEACTIVATED { // id the button is not activated, return
-					return; 
+			do clear_selected_button;
+			if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
+				ask clicked_coast_def_button {
+					if state = B_DEACTIVATED { return; }
+					is_selected <- true;
 				}
-				clicked_coast_def_button.is_selected <- ! clicked_coast_def_button.is_selected; // if buttons are for opening/closing gates
-				if clicked_coast_def_button.command = ACTION_CLOSE_OPEN_GATES {
-					do close_or_open_dieppe_flood_gates (clicked_coast_def_button.is_selected);	
-				} else {
-					do close_or_open_dieppe_water_gate (clicked_coast_def_button.is_selected);	
-				}
-			} else {
-				do clear_selected_button;
-				if (current_active_button != nil and current_active_button.command != clicked_coast_def_button.command) or current_active_button = nil {
-					ask clicked_coast_def_button {
-						if state = B_DEACTIVATED { return; }
-						is_selected <- true;
-					}
-				}	
-			}
+			}	
+			
 		}
 		else{
 			if button_map_clicked (loc) = nil {	// the click is not on a button map
@@ -491,16 +495,28 @@ global{
 		}
 	}
 	
-	Button_Map button_map_clicked (point loc) { // getting the click map button (shared buttons on the right)
+	Button_Map button_map_clicked (point loc) { // getting the click map button
 		Button_Map a_MAP_button <- first (Button_Map where (each overlaps loc));
 		if a_MAP_button != nil {
+			if(a_MAP_button.command in [ACTION_CLOSE_OPEN_GATES,ACTION_CLOSE_OPEN_DIEPPE_GATE]){
+				a_MAP_button.is_selected <- ! a_MAP_button.is_selected;
+				if a_MAP_button.command = ACTION_CLOSE_OPEN_GATES {
+					do close_or_open_dieppe_flood_gates (a_MAP_button.is_selected);	
+				} else {
+					do close_or_open_dieppe_water_gate (a_MAP_button.is_selected);	
+				}
+			}
 			ask a_MAP_button {
-				is_selected <- ! is_selected;
 				switch command {
 					match ACTION_DISPLAY_PROTECTED_AREA {my_icon <-  is_selected ? image_file("../images/developer_icons/act_display_protected.png") :  image_file("../images/developer_icons/act_hide_protected.png");}
 					match ACTION_DISPLAY_FLOODED_AREA 	{my_icon <-  is_selected ? image_file("../images/developer_icons/act_hide_ppr.png") :  image_file("../images/developer_icons/act_display_ppr.png");}
+					
+					//for openning and closing gates
+					match ACTION_CLOSE_OPEN_GATES 	{my_icon <-  is_selected ? image_file("../images/developer_icons/act_flow_gates_closed.png") :  image_file("../images/developer_icons/act_flow_gates_opened.png");}
+					match ACTION_CLOSE_OPEN_DIEPPE_GATE	{my_icon <-  is_selected ? image_file("../images/developer_icons/act_port_gate_closed.png") :  image_file("../images/developer_icons/act_port_gate_opened.png");}
 				}			
 			}
+			
 		}
 		return a_MAP_button;
 	}
@@ -578,7 +594,7 @@ global{
 		Coastal_Defense selected_codef <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
 		Button selected_button <- Button first_with(each.is_selected);
 		if selected_button != nil {
-			if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY, ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE] { // nothing to do
+			if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY] { // nothing to do
 				return;
 			}else if selected_button.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] { // new codef object
 				if basket_overflow() {return;} // the basket is full
@@ -2078,24 +2094,49 @@ species Coastal_Defense_Action parent: Player_Action {
 	string action_type 	<- PLAYER_ACTION_TYPE_COAST_DEF;
 	
 	rgb define_color {
-		switch command {
-			 match ACTION_CREATE_DIKE 		{return #cyan; }
-			 match ACTION_REPAIR_DIKE 		{return #magenta; }
-			 match ACTION_RAISE_DIKE 		{return #darkkhaki;}
-			 match ACTION_DESTROY_DIKE 		{return #brown;}
-			 
-			 match ACTION_INSTALL_GANIVELLE 	{return #indigo;}
-			 match ACTION_ENHANCE_NATURAL_ACCR  {return #indigo;}
-			 match ACTION_CREATE_DUNE			{return #gold;  }
-			 match ACTION_MAINTAIN_DUNE			{return #chartreuse;}
-			 match ACTION_LOAD_PEBBLES_CORD     {return #cadetblue;}
-		} 
+		Coastal_Defense current_def <- Coastal_Defense first_with(each.coast_def_id = self.element_id);
+		
+		if (command in [ACTION_REPAIR_DIKE, ACTION_RAISE_DIKE, ACTION_MAINTAIN_DUNE, ACTION_ENHANCE_NATURAL_ACCR]){
+			ask current_def{
+				return get_higher_status_color();
+			}
+		}else if(command in[ACTION_DESTROY_DIKE]){
+			ask current_def{
+				return get_lower_status_color();
+			}
+		}
+//		switch command {
+//			 match ACTION_CREATE_DIKE 		{return #cyan; }
+//			 match ACTION_REPAIR_DIKE 		{return #magenta; }
+//			 match ACTION_RAISE_DIKE 		{return #darkkhaki;}
+//			 match ACTION_DESTROY_DIKE 		{return #brown;}
+//			 
+//			 match ACTION_INSTALL_GANIVELLE 	{return #indigo;}
+//			 match ACTION_ENHANCE_NATURAL_ACCR  {return #indigo;}
+//			 match ACTION_CREATE_DUNE			{return #gold;  }
+//			 match ACTION_MAINTAIN_DUNE			{return #chartreuse;}
+//			 match ACTION_LOAD_PEBBLES_CORD     {return #cadetblue;}
+//		} 
 		return #grey;
 	}
 	
 	aspect map {
 		if active_display = COAST_DEF_DISPLAY and !is_applied and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			draw draw_around#m around shape color: self = highlighted_action ? #red : (is_sent ? define_color() : #black);
+			if(is_sent){
+				
+				//draw shape texture:modif_land_cover_auNus;
+				draw modif_land_cover_auNus size:self.shape.width width:self.shape.width;
+				
+//				list<point> pebbles <- points_on(shape,5);
+//					int point_number <- length(pebbles);
+//					loop i from: 0 to: point_number - 1{
+//						point p1 <- pebbles[i];
+//						point p2 <- i = point_number -1 ? pebbles[i - 1] : pebbles[i+1];
+//						draw '|' color:#black at: pebbles[i] rotate:90;
+//					}
+				
+			}
 		}
 	}
 }
@@ -2108,10 +2149,18 @@ species Land_Use_Action parent: Player_Action {
 		switch command {
 			 match ACTION_MODIFY_LAND_COVER_A {return rgb(245,147,49);}
 			 match ACTION_MODIFY_LAND_COVER_N {return rgb(11,103,59); }
-			 match_one [ACTION_MODIFY_LAND_COVER_AU,
-			 			ACTION_MODIFY_LAND_COVER_AUs,
-			 			ACTION_MODIFY_LAND_COVER_Us,
-			 			ACTION_MODIFY_LAND_COVER_Ui] {return #lightgray;}
+			
+			 match ACTION_MODIFY_LAND_COVER_AU {return rgb(250,250,250);}
+			 
+			 match_one [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui]{
+			 
+			 Land_Use current_lu <- Land_Use first_with(each.id = self.element_id);
+			 
+			 ask current_lu {
+			 	do next_density_color();
+			 }	
+		}
+			 	 			
 		} 
 		return #grey;
 	}
@@ -2119,17 +2168,20 @@ species Land_Use_Action parent: Player_Action {
 	aspect map {
 		// showing land use actions if the hitory button is not selected
 		if active_display = LU_DISPLAY and !is_applied and !(Button first_with (each.command = ACTION_HISTORY)).is_selected{
-			list<geometry> trs <- to_triangles(shape);
-			draw first(trs where (each.area = max(trs collect (each.area)))) color: define_color() border: define_color();
-			draw shape at: location empty: true border: (self = highlighted_action) ? #red: (is_sent ? define_color() : #black) ;
 			
+			//Hachure instead of triangles
 			if command = ACTION_MODIFY_LAND_COVER_Ui {
 				geometry sq <- first(to_squares(shape, 1, false));
-				//draw modif_land_cover_ui size: sq.width at: sq.location;
+				draw modif_land_cover_auNus size: self.shape.width;
+				draw shape at: location color:define_color() border: (self = highlighted_action) ? #red: (is_sent ? define_color() : #black) ;
 			}
 			else if command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us]{
 				geometry sq <- first(to_squares(shape, 1, false));
-				//draw modif_land_cover_auNus size: sq.width at: sq.location;
+				draw modif_land_cover_ui size: self.shape.width;
+			}else{
+				list<geometry> trs <- to_triangles(shape);
+				draw last(trs where (each.area = max(trs collect (each.area)))) color: define_color() border: define_color();
+				draw shape at: location empty: true border: (self = highlighted_action) ? #red: (is_sent ? define_color() : #black) ;
 			}
 		}
 	}
@@ -2284,23 +2336,28 @@ species Land_Use {
 		return #black;
 	}
 	
+	rgb next_density_color{
+		switch density_class 		  {	// grayscale
+			match POP_EMPTY 		  { return rgb(225,225,225);}
+			match POP_VERY_LOW_DENSITY{ return rgb(190,190,190);}
+			match POP_LOW_DENSITY	  { return rgb(150,150,150);}
+			match POP_MEDIUM_DENSITY  { return rgb(120,120,120);}
+			default 				  { write "Density class problem !";}
+		}
+	}
+	
 	// the normal aspect of land use (colored by PLU type)
 	aspect map {
 		if active_display = LU_DISPLAY and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
-//			if lu_code in [4,7] {
-//				list<geometry> geos <- to_rectangles(shape, 11, 1);
-//				loop i from: 0 to: length(geos) - 1 {
-//					draw geos[i] color: my_cols[i mod 2];
-//				}
-//				draw shape empty: true border: my_cols[1];
-//			} else {
-//				draw shape color: my_color;
-//			}
-			draw shape color: my_color; // le code au dessus qui mettait des hachures verticales pour les AU et AUs a été retiré
 			
+			draw shape color: my_color; 
 			
 			if is_adapted_type		{draw modif_land_cover_ui size: self.shape.width;}
-			if is_in_densification	{draw modif_land_cover_auNus size: self.shape.width;}
+			
+			if is_in_densification	{
+				draw shape at: location color:next_density_color();
+				draw modif_land_cover_auNus size: self.shape.width;
+			}
 			if focus_on_me {
 				draw shape empty: true border: #black;
 			}
@@ -2389,14 +2446,53 @@ species Coastal_Defense {
 	}
 	
 	//draw symbol inside defenses
-	action draw_symbols(image_file symbol){
-		list<point> pebbles <- points_on(shape, 5#m);
-		float j <- length(pebbles)/11;
-		loop i from: 1 to: j {
-			point p1 <- pebbles[int (i*j)];
-			point p2 <- i = j-1 ? pebbles[int ((i-1)*j)] : pebbles[int ((i+1)*j)];
-			draw symbol size:symbol_size rotate:define_angle(p1,p2) at: pebbles[int(i*j)];
+	action draw_symbols(image_file symbol){		
+
+		list<point> pebbles <- points_on(shape, 100#m);
+		int point_number <- length(pebbles);
+		loop i from: 0 to: point_number - 1{
+			point p1 <- pebbles[i];
+			point p2 <- i = point_number -1 ? pebbles[i - 1] : pebbles[i+1];
+			draw symbol size:symbol_size rotate: define_angle(p1,p2) at: pebbles[i];
 		}
+	}
+	
+	//get cord symbol according to state
+	image_file get_cord_aspect{
+		switch status {
+				match STATUS_GOOD   {return normal_cord_symbol;}
+				match STATUS_MEDIUM {return medium_cord_symbol;}
+				match STATUS_BAD 	{return bad_cord_symbol;}
+				default {
+					write "Density class problem !";
+				}	
+		}
+	}
+	
+	action get_higher_status_color{
+		switch status {
+				match STATUS_GOOD   {color <- #green;}
+				match STATUS_MEDIUM {color <- #green;} 
+				match STATUS_BAD 	{color <- #orange;  } 
+				default 			{
+					color <- #black;
+					write "" + coast_def_id + " Coast Def status problem ! " + status;
+				}
+			}
+		return color;
+	}
+	
+	action get_lower_status_color{
+		switch status {
+				match STATUS_GOOD   {color <- #orange;}
+				match STATUS_MEDIUM {color <- #red;} 
+				match STATUS_BAD 	{color <- #red;  } 
+				default 			{
+					color <- #black;
+					write "" + coast_def_id + " Coast Def status problem ! " + status;
+				}
+			}
+		return color;
 	}
 	
 	aspect map {
@@ -2416,7 +2512,7 @@ species Coastal_Defense {
 			
 			if type = COAST_DEF_TYPE_DUNE{
 				outer_layer_color <- #yellow;
-				draw draw_around#m around shape color: color border:outer_layer_color;
+				draw draw_around#m around shape color: color border:outer_layer_color ;
 				do draw_symbols(dune_symbol_img);
 				 
 				if maintained { // if the dune is mantained we draw white line inside of it
@@ -2429,8 +2525,8 @@ species Coastal_Defense {
 				}
 			}
 			else if type = COAST_DEF_TYPE_CORD { // if it's a pebble dike, we draw slices as squares
-				draw shape color: #black;
-				do draw_symbols(cord_symbol_img);
+				draw shape+ 4.5#m color: #darkgray;
+				do draw_symbols(get_cord_aspect());
 			}
 			//add symboles inside the aspect of a dike
 			else if type = COAST_DEF_TYPE_DIKE {
@@ -2438,6 +2534,13 @@ species Coastal_Defense {
 				draw draw_around#m around shape color: color border:outer_layer_color;
 				do draw_symbols(dike_symbol_img);
 			}
+			
+			
+//			if(!(Button first_with (each.command = ACTION_HISTORY)).is_selected ){
+//				rgb next_color<- #gold;
+//				draw draw_around#m around shape color: next_color border:outer_layer_color;
+//				//texture:modif_land_cover_auNus
+//			}
 		}
 	}
 	// the historical aspect showing last player actions
@@ -2647,8 +2750,9 @@ experiment LittoSIM_GEN_Player type: gui{
 			species Land_Use 				aspect: map;
 			species Land_Use 				aspect: historical;
 			species Land_Use_Action 		aspect: map;
-			species Coastal_Defense_Action 	aspect: map;
+			
 			species Coastal_Defense 		aspect: map;
+			species Coastal_Defense_Action 	aspect: map;
 			species Coastal_Defense 		aspect: historical;
 			species Road 					aspect:	base;
 			species River					aspect: base;

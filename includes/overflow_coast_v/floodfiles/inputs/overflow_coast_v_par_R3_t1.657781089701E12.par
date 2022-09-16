@@ -1,0 +1,14 @@
+DEMfile         C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/overflow_coast_v/floodfiles/inputs/overflow_coast_v_dem_R3_t1.657781089701E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+saveint         3600
+manningfile     C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/overflow_coast_v/floodfiles/inputs/overflow_coast_v_rug_R3_t1.657781089701E12.asc
+bcifile         C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/overflow_coast_v/floodfiles/overflow_coast_v.bci
+bdyfile         C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/overflow_coast_v/floodfiles/overflow_coast_v_Xynthia.bdy
+startfile       C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/overflow_coast_v/floodfiles/overflow_coast_v.start
+startelev
+elevoff
+acceleration
+SGC_enable
+

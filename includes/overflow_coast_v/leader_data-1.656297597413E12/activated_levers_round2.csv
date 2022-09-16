@@ -1,0 +1,2 @@
+cycle;name;location.x;location.y;location.z;p_action;activation_time;applied;name;id;district_code;lever_name;lever_explanation;added_delay;added_cost;round_creation;round_application
+373;;92.2143482527315;69.10545534458039;0.0;Player_Action(0);1656297867296.0;false;;1;17385;Rehausse Digue;;0;0.0;2;0

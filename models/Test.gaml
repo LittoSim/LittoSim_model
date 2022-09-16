@@ -9,10 +9,9 @@ model Test
 
 /* Insert your model definition here */
 global{
-	image_file dike_symbol_img <- image_file("../images/system_icons/player/normal_dune_symbol.png");
-	
+	image_file textures <- image_file("../images/system_icons/player/trait.png");
 	init{
-		create dike number: 1;
+		create dike number: 10;
 	}
 }
 
@@ -20,7 +19,7 @@ species dike{
 	string name;
 	
 	aspect basic{
-		draw dike_symbol_img size:10;
+		draw square(15) size:10 color: #black empty:true texture:"../images/system_icons/player/trait.png";
 	}
 }
 

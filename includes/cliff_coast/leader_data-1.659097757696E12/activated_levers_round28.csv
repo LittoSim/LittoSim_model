@@ -1,0 +1,3 @@
+cycle;name;location.x;location.y;location.z;p_action;activation_time;applied;name;id;district_code;lever_name;lever_explanation;added_delay;added_cost;round_creation;round_application
+1806;;17.146945983599938;67.71656467486216;0.0;Player_Action(13);1659098794359.0;false;;3;76192;Pas Rehausse Digue;;0;0.0;28;0
+1806;;39.064832866429455;99.14222785603533;0.0;Player_Action(12);1659098794360.0;false;;4;76192;Pas Renove Digue;;0;0.0;28;0

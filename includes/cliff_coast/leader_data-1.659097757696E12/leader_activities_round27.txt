@@ -1,0 +1,2 @@
+<1.659098532214E12><3:25>Pas Const Digue triggered at L1 ->  : -500.0By(Player_Action(11))
+<1.659098672831E12><3:29>Lever Const Adap hors ZL&ZI programmed at L1 -> Changer en zone U adaptée(Player_Action(15))
