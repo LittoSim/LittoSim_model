@@ -1,0 +1,4 @@
+<1.664527164019E12><4:40>Lever Const Adap en ZL validated at L2 ->  : -500.0By(Player_Action(13))
+<1.664527187257E12><4:41>Lever Const Adap en ZL programmed at L2 -> Changer en zone U adaptée(Player_Action(14))
+<1.664527307303E12><4:45>Lever Const Adap en ZL validated at L2 ->  : -500.0By(Player_Action(14))
+<1.66452750294E12><4:52>Lever Const/Densi en ZI programmed at L2 -> Changer en zone à urbaniser(Player_Action(16))

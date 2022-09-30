@@ -1,0 +1,2 @@
+cycle;name;location.x;location.y;location.z;p_action;activation_time;applied;name;id;district_code;lever_name;lever_explanation;added_delay;added_cost;round_creation;round_application
+6962;;93.03770267823325;32.56410444724075;0.0;Player_Action(15);1664527628525.0;false;;9;76217;Pas Const Digue;;0;0.0;19;0

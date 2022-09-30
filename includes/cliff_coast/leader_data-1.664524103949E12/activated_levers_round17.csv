@@ -1,0 +1,2 @@
+cycle;name;location.x;location.y;location.z;p_action;activation_time;applied;name;id;district_code;lever_name;lever_explanation;added_delay;added_cost;round_creation;round_application
+5864;;49.92183748396181;3.847505011734309;0.0;Player_Action(13);1664527163595.0;false;;6;76217;Const Adap en ZL;;0;0.0;17;0

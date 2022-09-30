@@ -1,0 +1,14 @@
+DEMfile         C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/cliff_coast/floodfiles/inputs/cliff_coast_dem_R4_t1.663763183075E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+saveint         3600
+manningfile     C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/cliff_coast/floodfiles/inputs/cliff_coast_rug_R4_t1.663763183075E12.asc
+bcifile         C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/cliff_coast/floodfiles/cliff_coast.bci
+bdyfile         C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/cliff_coast/floodfiles/cliff_coast+24cm.bdy
+startfile       C:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/cliff_coast/floodfiles/cliff_coast.start
+startelev
+elevoff
+acceleration
+SGC_enable
+

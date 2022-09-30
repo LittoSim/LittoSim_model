@@ -1,0 +1,4 @@
+<1.664527992546E12><5:8>Const Adap hors ZL&ZI triggered at L2 ->  : -250.0By : 0 rounds(Player_Action(23))
+<1.664528001087E12><5:8>Pas Rehausse Digue triggered at L2 ->  : -500.0By(Player_Action(21))
+<1.664528037789E12><5:9>Lever Const Adap en ZL validated at L2 ->  : -500.0By(Player_Action(24))
+<1.664528209349E12><5:15>Lever Const/Densi en ZI programmed at L2 -> Inciter à la densification(Player_Action(26))

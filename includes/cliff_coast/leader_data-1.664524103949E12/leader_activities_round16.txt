@@ -1,0 +1,4 @@
+<1.664525117472E12><3:33>Lever Const/Densi en ZI validated at L2 ->  : 175.0By(Player_Action(8))
+<1.664525184569E12><3:35>Lever Const Adap en ZL validated at L2 ->  : -500.0By(Player_Action(9))
+<1.664525186586E12><3:35>Pas Const Digue triggered at L2 ->  : -407.0By(Player_Action(2))
+<1.664525186589E12><3:35>Pas Rehausse Digue triggered at L2 ->  : -500.0By(Player_Action(5))

@@ -80,6 +80,7 @@ global{
 	
 	//icones for action trigger on land use
 	file modif_land_cover_ui <- file("../images/system_icons/player/house.png");
+	file modif_land_cover_ui_preload <- file("../images/system_icons/player/house_preload.png");
 	file modif_land_cover_auNus <- file("../images/system_icons/player/trait.png");
 	
 	init{
@@ -2104,39 +2105,26 @@ species Coastal_Defense_Action parent: Player_Action {
 			ask current_def{
 				return get_lower_status_color();
 			}
-		}
-//		switch command {
-//			 match ACTION_CREATE_DIKE 		{return #cyan; }
-//			 match ACTION_REPAIR_DIKE 		{return #magenta; }
-//			 match ACTION_RAISE_DIKE 		{return #darkkhaki;}
-//			 match ACTION_DESTROY_DIKE 		{return #brown;}
-//			 
-//			 match ACTION_INSTALL_GANIVELLE 	{return #indigo;}
-//			 match ACTION_ENHANCE_NATURAL_ACCR  {return #indigo;}
-//			 match ACTION_CREATE_DUNE			{return #gold;  }
-//			 match ACTION_MAINTAIN_DUNE			{return #chartreuse;}
-//			 match ACTION_LOAD_PEBBLES_CORD     {return #cadetblue;}
-//		} 
+		} 
 		return #grey;
 	}
 	
 	aspect map {
 		if active_display = COAST_DEF_DISPLAY and !is_applied and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
-			draw draw_around#m around shape color: self = highlighted_action ? #red : (is_sent ? define_color() : #black);
+			//draw draw_around#m around shape color: self = highlighted_action ? #red : (is_sent ? define_color() : #black);
+			draw draw_around#m around shape color: self = highlighted_action ? #red : #black;
 			if(is_sent){
+				draw shape color:define_color();
+				list<point> pebbles <- points_on(shape,10);
+					int point_number <- length(pebbles)-1;
+					loop i from: 0 to: point_number - 1{
+						point p1 <- pebbles[i];
+						point p2 <- pebbles[point_number - i];
+						//point p2 <- pebbles[abs(point_number - (i + point_number/2))];
+						draw line([p1,p2]) color:#white size:self.shape.width;
+					}
 				
-				//draw shape texture:modif_land_cover_auNus;
-				draw modif_land_cover_auNus size:self.shape.width width:self.shape.width;
-				
-//				list<point> pebbles <- points_on(shape,5);
-//					int point_number <- length(pebbles);
-//					loop i from: 0 to: point_number - 1{
-//						point p1 <- pebbles[i];
-//						point p2 <- i = point_number -1 ? pebbles[i - 1] : pebbles[i+1];
-//						draw '|' color:#black at: pebbles[i] rotate:90;
-//					}
-				
-			}
+		}
 		}
 	}
 }
@@ -2154,15 +2142,14 @@ species Land_Use_Action parent: Player_Action {
 			 
 			 match_one [ACTION_MODIFY_LAND_COVER_AUs,ACTION_MODIFY_LAND_COVER_Us,ACTION_MODIFY_LAND_COVER_Ui]{
 			 
-			 Land_Use current_lu <- Land_Use first_with(each.id = self.element_id);
-			 
-			 ask current_lu {
-			 	do next_density_color();
-			 }	
-		}
-			 	 			
-		} 
-		return #grey;
+				 Land_Use current_lu <- Land_Use first_with(each.id = self.element_id);
+				 
+				 ask current_lu {
+				 	do next_density_color();
+				 }	
+			}
+		}	 	 			
+		//return #red;
 	}
 	
 	aspect map {
@@ -2172,12 +2159,13 @@ species Land_Use_Action parent: Player_Action {
 			//Hachure instead of triangles
 			if command = ACTION_MODIFY_LAND_COVER_Ui {
 				geometry sq <- first(to_squares(shape, 1, false));
-				draw modif_land_cover_auNus size: self.shape.width;
-				draw shape at: location color:define_color() border: (self = highlighted_action) ? #red: (is_sent ? define_color() : #black) ;
+				list<geometry> trs <- to_triangles(shape);
+				draw last(trs where (each.area = max(trs collect (each.area)))) color: define_color() border: define_color();
+				//draw modif_land_cover_auNus size: self.shape.width;
+				//draw shape at: location color:define_color() border: (self = highlighted_action) ? #red: (is_sent ? define_color() : #black) ;
 			}
 			else if command in [ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_Us]{
-				geometry sq <- first(to_squares(shape, 1, false));
-				draw modif_land_cover_ui size: self.shape.width;
+					draw modif_land_cover_ui_preload size: self.shape.width;
 			}else{
 				list<geometry> trs <- to_triangles(shape);
 				draw last(trs where (each.area = max(trs collect (each.area)))) color: define_color() border: define_color();
@@ -2350,13 +2338,21 @@ species Land_Use {
 	aspect map {
 		if active_display = LU_DISPLAY and !(Button first_with (each.command = ACTION_HISTORY)).is_selected {
 			
-			draw shape color: my_color; 
+			if(lu_code in [LU_TYPE_AU,LU_TYPE_AUs]){
+				draw shape at: location color:next_density_color();
+				draw modif_land_cover_auNus size: self.shape.width;
+			}else{
+				draw shape color: my_color; 
+			}
 			
 			if is_adapted_type		{draw modif_land_cover_ui size: self.shape.width;}
 			
 			if is_in_densification	{
-				draw shape at: location color:next_density_color();
-				draw modif_land_cover_auNus size: self.shape.width;
+				geometry sq <- first(to_squares(shape, 1, false));
+				list<geometry> trs <- to_triangles(shape);
+				draw last(trs where (each.area = max(trs collect (each.area)))) color: next_density_color();
+				//draw shape at: location color:next_density_color();
+				//draw modif_land_cover_auNus size: self.shape.width;
 			}
 			if focus_on_me {
 				draw shape empty: true border: #black;

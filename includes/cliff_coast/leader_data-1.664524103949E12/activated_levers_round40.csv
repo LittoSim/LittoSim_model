@@ -1,0 +1,2 @@
+cycle;name;location.x;location.y;location.z;p_action;activation_time;applied;name;id;district_code;lever_name;lever_explanation;added_delay;added_cost;round_creation;round_application
+11328;;86.69513217427277;80.15747616565449;0.0;Player_Action(33);1664529939048.0;false;;15;76217;Const\/Densi non Adapt en ZL;;0;0.0;40;0
