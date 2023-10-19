@@ -21,6 +21,8 @@ global{
 	string DISPLAY_FONT_NAME <- "Helvetica Neue";
 	int DISPLAY_FONT_SIZE 	 <- 16;
 	image_file TRANSPARENT <- image_file("../images/system_icons/player/transparent.png");
+	file EDUCATIONAL_ICON <- file("../images/system_icons/player/indication_sensitize.png");
+	
 	/*
 	 * Player specific actions
 	 */

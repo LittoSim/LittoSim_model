@@ -64,6 +64,7 @@ global{
 	 */
 	float H_MAX_GANIVELLE 				<- float(study_area_def["H_MAX_GANIVELLE"]); 	// The maximum height added by a ganivelle
 	float H_DELTA_GANIVELLE 			<- float(study_area_def["H_DELTA_GANIVELLE"]); 	// The height by which a ganivelle can raise a dune
+	float H_DELTA_CHANEL 				<- float(study_area_def["H_DELTA_CHANEL"]); 	// The height by which a chanel can raise cell altitude each year
 	int STEPS_DEGRAD_STATUS_DIKE	 	<- int  (study_area_def["STEPS_DEGRADE_STATUS_DIKE"]);	// Number of years for a dike to change status
 	int STEPS_DEGRAD_STATUS_DUNE 		<- int  (study_area_def["STEPS_DEGRADE_STATUS_DUNE"]); 	// Number of years for a dune to change down status
 	int STEPS_REGAIN_STATUS_GANIVELLE   <- int  (study_area_def["STEPS_UPGRADE_STATUS_DUNE"]); // Number of years for a dune to change up status

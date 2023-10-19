@@ -1,0 +1,14 @@
+DEMfile         D:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/mahajanga_coast/floodfiles/inputs/mahajanga_coast_dem_R2_t1.688656434644E12.asc
+resroot         res
+dirroot         results
+sim_time        52200
+saveint         3600
+manningfile     D:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/mahajanga_coast/floodfiles/inputs/mahajanga_coast_rug_R2_t1.688656434644E12.asc
+bcifile         D:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/mahajanga_coast/floodfiles/bci_file.bci
+bdyfile         D:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/mahajanga_coast/floodfiles/mahynthia.bdy
+startfile       D:/LittoSIM-GEN/workspace/LittoSIM-GEN/includes/mahajanga_coast/floodfiles/startstart.asc
+startelev
+elevoff
+acceleration
+SGC_enable
+

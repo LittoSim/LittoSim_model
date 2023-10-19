@@ -115,7 +115,7 @@ global{
 	list<int> ACTION_LIST <- [CONNECTION_MESSAGE, REFRESH_ALL, ACTION_REPAIR_DIKE, ACTION_CREATE_DIKE, ACTION_DESTROY_DIKE, ACTION_RAISE_DIKE, ACTION_CREATE_DUNE,
 							ACTION_INSTALL_GANIVELLE, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE, ACTION_LOAD_PEBBLES_CORD, ACTION_CLOSE_OPEN_GATES, 
 							ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_AUs, ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_Us, 
-							ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N];
+							ACTION_MODIFY_LAND_COVER_Ui, ACTION_MODIFY_LAND_COVER_N, ACTION_SENSITIZE, ACTION_CREATE_CLAPET, ACTION_CLEAN];
 	/*
 	 * List of actions with their parameters : reading the actions.conf file
 	 * 
@@ -136,6 +136,10 @@ global{
 	int ACTION_MODIFY_LAND_COVER_Us	 <- data_action at 'ACTION_MODIFY_LAND_COVER_Us' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Us' 	at 'action_code') : 0;
 	int ACTION_MODIFY_LAND_COVER_Ui  <- data_action at 'ACTION_MODIFY_LAND_COVER_Ui' != nil ? int(data_action at 'ACTION_MODIFY_LAND_COVER_Ui' 	at 'action_code') : 0;
 	int ACTION_EXPROPRIATION 		 <- data_action at 'ACTION_EXPROPRIATION'		 != nil ? int(data_action at 'ACTION_EXPROPRIATION' 		at 'action_code') : 0;
+	int ACTION_SENSITIZE 		     <- data_action at 'ACTION_SENSITIZE'		     != nil ? int(data_action at 'ACTION_SENSITIZE' 		    at 'action_code') : 0;
+	int ACTION_CREATE_CLAPET 	 	 <- data_action at 'ACTION_CREATE_CLAPET'        != nil ? int(data_action at 'ACTION_CREATE_CLAPET'     at 'action_code') : 0;
+	int ACTION_CLEAN 		         <- data_action at 'ACTION_CLEAN'		         != nil ? int(data_action at 'ACTION_CLEAN' 		        at 'action_code') : 0;
+	
 	int ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N  <- data_action at 'ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N' != nil ? int(data_action at 'ACTON_MODIFY_LAND_COVER_FROM_AU_TO_N' at 'action_code') : 0;
 	int ACTON_MODIFY_LAND_COVER_FROM_A_TO_N  <- data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' != nil ? int(data_action at 'ACTON_MODIFY_LAND_COVER_FROM_A_TO_N' at 'action_code') : 0;
 	int ACTION_CLOSE_OPEN_GATES	 <- data_action at 'ACTION_CLOSE_OPEN_GATES'	 != nil ? int(data_action at 'ACTION_CLOSE_OPEN_GATES' 		at 'action_code') : 0;
@@ -148,6 +152,8 @@ global{
 	string COAST_DEF_TYPE_DIKE 			<- "DIKE";
 	string COAST_DEF_TYPE_DUNE 			<- "DUNE";
 	string COAST_DEF_TYPE_CORD 			<- "CORD";
+	string COAST_DEF_TYPE_CHANEL		<- "CHANEL";
+	string COAST_DEF_TYPE_VALVE		    <- "VALVE";
 	string WATER_GATE 					<- "GATE";
 	string STATUS_GOOD 					<- "GOOD";
 	string STATUS_MEDIUM				<- "MEDIUM";
@@ -359,4 +365,9 @@ global{
 	string MSG_DUNES;
 	string LEV_DIKES;
 	string LEV_DUNES;
+	/*
+	 * Value uses in Valves  
+	 */
+	float DEEPNESS_MAX <- 10.0;
+	int MAX_SENSITIZE_QUALITY <- 3;
 }

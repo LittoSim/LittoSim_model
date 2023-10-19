@@ -415,6 +415,13 @@ global {
 			 */
 			ask Coastal_Defense where (each.rupture){ do remove_rupture; }
 			
+			/*
+			 * update sensitize effect
+			 */
+			ask Land_Use where (each.education_level != 0){
+				education_level <- education_level - 1;
+			}
+			
 			ask districts_in_game{
 				/*
 				 * Each district evolves its own coastal defenses. Coastal defenses that belong to other districts that do not participate in the
@@ -423,6 +430,8 @@ global {
 				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DIKE) {  do degrade_dike_status; }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status; }				
+				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CHANEL) {  do degrade_chanel_status; }				
+				
 				
 				do calculate_taxes;
 				do inform_leader_stats;
@@ -1601,6 +1610,31 @@ species Network_Game_Manager skills: [network]{
 							}
 						}
 					}
+					match ACTION_CLEAN {
+					 	Coastal_Defense cd <- Coastal_Defense first_with(each.coast_def_id = element_id);
+						if cd != nil and cd.type = COAST_DEF_TYPE_CHANEL{
+							ask cd {
+								// todo verify this ! with negative sign !
+								float sedimentation <- height + DEEPNESS_MAX;
+								do update_cells_height(- sedimentation);
+								
+								height <- - DEEPNESS_MAX;
+								not_updated <- true;
+								acknowledge <- true;
+								do initialize_alt;
+							}
+						}
+					}
+					match ACTION_SENSITIZE {
+					 	Land_Use luse <- Land_Use first_with(each.id = element_id);
+						if luse != nil {
+							ask luse {
+					 			education_level <- MAX_SENSITIZE_QUALITY;
+					 		  	not_updated <- true;
+					 		  	acknowledge <- true;
+					 		}
+				 		}
+					}
 					match_one [ACTION_MODIFY_LAND_COVER_A, ACTION_MODIFY_LAND_COVER_AU, ACTION_MODIFY_LAND_COVER_N,
 								ACTION_MODIFY_LAND_COVER_Us, ACTION_MODIFY_LAND_COVER_AUs] {
 						Land_Use luse <- Land_Use first_with(each.id = element_id);
@@ -1640,7 +1674,7 @@ species Network_Game_Manager skills: [network]{
 		string msg <- "";
 		ask Land_Use where(each.not_updated) {
 			map<string,string> msg <- ["TOPIC"::ACTION_LAND_COVER_UPDATED, "id"::id, "lu_code"::lu_code,
-							"population"::population, "is_in_densification"::is_in_densification];
+							"population"::population, "is_in_densification"::is_in_densification, "education_level"::education_level];
 			not_updated <- false;
 			ask myself {
 				do send to: myself.dist_code contents: msg;
@@ -2052,7 +2086,7 @@ species Player_Action schedules:[]{
 species Coastal_Defense {	
 	int coast_def_id;
 	string district_code;
-	string type;     // DIKE or DUNE ord CORD
+	string type;     // DIKE or or CHANEL or DUNE ord CORD 
 	string status;	//  "GOOD" "MEDIUM" "BAD"  
 	float height;
 	float alt <- 0.0; 
@@ -2226,6 +2260,36 @@ species Coastal_Defense {
 			}
 		}
 	}
+	
+	action degrade_chanel_status {
+		if(height = 0) {return;}
+		
+		// update deepness, here the height is negative
+		int lus_educational_level <- 0;
+		ask Land_Use overlapping self{
+			lus_educational_level <- lus_educational_level + education_level;
+		}
+	 	lus_educational_level <- int(lus_educational_level / length(Land_Use overlapping self));
+		
+		float degradation <- H_DELTA_CHANEL * lus_educational_level;
+		
+		// if degradation is too high
+		if (height + degradation >= 0){
+			degradation <- height + degradation;
+		}
+		
+		height <- height + degradation;	
+		alt    <- alt + degradation;	
+		do update_cells_height(degradation);
+	}
+	
+	action update_cells_height(float difference){
+		ask cells {
+			soil_height <- soil_height + difference;
+			soil_height_before_broken <- soil_height;
+			// todo : do we need to init_cell_color ?
+		}
+	}
 		
 	action calculate_rupture {
 		int p <- 0;
@@ -2395,6 +2459,7 @@ species Land_Use {
 	string dist_code;
 	rgb my_color 		<- cell_color() update: cell_color();
 	int AU_to_U_counter <- 0;
+	int education_level;
 	string density_class-> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_VERY_LOW_DENSITY : (population < POP_MEDIUM_NUMBER ? POP_LOW_DENSITY : 
 								(population < POP_HIGH_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE)))};
 	int exp_cost 		-> {round (population * 400 * population ^ (-0.5))};
@@ -2418,6 +2483,7 @@ species Land_Use {
 			"lu_code"::string(lu_code),
 			"mean_alt"::string(mean_alt),
 			"population"::string(population),
+			"education_level"::int(education_level),
 			"is_in_densification"::string(is_in_densification),
 			"locationx"::string(location.x),
 			"locationy"::string(location.y),
@@ -2695,6 +2761,7 @@ species District {
 			do send to: myself.district_code contents: msg;
 		}
 	}
+	
 	// statistiques are sent ot leader
 	action inform_leader_stats {
 		map<string,string> msg <- [RESPONSE_TO_LEADER::"STATS"];

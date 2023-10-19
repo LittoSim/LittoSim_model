@@ -160,7 +160,7 @@ global{
 		create Coastal_Defense from: coastal_defenses_shape with: [coast_def_id::int(read("ID")),type::string(read("type")),
 			status::string(read("status")), alt::float(read("alt")), height::float(get("height")), district_code::string(read("dist_code"))]{
 			if district_code = active_district_code {
-				if type in [COAST_DEF_TYPE_DIKE, COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CORD]{
+				if type in [COAST_DEF_TYPE_DIKE, COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CORD, COAST_DEF_TYPE_CHANEL, COAST_DEF_TYPE_VALVE]{
 				//if type in [COAST_DEF_TYPE_DIKE] {
 					do init_coastal_def;
 				} else if type = WATER_GATE { // if the coastal defense is a port gate (cliff_coast/Normandie)
@@ -301,7 +301,11 @@ global{
 					ACTION_ENHANCE_NATURAL_ACCR]{return image_file("../images/system_icons/player/ganivelle.png");			}
 			match ACTION_CREATE_DUNE 			{return image_file("../images/system_icons/player/dune.png");				}
 			match ACTION_MAINTAIN_DUNE			{return image_file("../images/system_icons/player/dune_maintain.png");		}
-			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/system_icons/player/pebbles.png");			}
+			match ACTION_LOAD_PEBBLES_CORD		{return image_file("../images/system_icons/player/pebbles.png");			}	
+			match ACTION_SENSITIZE				{return image_file("../images/system_icons/player/icon_sensitize.png");		}			
+			match ACTION_CREATE_CLAPET		    {return image_file("../images/system_icons/player/icon_open_close_clapet.png");	}			
+			match ACTION_CLEAN					{return image_file("../images/system_icons/player/icon_clean.png");			}			
+					
 		}
 		return nil;
 	}
@@ -591,13 +595,14 @@ global{
 	}
 	
 	action change_coast_def {
+		// Click codef
 		point loc <- #user_location;
 		Coastal_Defense selected_codef <- first(Coastal_Defense where ((20#m around each.shape) overlaps loc));
 		Button selected_button <- Button first_with(each.is_selected);
 		if selected_button != nil {
 			if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY] { // nothing to do
 				return;
-			}else if selected_button.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] { // new codef object
+			}else if selected_button.command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE, ACTION_CREATE_CLAPET] { // new codef object
 				if basket_overflow() {return;} // the basket is full
 				do create_new_codef(loc, selected_button);
 			}else {
@@ -611,10 +616,10 @@ global{
 	action modify_coast_def (Coastal_Defense codef, Button but){
 		if codef != nil{
 			ask my_basket { // an action on the same dike is already in the basket. Two simultaneous actions on the same object are not allowed
-				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DUNE] and element_id = codef.coast_def_id { return; } 
+				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CHANEL] and element_id = codef.coast_def_id { return; } 
 			}
 			ask my_history where !each.is_applied { // a not applied action on the same dike is already in the history
-				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DUNE] and element_id = codef.coast_def_id { return; } 
+				if codef.type in [COAST_DEF_TYPE_DIKE,COAST_DEF_TYPE_DUNE, COAST_DEF_TYPE_CHANEL] and element_id = codef.coast_def_id { return; } 
 			}
 			// if the action is on a pebble cord 
 			if codef.type = COAST_DEF_TYPE_CORD and (codef.slices +
@@ -629,9 +634,17 @@ global{
 							[ACTION_INSTALL_GANIVELLE,ACTION_ENHANCE_NATURAL_ACCR,ACTION_MAINTAIN_DUNE]) {return;} // nothing to do
 			if codef.type = COAST_DEF_TYPE_CORD and but.command != ACTION_LOAD_PEBBLES_CORD {return;} // nothing to do
 			if codef.type = COAST_DEF_TYPE_DIKE and but.command in
-							[ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE] {return;} // nothing to do
+							[ACTION_INSTALL_GANIVELLE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR, ACTION_MAINTAIN_DUNE] {return;} // nothing to do4
 			
-			if but.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR] { // only these 3 actions can cause a delay
+			if ((but.command = ACTION_CLEAN) xor (codef.type = COAST_DEF_TYPE_CHANEL)) { return;}
+			
+			// ACTION and TYPE -> XOR
+			// clean		chanel		ok
+			// clean		!chanel		no
+			// !clean		chanel		no
+			// !clean		!chanel		ok
+			
+			if but.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR, ACTION_CLEAN] { // only these 3 actions can cause a delay, it's 4 now
 				if !empty(Protected_Area where (each intersects codef.shape)){
 					cursor_taken <- true;
 					map<string,bool> vmap <- map<string,bool>(user_input(world.get_message('MSG_POSSIBLE_REGLEMENTATION_DELAY')::true)); // delay warning
@@ -664,7 +677,7 @@ global{
 		}
 		previous_clicked_point <- nil;
 		current_action <- first(action_list);
-		if mybut.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR] {
+		if mybut.command in [ACTION_RAISE_DIKE, ACTION_LOAD_PEBBLES_CORD, ACTION_ENHANCE_NATURAL_ACCR, ACTION_CLEAN] {
 			if !empty(Protected_Area where (each intersects current_action.shape)){ // the action in protected areas
 				current_action.is_in_protected_area <- true;
 				// if dunes of the 2nd range are activated (Camargue/overflow_coast_h), the delay of enhancinf accretion is doubled
@@ -682,7 +695,12 @@ global{
 	// creating a new coastal defense object
 	action create_new_codef (point loc, Button but){
 		if previous_clicked_point = nil { // getting the first point
-			previous_clicked_point <- loc;
+			if but.command = ACTION_CREATE_CLAPET {
+				do create_new_coast_def_action (but, loc);
+				// todo : limit the position to in duke
+			}else{
+				previous_clicked_point <- loc;
+			}
 		}
 		else{ // the second point is clicked
 			if !empty(Protected_Area overlapping (polyline([previous_clicked_point, loc]))){
@@ -706,7 +724,12 @@ global{
 			element_id 	<- -1;
 			self.command<- mybut.command;
 			self.coast_def_type <- command = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
-			self.element_shape <- polyline([previous_clicked_point, loc]);
+			if command = ACTION_CREATE_CLAPET {
+				self.coast_def_type <-COAST_DEF_TYPE_VALVE;
+				self.element_shape <- point(loc);
+			}else{
+				self.element_shape <- polyline([previous_clicked_point, loc]);
+			}
 			self.shape <- element_shape;
 			float price <- mybut.action_cost;
 			draw_around <- 15; // by default, a thin line = 15 for dikes 
@@ -722,7 +745,7 @@ global{
 					}
 				}
 			}
-			self.cost <- price * shape.perimeter;
+			self.cost <- price * shape.perimeter; // todo : verify price and height
 			self.height <- coast_def_type = COAST_DEF_TYPE_DIKE ? BUILT_DIKE_HEIGHT : (draw_around = 45 ? BUILT_DUNE_TYPE1_HEIGHT : BUILT_DUNE_TYPE2_HEIGHT);
 			action_delay <- world.delay_of_action(self.command);
 			// requesting the server for the altitude of this future codef
@@ -761,12 +784,13 @@ global{
 		Button selected_button <- Button first_with(each.is_selected);
 		
 		if selected_button != nil {
+//			Click sur boutton
 			Land_Use cell_tmp <- first(Land_Use where (each overlaps loc)); // the clicked lu cell
 			if cell_tmp = nil {return;}
 			if basket_overflow() {return;}
 			ask cell_tmp {
 				// inspect, history or gates buttons : do nothing
-				if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY, ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE] {return;}
+				if selected_button.command in [ACTION_INSPECT, ACTION_HISTORY, ACTION_CLOSE_OPEN_GATES, ACTION_CLOSE_OPEN_DIEPPE_GATE, ACTION_CLEAN, ACTION_CREATE_CLAPET] {return;}
 				// the cell is already the selected action, do nothing
 				if(		(lu_code = LU_TYPE_N 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_N)
 					 or (lu_code = LU_TYPE_A 		   and selected_button.command = ACTION_MODIFY_LAND_COVER_A)
@@ -1818,6 +1842,7 @@ species Network_Player skills:[network]{
 						lu_code 	<- int(m_contents["lu_code"]);
 						lu_name 	<- lu_type_names[lu_code];
 						population 	<-int(m_contents["population"]);
+						education_level 	<- int(m_contents["education_level"]);
 						is_in_densification <- bool(m_contents["is_in_densification"]);
 					}
 				}
@@ -1927,7 +1952,7 @@ species Network_Player skills:[network]{
 			}
 		}
 	}
-	// a coastal defense has been created by the manager
+	// a coastal defense has been created by the manager Santatra
 	action coast_def_create_action(map<string, string> msg){
 		create Coastal_Defense {
 			coast_def_id <- int(msg at "coast_def_id");
@@ -2264,6 +2289,7 @@ species Land_Use {
 	string dist_code<- "";
 	rgb my_color 	<- cell_color() update: cell_color();
 	int population;
+	int education_level <- 0;
 	float mean_alt;
 	string density_class-> {population = 0 ? POP_EMPTY : (population < POP_LOW_NUMBER ? POP_VERY_LOW_DENSITY : (population < POP_MEDIUM_NUMBER ? POP_LOW_DENSITY : 
 								(population < POP_HIGH_NUMBER ? POP_MEDIUM_DENSITY : POP_DENSE)))};
@@ -2285,6 +2311,7 @@ species Land_Use {
 		self.dist_code	 		 <- active_district_code;
 		self.lu_name 			 <- lu_type_names[lu_code];
 		self.population 		 <- int   (a at "population");
+		self.education_level     <- int   (a at "education_level");
 		self.mean_alt			 <- float (a at "mean_alt");
 		self.is_in_densification <- bool  (a at "is_in_densification");
 		self.flooded_times		 <- int   (a at "flooded_times");
@@ -2357,6 +2384,9 @@ species Land_Use {
 			if focus_on_me {
 				draw shape empty: true border: #black;
 			}
+			if(education_level !=0){
+				draw EDUCATIONAL_ICON at:location size:(13 + 8*education_level)#px ;
+			}
 		}			
 	}
 	// the historical aspect, when the button history is selected
@@ -2383,6 +2413,7 @@ species Coastal_Defense {
 	float height;
 	bool ganivelle <- false;
 	bool maintained	<- false; // for DUNES (Camargue)
+	bool chanel <- false; // for canal à Mahajunga
 	int slices <- 4;
 	float alt <- 0.0;
 	string status;
@@ -2409,6 +2440,7 @@ species Coastal_Defense {
 		self.alt 		<- float(a at "alt");
 		self.ganivelle 	<- bool(a at "ganivelle");
 		self.maintained	<- bool(a at "maintained");
+		self.chanel     <- bool(a at "chanel");
 		self.dune_type  <- int(a at "dune_type");
 		self.rupture	<- bool(a at "rupture");	
 		self.location	<- {float(a at "locationx"), float(a at "locationy")};
@@ -2530,7 +2562,10 @@ species Coastal_Defense {
 				draw draw_around#m around shape color: color border:outer_layer_color;
 				do draw_symbols(dike_symbol_img);
 			}
-			
+			else if type = COAST_DEF_TYPE_CHANEL {
+				outer_layer_color <- #green;
+				draw draw_around#m around shape color: #blue border:outer_layer_color;
+			}
 			
 //			if(!(Button first_with (each.command = ACTION_HISTORY)).is_selected ){
 //				rgb next_color<- #gold;
@@ -2617,13 +2652,27 @@ species Isoline {
 		}
 	}
 }
-
+//species River {
+//	aspect base {
+//		draw shape color:#blue;
+//	}
+//}
 species River {
+	int id <- 0;
+	int profondeurMaximal <- 10;
+	int profondeurActuel <- 4;
+	
 	aspect base {
-		draw shape color:#blue;
+		rgb color<-#blue;
+		int boue <- profondeurMaximal - profondeurActuel;		
+		if(boue > 4){
+			color <- #green;
+		}else if (boue > 2){
+			color <- #red;
+		}
+		draw shape color:color;
 	}
 }
-
 species Sea {}
 
 species Protected_Area {
@@ -2739,7 +2788,7 @@ experiment LittoSIM_GEN_Player type: gui{
 					draw rectangle(2*world.shape.width, world.shape.height) at: {0,0} color: #black;
 				}
 			}
-			species District aspect: base;
+			species District aspect: base ;
 			graphics "Population" { // population geometry is colored in the codef tab
 				draw population_area color: rgb(105,105,105) ;
 			}
