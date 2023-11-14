@@ -431,6 +431,7 @@ global {
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_DUNE) {  do evolve_dune_status;  }
 		   		ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CORD) {  do degrade_cord_status; }				
 				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_CHANEL) {  do degrade_chanel_status; }				
+				ask Coastal_Defense where (each.district_code = district_code and each.type = COAST_DEF_TYPE_VALVE) {  do apply_valve_effect; }				
 				
 				
 				do calculate_taxes;
@@ -1496,7 +1497,7 @@ species Network_Game_Manager skills: [network]{
 							self.is_expropriation 			<- bool(m_contents["is_expropriation"]);
 							self.cost 						<- float(m_contents["cost"]);
 							self.draw_around				<- int (m_contents["draw_around"]);
-							if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
+							if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE, ACTION_CREATE_CLAPET] {
 								self.altit	<- float (m_contents["altit"]);
 								element_shape <- polyline([{float(m_contents["origin.x"]), float(m_contents["origin.y"])},
 															{float(m_contents["end.x"]), float(m_contents["end.y"])}]);
@@ -1544,7 +1545,7 @@ species Network_Game_Manager skills: [network]{
 				int id_dist <- world.district_id (district_code);
 				bool acknowledge <- false;
 				switch command {
-					match_one [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]{	
+					match_one [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE, ACTION_CREATE_CLAPET]{	
 						ask create_coast_def (self, command) {
 							do build_coast_def;
 							acknowledge <- true;
@@ -2052,7 +2053,11 @@ species Player_Action schedules:[]{
 			location <- act.location;
 			type 	<- comm = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
 			status 	<- BUILT_DIKE_STATUS;
-			height 	<- type = COAST_DEF_TYPE_DIKE ? BUILT_DIKE_HEIGHT : BUILT_DUNE_TYPE1_HEIGHT;	
+			height 	<- type = COAST_DEF_TYPE_DIKE ? BUILT_DIKE_HEIGHT : BUILT_DUNE_TYPE1_HEIGHT;
+			if(comm = ACTION_CREATE_CLAPET){
+				type <- COAST_DEF_TYPE_VALVE;
+				height 	<- BUILT_BRIDGE_VALVE_HEIGHT;
+			}	
 			cells 	<- Cell overlapping self;
 			if act.draw_around = 30 {
 				dune_type <- 2;
@@ -2262,6 +2267,7 @@ species Coastal_Defense {
 	}
 	
 	action degrade_chanel_status {
+		// height of chanel must be negative because this is an inverse of dike
 		if(height = 0) {return;}
 		
 		// update deepness, here the height is negative
@@ -2281,6 +2287,32 @@ species Coastal_Defense {
 		height <- height + degradation;	
 		alt    <- alt + degradation;	
 		do update_cells_height(degradation);
+	}
+	
+	action apply_valve_effect{
+		// height must be negative
+		// here "height" means, valve's height and not bridge height's
+		float height_last_year <- height;
+		// detect status of valve
+		int lus_educational_level <- 0;
+		ask Land_Use overlapping self{
+			lus_educational_level <- lus_educational_level + education_level;
+		}
+	 	lus_educational_level <- int(lus_educational_level / length(Land_Use overlapping self));
+	 	
+	 	// sedimentation in a year
+	 	float sedimentation <- H_DELTA_CHANEL * lus_educational_level;
+		
+		height <- height + sedimentation;	
+		alt    <- alt + sedimentation;
+		
+		if(height > 0){ // valve's status is BAD : act on cells is like dike
+			do update_cells_height(H_BRIDGE + height); // referenciel is not the same : PROBLEM
+		}else{ // valve's status is GOOD : act on cells is like there are no dike, but valve
+			do update_cells_height(sedimentation); 
+		}
+		
+		// TODO : il faut prendre en compte la sedimentation de l'année passée
 	}
 	
 	action update_cells_height(float difference){
@@ -2856,7 +2888,7 @@ species District {
 species Polycell{
 	point loc;
 	rgb col;
-	aspect base{
+	aspect base{ 
 		if show_max_water_height {
 			draw rectangle(GRID_CELL_SIZE, GRID_CELL_SIZE) color: col at: loc;	
 		}

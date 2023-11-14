@@ -73,6 +73,9 @@ global{
 	// image for dike and dunes
 	image_file dike_symbol_img <- image_file("../images/system_icons/player/gray_dike_symbol.png");
 	image_file dune_symbol_img <- image_file("../images/system_icons/player/gray_dune_symbol.png");
+	image_file chanel_symbol_img <- image_file("../images/system_icons/player/gray_chanel_symbol.png");
+	image_file valve_symbol_img <- image_file("../images/system_icons/player/gray_valve_symbol.png");
+	
 	
 	image_file bad_cord_symbol <- image_file("../images/system_icons/player/bad_cord_symbol.png");
 	image_file medium_cord_symbol <- image_file("../images/system_icons/player/medium_cord_symbol.png");
@@ -695,12 +698,13 @@ global{
 	// creating a new coastal defense object
 	action create_new_codef (point loc, Button but){
 		if previous_clicked_point = nil { // getting the first point
-			if but.command = ACTION_CREATE_CLAPET {
-				do create_new_coast_def_action (but, loc);
+			previous_clicked_point <- loc;
+			//if but.command = ACTION_CREATE_CLAPET {
+			//	do create_new_coast_def_action (but, loc);
 				// todo : limit the position to in duke
-			}else{
-				previous_clicked_point <- loc;
-			}
+			//}else{
+				
+			//}
 		}
 		else{ // the second point is clicked
 			if !empty(Protected_Area overlapping (polyline([previous_clicked_point, loc]))){
@@ -725,11 +729,9 @@ global{
 			self.command<- mybut.command;
 			self.coast_def_type <- command = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
 			if command = ACTION_CREATE_CLAPET {
-				self.coast_def_type <-COAST_DEF_TYPE_VALVE;
-				self.element_shape <- point(loc);
-			}else{
-				self.element_shape <- polyline([previous_clicked_point, loc]);
+				self.coast_def_type <- COAST_DEF_TYPE_VALVE;
 			}
+			self.element_shape <- polyline([previous_clicked_point, loc]);
 			self.shape <- element_shape;
 			float price <- mybut.action_cost;
 			draw_around <- 15; // by default, a thin line = 15 for dikes 
@@ -2066,9 +2068,15 @@ species Player_Action {
 			self.draw_around <- int (mp at "draw_around");
 			self.altit	<- float (mp at "altit");
 			element_shape <- polyline(all_points);
-			if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE] {
+			if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE, ACTION_CREATE_CLAPET] {
 				self.coast_def_type <- command = ACTION_CREATE_DIKE ? COAST_DEF_TYPE_DIKE : COAST_DEF_TYPE_DUNE;
 				self.height <- coast_def_type = COAST_DEF_TYPE_DIKE ? BUILT_DIKE_HEIGHT : (draw_around = 45 ? BUILT_DUNE_TYPE1_HEIGHT : BUILT_DUNE_TYPE2_HEIGHT);
+				
+				if(self.command = ACTION_CREATE_CLAPET) {
+					self.coast_def_type <- COAST_DEF_TYPE_VALVE;
+					self.height <- BUILT_BRIDGE_VALVE_HEIGHT;
+				}
+				
 				shape  <-  element_shape;
 			} else {
 				shape <- element_shape + 15;
@@ -2100,7 +2108,7 @@ species Player_Action {
 			"previous_lu_name"::previous_lu_name, "draw_around"::draw_around,
 			"is_expropriation"::is_expropriation, "cost"::int(cost)];
 		
-		if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE]  {
+		if command in [ACTION_CREATE_DIKE, ACTION_CREATE_DUNE, ACTION_CREATE_CLAPET]  {
 				point end <- last (element_shape.points);
 				point origin <- first(element_shape.points);
 				put string(origin.x) at: "origin.x" in: mp;
@@ -2385,7 +2393,11 @@ species Land_Use {
 				draw shape empty: true border: #black;
 			}
 			if(education_level !=0){
-				draw EDUCATIONAL_ICON at:location size:(13 + 8*education_level)#px ;
+				if(education_level !=0){
+					draw EDUCATIONAL_ICON at:location size: self.shape.width;
+				}else{
+					draw EDUCATIONAL2_ICON at:location size: self.shape.width;
+				}
 			}
 		}			
 	}
@@ -2564,7 +2576,13 @@ species Coastal_Defense {
 			}
 			else if type = COAST_DEF_TYPE_CHANEL {
 				outer_layer_color <- #green;
-				draw draw_around#m around shape color: #blue border:outer_layer_color;
+				draw draw_around#m around shape color: color border:outer_layer_color;
+				do draw_symbols(chanel_symbol_img);
+			}
+			else if type = COAST_DEF_TYPE_VALVE {
+				outer_layer_color <- #pink;
+				draw draw_around#m around shape color: color border:outer_layer_color;
+				do draw_symbols(valve_symbol_img);
 			}
 			
 //			if(!(Button first_with (each.command = ACTION_HISTORY)).is_selected ){

@@ -370,4 +370,5 @@ global{
 	 */
 	float DEEPNESS_MAX <- 10.0;
 	int MAX_SENSITIZE_QUALITY <- 3;
+	float BUILT_BRIDGE_VALVE_HEIGHT <- 10;
 }

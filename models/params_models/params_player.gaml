@@ -22,6 +22,7 @@ global{
 	int DISPLAY_FONT_SIZE 	 <- 16;
 	image_file TRANSPARENT <- image_file("../images/system_icons/player/transparent.png");
 	file EDUCATIONAL_ICON <- file("../images/system_icons/player/indication_sensitize.png");
+	file EDUCATIONAL2_ICON <- file("../images/system_icons/player/indication2_sensitize.png");
 	
 	/*
 	 * Player specific actions
